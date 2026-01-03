@@ -7,6 +7,9 @@ interface Props {
   residents: Resident[];
   schedule: ScheduleGrid;
   onCellClick: (residentId: string, week: number) => void;
+  onLockWeek: (weekIdx: number) => void;
+  onLockResident: (residentId: string) => void;
+  onToggleLock: (residentId: string, weekIdx: number) => void;
 }
 
 const WEEKS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
@@ -24,10 +27,17 @@ interface TooltipData {
   y: number;
   assignmentName: string;
   progress: string;
-  peers: string[];
+  peers: Resident[];
 }
 
-export const ScheduleTable: React.FC<Props> = ({ residents, schedule, onCellClick }) => {
+export const ScheduleTable: React.FC<Props> = ({ 
+  residents, 
+  schedule, 
+  onCellClick,
+  onLockWeek,
+  onLockResident,
+  onToggleLock
+}) => {
   // Resizable Column State
   const [colWidth, setColWidth] = useState(160);
   const resizingRef = useRef(false);
@@ -40,6 +50,7 @@ export const ScheduleTable: React.FC<Props> = ({ residents, schedule, onCellClic
   // Handle Resizing
   const startResize = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent triggering row lock
     resizingRef.current = true;
     startXRef.current = e.pageX;
     startWidthRef.current = colWidth;
@@ -74,8 +85,7 @@ export const ScheduleTable: React.FC<Props> = ({ residents, schedule, onCellClic
 
     // 2. Find Peers
     const peers = residents
-      .filter(r => r.id !== resident.id && schedule[r.id]?.[weekIdx]?.assignment === assignment)
-      .map(r => r.name);
+      .filter(r => r.id !== resident.id && schedule[r.id]?.[weekIdx]?.assignment === assignment);
 
     const rect = (e.target as HTMLElement).getBoundingClientRect();
 
@@ -94,7 +104,7 @@ export const ScheduleTable: React.FC<Props> = ({ residents, schedule, onCellClic
 
   return (
     <div className="flex flex-col h-full bg-white border rounded-lg shadow-sm overflow-hidden relative">
-      <div className="overflow-auto spreadsheet-container relative flex-1 pb-10">
+      <div className="overflow-auto spreadsheet-container relative flex-1 pb-32">
         <table className="border-separate border-spacing-0 w-max">
           <thead className="sticky top-0 z-30 bg-gray-50 text-xs uppercase text-gray-500 font-semibold shadow-sm h-12">
             <tr>
@@ -108,11 +118,20 @@ export const ScheduleTable: React.FC<Props> = ({ residents, schedule, onCellClic
                   <div 
                     className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-600 transition-colors z-50"
                     onMouseDown={startResize}
+                    onClick={(e) => e.stopPropagation()}
                   />
                 </div>
               </th>
-              {WEEKS.map((w) => (
-                <th key={w} className="border-b border-gray-200 p-1 min-w-[80px] text-center bg-gray-50">
+              {WEEKS.map((w, idx) => (
+                <th 
+                    key={w} 
+                    className="border-b border-gray-200 p-1 min-w-[80px] text-center bg-gray-50 cursor-context-menu hover:bg-blue-50 transition-colors"
+                    onContextMenu={(e) => {
+                        e.preventDefault();
+                        onLockWeek(idx);
+                    }}
+                    title="Right-click to toggle lock for this week"
+                >
                   <div className="flex flex-col items-center">
                     <span>W{w}</span>
                     <span className="text-[9px] font-normal text-gray-400 normal-case">
@@ -130,8 +149,13 @@ export const ScheduleTable: React.FC<Props> = ({ residents, schedule, onCellClic
               return (
                 <tr key={resident.id} className="hover:bg-gray-50 transition-colors">
                   <td 
-                    className="sticky left-0 z-20 border-b border-r border-gray-200 p-2 font-medium text-gray-900 group bg-white/80 backdrop-blur-md"
+                    className="sticky left-0 z-20 border-b border-r border-gray-200 p-2 font-medium text-gray-900 group bg-white/80 backdrop-blur-md cursor-context-menu hover:bg-blue-50 transition-colors"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
+                    onContextMenu={(e) => {
+                        e.preventDefault();
+                        onLockResident(resident.id);
+                    }}
+                    title={`Right-click to toggle lock for ${resident.name}`}
                   >
                     <div className="flex flex-col truncate">
                       <span className="flex items-center gap-2 truncate" title={resident.name}>
@@ -154,23 +178,31 @@ export const ScheduleTable: React.FC<Props> = ({ residents, schedule, onCellClic
                         key={`${resident.id}-${w}`} 
                         className={`border-b border-gray-100 border-r p-1 text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-gray-100'}`}
                         onClick={() => onCellClick(resident.id, idx)}
+                        onContextMenu={(e) => {
+                            e.preventDefault();
+                            onToggleLock(resident.id, idx);
+                        }}
                         onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
                         onMouseLeave={handleMouseLeave}
+                        title="Left click to edit, Right click to toggle lock"
                       >
                          <div className={`
                             w-full h-10 flex items-center justify-center rounded text-xs font-medium px-1 transition-all
                             ${colorClass}
-                            ${cell?.locked ? 'ring-2 ring-gray-400' : ''}
+                            ${cell?.locked ? 'ring-2 ring-gray-600' : ''}
                          `}>
                            {assign ? (
                              <>
                                <span className="truncate w-full block">
                                  {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
                                </span>
-                               {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-50" />}
+                               {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-70 text-gray-700" />}
                              </>
                            ) : (
-                             <span className="text-gray-300">-</span>
+                             <>
+                                <span className="text-gray-300">-</span>
+                                {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-40 text-gray-400" />}
+                             </>
                            )}
                          </div>
                       </td>
@@ -195,12 +227,23 @@ export const ScheduleTable: React.FC<Props> = ({ residents, schedule, onCellClic
             {tooltip.peers.length > 0 && (
                 <div className="border-t border-gray-700 pt-2 mt-1">
                     <div className="text-gray-400 mb-1 text-[10px] uppercase font-semibold">With:</div>
-                    <div className="flex flex-wrap gap-1">
-                        {tooltip.peers.map((p, i) => (
-                            <span key={i} className="bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
-                                {p}
-                            </span>
-                        ))}
+                    <div className="space-y-1">
+                        {[1, 2, 3].map(pgy => {
+                            const pgyGroup = tooltip.peers.filter(r => r.level === pgy);
+                            if (pgyGroup.length === 0) return null;
+                            return (
+                                <div key={pgy} className="flex gap-1 items-start">
+                                    <span className="text-[10px] text-gray-500 font-bold w-10 shrink-0">PGY-{pgy}:</span>
+                                    <div className="flex flex-wrap gap-1">
+                                        {pgyGroup.map(r => (
+                                            <span key={r.id} className="bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
+                                                {r.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}

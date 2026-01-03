@@ -15,37 +15,38 @@ The scheduler attempts to fill shifts based on the following minimum and maximum
 
 | Rotation | Duration | Min Interns | Max Interns | Min Seniors | Max Seniors | Total Team Size |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Night Float** | 4 Weeks | 1 | 2 | 1 | 2 | 2 - 3 |
-| **ICU** | 4 Weeks | 2 | 2 | 2 | 2 | 3 - 5 |
+| **Night Float** | 2 Weeks | 1 | 2 | 1 | 3 | 2 - 5 |
+| **ICU** | 4 Weeks | 2 | 2 | 2 | 2 | 4 |
 | **Wards (Red)** | 4 Weeks | 2 | 3 | 1 | 2 | 3 - 5 |
 | **Wards (Blue)** | 4 Weeks | 2 | 3 | 1 | 2 | 3 - 5 |
-| **Emergency** | 2 Weeks | 1 | 2 | 0 | 2 | 1 - 3 |
+| **Emergency** | 2 Weeks | 1 | 2 | 0 | 2 | 1 - 4 |
 
 ### PGY1 Required Electives
 In addition to the above, Interns (PGY1) are required to complete the following electives.
 
 *   **Cardiology (CARDS)**: 4 Weeks
+*   **Emergency (EM)**: 4 weeks
 *   **Infectious Disease (ID)**: 2 Weeks
 *   **Nephrology (NEPH)**: 2 Weeks
 *   **Pulmonology (PULM)**: 2 Weeks
-*   **Emergency (EM)**: 4 weeks
 
 ### PGY2 Required Rotations
 Residents in their second year (PGY2) have a specific set of required blocks that must be fulfilled:
 
-*   **Hematology-Oncology (ONC)**: 2 - 4 Weeks
-*   **Neurology (NEURO)**: 2 - 4 Weeks
-*   **Rheumatology (RHEUM)**: 2 -4 Weeks
-*   **Gastroenterology (GI)**: 2 - 4 Weeks
-*   *(Note: Metro ICU is an optional elective and not auto-assigned)*
+*   **Hematology-Oncology (ONC)**: 4 Weeks
+*   **Neurology (NEURO)**: 4 Weeks
+*   **Rheumatology (RHEUM)**: 4 Weeks
+*   **Gastroenterology (GI)**: 4 Weeks
+*   **Night Float**: 2 Weeks
 
 ### PGY3 Required Electives
 Residents in their third year (PGY3) are required to complete the following electives:
 
-*   **Addiction Medicine (Add Med)**: 4 Weeks
-*   **Endocrinology (Endo)**: 4 Weeks
-*   **Geriatrics (Geri)**: 4 Weeks
-*   **Palliative Care (HPC)**: 4 Weeks
+*   **Addiction Medicine (Add Med)**: 2 Weeks
+*   **Endocrinology (Endo)**: 2 Weeks
+*   **Geriatrics (Geri)**: 2 Weeks
+*   **Palliative Care (HPC)**: 2 Weeks
+*   **Night Float**: 2 Weeks
 
 
 ## 4. Gaps & Electives
@@ -53,4 +54,4 @@ Residents in their third year (PGY3) are required to complete the following elec
 
 ## 5. Team Diversity
 *   The system tracks co-working relationships.
-*   While not a hard constraint during generation, the `Relationship Stats` tab monitors diversity to ensure residents work with a broad mix of colleagues, potentially reducing the chance of being stuck with people that don't get along as well, and maximizing intern exposure to different personalities in the field.
+*   While not a hard constraint during generation, the `Relationship Stats` tab monitors diversity to ensure residents work with a broad mix of colleagues.

@@ -1,16 +1,23 @@
 import React, { useMemo, useState } from 'react';
 import { Resident, ScheduleGrid } from '../types';
 import { calculateFairnessMetrics } from '../services/scheduler';
-import { AlertCircle, CheckCircle2, Scale, Flame, Activity, HelpCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Scale, Flame, Activity, HelpCircle, Moon } from 'lucide-react';
 
 interface Props {
   residents: Resident[];
   schedule: ScheduleGrid;
 }
 
+interface TooltipState {
+  x: number;
+  y: number;
+  type: 'header' | 'streak';
+  title: string;
+  content: string[];
+}
+
 export const FairnessStats: React.FC<Props> = ({ residents, schedule }) => {
-  // Use a single tooltip state for fixed positioning
-  const [tooltip, setTooltip] = useState<{x: number, y: number, text: string} | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
   const stats = useMemo(() => {
     return calculateFairnessMetrics(residents, schedule);
@@ -22,12 +29,25 @@ export const FairnessStats: React.FC<Props> = ({ residents, schedule }) => {
       return 'text-red-600 bg-red-50 border-red-200';
   };
 
-  const handleMouseEnter = (e: React.MouseEvent, text: string) => {
+  const handleHeaderEnter = (e: React.MouseEvent, title: string, text: string) => {
       const rect = (e.target as HTMLElement).getBoundingClientRect();
       setTooltip({
           x: rect.left + (rect.width / 2),
           y: rect.top,
-          text
+          type: 'header',
+          title,
+          content: [text]
+      });
+  };
+
+  const handleStreakEnter = (e: React.MouseEvent, rName: string, streak: number, summary: string[]) => {
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      setTooltip({
+          x: rect.left + (rect.width / 2),
+          y: rect.top,
+          type: 'streak',
+          title: `Streak Breakdown: ${rName}`,
+          content: summary
       });
   };
 
@@ -35,22 +55,8 @@ export const FairnessStats: React.FC<Props> = ({ residents, schedule }) => {
       setTooltip(null);
   };
 
-  const HeaderWithTooltip = ({ label, tooltipText, icon }: { label: React.ReactNode, tooltipText: string, icon?: React.ReactNode }) => (
-      <th 
-        className="text-right py-3 px-2 font-medium relative whitespace-nowrap cursor-help group"
-        onMouseEnter={(e) => handleMouseEnter(e, tooltipText)}
-        onMouseLeave={handleMouseLeave}
-      >
-          <div className="flex items-center justify-end gap-1">
-              {icon}
-              {label}
-              <HelpCircle size={12} className="text-gray-400 opacity-50 group-hover:opacity-100" />
-          </div>
-      </th>
-  );
-
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-6 relative">
+    <div className="h-full overflow-y-auto bg-gray-50 p-6 pb-32 relative">
       <div className="max-w-6xl mx-auto space-y-8">
         
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -97,35 +103,69 @@ export const FairnessStats: React.FC<Props> = ({ residents, schedule }) => {
                                 <tr className="text-xs text-gray-500 border-b border-gray-100">
                                     <th className="text-left py-3 px-2 font-medium pl-2">Resident</th>
                                     
-                                    <HeaderWithTooltip 
-                                        label="Core" 
-                                        tooltipText="Wards, ICU, Night Float, EM, and Clinics."
-                                    />
-                                    <HeaderWithTooltip 
-                                        label="Required" 
-                                        tooltipText="Specialty rotations required for graduation (e.g. Cards, Onc)."
-                                    />
-                                    <HeaderWithTooltip 
-                                        label="Electives" 
-                                        tooltipText="Flexible/Voluntary time (Research, Generic Electives)."
-                                    />
+                                    <th 
+                                        className="text-right py-3 px-2 font-medium relative whitespace-nowrap cursor-help group"
+                                        onMouseEnter={(e) => handleHeaderEnter(e, 'Core Weeks', 'Wards, ICU, Night Float, EM, and Clinics.')}
+                                        onMouseLeave={handleMouseLeave}
+                                    >
+                                        <div className="flex items-center justify-end gap-1">
+                                            Core
+                                            <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                        </div>
+                                    </th>
+
+                                    <th 
+                                        className="text-right py-3 px-2 font-medium relative whitespace-nowrap cursor-help group"
+                                        onMouseEnter={(e) => handleHeaderEnter(e, 'Elective Weeks', 'Flexible/Voluntary time (Research, Generic Electives).')}
+                                        onMouseLeave={handleMouseLeave}
+                                    >
+                                        <div className="flex items-center justify-end gap-1">
+                                            Electives
+                                            <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                        </div>
+                                    </th>
+
+                                    <th 
+                                        className="text-right py-3 px-2 font-medium relative whitespace-nowrap cursor-help group"
+                                        onMouseEnter={(e) => handleHeaderEnter(e, 'Night Float', 'Total weeks of Night Float.')}
+                                        onMouseLeave={handleMouseLeave}
+                                    >
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Moon size={14}/>
+                                            Night Float
+                                            <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                        </div>
+                                    </th>
+
+                                    <th 
+                                        className="text-right py-3 px-2 font-medium relative whitespace-nowrap cursor-help group"
+                                        onMouseEnter={(e) => handleHeaderEnter(e, 'Intensity Score', 'Sum of (Weeks × Intensity Rating). Higher means harder year.')}
+                                        onMouseLeave={handleMouseLeave}
+                                    >
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Flame size={14}/>
+                                            Intensity
+                                            <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                        </div>
+                                    </th>
+
+                                    <th 
+                                        className="text-right py-3 px-2 font-medium relative whitespace-nowrap cursor-help group"
+                                        onMouseEnter={(e) => handleHeaderEnter(e, 'Streak', 'Longest run of consecutive high-intensity weeks (Allows 1-week grace period for Clinic/Off weeks).')}
+                                        onMouseLeave={handleMouseLeave}
+                                    >
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Activity size={14}/>
+                                            Streak
+                                            <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                        </div>
+                                    </th>
                                     
-                                    <HeaderWithTooltip 
-                                        label="Intensity"
-                                        icon={<Flame size={14}/>}
-                                        tooltipText="Sum of (Weeks × Intensity Rating). Higher means harder year."
-                                    />
-                                    <HeaderWithTooltip 
-                                        label="Streak"
-                                        icon={<Activity size={14}/>}
-                                        tooltipText="Longest run of consecutive weeks with Intensity ≥ 3."
-                                    />
                                     <th className="text-right py-3 px-2 font-medium pr-2 whitespace-nowrap">Dev</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {group.residents.map(r => {
-                                    // Calculate total deviation from group means
                                     const dev = Math.abs(r.coreWeeks - group.meanCore) + Math.abs(r.electiveWeeks - group.meanElective);
                                     const isOutlier = dev > 3;
 
@@ -141,21 +181,25 @@ export const FairnessStats: React.FC<Props> = ({ residents, schedule }) => {
                                             </td>
 
                                             <td className="py-3 px-2 text-right text-gray-600">
-                                                {r.requiredWeeks}
-                                            </td>
-
-                                            <td className="py-3 px-2 text-right text-gray-600">
                                                 {r.electiveWeeks}
                                                 <span className="text-xs text-gray-400 ml-1">
                                                     ({(r.electiveWeeks - group.meanElective) > 0 ? '+' : ''}{(r.electiveWeeks - group.meanElective).toFixed(1)})
                                                 </span>
+                                            </td>
+                                            
+                                            <td className="py-3 px-2 text-right text-indigo-700 font-medium">
+                                                {r.nightFloatWeeks}
                                             </td>
 
                                             <td className="py-3 px-2 text-right font-mono text-gray-700">
                                                 {r.totalIntensityScore}
                                             </td>
 
-                                            <td className="py-3 px-2 text-right">
+                                            <td 
+                                                className="py-3 px-2 text-right cursor-help"
+                                                onMouseEnter={(e) => handleStreakEnter(e, r.name, r.maxIntensityStreak, r.streakSummary)}
+                                                onMouseLeave={handleMouseLeave}
+                                            >
                                                 <span className={`px-2 py-0.5 rounded font-bold text-xs ${
                                                     r.maxIntensityStreak >= 8 ? 'bg-red-100 text-red-700' :
                                                     r.maxIntensityStreak >= 5 ? 'bg-orange-100 text-orange-700' : 
@@ -182,13 +226,23 @@ export const FairnessStats: React.FC<Props> = ({ residents, schedule }) => {
         ))}
       </div>
 
-      {/* Fixed Tooltip Portal */}
       {tooltip && (
           <div 
             className="fixed z-[9999] bg-gray-900 text-white text-xs rounded p-2 shadow-xl max-w-xs pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px]"
             style={{ left: tooltip.x, top: tooltip.y }}
           >
-              {tooltip.text}
+              <div className="font-bold mb-1 border-b border-gray-700 pb-1">{tooltip.title}</div>
+              {tooltip.type === 'streak' ? (
+                  <div className="flex flex-wrap gap-1 max-w-[200px] mt-1">
+                      {tooltip.content.map((item, i) => (
+                          <span key={i} className="bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
+                              {item}
+                          </span>
+                      ))}
+                  </div>
+              ) : (
+                  <div className="mt-1">{tooltip.content[0]}</div>
+              )}
               <div className="absolute left-1/2 top-full -mt-1 -ml-1 border-4 border-transparent border-t-gray-900"></div>
           </div>
       )}

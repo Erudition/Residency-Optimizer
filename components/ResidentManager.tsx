@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Resident, PgyLevel } from '../types';
 import { Trash2, Plus, UserPlus, Upload, Pencil, Check, X, Download, FileText, Info } from 'lucide-react';
@@ -196,7 +197,7 @@ David Wilson,2,4`;
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-4xl mx-auto pb-64">
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -295,14 +296,14 @@ David Wilson,2,4`;
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border mb-12">
         <div className="p-4 border-b bg-gray-50 font-semibold text-gray-700 grid grid-cols-12 gap-4">
             <div className="col-span-6">Name</div>
             <div className="col-span-2 text-center">Level</div>
             <div className="col-span-2 text-center">Cohort</div>
             <div className="col-span-2 text-center">Actions</div>
         </div>
-        <div className="overflow-visible">
+        <div className="overflow-visible min-h-[100px]">
             {residents.map(r => {
               const isEditing = editingId === r.id;
               

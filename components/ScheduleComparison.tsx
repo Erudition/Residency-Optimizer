@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScheduleGrid, Resident, AssignmentType, ScheduleCell } from '../types';
-import { calculateFairnessMetrics, calculateDiversityStats } from '../services/scheduler';
+import { calculateFairnessMetrics, calculateScheduleScore } from '../services/scheduler';
 import { Check, X, Sparkles, Loader2, Info } from 'lucide-react';
 
 interface ScheduleSession {
@@ -28,6 +28,7 @@ interface Props {
 interface ScheduleMetrics {
   id: string;
   name: string;
+  score: number;
   avgFairness: number;
   totalNF: number;
   streakSD: number;
@@ -40,6 +41,7 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
   const metrics: ScheduleMetrics[] = useMemo(() => {
     return schedules.map(s => {
       const groups = calculateFairnessMetrics(residents, s.data);
+      const score = calculateScheduleScore(residents, s.data);
       
       // Calculate Aggregate Metrics across all PGYs
       const avgFairness = groups.reduce((sum, g) => sum + g.fairnessScore, 0) / groups.length;
@@ -65,6 +67,7 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
       return {
         id: s.id,
         name: s.name,
+        score,
         avgFairness,
         totalNF,
         streakSD,
@@ -76,6 +79,7 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
   // Determine Min/Max for Coloring
   const ranges = useMemo(() => {
     const r = {
+      score: { min: -1000, max: 0 },
       fairness: { min: 100, max: 0 },
       totalNF: { min: 10000, max: 0 },
       streakSD: { min: 100, max: 0 },
@@ -84,7 +88,14 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
     
     if (metrics.length === 0) return r;
 
+    // Init ranges with first element
+    r.score.min = metrics[0].score;
+    r.score.max = metrics[0].score;
+
     metrics.forEach(m => {
+      r.score.min = Math.min(r.score.min, m.score);
+      r.score.max = Math.max(r.score.max, m.score);
+
       r.fairness.min = Math.min(r.fairness.min, m.avgFairness);
       r.fairness.max = Math.max(r.fairness.max, m.avgFairness);
       
@@ -169,10 +180,11 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
             <thead>
               <tr className="bg-gray-100 border-b border-gray-300 text-gray-700 uppercase text-xs">
                 <th className="py-3 px-4 text-left font-bold">Schedule</th>
-                <th className="py-3 px-4 text-center font-bold">Fairness Score (High=Good)</th>
-                <th className="py-3 px-4 text-center font-bold">Total Night Shifts (Low=Good)</th>
-                <th className="py-3 px-4 text-center font-bold">Streak Spread (SD) (Low=Good)</th>
-                <th className="py-3 px-4 text-center font-bold">Max Streak (Low=Good)</th>
+                <th className="py-3 px-4 text-center font-bold">Total Score</th>
+                <th className="py-3 px-4 text-center font-bold">Fairness %</th>
+                <th className="py-3 px-4 text-center font-bold">Total Night Shifts</th>
+                <th className="py-3 px-4 text-center font-bold">Streak Spread (SD)</th>
+                <th className="py-3 px-4 text-center font-bold">Max Streak</th>
                 <th className="py-3 px-4 text-center font-bold">Action</th>
               </tr>
             </thead>
@@ -184,6 +196,10 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
                     <td className="py-3 px-4 font-medium text-gray-900 border-r border-gray-100">
                       {m.name}
                       {isActive && <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">Active</span>}
+                    </td>
+
+                    <td className={`py-3 px-4 text-center font-mono ${getColor(m.score, ranges.score.min, ranges.score.max, true)}`}>
+                       {Math.round(m.score)}
                     </td>
                     
                     <td className={`py-3 px-4 text-center font-mono ${getColor(m.avgFairness, ranges.fairness.min, ranges.fairness.max, true)}`}>

@@ -1,6 +1,14 @@
 
 export type PgyLevel = 1 | 2 | 3;
 
+export enum ClinicalSetting {
+  INPATIENT = 'Inpatient',
+  OUTPATIENT = 'Outpatient',
+  CRITICAL_CARE = 'Critical Care',
+  EMERGENCY = 'Emergency',
+  NON_CLINICAL = 'Non-Clinical'
+}
+
 export interface Resident {
   id: string;
   name: string;
@@ -30,6 +38,7 @@ export enum AssignmentType {
   ONC = 'Onc',
   NEURO = 'Neuro',
   RHEUM = 'Rheum',
+  GI = 'GI',
   
   // PGY3 Required Electives
   ADD_MED = 'Add Med',
@@ -62,8 +71,8 @@ export interface RotationConfig {
   type: AssignmentType;
   label: string;
   intensity: number; // 1-5
-  isOutpatient: boolean;
   duration: number; // Standard block duration
+  setting: ClinicalSetting;
   
   // Staffing Constraints per week
   minInterns: number;
@@ -88,8 +97,10 @@ export interface ResidentFairnessMetrics {
     electiveWeeks: number;
     requiredWeeks: number;
     vacationWeeks: number;
+    nightFloatWeeks: number;
     totalIntensityScore: number;
     maxIntensityStreak: number;
+    streakSummary: string[];
 }
 
 export interface CohortFairnessMetrics {
@@ -102,4 +113,25 @@ export interface CohortFairnessMetrics {
     meanIntensity: number;
     sdIntensity: number;
     fairnessScore: number;
+}
+
+export interface RequirementViolation {
+    residentId: string;
+    type: AssignmentType;
+    target: number;
+    actual: number;
+}
+
+export interface WeeklyViolation {
+    week: number;
+    type: AssignmentType;
+    issue: string;
+}
+
+export interface AdaptationParams {
+    fillMissingReqs: boolean; // Try to replace electives with missing reqs
+    fixUnderstaffing: boolean; // Try to pull from electives to fix min constraints
+    fixOverstaffing: boolean; // Try to push to electives to fix max constraints
+    allowResearchOverride: boolean; // Treat Research as Elective for overrides
+    allowVacationOverride: boolean; // Treat Vacation as Elective for overrides (Dangerous)
 }

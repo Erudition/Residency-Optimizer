@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
 import { TOTAL_WEEKS, ASSIGNMENT_LABELS, ROTATION_METADATA, ASSIGNMENT_HEX_COLORS } from '../constants';
+import { AlertTriangle } from 'lucide-react';
 
 interface Props {
   residents: Resident[];
@@ -29,7 +30,7 @@ export const AssignmentStats: React.FC<Props> = ({ residents, schedule }) => {
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
-  const [cellTooltip, setCellTooltip] = useState<{x: number, y: number, assignees: Resident[], type: string} | null>(null);
+  const [cellTooltip, setCellTooltip] = useState<{x: number, y: number, assignees: Resident[], type: string, error?: string} | null>(null);
   const [rowTooltip, setRowTooltip] = useState<{x: number, y: number, type: AssignmentType} | null>(null);
 
   // Handle Resizing
@@ -59,40 +60,86 @@ export const AssignmentStats: React.FC<Props> = ({ residents, schedule }) => {
     document.body.style.cursor = '';
   };
 
+  // Define Row Order
+  const sortedAssignmentTypes = useMemo(() => {
+    const priorityOrder = [
+      AssignmentType.WARDS_RED,
+      AssignmentType.WARDS_BLUE,
+      AssignmentType.ICU,
+      AssignmentType.NIGHT_FLOAT,
+      AssignmentType.EM,
+      AssignmentType.CLINIC,
+      AssignmentType.ELECTIVE,
+      AssignmentType.VACATION,
+    ];
+
+    const allTypes = Object.values(AssignmentType);
+    const remainingTypes = allTypes
+      .filter(type => !priorityOrder.includes(type))
+      .sort((a, b) => {
+        const labelA = ASSIGNMENT_LABELS[a] || '';
+        const labelB = ASSIGNMENT_LABELS[b] || '';
+        return labelA.localeCompare(labelB);
+      });
+
+    return [...priorityOrder, ...remainingTypes];
+  }, []);
+
   // Group data
-  const data: Record<AssignmentType, Resident[][]> = {} as any;
-  const maxCounts: Record<AssignmentType, number> = {} as any;
-
-  Object.values(AssignmentType).forEach(type => {
-    data[type] = Array(TOTAL_WEEKS).fill([]);
-    maxCounts[type] = 0;
-  });
-
-  for (let w = 0; w < TOTAL_WEEKS; w++) {
-    residents.forEach(r => {
-      const type = schedule[r.id]?.[w]?.assignment;
-      if (type) {
-        data[type][w] = [...(data[type][w] || []), r];
-      }
-    });
-    
+  const data: Record<AssignmentType, Resident[][]> = useMemo(() => {
+    const d: Record<AssignmentType, Resident[][]> = {} as any;
     Object.values(AssignmentType).forEach(type => {
-      if (data[type][w].length > maxCounts[type]) {
-        maxCounts[type] = data[type][w].length;
-      }
+      d[type] = Array(TOTAL_WEEKS).fill([]);
     });
-  }
+
+    for (let w = 0; w < TOTAL_WEEKS; w++) {
+      residents.forEach(r => {
+        const type = schedule[r.id]?.[w]?.assignment;
+        if (type) {
+          d[type][w] = [...(d[type][w] || []), r];
+        }
+      });
+    }
+    return d;
+  }, [residents, schedule]);
+
+  const maxCounts: Record<AssignmentType, number> = useMemo(() => {
+    const m: Record<AssignmentType, number> = {} as any;
+    Object.values(AssignmentType).forEach(type => {
+      let max = 0;
+      for (let w = 0; w < TOTAL_WEEKS; w++) {
+        if (data[type][w].length > max) max = data[type][w].length;
+      }
+      m[type] = max;
+    });
+    return m;
+  }, [data]);
+
+  const checkConstraints = (type: AssignmentType, assignees: Resident[]) => {
+      const meta = ROTATION_METADATA[type];
+      if (!meta) return null;
+
+      const interns = assignees.filter(r => r.level === 1).length;
+      const seniors = assignees.filter(r => r.level > 1).length;
+
+      if (interns < meta.minInterns) return `Min Interns (${meta.minInterns}) unmet: ${interns}`;
+      if (interns > meta.maxInterns) return `Max Interns (${meta.maxInterns}) exceeded: ${interns}`;
+      if (seniors < meta.minSeniors) return `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`;
+      if (seniors > meta.maxSeniors) return `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`;
+      return null;
+  };
 
   const handleCellEnter = (e: React.MouseEvent, type: AssignmentType, weekIdx: number) => {
     const assignees = data[type][weekIdx];
-    if (assignees.length === 0) return;
+    const error = checkConstraints(type, assignees);
 
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setCellTooltip({
       x: rect.left + window.scrollX + rect.width / 2,
       y: rect.top + window.scrollY,
       assignees,
-      type: ASSIGNMENT_LABELS[type]
+      type: ASSIGNMENT_LABELS[type],
+      error: error || undefined
     });
   };
 
@@ -114,11 +161,13 @@ export const AssignmentStats: React.FC<Props> = ({ residents, schedule }) => {
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden relative">
        <div className="p-4 bg-gray-50 border-b">
-         <h2 className="text-lg font-bold text-gray-800">Assignment Heatmap</h2>
+         <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            Assignment Heatmap
+         </h2>
          <p className="text-sm text-gray-500">View staffing levels vs. constraints. Hover over row headers for rule details.</p>
        </div>
        
-       <div className="flex-1 overflow-auto spreadsheet-container pb-10">
+       <div className="flex-1 overflow-auto spreadsheet-container pb-32">
          <table className="border-separate border-spacing-0 w-max">
            <thead className="sticky top-0 z-30 bg-gray-50 text-xs text-gray-500 font-semibold h-10 shadow-sm">
              <tr>
@@ -143,12 +192,18 @@ export const AssignmentStats: React.FC<Props> = ({ residents, schedule }) => {
              </tr>
            </thead>
            <tbody className="text-xs">
-             {Object.values(AssignmentType).map(type => {
+             {sortedAssignmentTypes.map(type => {
                const meta = ROTATION_METADATA[type];
                const totalMin = meta.minInterns + meta.minSeniors;
                const totalMax = meta.maxInterns + meta.maxSeniors;
                const rangeLabel = formatMinMax(totalMin, totalMax);
                
+               // Check if any week has a violation for this row
+               let hasViolation = false;
+               for(let i=0; i<TOTAL_WEEKS; i++) {
+                   if (checkConstraints(type, data[type][i])) hasViolation = true;
+               }
+
                return (
                <tr key={type} className="hover:bg-gray-50">
                  <td 
@@ -158,9 +213,11 @@ export const AssignmentStats: React.FC<Props> = ({ residents, schedule }) => {
                     onMouseLeave={() => setRowTooltip(null)}
                  >
                    <div className="flex items-center justify-between overflow-hidden">
-                     <span className="truncate">{ASSIGNMENT_LABELS[type]}</span>
+                     <span className={`truncate ${hasViolation ? 'text-red-600 font-bold' : ''}`}>
+                         {ASSIGNMENT_LABELS[type]}
+                     </span>
                      {rangeLabel && (
-                        <span className="text-gray-400 text-[10px] ml-1 font-mono shrink-0">
+                        <span className={`text-[10px] ml-1 font-mono shrink-0 ${hasViolation ? 'text-red-500' : 'text-gray-400'}`}>
                             {rangeLabel}
                         </span>
                      )}
@@ -170,18 +227,25 @@ export const AssignmentStats: React.FC<Props> = ({ residents, schedule }) => {
                    const assignees = data[type][i];
                    const count = assignees.length;
                    const style = getBaseColorStyle(type, count, maxCounts[type]);
+                   
+                   const error = checkConstraints(type, assignees);
 
                    return (
                      <td 
                         key={i} 
-                        className="border-b border-gray-100 text-center cursor-default relative p-0"
+                        className={`border-b text-center cursor-default relative p-0 ${error ? 'border-red-500 border-2 z-10' : 'border-gray-100'}`}
                         onMouseEnter={(e) => handleCellEnter(e, type, i)}
                         onMouseLeave={() => setCellTooltip(null)}
                      >
-                       {count > 0 && (
+                       {count > 0 ? (
                          <div className="w-full h-8 flex items-center justify-center font-bold" style={style}>
                            {count}
                          </div>
+                       ) : (
+                          error ? (
+                             // Only show error background if 0 counts is actually an error (min > 0)
+                             <div className="w-full h-8 bg-red-50"></div>
+                          ) : null
                        )}
                      </td>
                    );
@@ -198,7 +262,17 @@ export const AssignmentStats: React.FC<Props> = ({ residents, schedule }) => {
             className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg py-3 px-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px] min-w-[200px]"
             style={{ left: cellTooltip.x, top: cellTooltip.y }}
         >
-            <div className="font-bold text-sm mb-2 border-b border-gray-700 pb-1">{cellTooltip.type}</div>
+            <div className="flex items-center gap-2 mb-2 border-b border-gray-700 pb-1">
+                {cellTooltip.error && <AlertTriangle size={14} className="text-red-400" />}
+                <span className="font-bold text-sm">{cellTooltip.type}</span>
+            </div>
+            
+            {cellTooltip.error && (
+                <div className="bg-red-900/50 text-red-100 p-1.5 rounded mb-2 font-semibold">
+                    {cellTooltip.error}
+                </div>
+            )}
+
             <div className="space-y-2">
                 {[1, 2, 3].map(pgy => {
                     const pgyGroup = cellTooltip.assignees.filter(r => r.level === pgy);
@@ -240,7 +314,8 @@ export const AssignmentStats: React.FC<Props> = ({ residents, schedule }) => {
                             <span className="font-bold">{meta.intensity}/5</span>
 
                             <span className="text-gray-500">Setting:</span>
-                            <span className="font-medium">{meta.isOutpatient ? 'Outpatient' : 'Inpatient'}</span>
+                            {/* Fixed property access error: replaced non-existent 'isOutpatient' with 'setting' */}
+                            <span className="font-medium">{meta.setting}</span>
 
                             <span className="text-gray-500">Duration:</span>
                             <span className="font-medium">{meta.duration} Weeks</span>

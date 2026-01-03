@@ -1,3 +1,4 @@
+
 # Rotation Features & Intensity Tracking
 
 This document outlines the characteristics of each assignment type available in the Residency Scheduler Pro system.
@@ -39,6 +40,7 @@ This document outlines the characteristics of each assignment type available in 
 | **ONC** | Hematology-Oncology | Required Elective (PGY2) | **Mix** | 1 | 1 |
 | **NEURO** | Neurology | Required Elective (PGY2) | Inpatient | 1 | 2 |
 | **RHEUM** | Rheumatology | Required Elective (PGY2) | **Outpatient** | 1 | 1 |
+| **GI** | Gastroenterology | Required Elective (PGY2) | **Outpatient** | 1 | 2 |
 | **ADD MED** | Addiction Medicine | Required Elective (PGY3) | Inpatient | 1 | 1 |
 | **ENDO** | Endocrinology | Required Elective (PGY3) | **Outpatient** | 1 | 1 |
 | **GERI** | Geriatrics | Required Elective (PGY3) | **Outpatient** | 1 | 1 |

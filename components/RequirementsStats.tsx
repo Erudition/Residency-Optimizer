@@ -1,39 +1,21 @@
+
 import React from 'react';
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
-import { ROTATION_METADATA } from '../constants';
-import { CheckCircle2, XCircle, AlertCircle, ClipboardList } from 'lucide-react';
+import { ROTATION_METADATA, REQUIREMENTS } from '../constants';
+import { CheckCircle2, XCircle, AlertCircle, ClipboardList, Info } from 'lucide-react';
 
 interface Props {
   residents: Resident[];
   schedule: ScheduleGrid;
 }
 
-// Configuration of requirements per PGY Level
-const REQUIREMENTS: Record<number, { type: AssignmentType, label: string, target: number }[]> = {
-  1: [
-    { type: AssignmentType.CARDS, label: 'Cards', target: 4 },
-    { type: AssignmentType.ID, label: 'ID', target: 2 },
-    { type: AssignmentType.NEPH, label: 'Neph', target: 2 },
-    { type: AssignmentType.PULM, label: 'Pulm', target: 2 },
-    { type: AssignmentType.EM, label: 'EM', target: 4 },
-  ],
-  2: [
-    { type: AssignmentType.ONC, label: 'Onc', target: 4 },
-    { type: AssignmentType.NEURO, label: 'Neuro', target: 4 },
-    { type: AssignmentType.RHEUM, label: 'Rheum', target: 4 },
-  ],
-  3: [
-    { type: AssignmentType.ADD_MED, label: 'Add Med', target: 2 },
-    { type: AssignmentType.ENDO, label: 'Endo', target: 2 },
-    { type: AssignmentType.GERI, label: 'Geri', target: 2 },
-    { type: AssignmentType.HPC, label: 'HPC', target: 2 },
-  ]
-};
-
 export const RequirementsStats: React.FC<Props> = ({ residents, schedule }) => {
   
   const getResidentCount = (resId: string, type: AssignmentType) => {
     const weeks = schedule[resId] || [];
+    if (type === AssignmentType.WARDS_RED) {
+        return weeks.filter(c => c.assignment === AssignmentType.WARDS_RED || c.assignment === AssignmentType.WARDS_BLUE).length;
+    }
     return weeks.filter(c => c.assignment === type).length;
   };
 
@@ -41,7 +23,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule }) => {
     const groupResidents = residents.filter(r => r.level === level);
     const reqs = REQUIREMENTS[level];
 
-    if (groupResidents.length === 0) return null;
+    if (!reqs || groupResidents.length === 0) return null;
 
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
@@ -102,6 +84,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule }) => {
                                         </td>
                                     );
                                 })}
+
                                 <td className="py-2 px-4 text-center">
                                     {metAll ? (
                                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
@@ -124,18 +107,16 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule }) => {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-6">
+    <div className="h-full overflow-y-auto bg-gray-50 p-6 pb-32">
         <div className="max-w-6xl mx-auto">
              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                     <ClipboardList className="w-6 h-6 text-blue-600" />
                     Program Requirements Verification
                 </h2>
-                <p className="mt-2 text-gray-600">
-                    Verify that every resident meets their specific PGY-level graduation requirements.
-                    <br/>
-                    <span className="text-sm text-gray-500 italic">Targets are defined based on program rules (e.g. 4 weeks Cards for PGY1, 4 weeks Onc for PGY2).</span>
-                </p>
+                <div className="mt-2 text-gray-600 space-y-2">
+                    <p>Verify that every resident meets their specific PGY-level graduation requirements.</p>
+                </div>
             </div>
 
             {renderGroup(1)}

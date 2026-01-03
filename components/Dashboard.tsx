@@ -33,6 +33,7 @@ export const Dashboard: React.FC<Props> = ({ residents, stats }) => {
       [AssignmentType.ONC]: s[AssignmentType.ONC] || 0,
       [AssignmentType.NEURO]: s[AssignmentType.NEURO] || 0,
       [AssignmentType.RHEUM]: s[AssignmentType.RHEUM] || 0,
+      [AssignmentType.GI]: s[AssignmentType.GI] || 0,
       
       [AssignmentType.ADD_MED]: s[AssignmentType.ADD_MED] || 0,
       [AssignmentType.ENDO]: s[AssignmentType.ENDO] || 0,
@@ -88,6 +89,7 @@ export const Dashboard: React.FC<Props> = ({ residents, stats }) => {
             <Bar dataKey={AssignmentType.ONC} stackId="a" fill="#f9a8d4" name="Heme/Onc" />
             <Bar dataKey={AssignmentType.NEURO} stackId="a" fill="#a78bfa" name="Neurology" />
             <Bar dataKey={AssignmentType.RHEUM} stackId="a" fill="#6ee7b7" name="Rheumatology" />
+            <Bar dataKey={AssignmentType.GI} stackId="a" fill="#fbbf24" name="GI" />
 
             <Bar dataKey={AssignmentType.ADD_MED} stackId="a" fill="#d6d3d1" name="Addiction Med" />
             <Bar dataKey={AssignmentType.ENDO} stackId="a" fill="#ffedd5" name="Endocrinology" />
@@ -110,7 +112,7 @@ export const Dashboard: React.FC<Props> = ({ residents, stats }) => {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
+    <div className="p-6 bg-gray-50 min-h-full pb-32">
       <ChartSection title="PGY 1 (Interns)" dataSet={pgy1Data} />
       <ChartSection title="PGY 2" dataSet={pgy2Data} />
       <ChartSection title="PGY 3" dataSet={pgy3Data} />

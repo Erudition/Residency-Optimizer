@@ -1,6 +1,7 @@
+
 import React, { useMemo, useState } from 'react';
 import { Resident, ScheduleGrid } from '../types';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Info, Network, Users, Handshake } from 'lucide-react';
 import { calculateDiversityStats } from '../services/scheduler';
 
 interface Props {
@@ -21,27 +22,10 @@ type StatRow = {
 
 export const RelationshipStats: React.FC<Props> = ({ residents, schedule }) => {
   const stats = useMemo(() => {
-    // 1. Get Diversity Percentages
     const diversityScores = calculateDiversityStats(residents, schedule);
-
-    // 2. Calculate Overlaps for "Max Overlap" metadata (This part kept local as it is specific to this view's detail)
-    const interactions: Record<string, Record<string, number>> = {};
-    residents.forEach(r => interactions[r.id] = {});
-
-    // Re-run minimal loop for Overlaps only (to find the specific max partner)
-    // We could optimize this by returning it from scheduler, but for now this is fine to keep UI logic separate for details
-    // Actually, calculateDiversityStats only returns scores. We need counts here. 
-    // Let's reuse the logic but calculating counts here is fine for the detailed view.
-    // However, to ensure consistency, we rely on the same logic structure.
-    
-    // We will stick to the previous implementation but fix the visual contrast issues requested.
-    // Note: The previous logic is correct for this view.
-    
-    // Original Logic:
     const matrix: Record<string, Record<string, number>> = {};
     residents.forEach(r => matrix[r.id] = {});
     
-    // Same types as scheduler
     const relevantTypes = [
         'Wards-R', 'Wards-B', 'ICU', 'NF', 'EM', 'CCIM', 'Met Wards', 'Metro'
     ];
@@ -93,7 +77,7 @@ export const RelationshipStats: React.FC<Props> = ({ residents, schedule }) => {
         level: r.level,
         uniqueCount,
         totalPossible,
-        percent: diversityScores[r.id] || 0, // Use the service calculation for consistency
+        percent: diversityScores[r.id] || 0,
         maxOverlapWeeks: maxWeeks,
         maxOverlapName: maxPartner ? maxPartner.name : '-'
       };
@@ -103,7 +87,7 @@ export const RelationshipStats: React.FC<Props> = ({ residents, schedule }) => {
   }, [residents, schedule]);
 
   const [sortField, setSortField] = useState<keyof StatRow>('percent');
-  const [sortAsc, setSortAsc] = useState(true);
+  const [sortAsc, setSortAsc] = useState(false);
 
   const sortedStats = useMemo(() => {
     return [...stats].sort((a, b) => {
@@ -125,7 +109,7 @@ export const RelationshipStats: React.FC<Props> = ({ residents, schedule }) => {
       setSortAsc(!sortAsc);
     } else {
       setSortField(field);
-      setSortAsc(true);
+      setSortAsc(field === 'name' ? true : false);
     }
   };
 
@@ -136,64 +120,87 @@ export const RelationshipStats: React.FC<Props> = ({ residents, schedule }) => {
   };
 
   return (
-    <div className="p-6 h-full overflow-y-auto bg-gray-50">
-       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-sm border overflow-hidden">
-         <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-bold text-gray-800">Co-Working Diversity Report</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Analysis of unique residents worked with (Wards, ICU, NF, EM, Clinic). 
-                <br/>
-                Goal: High percentage (working with many people) and low Max Weeks (avoiding cliques).
-              </p>
+    <div className="p-6 h-full overflow-y-auto bg-gray-50 pb-64">
+       <div className="max-w-6xl mx-auto space-y-6">
+         
+         {/* Explanation Cards */}
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex gap-4">
+                <div className="p-3 bg-blue-50 rounded-full h-fit text-blue-600">
+                    <Network size={24} />
+                </div>
+                <div>
+                    <h3 className="font-bold text-gray-800">What is Diversity %?</h3>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                        It measures the percentage of unique residents this person has shared a team with. 
+                        <strong> Goal: 50% or higher.</strong> High diversity ensures cross-cohort collaboration and prevents team isolation.
+                    </p>
+                </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex gap-4">
+                <div className="p-3 bg-orange-50 rounded-full h-fit text-orange-600">
+                    <Handshake size={24} />
+                </div>
+                <div>
+                    <h3 className="font-bold text-gray-800">What is Max Overlap?</h3>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                        Tracks the partner someone works with most frequently. 
+                        <strong> Goal: Under 10 weeks.</strong> Excessive overlap with one person can limit exposure to different clinical styles and feedback.
+                    </p>
+                </div>
             </div>
          </div>
-         <table className="w-full text-sm text-left">
-           <thead className="text-xs text-gray-500 uppercase bg-gray-100 border-b">
-             <tr>
-               <th className="px-6 py-3 cursor-pointer hover:bg-gray-200" onClick={() => handleHeaderClick('name')}>
-                 <div className="flex items-center gap-1">Resident <ArrowUpDown size={12}/></div>
-               </th>
-               <th className="px-6 py-3 cursor-pointer hover:bg-gray-200 text-center" onClick={() => handleHeaderClick('uniqueCount')}>
-                 <div className="flex items-center gap-1 justify-center">Unique Co-workers <ArrowUpDown size={12}/></div>
-               </th>
-               <th className="px-6 py-3 cursor-pointer hover:bg-gray-200" onClick={() => handleHeaderClick('percent')}>
-                 <div className="flex items-center gap-1">Diversity % <ArrowUpDown size={12}/></div>
-               </th>
-               <th className="px-6 py-3 cursor-pointer hover:bg-gray-200" onClick={() => handleHeaderClick('maxOverlapWeeks')}>
-                 <div className="flex items-center gap-1">Most Frequent Partner <ArrowUpDown size={12}/></div>
-               </th>
-             </tr>
-           </thead>
-           <tbody className="divide-y divide-gray-100">
-             {sortedStats.map(row => (
-               <tr key={row.id} className="hover:bg-gray-50">
-                 <td className="px-6 py-3 font-medium text-gray-900 border-r border-gray-50">
-                    <div>{row.name}</div>
-                    <div className="text-xs text-gray-400">PGY-{row.level}</div>
-                 </td>
-                 <td className="px-6 py-3 text-center border-r border-gray-50">
-                    {/* Contrast Fix Here */}
-                    <span className="font-bold text-base text-gray-900">{row.uniqueCount}</span>
-                    <span className="text-gray-500 text-xs ml-1">/ {row.totalPossible}</span>
-                 </td>
-                 <td className="px-6 py-3 border-r border-gray-50">
-                    <span className={`px-2 py-1 rounded text-xs font-bold border ${getDiversityColor(row.percent)}`}>
-                      {row.percent.toFixed(1)}%
-                    </span>
-                 </td>
-                 <td className="px-6 py-3">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-gray-900">{row.maxOverlapName}</span>
-                      <span className={`text-xs ${row.maxOverlapWeeks > 8 ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
-                        {row.maxOverlapWeeks} weeks together
-                      </span>
-                    </div>
-                 </td>
-               </tr>
-             ))}
-           </tbody>
-         </table>
+
+         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <h2 className="text-lg font-bold text-gray-800">Co-Working Diversity Report</h2>
+            </div>
+            <table className="w-full text-sm text-left border-collapse">
+            <thead className="text-xs text-gray-500 uppercase bg-gray-100 border-b sticky top-0 z-10">
+                <tr>
+                <th className="px-6 py-3 cursor-pointer hover:bg-gray-200" onClick={() => handleHeaderClick('name')}>
+                    <div className="flex items-center gap-1">Resident <ArrowUpDown size={12}/></div>
+                </th>
+                <th className="px-6 py-3 cursor-pointer hover:bg-gray-200 text-center" onClick={() => handleHeaderClick('uniqueCount')}>
+                    <div className="flex items-center gap-1 justify-center">Unique Co-workers <ArrowUpDown size={12}/></div>
+                </th>
+                <th className="px-6 py-3 cursor-pointer hover:bg-gray-200" onClick={() => handleHeaderClick('percent')}>
+                    <div className="flex items-center gap-1">Diversity % <ArrowUpDown size={12}/></div>
+                </th>
+                <th className="px-6 py-3 cursor-pointer hover:bg-gray-200" onClick={() => handleHeaderClick('maxOverlapWeeks')}>
+                    <div className="flex items-center gap-1">Most Frequent Partner <ArrowUpDown size={12}/></div>
+                </th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+                {sortedStats.map(row => (
+                <tr key={row.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900 border-r border-gray-50">
+                        <div>{row.name}</div>
+                        <div className="text-xs text-gray-400">PGY-{row.level}</div>
+                    </td>
+                    <td className="px-6 py-4 text-center border-r border-gray-50">
+                        <span className="font-bold text-base text-gray-900">{row.uniqueCount}</span>
+                        <span className="text-gray-500 text-xs ml-1">/ {row.totalPossible}</span>
+                    </td>
+                    <td className="px-6 py-4 border-r border-gray-50">
+                        <span className={`px-2 py-1 rounded text-xs font-bold border ${getDiversityColor(row.percent)}`}>
+                        {row.percent.toFixed(1)}%
+                        </span>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                        <span className="font-medium text-gray-900">{row.maxOverlapName}</span>
+                        <span className={`text-xs ${row.maxOverlapWeeks > 8 ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                            {row.maxOverlapWeeks} weeks together
+                        </span>
+                        </div>
+                    </td>
+                </tr>
+                ))}
+            </tbody>
+            </table>
+         </div>
        </div>
     </div>
   );
