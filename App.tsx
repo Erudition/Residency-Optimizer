@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useTransition } from 'react';
 import ExcelJS from 'exceljs';
 import {
   Resident,
@@ -163,6 +163,7 @@ const App: React.FC = () => {
   );
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export'>('schedule');
+  const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ current: number, total: number, bestScore: number } | null>(null);
 
@@ -216,16 +217,8 @@ const App: React.FC = () => {
 
   const hasViolations = violations.reqs.length > 0 || violations.constraints.length > 0;
 
-  const adaptationPotential = useMemo(() => {
-    if (!hasViolations || !currentGrid || Object.keys(currentGrid).length === 0) return { possible: false, changes: 0, details: [], plannedChanges: [] };
-    const res = adaptSchedule(residents, currentGrid, adaptParams);
-    return {
-      possible: res.changesMade > 0,
-      changes: res.changesMade,
-      details: res.failureReasons,
-      plannedChanges: res.plannedChanges
-    };
-  }, [hasViolations, currentGrid, residents, adaptParams]);
+  // Simple check for whether to show adapt button - defer expensive calculation to click
+  const showAdaptButton = hasViolations && currentGrid && Object.keys(currentGrid).length > 0;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ resId: string, week: number } | null>(null);
@@ -284,7 +277,9 @@ const App: React.FC = () => {
     };
 
     setSchedules(prev => [...prev, newSession]);
-    setActiveScheduleId(newId);
+    startTransition(() => {
+      setActiveScheduleId(newId);
+    });
 
     // Run in background via worker
     (async () => {
@@ -473,7 +468,7 @@ const App: React.FC = () => {
 
   const NavButton = ({ id, label, icon: Icon, badgeCount }: any) => (
     <button
-      onClick={() => setActiveTab(id)}
+      onClick={() => startTransition(() => setActiveTab(id))}
       className={`flex items-center gap-2 py-3 px-4 text-sm font-medium border-b-2 transition-all relative whitespace-nowrap
         ${activeTab === id
           ? 'border-blue-600 text-blue-600 bg-blue-50/50'
@@ -498,10 +493,10 @@ const App: React.FC = () => {
           <div className="h-6 w-px bg-gray-200 mx-2"></div>
         </div>
         <div className="flex items-center gap-2">
-          {hasViolations && (
+          {showAdaptButton && (
             <button
-              onClick={adaptationPotential.possible ? handleAdapt : undefined}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors shadow-sm text-sm ${adaptationPotential.possible ? 'text-white bg-orange-500 hover:bg-orange-600 animate-pulse' : 'text-gray-400 bg-gray-100 cursor-not-allowed border'}`}
+              onClick={handleAdapt}
+              className="flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors shadow-sm text-sm text-white bg-orange-500 hover:bg-orange-600"
             >
               <Wand2 size={16} /> Adapt
             </button>
@@ -516,7 +511,12 @@ const App: React.FC = () => {
         {/* Settings Tab */}
         <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'settings' ? 'z-40' : 'z-20'}`}>
           <div
-            onClick={() => { setActiveScheduleId('settings'); setActiveTab('residents'); }}
+            onClick={() => {
+              startTransition(() => {
+                setActiveScheduleId('settings');
+                setActiveTab('residents');
+              });
+            }}
             className={`flex items-center justify-center w-12 h-10 rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'settings' ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
           >
             <SettingsIcon size={20} />
@@ -529,7 +529,14 @@ const App: React.FC = () => {
         {/* Sticky All Tab */}
         <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'all' ? 'z-40' : 'z-20'}`}>
           <div
-            onClick={() => setActiveScheduleId('all')}
+            onClick={() => {
+              startTransition(() => {
+                setActiveScheduleId('all');
+                if (['residents', 'backup', 'reset'].includes(activeTab)) {
+                  setActiveTab('schedule');
+                }
+              });
+            }}
             className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'all' ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
           >
             All
@@ -562,10 +569,18 @@ const App: React.FC = () => {
               return (
                 <div
                   key={sched.id}
-                  onClick={() => { setActiveScheduleId(sched.id); }}
-                  className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-colors relative min-w-[160px] cursor-pointer ${isActive ? 'bg-white border-gray-300 text-blue-600 z-40' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50 z-20'}`}
+                  onClick={() => {
+                    startTransition(() => {
+                      setActiveScheduleId(sched.id);
+                      if (['residents', 'backup', 'reset'].includes(activeTab)) {
+                        setActiveTab('schedule');
+                      }
+                    });
+                  }}
+                  className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-colors relative min-w-[160px] cursor-pointer ${isActive ? 'bg-white border-gray-300 text-blue-600 z-40' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50 z-20'} ${isPending ? 'opacity-70' : ''}`}
                 >
                   {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full flex-shrink-0"></div>}
+                  {isPending && isActive && <div className="animate-pulse h-2 w-2 bg-blue-400 rounded-full mr-1"></div>}
                   <div className="flex-1 min-w-0 font-bold text-xs truncate">{sched.name}</div>
                   <button onClick={(e) => { e.stopPropagation(); setScheduleToRename(sched); setRenameModalOpen(true); }} className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity"><Pencil size={12} /></button>
                   <button onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); }} className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity"><X size={14} /></button>
@@ -732,7 +747,14 @@ const App: React.FC = () => {
                 residents={residents}
                 schedules={schedules}
                 activeScheduleId={activeScheduleId}
-                onSelect={(id) => { setActiveScheduleId(id); }}
+                onSelect={(id) => {
+                  startTransition(() => {
+                    setActiveScheduleId(id);
+                    if (['residents', 'backup', 'reset', 'export'].includes(activeTab)) {
+                      setActiveTab('schedule');
+                    }
+                  });
+                }}
                 onBatchGenerate={handleBatchGenerate}
                 progress={batchProgress}
               />
@@ -818,7 +840,6 @@ const App: React.FC = () => {
                   </div>
                 </div>
               )}
-              {activeTab === 'residents' && <div className="flex-1 overflow-y-auto"><ResidentManager residents={residents} setResidents={setResidents} /></div>}
             </>
           )}
         </div>

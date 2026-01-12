@@ -5,8 +5,8 @@ import { ROTATION_METADATA } from '../constants';
 import { ShieldCheck, ShieldAlert, Clock, Building2, Hospital, Stethoscope } from 'lucide-react';
 
 interface Props {
-  residents: Resident[];
-  schedule: ScheduleGrid;
+    residents: Resident[];
+    schedule: ScheduleGrid;
 }
 
 const ProgressBar = ({ value, target, colorClass, min, max }: { value: number, target: number, colorClass: string, min?: number, max?: number }) => {
@@ -24,8 +24,8 @@ const ProgressBar = ({ value, target, colorClass, min, max }: { value: number, t
                 <span className="text-gray-400">Target: {target}w</span>
             </div>
             <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
-                <div 
-                    className={`h-full transition-all duration-500 ${isViolation ? 'bg-red-500' : colorClass}`} 
+                <div
+                    className={`h-full transition-all duration-500 ${isViolation ? 'bg-red-500' : colorClass}`}
                     style={{ width: `${percentage}%` }}
                 />
             </div>
@@ -38,8 +38,8 @@ const ProgressBar = ({ value, target, colorClass, min, max }: { value: number, t
     );
 };
 
-export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
-    
+export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, schedule }) => {
+
     const auditData = useMemo(() => {
         return residents.map(r => {
             const weeks = schedule[r.id] || [];
@@ -52,7 +52,7 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
                 if (!c || !c.assignment) return;
                 const meta = ROTATION_METADATA[c.assignment];
                 if (!meta) return;
-                
+
                 if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
                 if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
                 if (meta.setting === ClinicalSetting.CRITICAL_CARE) criticalCare++;
@@ -60,7 +60,7 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
             });
 
             const yearTarget = 13.3;
-            
+
             return {
                 ...r,
                 outpatient,
@@ -89,11 +89,11 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
     return (
         <div className="p-6 h-full overflow-y-auto bg-gray-50 pb-64">
             <div className="max-w-7xl mx-auto space-y-6">
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><Hospital size={20}/></div>
+                            <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><Hospital size={20} /></div>
                             <div className="text-xs font-bold text-gray-500 uppercase">Outpatient Compliance</div>
                         </div>
                         <div className="text-2xl font-bold text-gray-800">{globalStats.outpatientMet} / {globalStats.total}</div>
@@ -101,7 +101,7 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
                     </div>
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-green-50 rounded-lg text-green-600"><Building2 size={20}/></div>
+                            <div className="p-2 bg-green-50 rounded-lg text-green-600"><Building2 size={20} /></div>
                             <div className="text-xs font-bold text-gray-500 uppercase">Inpatient Compliance</div>
                         </div>
                         <div className="text-2xl font-bold text-gray-800">{globalStats.inpatientMet} / {globalStats.total}</div>
@@ -109,7 +109,7 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
                     </div>
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Clock size={20}/></div>
+                            <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Clock size={20} /></div>
                             <div className="text-xs font-bold text-gray-500 uppercase">Crit Care Ceiling</div>
                         </div>
                         <div className="text-2xl font-bold text-gray-800">{globalStats.critCareSafe} / {globalStats.total}</div>
@@ -117,7 +117,7 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
                     </div>
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-orange-50 rounded-lg text-orange-600"><ShieldCheck size={20}/></div>
+                            <div className="p-2 bg-orange-50 rounded-lg text-orange-600"><ShieldCheck size={20} /></div>
                             <div className="text-xs font-bold text-gray-500 uppercase">Night Float Safe</div>
                         </div>
                         <div className="text-2xl font-bold text-gray-800">{globalStats.nfSafe} / {globalStats.total}</div>
@@ -162,7 +162,7 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
                                     </td>
                                     <td className="px-6 py-4 w-40 text-center">
                                         <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${d.nfViolation ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
-                                            {d.nfViolation ? <ShieldAlert size={12}/> : <ShieldCheck size={12}/>}
+                                            {d.nfViolation ? <ShieldAlert size={12} /> : <ShieldCheck size={12} />}
                                             {d.nightFloat} weeks
                                         </div>
                                     </td>
@@ -174,4 +174,4 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
             </div>
         </div>
     );
-};
+});
