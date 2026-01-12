@@ -1,6 +1,6 @@
 # Requirement vs. Implementation Comparison Report
 
-This report identifies discrepancies between the project documentation and the actual implementation in the codebase.
+This report identifies discrepancies between the project documentation and the actual implementation in the codebase, with a specific focus on "hidden" requirements that exist in code but are absent or conflicting in documentation.
 
 ## 1. Documentation File Redundancy & Inconsistency
 
@@ -26,7 +26,31 @@ There are duplicate markdown files with different casing (`RULES.md` vs `rules.m
 
 ---
 
-## 2. Key Implementation Findings
+## 2. Specific Focus: Night Float Requirements
+
+Night Float is the most inconsistent area, with conflicts existing not only between docs and code, but **within the code itself**.
+
+### Staffing & Duration Conflicts
+| Source | Block Duration | Max Seniors |
+| :--- | :--- | :--- |
+| `RULES.md` (UPPERCASE) | 4 weeks | 2 |
+| `rules.md` (lowercase) | 2 weeks | 3 |
+| **Code (`constants.ts`)** | **4 weeks** | **3** |
+
+### Target Conflicts (Weeks per Year)
+| Source | PGY1 | PGY2 | PGY3 |
+| :--- | :--- | :--- | :--- |
+| `RULES.md` | 4 | 4 (Table Only) | 4 (Table Only) |
+| `rules.md` | 2 | 2 | 2 |
+| `constants.ts`: `REQUIREMENTS` | **4** | **4** | **4** |
+| `constants.ts`: `ROTATION_METADATA` | 2 | 2 | 2 |
+
+> [!WARNING]
+> **Generator vs. UI Drift**: The Scheduler Generator uses the `REQUIREMENTS` table (4 weeks), while the UI tooltips in `AssignmentStats.tsx` and `ACGMEAudit` may pull from `ROTATION_METADATA` (2 weeks), leading to the UI displaying targets that the algorithm is consciously trying to exceed or "violate".
+
+---
+
+## 3. Key Implementation Findings
 
 ### The "4+1" Cohort Model
 - **Rule**: Every 5th week is Clinic (CCIM).
@@ -34,11 +58,12 @@ There are duplicate markdown files with different casing (`RULES.md` vs `rules.m
 - **Status**: Correctly implemented in `BacktrackingGenerator` and enforced as a "Locked" assignment (line 19, `backtracking.ts`).
 
 ### Generator Behavior vs. Requirements
-- **Strictness**: The `BacktrackingGenerator` treats durations in `ROTATION_METADATA` as absolute. It attempts to meet targets in `REQUIREMENTS` by placing blocks of that duration.
-- **Priority**: Certain rotations are prioritized during generation:
-    1. **Night Float** (Priority 10)
-    2. **Wards / ICU** (Priority 8)
-    3. **Required Electives** (Priority 5)
+- **Strictness**: The `BacktrackingGenerator` treats durations in `ROTATION_METADATA` as absolute. It attempts to meet targets in `REQUIREMENTS` (not `ROTATION_METADATA`) by placing blocks of that duration.
+- **Priority Logic (Code Only)**: The generator has hardcoded priority weights used to resolve constraints:
+    - **Night Float**: 10 (Highest)
+    - **Wards / ICU**: 8
+    - **Required Electives**: 5
+    - **Everything else**: 1
 - **Generic Electives**: Anything not filled by requirements is filled with `ELECTIVE` blocks (usually 2 weeks).
 
 ### ACGME Audit (Monitored vs. Enforced)
