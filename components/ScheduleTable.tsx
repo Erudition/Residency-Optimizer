@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
 import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS } from '../constants';
@@ -80,8 +81,8 @@ export const ScheduleTable: React.FC<Props> = ({
 
     // 1. Calculate Progress (Week X of Y)
     const residentSchedule = schedule[resident.id] || [];
-    const totalWeeks = residentSchedule.filter(c => c.assignment === assignment).length;
-    const currentWeekNum = residentSchedule.slice(0, weekIdx + 1).filter(c => c.assignment === assignment).length;
+    const totalWeeks = residentSchedule.filter(c => c && c.assignment === assignment).length;
+    const currentWeekNum = residentSchedule.slice(0, weekIdx + 1).filter(c => c && c.assignment === assignment).length;
 
     // 2. Find Peers
     const peers = residents
@@ -104,7 +105,7 @@ export const ScheduleTable: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-full bg-white border rounded-lg shadow-sm overflow-hidden relative">
-      <div className="overflow-auto spreadsheet-container relative flex-1 pb-32">
+      <div className="overflow-auto spreadsheet-container relative flex-1 pb-64">
         <table className="border-separate border-spacing-0 w-max">
           <thead className="sticky top-0 z-30 bg-gray-50 text-xs uppercase text-gray-500 font-semibold shadow-sm h-12">
             <tr>
@@ -218,7 +219,7 @@ export const ScheduleTable: React.FC<Props> = ({
       {/* Portal-like Tooltip */}
       {tooltip && (
         <div 
-            className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px] w-64"
+            className="fixed z-[150] bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px] w-64"
             style={{ left: tooltip.x, top: tooltip.y }}
         >
             <div className="font-bold text-sm mb-1">{tooltip.assignmentName}</div>

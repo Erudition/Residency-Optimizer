@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting } from '../types';
 import { ROTATION_METADATA } from '../constants';
@@ -48,17 +49,17 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
             let nightFloat = 0;
 
             weeks.forEach(c => {
-                if (!c.assignment) return;
+                if (!c || !c.assignment) return;
                 const meta = ROTATION_METADATA[c.assignment];
+                if (!meta) return;
+                
                 if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
                 if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
                 if (meta.setting === ClinicalSetting.CRITICAL_CARE) criticalCare++;
                 if (c.assignment === AssignmentType.NIGHT_FLOAT) nightFloat++;
             });
 
-            // Target per year (10 months / 3 years = ~13.3 weeks per year)
             const yearTarget = 13.3;
-            // Crit Care range over 3 years is 8-24 weeks. Per year = 2.6 - 8 weeks.
             
             return {
                 ...r,
@@ -68,8 +69,8 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
                 nightFloat,
                 outpatientProgress: (outpatient / yearTarget) * 100,
                 inpatientProgress: ((inpatient + criticalCare) / yearTarget) * 100,
-                critCareViolation: criticalCare > 8, // Simplified per-year check
-                nfViolation: nightFloat > 8 // > 2 months
+                critCareViolation: criticalCare > 8,
+                nfViolation: nightFloat > 8
             };
         });
     }, [residents, schedule]);
@@ -86,10 +87,9 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
     }, [auditData]);
 
     return (
-        <div className="p-6 h-full overflow-y-auto bg-gray-50 pb-32">
+        <div className="p-6 h-full overflow-y-auto bg-gray-50 pb-64">
             <div className="max-w-7xl mx-auto space-y-6">
                 
-                {/* Executive Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <div className="flex items-center gap-3 mb-2">
@@ -125,7 +125,6 @@ export const ACGMEAudit: React.FC<Props> = ({ residents, schedule }) => {
                     </div>
                 </div>
 
-                {/* Audit Grid */}
                 <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
                         <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">

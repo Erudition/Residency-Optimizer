@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Resident, ScheduleStats, AssignmentType } from '../types';
 import { ASSIGNMENT_COLORS } from '../constants';
@@ -8,10 +9,11 @@ interface Props {
   stats: ScheduleStats;
 }
 
-export const Dashboard: React.FC<Props> = ({ residents, stats }) => {
-  
-  // Transform data for Recharts
-  const data = residents.map(r => {
+
+export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
+
+  // Transform data for Recharts - Memoized to prevent animation resets on App re-render
+  const data = React.useMemo(() => residents.map(r => {
     const s = stats[r.id] || {};
     return {
       name: r.name,
@@ -34,7 +36,7 @@ export const Dashboard: React.FC<Props> = ({ residents, stats }) => {
       [AssignmentType.NEURO]: s[AssignmentType.NEURO] || 0,
       [AssignmentType.RHEUM]: s[AssignmentType.RHEUM] || 0,
       [AssignmentType.GI]: s[AssignmentType.GI] || 0,
-      
+
       [AssignmentType.ADD_MED]: s[AssignmentType.ADD_MED] || 0,
       [AssignmentType.ENDO]: s[AssignmentType.ENDO] || 0,
       [AssignmentType.GERI]: s[AssignmentType.GERI] || 0,
@@ -46,12 +48,12 @@ export const Dashboard: React.FC<Props> = ({ residents, stats }) => {
       [AssignmentType.CC_ICU]: s[AssignmentType.CC_ICU] || 0,
       [AssignmentType.ENT]: s[AssignmentType.ENT] || 0,
     };
-  });
+  }), [residents, stats]);
 
-  // Split by PGY for cleaner charts
-  const pgy1Data = data.filter(d => d.pgy === 'PGY1');
-  const pgy2Data = data.filter(d => d.pgy === 'PGY2');
-  const pgy3Data = data.filter(d => d.pgy === 'PGY3');
+  // Split by PGY for cleaner charts - Memoized references
+  const pgy1Data = React.useMemo(() => data.filter(d => d.pgy === 'PGY1'), [data]);
+  const pgy2Data = React.useMemo(() => data.filter(d => d.pgy === 'PGY2'), [data]);
+  const pgy3Data = React.useMemo(() => data.filter(d => d.pgy === 'PGY3'), [data]);
 
   const ChartSection = ({ title, dataSet }: { title: string, dataSet: any[] }) => (
     <div className="mb-8 p-4 bg-white rounded-lg border shadow-sm">
@@ -60,18 +62,18 @@ export const Dashboard: React.FC<Props> = ({ residents, stats }) => {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={dataSet} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-                dataKey="name" 
-                fontSize={10} 
-                angle={-45} 
-                textAnchor="end" 
-                height={80} 
-                interval={0}
+            <XAxis
+              dataKey="name"
+              fontSize={10}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+              interval={0}
             />
             <YAxis domain={[0, 52]} />
-            <Tooltip 
-                cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
-                wrapperStyle={{ zIndex: 100 }}
+            <Tooltip
+              cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+              wrapperStyle={{ zIndex: 100 }}
             />
             <Legend verticalAlign="bottom" height={36} />
             <Bar dataKey={AssignmentType.WARDS_RED} stackId="a" fill="#fca5a5" name="Wards Red" />
@@ -84,7 +86,7 @@ export const Dashboard: React.FC<Props> = ({ residents, stats }) => {
             <Bar dataKey={AssignmentType.ID} stackId="a" fill="#d9f99d" name="Inf. Disease" />
             <Bar dataKey={AssignmentType.NEPH} stackId="a" fill="#fcd34d" name="Nephrology" />
             <Bar dataKey={AssignmentType.PULM} stackId="a" fill="#a5f3fc" name="Pulmonology" />
-            
+
             <Bar dataKey={AssignmentType.METRO} stackId="a" fill="#e879f9" name="Metro ICU" />
             <Bar dataKey={AssignmentType.ONC} stackId="a" fill="#f9a8d4" name="Heme/Onc" />
             <Bar dataKey={AssignmentType.NEURO} stackId="a" fill="#a78bfa" name="Neurology" />
@@ -112,10 +114,10 @@ export const Dashboard: React.FC<Props> = ({ residents, stats }) => {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full pb-32">
+    <div className="p-6 bg-gray-50 min-h-full pb-64">
       <ChartSection title="PGY 1 (Interns)" dataSet={pgy1Data} />
       <ChartSection title="PGY 2" dataSet={pgy2Data} />
       <ChartSection title="PGY 3" dataSet={pgy3Data} />
     </div>
   );
-};
+});

@@ -1,18 +1,19 @@
 import React, { useMemo, useState } from 'react';
 import { ScheduleGrid, Resident, AssignmentType, ScheduleCell } from '../types';
 import { calculateFairnessMetrics, calculateScheduleScore } from '../services/scheduler';
-import { Check, X, Sparkles, Loader2, Info } from 'lucide-react';
+import { Sparkles, Loader2, Info, Download, Users, Plus } from 'lucide-react';
 
 interface ScheduleSession {
   id: string;
   name: string;
   data: ScheduleGrid;
+  isGenerating?: boolean;
 }
 
 interface BatchProgress {
-    current: number;
-    total: number;
-    bestScore: number;
+  current: number;
+  total: number;
+  bestScore: number;
 }
 
 interface Props {
@@ -20,7 +21,6 @@ interface Props {
   schedules: ScheduleSession[];
   activeScheduleId: string | null;
   onSelect: (id: string) => void;
-  onClose: () => void;
   onBatchGenerate: () => Promise<void>;
   progress: BatchProgress | null;
 }
@@ -35,18 +35,23 @@ interface ScheduleMetrics {
   maxStreak: number;
 }
 
-export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, activeScheduleId, onSelect, onClose, onBatchGenerate, progress }) => {
-  const [isGenerating, setIsGenerating] = useState(false);
+export const ScheduleComparison: React.FC<Props> = ({
+  residents,
+  schedules,
+  activeScheduleId,
+  onSelect,
+  onBatchGenerate,
+  progress
+}) => {
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const metrics: ScheduleMetrics[] = useMemo(() => {
-    return schedules.map(s => {
+    return schedules.filter(s => !s.isGenerating).map(s => {
       const groups = calculateFairnessMetrics(residents, s.data);
       const score = calculateScheduleScore(residents, s.data);
-      
-      // Calculate Aggregate Metrics across all PGYs
+
       const avgFairness = groups.reduce((sum, g) => sum + g.fairnessScore, 0) / groups.length;
-      
-      // Streak Metrics
+
       const allStreaks: number[] = [];
       groups.forEach(g => {
         g.residents.forEach(r => {
@@ -54,14 +59,13 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
         });
       });
       const maxStreak = Math.max(...allStreaks);
-      const streakMean = allStreaks.reduce((a,b) => a+b, 0) / allStreaks.length;
+      const streakMean = allStreaks.reduce((a, b) => a + b, 0) / allStreaks.length;
       const streakSD = Math.sqrt(allStreaks.reduce((sum, n) => sum + Math.pow(n - streakMean, 2), 0) / allStreaks.length);
 
-      // Total Night Float
       let totalNF = 0;
       const allWeeks = Object.values(s.data) as ScheduleCell[][];
       allWeeks.forEach(weeks => {
-          weeks.forEach(c => { if(c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
+        weeks.forEach(c => { if (c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
       });
 
       return {
@@ -76,7 +80,6 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
     });
   }, [schedules, residents]);
 
-  // Determine Min/Max for Coloring
   const ranges = useMemo(() => {
     const r = {
       score: { min: -1000, max: 0 },
@@ -85,39 +88,31 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
       streakSD: { min: 100, max: 0 },
       streak: { min: 100, max: 0 },
     };
-    
+
     if (metrics.length === 0) return r;
 
-    // Init ranges with first element
     r.score.min = metrics[0].score;
     r.score.max = metrics[0].score;
 
     metrics.forEach(m => {
       r.score.min = Math.min(r.score.min, m.score);
       r.score.max = Math.max(r.score.max, m.score);
-
       r.fairness.min = Math.min(r.fairness.min, m.avgFairness);
       r.fairness.max = Math.max(r.fairness.max, m.avgFairness);
-      
       r.totalNF.min = Math.min(r.totalNF.min, m.totalNF);
       r.totalNF.max = Math.max(r.totalNF.max, m.totalNF);
-      
       r.streakSD.min = Math.min(r.streakSD.min, m.streakSD);
       r.streakSD.max = Math.max(r.streakSD.max, m.streakSD);
-      
       r.streak.min = Math.min(r.streak.min, m.maxStreak);
       r.streak.max = Math.max(r.streak.max, m.maxStreak);
     });
     return r;
   }, [metrics]);
 
-  // Color Helper with Accessible Contrast
   const getColor = (val: number, min: number, max: number, higherIsBetter: boolean) => {
-    if (min === max) return 'bg-gray-50 text-gray-900'; 
-
+    if (min === max) return 'bg-gray-50 text-gray-900';
     let ratio = (val - min) / (max - min);
-    if (!higherIsBetter) ratio = 1 - ratio; 
-
+    if (!higherIsBetter) ratio = 1 - ratio;
     if (ratio >= 0.8) return 'bg-green-100 text-green-900 font-bold';
     if (ratio >= 0.6) return 'bg-green-50 text-green-900 font-medium';
     if (ratio >= 0.4) return 'bg-gray-50 text-gray-900';
@@ -126,132 +121,146 @@ export const ScheduleComparison: React.FC<Props> = ({ residents, schedules, acti
   };
 
   const handleRunOptimization = async () => {
-      setIsGenerating(true);
-      // Small delay to let UI render the loading state
-      setTimeout(async () => {
-          await onBatchGenerate();
-          setIsGenerating(false);
-      }, 50);
+    setIsSyncing(true);
+    setTimeout(async () => {
+      await onBatchGenerate();
+      setIsSyncing(false);
+    }, 50);
   };
 
+  const generatingSchedules = schedules.filter(s => s.isGenerating);
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-8">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b flex justify-between items-center bg-gray-50">
-          <div>
-             <h2 className="text-xl font-bold text-gray-800">Schedule Comparison</h2>
-             <p className="text-sm text-gray-500">Compare metrics across generated schedules to find the optimal balance.</p>
-          </div>
-          <div className="flex items-center gap-4">
-              {progress ? (
-                <div className="flex flex-col items-end min-w-[200px]">
-                    <div className="flex items-center gap-2 text-sm font-medium text-purple-700">
-                         <Loader2 size={16} className="animate-spin" />
-                         Processing: {progress.current} / {progress.total}
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                        <div 
-                            className="bg-purple-600 h-1.5 rounded-full transition-all duration-300"
-                            style={{ width: `${(progress.current / progress.total) * 100}%`}}
-                        ></div>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Current Best Score: {progress.bestScore}</div>
-                </div>
-              ) : (
-                <button 
-                    onClick={handleRunOptimization}
-                    disabled={isGenerating}
-                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <Sparkles size={18} />
-                    Auto-Optimize (Batch Generate)
-                </button>
-              )}
-              
-              <div className="h-8 w-px bg-gray-300"></div>
-              <button onClick={onClose} disabled={isGenerating} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500 disabled:opacity-50">
-                <X size={20} />
-              </button>
-          </div>
+    <div className="flex flex-col h-full bg-white">
+      <div className="p-8 flex justify-between items-center bg-white border-b">
+        <div>
+          <h2 className="text-3xl font-black text-gray-900">Schedule Comparison</h2>
+          <p className="text-sm text-gray-500 font-medium tracking-tight">Compare metrics across generated schedules to find the optimal balance.</p>
         </div>
+        <div className="flex items-center gap-3">
 
-        <div className="flex-1 overflow-auto p-6">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-gray-100 border-b border-gray-300 text-gray-700 uppercase text-xs">
-                <th className="py-3 px-4 text-left font-bold">Schedule</th>
-                <th className="py-3 px-4 text-center font-bold">Total Score</th>
-                <th className="py-3 px-4 text-center font-bold">Fairness %</th>
-                <th className="py-3 px-4 text-center font-bold">Total Night Shifts</th>
-                <th className="py-3 px-4 text-center font-bold">Streak Spread (SD)</th>
-                <th className="py-3 px-4 text-center font-bold">Max Streak</th>
-                <th className="py-3 px-4 text-center font-bold">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {metrics.map(m => {
-                const isActive = m.id === activeScheduleId;
-                return (
-                  <tr key={m.id} className={`border-b border-gray-100 hover:bg-gray-50 ${isActive ? 'bg-blue-50/30' : ''}`}>
-                    <td className="py-3 px-4 font-medium text-gray-900 border-r border-gray-100">
-                      {m.name}
-                      {isActive && <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">Active</span>}
-                    </td>
+          {progress ? (
+            <div className="flex flex-col items-end min-w-[200px]">
+              <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-widest">
+                <Loader2 size={12} className="animate-spin" />
+                Optimizing: {progress.current}/{progress.total}
+              </div>
+              <div className="w-full bg-blue-100 rounded-full h-1.5 mt-1.5 border border-blue-200 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-full rounded-full"
+                  style={{
+                    width: `${(progress.current / progress.total) * 100}%`,
+                    transition: 'width 0.4s cubic-bezier(0.1, 0.7, 0.1, 1)'
+                  }}
+                ></div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleRunOptimization}
+              disabled={isSyncing}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-md font-bold text-sm transition-all shadow-md active:scale-95 disabled:opacity-50 group"
+            >
+              <Sparkles size={16} className="group-hover:rotate-12 transition-transform" />
+              Batch Optimize
+            </button>
+          )}
+        </div>
+      </div>
 
-                    <td className={`py-3 px-4 text-center font-mono ${getColor(m.score, ranges.score.min, ranges.score.max, true)}`}>
-                       {Math.round(m.score)}
+      <div className="flex-1 overflow-auto p-8">
+        {schedules.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50/50 p-12 text-center">
+            <div className="bg-white p-4 rounded-full shadow-sm border mb-4">
+              <Plus size={32} className="text-blue-500 animate-pulse" />
+            </div>
+            <h3 className="text-xl font-black text-gray-900 mb-2">No schedules yet</h3>
+            <p className="text-gray-500 font-medium max-w-sm">Get started by clicking the <strong>"+" icon</strong> in the tab bar or <strong>Batch Optimize</strong> above to generate your first schedule version.</p>
+          </div>
+        ) : (
+          <div className="rounded-xl overflow-hidden shadow-sm border border-gray-200">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-b border-gray-300 text-gray-500 uppercase text-[10px] font-black tracking-widest">
+                  <th className="py-4 px-6 text-left">Schedule Name</th>
+                  <th className="py-4 px-6 text-center">Score</th>
+                  <th className="py-4 px-6 text-center">Fairness</th>
+                  <th className="py-4 px-6 text-center">Night Shifts</th>
+                  <th className="py-4 px-6 text-center">Streak SD</th>
+                  <th className="py-4 px-6 text-center">Max Streak</th>
+                </tr>
+              </thead>
+              <tbody>
+                {generatingSchedules.map(gs => (
+                  <tr key={gs.id} className="border-b border-gray-50 animate-pulse bg-blue-50/20">
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <Loader2 size={16} className="animate-spin text-blue-400" />
+                        <span className="text-gray-400 font-bold italic">{gs.name}...</span>
+                      </div>
                     </td>
-                    
-                    <td className={`py-3 px-4 text-center font-mono ${getColor(m.avgFairness, ranges.fairness.min, ranges.fairness.max, true)}`}>
-                       {m.avgFairness.toFixed(1)}%
-                    </td>
-
-                    <td className={`py-3 px-4 text-center font-mono ${getColor(m.totalNF, ranges.totalNF.min, ranges.totalNF.max, false)}`}>
-                       {m.totalNF}
-                    </td>
-
-                    <td className={`py-3 px-4 text-center font-mono ${getColor(m.streakSD, ranges.streakSD.min, ranges.streakSD.max, false)}`}>
-                       ± {m.streakSD.toFixed(2)}
-                    </td>
-
-                    <td className={`py-3 px-4 text-center font-mono ${getColor(m.maxStreak, ranges.streak.min, ranges.streak.max, false)}`}>
-                       {m.maxStreak} wks
-                    </td>
-
-                    <td className="py-3 px-4 text-center">
-                       {isActive ? (
-                         <span className="text-green-600 flex justify-center font-bold"><Check size={20}/></span>
-                       ) : (
-                         <button 
-                            onClick={() => { onSelect(m.id); }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-medium shadow-sm"
-                         >
-                            Select
-                         </button>
-                       )}
+                    <td colSpan={5} className="py-4 px-6">
+                      <div className="w-full bg-blue-100/50 h-2 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-400/50 animate-pulse" style={{ width: '30%' }}></div>
+                      </div>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        
-        <div className="p-4 bg-gray-50 border-t text-xs text-gray-600 flex justify-between items-center">
-           <div className="flex gap-4">
-               <div>
-                    <strong>Legend:</strong>{' '}
-                    <span className="bg-green-100 text-green-900 px-1 rounded font-bold">Best</span>{' '}
-                    <span className="bg-red-100 text-red-900 px-1 rounded font-bold">Worst</span> relative performance.
-               </div>
-               <div className="flex items-center gap-1.5 border-l border-gray-300 pl-4 text-gray-500">
-                    <Info size={14} />
-                    <span>Score = <strong>Fairness</strong> + 600 - (StreakSD × 20) - (TotalNF × 2) - MaxStreak</span>
-               </div>
-           </div>
-           <button onClick={onClose} disabled={isGenerating} className="bg-white border hover:bg-gray-100 px-6 py-2 rounded font-medium text-gray-700 transition-colors disabled:opacity-50">
-             Close
-           </button>
+                ))}
+                {metrics.map(m => {
+                  const isActive = m.id === activeScheduleId;
+                  return (
+                    <tr key={m.id} className={`border-b border-gray-100 transition-colors hover:bg-gray-50 ${isActive ? 'bg-blue-50/40' : ''}`}>
+                      <td className="py-4 px-6">
+                        <button
+                          onClick={() => onSelect(m.id)}
+                          className="font-black text-blue-600 hover:text-blue-800 hover:underline text-left"
+                        >
+                          {m.name}
+                        </button>
+                      </td>
+
+                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.score, ranges.score.min, ranges.score.max, true)}`}>
+                        {Math.round(m.score)}
+                      </td>
+
+                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.avgFairness, ranges.fairness.min, ranges.fairness.max, true)}`}>
+                        {m.avgFairness.toFixed(1)}%
+                      </td>
+
+                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.totalNF, ranges.totalNF.min, ranges.totalNF.max, false)}`}>
+                        {m.totalNF}
+                      </td>
+
+                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.streakSD, ranges.streakSD.min, ranges.streakSD.max, false)}`}>
+                        ± {m.streakSD.toFixed(2)}
+                      </td>
+
+                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.maxStreak, ranges.streak.min, ranges.streak.max, false)}`}>
+                        {m.maxStreak}w
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="p-6 bg-gray-50 border-t text-[10px] font-bold text-gray-400 flex justify-between items-center uppercase tracking-widest">
+        <div className="flex gap-8">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-green-100 border border-green-200"></div>
+            <span>High Quality</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-100 border border-red-200"></div>
+            <span>Needs Optimization</span>
+          </div>
+          <div className="flex items-center gap-2 border-l border-gray-300 pl-8">
+            <Info size={14} className="text-gray-300" />
+            <span>Score = Fairness + Optimization - (Streak Weight × SD)</span>
+          </div>
         </div>
       </div>
     </div>
