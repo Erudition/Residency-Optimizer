@@ -509,38 +509,38 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <div className="bg-gray-200 flex items-stretch shrink-0 z-30 px-2 pt-2 gap-1 relative overflow-y-hidden">
-        {/* Bottom Seam Line - Higher than inactive tabs, lower than active ones */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-300 z-40" />
+      <div className="h-12 bg-gray-200 flex items-stretch shrink-0 z-30 px-2 pt-2 gap-1 relative overflow-y-hidden">
+        {/* Bottom Seam Line - Layered at z-30 so it's above inactive (z-20) but below active (z-40) */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-300 z-30" />
 
         {/* Settings Tab */}
-        <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'settings' ? 'z-50' : 'z-20'}`}>
+        <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'settings' ? 'z-40' : 'z-20'}`}>
           <div
             onClick={() => { setActiveScheduleId('settings'); setActiveTab('residents'); }}
             className={`flex items-center justify-center w-12 h-10 rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'settings' ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
           >
             <SettingsIcon size={20} />
             {activeScheduleId === 'settings' && (
-              <div className="absolute -bottom-[1px] left-[-1px] right-[-1px] h-[2px] bg-white z-[60]" />
+              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
             )}
           </div>
         </div>
 
         {/* Sticky All Tab */}
-        <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'all' ? 'z-50' : 'z-20'}`}>
+        <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'all' ? 'z-40' : 'z-20'}`}>
           <div
             onClick={() => setActiveScheduleId('all')}
             className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'all' ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
           >
             All
             {activeScheduleId === 'all' && (
-              <div className="absolute -bottom-[1px] left-[-1px] right-[-1px] h-[2px] bg-white z-[60]" />
+              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
             )}
           </div>
         </div>
 
         {/* Scrollable Schedules area */}
-        <div className={`flex-1 relative flex items-end overflow-hidden ${activeScheduleId !== 'all' && activeScheduleId !== 'settings' ? 'z-50' : 'z-20'}`}>
+        <div className="flex-1 relative flex items-end overflow-hidden">
           {canScrollLeft && (
             <div className="absolute left-0 top-0 bottom-0 z-40 w-12 flex items-center justify-start bg-gradient-to-r from-gray-200 to-transparent pointer-events-none">
               <button
@@ -555,7 +555,7 @@ const App: React.FC = () => {
           <div
             ref={tabContainerRef}
             onScroll={checkScroll}
-            className="flex-1 flex items-end gap-2 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth relative z-30"
+            className="flex-1 flex items-end gap-2 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth relative"
           >
             {schedules.map(sched => {
               const isActive = activeScheduleId === sched.id;
@@ -563,14 +563,14 @@ const App: React.FC = () => {
                 <div
                   key={sched.id}
                   onClick={() => { setActiveScheduleId(sched.id); }}
-                  className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-colors relative min-w-[160px] cursor-pointer ${isActive ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
+                  className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-colors relative min-w-[160px] cursor-pointer ${isActive ? 'bg-white border-gray-300 text-blue-600 z-40' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50 z-20'}`}
                 >
                   {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full flex-shrink-0"></div>}
                   <div className="flex-1 min-w-0 font-bold text-xs truncate">{sched.name}</div>
                   <button onClick={(e) => { e.stopPropagation(); setScheduleToRename(sched); setRenameModalOpen(true); }} className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity"><Pencil size={12} /></button>
                   <button onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); }} className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity"><X size={14} /></button>
                   {isActive && (
-                    <div className="absolute -bottom-[1px] left-[-1px] right-[-1px] h-[2px] bg-white z-[60]" />
+                    <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-50" />
                   )}
                 </div>
               );
