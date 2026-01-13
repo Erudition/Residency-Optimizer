@@ -161,4 +161,5 @@ export interface CompetitionParams {
   tries: number;
   priority: CompetitionPriority;
   algorithmIds: string[];
+  topN: number;
 }

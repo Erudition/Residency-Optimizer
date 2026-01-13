@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ScheduleGrid, Resident, AssignmentType, ScheduleCell } from '../types';
 import { calculateFairnessMetrics, calculateScheduleScore } from '../services/scheduler';
-import { Sparkles, Loader2, Info, Download, Users, Plus, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { Sparkles, Loader2, Info, Download, Users, Plus, ChevronUp, ChevronDown, ArrowUpDown, Pencil } from 'lucide-react';
 
 interface ScheduleSession {
   id: string;
@@ -35,19 +35,12 @@ const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
   );
 };
 
-interface BatchProgress {
-  current: number;
-  total: number;
-  bestScore: number;
-}
-
 interface Props {
   residents: Resident[];
   schedules: ScheduleSession[];
   activeScheduleId: string | null;
   onSelect: (id: string) => void;
-  onBatchGenerate: () => Promise<void>;
-  progress: BatchProgress | null;
+  onRename: (id: string) => void;
 }
 
 interface ScheduleMetrics {
@@ -68,11 +61,10 @@ export const ScheduleComparison: React.FC<Props> = ({
   schedules,
   activeScheduleId,
   onSelect,
-  onBatchGenerate,
-  progress
+  onRename
 }) => {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduleMetrics, direction: 'asc' | 'desc' }>({ key: 'score', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduleMetrics, direction: 'asc' | 'desc' }>({ key: 'score', direction: 'asc' });
 
   const handleSort = (key: keyof ScheduleMetrics) => {
     setSortConfig(prev => ({
@@ -185,14 +177,6 @@ export const ScheduleComparison: React.FC<Props> = ({
     return 'bg-red-100 text-red-900 font-bold';
   };
 
-  const handleRunOptimization = async () => {
-    setIsSyncing(true);
-    setTimeout(async () => {
-      await onBatchGenerate();
-      setIsSyncing(false);
-    }, 50);
-  };
-
   const generatingSchedules = schedules.filter(s => s.isGenerating);
 
   return (
@@ -203,33 +187,7 @@ export const ScheduleComparison: React.FC<Props> = ({
           <p className="text-sm text-gray-500 font-medium tracking-tight">Compare metrics across generated schedules to find the optimal balance.</p>
         </div>
         <div className="flex items-center gap-3">
-
-          {progress ? (
-            <div className="flex flex-col items-end min-w-[200px]">
-              <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-widest">
-                <Loader2 size={12} className="animate-spin" />
-                Optimizing: {progress.current}/{progress.total}
-              </div>
-              <div className="w-full bg-blue-100 rounded-full h-1.5 mt-1.5 border border-blue-200 overflow-hidden">
-                <div
-                  className="bg-blue-600 h-full rounded-full"
-                  style={{
-                    width: `${(progress.current / progress.total) * 100}%`,
-                    transition: 'width 0.4s cubic-bezier(0.1, 0.7, 0.1, 1)'
-                  }}
-                ></div>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={handleRunOptimization}
-              disabled={isSyncing}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-md font-bold text-sm transition-all shadow-md active:scale-95 disabled:opacity-50 group"
-            >
-              <Sparkles size={16} className="group-hover:rotate-12 transition-transform" />
-              Batch Optimize
-            </button>
-          )}
+          {/* Batch Optimize button removed */}
         </div>
       </div>
 
@@ -299,12 +257,17 @@ export const ScheduleComparison: React.FC<Props> = ({
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
                           <Identicon id={m.id} size={14} />
-                          <button
-                            onClick={() => onSelect(m.id)}
-                            className="font-black text-blue-600 hover:text-blue-800 hover:underline text-left"
-                          >
-                            {m.name}
-                          </button>
+                          <div className="flex items-center gap-2 group/name cursor-pointer" onClick={() => onSelect(m.id)}>
+                            <span className="font-black text-blue-600 hover:text-blue-800 hover:underline text-left">
+                              {m.name}
+                            </span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onRename(m.id); }}
+                              className="p-1 text-gray-400 hover:text-blue-600 opacity-0 group-hover/name:opacity-100 transition-opacity"
+                            >
+                              <Pencil size={12} />
+                            </button>
+                          </div>
                         </div>
                       </td>
 
@@ -358,11 +321,11 @@ export const ScheduleComparison: React.FC<Props> = ({
           </div>
           <div className="flex items-center gap-2 border-l border-gray-300 pl-8">
             <Info size={14} className="text-gray-300" />
-            <span>Cost = (Violations × 1M) + (PGY3 Inequity) + (Streak Deviation)</span>
+            <span>Cost = (Violations × 10k) + (PGY3 Inequity) + (Streak Deviation)</span>
           </div>
         </div>
         <img src="https://www.hcadam.com/api/public/content/349f5f94cafa4b168f99e74a262b8c24" alt="Residency Scheduler Pro" className="h-6 w-auto object-contain opacity-50 hover:opacity-100 transition-opacity" />
       </div>
-    </div>
+    </div >
   );
 };

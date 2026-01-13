@@ -23,7 +23,7 @@ class SeededRNG {
  * The trade-off is acceptable for now: no understaffing.
  */
 export const ExperimentalGenerator: ScheduleGenerator = {
-    name: "Strict Compliance (Week-First)",
+    name: "Staffing First (Week-First)",
     generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0): ScheduleGrid => {
         const rng = new SeededRNG(Date.now() + attemptIndex * 7);
         const seededShuffle = <T>(array: T[]): T[] => {

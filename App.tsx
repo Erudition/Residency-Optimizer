@@ -196,8 +196,8 @@ const App: React.FC = () => {
 
   const [algoConfig, setAlgoConfig] = useState<AlgorithmConfig[]>([
     { id: 'stochastic', name: 'Stochastic', description: 'The tried-and-true generalist. Good at everything, master of none. Uses weighted randomness to explore valid slots.', enabled: true, color: '#3b82f6' },
-    { id: 'experimental', name: 'Strict Compliance', description: 'Built for strict compliance. Prioritizes 1-week slots to guarantee minimum staffing coverage at all costs.', enabled: true, color: '#8b5cf6' },
-    { id: 'backtracking', name: 'Backtracking', description: 'Logical and exhaustive. Uses advanced depth-first search with forward checking to solve constraint puzzles.', enabled: true, color: '#10b981' },
+    { id: 'experimental', name: 'Staffing First', description: 'Staffing-centric optimization. Prioritizes 1-week slots to guarantee hospital minimums are met at all costs.', enabled: true, color: '#8b5cf6' },
+    { id: 'strict', name: 'Education First', description: 'Objective-centric optimization. Prioritizes PGY educational targets with a residual capacity guard to ensure hospital coverage.', enabled: true, color: '#10b981' },
     { id: 'greedy', name: 'Greedy', description: 'The original fast generator. Takes the best immediate choice at every step. Ideal for quick reference drafts.', enabled: false, color: '#f59e0b' },
   ]);
 
@@ -205,17 +205,25 @@ const App: React.FC = () => {
     loadState('rsp_algo_stats_v1', {})
   );
 
-  const [compParams, setCompParams] = useState<CompetitionParams>(() =>
-    loadState('rsp_comp_params_v1', {
+  const [compParams, setCompParams] = useState<CompetitionParams>(() => {
+    const loaded = loadState('rsp_comp_params_v1', {
       tries: 100,
       priority: CompetitionPriority.BEST_SCORE,
-      algorithmIds: ['stochastic', 'experimental', 'backtracking']
-    })
-  );
+      algorithmIds: ['stochastic', 'experimental', 'strict'],
+      topN: 1
+    });
+
+    const validIds = ['stochastic', 'experimental', 'strict', 'greedy'];
+    return {
+      ...loaded,
+      topN: loaded.topN || 1,
+      algorithmIds: loaded.algorithmIds.filter(id => validIds.includes(id))
+    };
+  });
 
   const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
-  const [batchProgress, setBatchProgress] = useState<{ current: number, total: number, bestScore: number } | null>(null);
+
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -226,6 +234,33 @@ const App: React.FC = () => {
       const { scrollLeft, scrollWidth, clientWidth } = tabContainerRef.current;
       setCanScrollLeft(scrollLeft > 5);
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  };
+
+  const activeSchedule = schedules.find(s => s.id === activeScheduleId);
+
+  const startTimeRef = useRef<number>(0);
+  useEffect(() => {
+    if (activeSchedule?.isGenerating) {
+      startTimeRef.current = Date.now();
+    }
+  }, [activeSchedule?.isGenerating]);
+
+  const getEta = () => {
+    if (!activeSchedule?.progress || activeSchedule.progress < 2 || !startTimeRef.current) return 'Calculating...';
+    const elapsed = Date.now() - startTimeRef.current;
+    const progress = activeSchedule.progress / 100;
+    const totalEst = elapsed / progress;
+    const remaining = totalEst - elapsed;
+    const seconds = Math.ceil(remaining / 1000);
+    return seconds > 60 ? `~${Math.ceil(seconds / 60)}m left` : `~${seconds}s left`;
+  };
+
+  const getPriorityText = () => {
+    switch (compParams.priority) {
+      case CompetitionPriority.LEAST_UNDERSTAFFING: return "ensure minimal understaffing...";
+      case CompetitionPriority.MOST_PGY_REQS: return "optimize graduation requirements...";
+      default: return "balance fairness and coverage...";
     }
   };
 
@@ -245,7 +280,7 @@ const App: React.FC = () => {
     }
   };
 
-  const activeSchedule = schedules.find(s => s.id === activeScheduleId);
+
   const currentGrid = activeSchedule?.data || {};
   const stats = React.useMemo(() => calculateStats(residents, currentGrid), [residents, currentGrid]);
 
@@ -276,19 +311,19 @@ const App: React.FC = () => {
   }, []);
 
   // Helper to spawn a web worker for background generation
-  const runGenerationTask = (residents: Resident[], existing: ScheduleGrid, params: CompetitionParams, onProgress: (p: number, a: number) => void): Promise<{ schedule: ScheduleGrid; winnerName: string }> => {
+  const runGenerationTask = (residents: Resident[], existing: ScheduleGrid, params: CompetitionParams, onProgress: (p: number, a: number) => void): Promise<{ results: any[] }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
       activeWorkersRef.current.add(worker);
 
       worker.onmessage = (e) => {
-        const { type, progress, attemptsMade, data, winnerName, error } = e.data;
+        const { type, progress, attemptsMade, results, error } = e.data;
         if (type === 'progress') {
           onProgress(progress, attemptsMade);
         } else if (type === 'success') {
           activeWorkersRef.current.delete(worker);
           worker.terminate();
-          resolve({ schedule: data, winnerName: winnerName || 'Unknown' });
+          resolve({ results });
         } else if (type === 'error') {
           activeWorkersRef.current.delete(worker);
           worker.terminate();
@@ -323,10 +358,10 @@ const App: React.FC = () => {
 
   const handleGenerate = () => {
     const salt = Math.floor(Math.random() * 1000000);
-    const newId = `sched-${Date.now()}-${salt}`;
+    const newId = `sched-master-${Date.now()}-${salt}`;
     const newSession: ScheduleSession = {
       id: newId,
-      name: `Schedule ${schedules.length + 1}`,
+      name: `Generating...`,
       data: {},
       createdAt: new Date(),
       isGenerating: true
@@ -337,70 +372,60 @@ const App: React.FC = () => {
       setActiveScheduleId(newId);
     });
 
-    // Run in background via worker
     (async () => {
       try {
-        const result = await runGenerationTask(residents, {}, compParams, (progress, attempts) => {
+        const { results } = await runGenerationTask(residents, {}, compParams, (progress, attempts) => {
           setSchedules(prev => prev.map(s =>
             s.id === newId ? { ...s, progress, attemptsMade: attempts } : s
           ));
         });
 
-        // Update Stats
-        const winnerId = algoConfig.find(a => a.name === result.winnerName)?.id;
-        if (winnerId) {
-          const score = calculateScheduleScore(residents, result.schedule);
-          const violations = getRequirementViolations(residents, result.schedule).length + getWeeklyViolations(residents, result.schedule).length;
+        // Add each result as a new session
+        const nameOffset = schedules.length; // Use current length as base
+        const newSessions: ScheduleSession[] = results.map((res, idx) => ({
+          id: `sched-${Date.now()}-${idx}-${salt}`,
+          name: `S${nameOffset + idx} (${res.winnerName})`, // +idx because the "Generating" one will be removed
+          data: res.schedule,
+          createdAt: new Date()
+        }));
 
-          setAlgoStats(prev => {
-            const current = prev[winnerId] || { bestScore: Infinity, worstScore: -Infinity, bestViolations: Infinity, worstViolations: -Infinity };
-            return {
-              ...prev,
-              [winnerId]: {
-                bestScore: Math.min(current.bestScore, score),
-                worstScore: Math.max(current.worstScore, score),
-                bestViolations: Math.min(current.bestViolations, violations),
-                worstViolations: Math.max(current.worstViolations, violations),
-              }
-            };
+        setSchedules(prev => {
+          // Remove the "master" generating session and add the real results
+          const filtered = prev.filter(s => s.id !== newId);
+          return [...filtered, ...newSessions];
+        });
+
+        // Update Stats for each winner
+        results.forEach(res => {
+          const winnerId = algoConfig.find(a => a.name === res.winnerName)?.id;
+          if (winnerId) {
+            setAlgoStats(prev => {
+              const current = prev[winnerId] || { bestScore: Infinity, worstScore: -Infinity, bestViolations: Infinity, worstViolations: -Infinity };
+              return {
+                ...prev,
+                [winnerId]: {
+                  bestScore: Math.min(current.bestScore, res.score),
+                  worstScore: Math.max(current.worstScore, res.score),
+                  bestViolations: Math.min(current.bestViolations, res.totalViolations),
+                  worstViolations: Math.max(current.worstViolations, res.totalViolations),
+                }
+              };
+            });
+          }
+        });
+
+        // Select the best one
+        if (newSessions.length > 0) {
+          startTransition(() => {
+            setActiveScheduleId(newSessions[0].id);
           });
         }
-
-        setSchedules(prev => prev.map(s =>
-          s.id === newId ? { ...s, name: `S${prev.length} (${result.winnerName})`, data: result.schedule, isGenerating: false } : s
-        ));
       } catch (e) {
         console.error("Generation failed", e);
         setSchedules(prev => prev.filter(s => s.id !== newId));
         alert("Failed to generate schedule.");
       }
     })();
-  };
-
-  const handleBatchGenerate = async () => {
-    const TOTAL_ITERATIONS = 20;
-    let bestScoreFound = -Infinity;
-    const newSessions: ScheduleSession[] = [];
-
-    setBatchProgress({ current: 0, total: TOTAL_ITERATIONS, bestScore: 0 });
-
-    for (let i = 0; i < TOTAL_ITERATIONS; i++) {
-      const result = await runGenerationTask(residents, {}, compParams, () => { });
-      const score = calculateScheduleScore(residents, result.schedule);
-      if (score < bestScoreFound) bestScoreFound = score; // Lower is better
-      if (i % 4 === 0 || i === TOTAL_ITERATIONS - 1) {
-        const count = schedules.length + newSessions.length + 1;
-        newSessions.push({
-          id: crypto.randomUUID(),
-          name: `S${count} (${result.winnerName})`,
-          data: result.schedule,
-          createdAt: new Date()
-        });
-      }
-      setBatchProgress({ current: i + 1, total: TOTAL_ITERATIONS, bestScore: Math.round(bestScoreFound) });
-    }
-    setSchedules(prev => [...prev, ...newSessions]);
-    setBatchProgress(null);
   };
 
   const handleRename = (newName: string) => {
@@ -634,9 +659,10 @@ const App: React.FC = () => {
                   {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full flex-shrink-0"></div>}
                   {!sched.isGenerating && <Identicon id={sched.id} />}
                   {isPending && isActive && <div className="animate-pulse h-2 w-2 bg-blue-400 rounded-full mr-1"></div>}
-                  <div className="flex-1 min-w-0 font-bold text-xs truncate">{sched.name}</div>
-                  <button onClick={(e) => { e.stopPropagation(); setScheduleToRename(sched); setRenameModalOpen(true); }} className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity"><Pencil size={12} /></button>
-                  <button onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); }} className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity"><X size={14} /></button>
+                  <div className="flex-1 min-w-0 font-bold text-xs truncate pr-6">{sched.name}</div>
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-full shadow-sm">
+                    <button onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-1 rounded-full hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors"><X size={12} /></button>
+                  </div>
                   {isActive && (
                     <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-50" />
                   )}
@@ -832,8 +858,13 @@ const App: React.FC = () => {
                     }
                   });
                 }}
-                onBatchGenerate={handleBatchGenerate}
-                progress={batchProgress}
+                onRename={(id) => {
+                  const sched = schedules.find(s => s.id === id);
+                  if (sched) {
+                    setScheduleToRename(sched);
+                    setRenameModalOpen(true);
+                  }
+                }}
               />
             </div>
           ) : activeSchedule?.isGenerating ? (
@@ -844,24 +875,41 @@ const App: React.FC = () => {
                   <Loader2 size={48} className="text-blue-600 animate-spin" />
                 </div>
               </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">Generating Optimal Schedule</h3>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Generating Candidate Schedules</h3>
               <p className="text-gray-500 font-medium max-w-sm mb-8">
-                Running thousands of permutations to find the best balance of fairness and requirements...
+                Running {(compParams.tries * compParams.algorithmIds.length).toLocaleString()} permutations to {getPriorityText()}
               </p>
 
-              <div className="w-64 space-y-4">
-                <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  <span>Progress</span>
-                  <span>{activeSchedule.progress || 0}%</span>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200">
-                  <div
-                    className="bg-blue-600 h-full transition-all duration-500 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.4)]"
-                    style={{ width: `${activeSchedule.progress || 0}%` }}
-                  ></div>
-                </div>
-                <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50 py-1 px-3 rounded-full inline-block">
-                  {activeSchedule.attemptsMade ? `${activeSchedule.attemptsMade.toLocaleString()} permutations checked` : 'Initializing engine...'}
+              <div className="w-80 space-y-4">
+                {compParams.algorithmIds.map(algoId => {
+                  const algo = algoConfig.find(a => a.id === algoId);
+                  if (!algo) return null;
+                  return (
+                    <div key={algoId} className="space-y-1">
+                      <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        <span>{algo.name}</span>
+                        <span>{activeSchedule.progress || 0}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200">
+                        <div
+                          className="h-full transition-all duration-500 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]"
+                          style={{
+                            width: `${activeSchedule.progress || 0}%`,
+                            backgroundColor: algo.color
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="flex justify-between items-center pt-2">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    ETA: {getEta()}
+                  </div>
+                  <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50 py-1 px-3 rounded-full inline-block">
+                    {activeSchedule.attemptsMade ? `${activeSchedule.attemptsMade.toLocaleString()} permutations checked` : 'Initializing engine...'}
+                  </div>
                 </div>
               </div>
             </div>

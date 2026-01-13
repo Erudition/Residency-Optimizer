@@ -1,7 +1,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { generateSchedule, getWeeklyViolations } from './scheduler';
-import { Resident, AssignmentType, ScheduleGrid } from '../types';
+import { Resident, AssignmentType, ScheduleGrid, CompetitionPriority } from '../types';
 import { TOTAL_WEEKS, GENERATE_INITIAL_RESIDENTS } from '../constants';
 
 /*
@@ -14,9 +14,9 @@ describe('Schedule Generator', () => {
     let schedule: ScheduleGrid;
 
     beforeAll(async () => {
-        const result = await generateSchedule(residents, initialSchedule);
+        const result = await generateSchedule(residents, initialSchedule, { tries: 100, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'] });
         schedule = result.schedule;
-    }, 60000); // Increase timeout to 60s for 300 stochastic iterations
+    }, 180000); // Increase timeout for competition iterations
 
     it('should generate a schedule for every resident', () => {
         residents.forEach(r => {
@@ -163,8 +163,8 @@ describe('Schedule Generator', () => {
     });
 
     it('should produce non-deterministic (unique) schedules', { timeout: 300000 }, async () => {
-        const schedule1 = await generateSchedule(residents, initialSchedule);
-        const schedule2 = await generateSchedule(residents, initialSchedule);
+        const schedule1 = await generateSchedule(residents, initialSchedule, { tries: 2, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'] });
+        const schedule2 = await generateSchedule(residents, initialSchedule, { tries: 2, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'] });
 
         // Convert schedules to strings to compare them
         // We check if the entire grid is different. 

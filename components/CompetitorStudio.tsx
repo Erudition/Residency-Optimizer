@@ -37,6 +37,15 @@ export const CompetitorStudio: React.FC<Props> = ({
 
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Top</label>
+                        <input
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={params.topN || 1}
+                            onChange={(e) => onParamsChange({ ...params, topN: parseInt(e.target.value) || 1 })}
+                            className="w-16 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-center"
+                        />
                         <select
                             value={params.priority}
                             onChange={(e) => onParamsChange({ ...params, priority: e.target.value as CompetitionPriority })}

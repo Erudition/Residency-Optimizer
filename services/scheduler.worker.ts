@@ -9,7 +9,7 @@ onmessage = async (e: MessageEvent) => {
         const result = await generateSchedule(residents, existing, params, (progress, attemptsMade) => {
             postMessage({ type: 'progress', progress, attemptsMade });
         });
-        postMessage({ type: 'success', data: result.schedule, winnerName: result.winnerName });
+        postMessage({ type: 'success', results: result.results });
     } catch (error) {
         postMessage({ type: 'error', error: error instanceof Error ? error.message : String(error) });
     }
