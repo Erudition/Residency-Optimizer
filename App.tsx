@@ -58,6 +58,15 @@ export interface ScheduleSession {
   isGenerating?: boolean;
   progress?: number;
   attemptsMade?: number;
+  metrics?: {
+    stats: any;
+    violations: {
+      reqs: any[];
+      constraints: any[];
+    };
+    fairness: any[];
+    score: number;
+  };
 }
 
 const loadState = <T,>(key: string, fallback: T): T => {
@@ -237,61 +246,35 @@ const App: React.FC = () => {
     }
   };
 
-  const activeSchedule = schedules.find(s => s.id === activeScheduleId);
+  const activeSchedule = useMemo(() => schedules.find(s => s.id === activeScheduleId), [schedules, activeScheduleId]);
 
-  const startTimeRef = useRef<number>(0);
-  useEffect(() => {
-    if (activeSchedule?.isGenerating) {
-      startTimeRef.current = Date.now();
+  const { stats, violations } = useMemo(() => {
+    if (!activeSchedule || activeSchedule.isGenerating) {
+      return {
+        stats: {} as any,
+        violations: { reqs: [], constraints: [] }
+      };
     }
-  }, [activeSchedule?.isGenerating]);
 
-  const getEta = () => {
-    if (!activeSchedule?.progress || activeSchedule.progress < 2 || !startTimeRef.current) return 'Calculating...';
-    const elapsed = Date.now() - startTimeRef.current;
-    const progress = activeSchedule.progress / 100;
-    const totalEst = elapsed / progress;
-    const remaining = totalEst - elapsed;
-    const seconds = Math.ceil(remaining / 1000);
-    return seconds > 60 ? `~${Math.ceil(seconds / 60)}m left` : `~${seconds}s left`;
-  };
-
-  const getPriorityText = () => {
-    switch (compParams.priority) {
-      case CompetitionPriority.LEAST_UNDERSTAFFING: return "ensure minimal understaffing...";
-      case CompetitionPriority.MOST_PGY_REQS: return "optimize graduation requirements...";
-      default: return "balance fairness and coverage...";
+    // Use pre-calculated metrics if available
+    if (activeSchedule.metrics) {
+      return {
+        stats: activeSchedule.metrics.stats,
+        violations: activeSchedule.metrics.violations
+      };
     }
-  };
 
-  useEffect(() => {
-    checkScroll();
-    window.addEventListener('resize', checkScroll);
-    return () => window.removeEventListener('resize', checkScroll);
-  }, [schedules]);
-
-  const scrollTabs = (direction: 'left' | 'right') => {
-    if (tabContainerRef.current) {
-      const scrollAmount = 300;
-      tabContainerRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
-
+    // Fallback for legacy data (calculated on demand once)
+    return {
+      stats: calculateStats(residents, activeSchedule.data),
+      violations: {
+        reqs: getRequirementViolations(residents, activeSchedule.data),
+        constraints: getWeeklyViolations(residents, activeSchedule.data)
+      }
+    };
+  }, [activeSchedule, residents]);
 
   const currentGrid = activeSchedule?.data || {};
-  const stats = React.useMemo(() => calculateStats(residents, currentGrid), [residents, currentGrid]);
-
-  const violations = useMemo(() => {
-    if (!currentGrid || Object.keys(currentGrid).length === 0) return { reqs: [], constraints: [] };
-    return {
-      reqs: getRequirementViolations(residents, currentGrid),
-      constraints: getWeeklyViolations(residents, currentGrid)
-    };
-  }, [residents, currentGrid]);
-
   const hasViolations = violations.reqs.length > 0 || violations.constraints.length > 0;
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -339,11 +322,67 @@ const App: React.FC = () => {
     });
   };
 
+  const startTimeRef = useRef<number>(0);
+  useEffect(() => {
+    if (activeSchedule?.isGenerating) {
+      startTimeRef.current = Date.now();
+    }
+  }, [activeSchedule?.isGenerating]);
+
+  const getEta = () => {
+    if (!activeSchedule?.progress || activeSchedule.progress < 2 || !startTimeRef.current) return 'Calculating...';
+    const elapsed = Date.now() - startTimeRef.current;
+    const progress = activeSchedule.progress / 100;
+    const totalEst = elapsed / progress;
+    const remaining = totalEst - elapsed;
+    const seconds = Math.ceil(remaining / 1000);
+    return seconds > 60 ? `~${Math.ceil(seconds / 60)}m left` : `~${seconds}s left`;
+  };
+
+  const getPriorityText = () => {
+    switch (compParams.priority) {
+      case CompetitionPriority.LEAST_UNDERSTAFFING: return "ensure minimal understaffing...";
+      case CompetitionPriority.MOST_PGY_REQS: return "optimize graduation requirements...";
+      default: return "balance fairness and coverage...";
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [schedules]);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabContainerRef.current) {
+      const scrollAmount = 300;
+      tabContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   useEffect(() => {
     if (schedules.length === 0) {
       const runInit = async () => {
         const result = await generateSchedule(residents, {});
-        const initialSession: ScheduleSession = { id: 'init-1', name: `S1 (${result.winnerName})`, data: result.schedule, createdAt: new Date() };
+        const sched = result.results[0];
+        const initialSession: ScheduleSession = {
+          id: 'init-1',
+          name: `S1 (${sched.winnerName})`,
+          data: sched.schedule,
+          createdAt: new Date(),
+          metrics: {
+            stats: calculateStats(residents, sched.schedule),
+            violations: {
+              reqs: getRequirementViolations(residents, sched.schedule),
+              constraints: getWeeklyViolations(residents, sched.schedule)
+            },
+            fairness: calculateFairnessMetrics(residents, sched.schedule),
+            score: sched.score
+          }
+        };
         setSchedules([initialSession]);
       };
       runInit();
@@ -368,9 +407,7 @@ const App: React.FC = () => {
     };
 
     setSchedules(prev => [...prev, newSession]);
-    startTransition(() => {
-      setActiveScheduleId(newId);
-    });
+    setActiveScheduleId(newId);
 
     (async () => {
       try {
@@ -381,21 +418,35 @@ const App: React.FC = () => {
         });
 
         // Add each result as a new session
-        const nameOffset = schedules.length; // Use current length as base
-        const newSessions: ScheduleSession[] = results.map((res, idx) => ({
-          id: `sched-${Date.now()}-${idx}-${salt}`,
-          name: `S${nameOffset + idx} (${res.winnerName})`, // +idx because the "Generating" one will be removed
-          data: res.schedule,
-          createdAt: new Date()
-        }));
-
+        let firstId = '';
         setSchedules(prev => {
-          // Remove the "master" generating session and add the real results
           const filtered = prev.filter(s => s.id !== newId);
+          const nameOffset = filtered.length;
+
+          const newSessions: ScheduleSession[] = results.map((res, idx) => {
+            const sid = `sched-${Date.now()}-${idx}-${salt}`;
+            if (idx === 0) firstId = sid;
+            return {
+              id: sid,
+              name: `S${nameOffset + idx + 1} (${res.winnerName})`,
+              data: res.schedule,
+              createdAt: new Date(),
+              metrics: {
+                stats: calculateStats(residents, res.schedule),
+                violations: {
+                  reqs: getRequirementViolations(residents, res.schedule),
+                  constraints: getWeeklyViolations(residents, res.schedule)
+                },
+                fairness: calculateFairnessMetrics(residents, res.schedule),
+                score: res.score
+              }
+            };
+          });
+
           return [...filtered, ...newSessions];
         });
 
-        // Update Stats for each winner
+        // Update Stats for algorithm benchmarks
         results.forEach(res => {
           const winnerId = algoConfig.find(a => a.name === res.winnerName)?.id;
           if (winnerId) {
@@ -414,10 +465,9 @@ const App: React.FC = () => {
           }
         });
 
-        // Select the best one
-        if (newSessions.length > 0) {
+        if (firstId) {
           startTransition(() => {
-            setActiveScheduleId(newSessions[0].id);
+            setActiveScheduleId(firstId);
           });
         }
       } catch (e) {
@@ -450,7 +500,21 @@ const App: React.FC = () => {
         const updatedRow = [...copy[selectedCell.resId]];
         updatedRow[selectedCell.week] = { assignment: type as any, locked: true };
         copy[selectedCell.resId] = updatedRow;
-        return { ...s, data: copy };
+
+        // Recalculate metrics for the edited schedule
+        return {
+          ...s,
+          data: copy,
+          metrics: {
+            stats: calculateStats(residents, copy),
+            violations: {
+              reqs: getRequirementViolations(residents, copy),
+              constraints: getWeeklyViolations(residents, copy)
+            },
+            fairness: calculateFairnessMetrics(residents, copy),
+            score: calculateScheduleScore(residents, copy)
+          }
+        };
       }));
     }
     setModalOpen(false);
@@ -579,7 +643,7 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className={`flex flex-col h-screen bg-gray-100 text-gray-900 font-sans overflow-hidden ${activeSchedule?.isGenerating ? 'cursor-wait' : ''}`}>
+    <div className={`flex flex-col h-screen bg-gray-100 text-gray-900 font-sans overflow-hidden ${activeSchedule?.isGenerating || isPending ? 'cursor-wait' : ''}`}>
 
       <div className="h-12 bg-gray-200 flex items-stretch shrink-0 z-30 px-2 pt-2 gap-1 relative overflow-y-hidden">
         {/* Bottom Seam Line - Layered at z-30 so it's above inactive (z-20) but below active (z-40) */}
@@ -918,10 +982,10 @@ const App: React.FC = () => {
               {activeTab === 'schedule' && <div className="flex-1 overflow-hidden p-6"><ScheduleTable residents={residents} schedule={currentGrid} onCellClick={handleCellClick} onLockWeek={() => { }} onLockResident={() => { }} onToggleLock={() => { }} /></div>}
               {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={residents} stats={stats} /></div>}
               {activeTab === 'assignments' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={residents} schedule={currentGrid} /></div>}
-              {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={residents} schedule={currentGrid} /></div>}
+              {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={residents} schedule={currentGrid} precalculatedViolations={activeSchedule?.metrics?.violations.reqs} /></div>}
               {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={residents} schedule={currentGrid} /></div>}
               {activeTab === 'relationships' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={residents} schedule={currentGrid} /></div>}
-              {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={residents} schedule={currentGrid} /></div>}
+              {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={residents} schedule={currentGrid} precalculated={activeSchedule?.metrics?.fairness} /></div>}
               {activeTab === 'export' && (
                 <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
                   <div className="max-w-2xl mx-auto">

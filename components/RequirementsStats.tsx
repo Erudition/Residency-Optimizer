@@ -1,22 +1,20 @@
 
 import React from 'react';
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
-import { ROTATION_METADATA, REQUIREMENTS } from '../constants';
+import { ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement } from '../constants';
 import { CheckCircle2, XCircle, AlertCircle, ClipboardList, Info } from 'lucide-react';
 
 interface Props {
     residents: Resident[];
     schedule: ScheduleGrid;
+    precalculatedViolations?: any[];
 }
 
-export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
+export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, precalculatedViolations }) => {
 
     const getResidentCount = (resId: string, type: AssignmentType) => {
         const weeks = schedule[resId] || [];
-        if (type === AssignmentType.WARDS_RED) {
-            return weeks.filter(c => c && (c.assignment === AssignmentType.WARDS_RED || c.assignment === AssignmentType.WARDS_BLUE)).length;
-        }
-        return weeks.filter(c => c && c.assignment === type).length;
+        return weeks.filter(c => c && fulfillsRequirement(c.assignment, type)).length;
     };
 
     const renderGroup = (level: number) => {

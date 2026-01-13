@@ -1,6 +1,6 @@
 
 import { ScheduleGrid, AssignmentType, ScheduleCell } from '../../types';
-import { TOTAL_WEEKS } from '../../constants';
+import { TOTAL_WEEKS, fulfillsRequirement } from '../../constants';
 
 export const canFitBlock = (schedule: ScheduleGrid, residentId: string, start: number, duration: number): boolean => {
     if (start < 0 || start + duration > TOTAL_WEEKS) return false;
@@ -24,12 +24,7 @@ export const placeBlock = (schedule: ScheduleGrid, residentId: string, start: nu
 
 export const shuffle = <T>(array: T[]): T[] => [...array].sort(() => Math.random() - 0.5);
 
-export const isWards = (type: AssignmentType | null) => type === AssignmentType.WARDS_RED || type === AssignmentType.WARDS_BLUE || type === AssignmentType.MET_WARDS;
-
 export const getRequirementCount = (row: ScheduleCell[], type: AssignmentType, level: number): number => {
     if (!row) return 0;
-    if (isWards(type)) {
-        return row.filter(c => c && isWards(c.assignment)).length;
-    }
-    return row.filter(c => c && c.assignment === type).length;
+    return row.filter(c => c && fulfillsRequirement(c.assignment, type)).length;
 };

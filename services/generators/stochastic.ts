@@ -1,8 +1,8 @@
 
 import { Resident, ScheduleGrid, AssignmentType } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS } from '../../constants';
+import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement } from '../../constants';
 import { ScheduleGenerator } from './types';
-import { canFitBlock, placeBlock, shuffle, getRequirementCount, isWards } from './utils';
+import { canFitBlock, placeBlock, shuffle, getRequirementCount } from './utils';
 
 class SeededRNG {
     private seed: number;
@@ -94,11 +94,12 @@ export const StochasticGenerator: ScheduleGenerator = {
                     if (pool.length === 0) break;
 
                     pool.sort((a, b) => {
-                        const reqT = isWards(type) ? AssignmentType.WARDS_RED : type;
+                        const isW = fulfillsRequirement(type, AssignmentType.WARDS_RED);
+                        const reqT = isW ? AssignmentType.WARDS_RED : type;
                         const fA = getRequirementCount(newSchedule[a.id], reqT, a.level);
-                        const tA = REQUIREMENTS[a.level]?.find(req => isWards(type) ? isWards(req.type) : req.type === type)?.target || 0;
+                        const tA = REQUIREMENTS[a.level]?.find(req => isW ? fulfillsRequirement(null, req.type) : req.type === type)?.target || 0;
                         const fB = getRequirementCount(newSchedule[b.id], reqT, b.level);
-                        const tB = REQUIREMENTS[b.level]?.find(req => isWards(type) ? isWards(req.type) : req.type === type)?.target || 0;
+                        const tB = REQUIREMENTS[b.level]?.find(req => isW ? fulfillsRequirement(null, req.type) : req.type === type)?.target || 0;
 
                         const uA = fA < tA ? 0 : 1;
                         const uB = fB < tB ? 0 : 1;
@@ -124,7 +125,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                     const meta = ROTATION_METADATA[req.type];
                     if (!meta) return;
                     const dur = meta.duration;
-                    const possibleTypes = isWards(req.type) ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE, AssignmentType.MET_WARDS] : [req.type];
+                    const possibleTypes = fulfillsRequirement(null, req.type) || req.type === AssignmentType.WARDS_RED ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE] : [req.type];
 
                     while (cur < req.target) {
                         let bestW = -1, bestT = possibleTypes[0], bestScore = Infinity;

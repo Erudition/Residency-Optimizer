@@ -1,8 +1,8 @@
 
 import { Resident, ScheduleGrid, AssignmentType } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS } from '../../constants';
+import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement } from '../../constants';
 import { ScheduleGenerator } from './types';
-import { canFitBlock, placeBlock, shuffle, getRequirementCount, isWards } from './utils';
+import { canFitBlock, placeBlock, shuffle, getRequirementCount } from './utils';
 
 export const GreedyGenerator: ScheduleGenerator = {
     name: "Greedy (Legacy)",
@@ -99,7 +99,7 @@ export const GreedyGenerator: ScheduleGenerator = {
 
                     // FIX: Use meta duration for NF as well, don't hardcode 2
                     const duration = meta.duration;
-                    const typesToTry = isWards(req.type)
+                    const typesToTry = fulfillsRequirement(null, req.type) || req.type === AssignmentType.WARDS_RED
                         ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE]
                         : [req.type];
 

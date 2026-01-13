@@ -8,6 +8,15 @@ interface ScheduleSession {
   name: string;
   data: ScheduleGrid;
   isGenerating?: boolean;
+  metrics?: {
+    stats: any;
+    violations: {
+      reqs: any[];
+      constraints: any[];
+    };
+    fairness: any[];
+    score: number;
+  };
 }
 
 const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
@@ -80,6 +89,39 @@ export const ScheduleComparison: React.FC<Props> = ({
 
   const metrics: ScheduleMetrics[] = useMemo(() => {
     return schedules.filter(s => !s.isGenerating).map(s => {
+      // Use pre-calculated metrics for speed
+      if (s.metrics) {
+        const { score, fairness } = s.metrics;
+        const f1 = fairness.find(g => g.level === 1)?.fairnessScore || 0;
+        const f2 = fairness.find(g => g.level === 2)?.fairnessScore || 0;
+        const f3 = fairness.find(g => g.level === 3)?.fairnessScore || 0;
+
+        const allStreaks: number[] = [];
+        fairness.forEach(g => g.residents.forEach(r => allStreaks.push(r.maxIntensityStreak)));
+        const maxStreak = Math.max(...allStreaks, 0);
+        const streakMean = allStreaks.reduce((a, b) => a + b, 0) / (allStreaks.length || 1);
+        const streakSD = Math.sqrt(allStreaks.reduce((sum, n) => sum + Math.pow(n - streakMean, 2), 0) / (allStreaks.length || 1));
+
+        let totalNF = 0;
+        Object.values(s.data).forEach(weeks => {
+          (weeks as any[]).forEach(c => { if (c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
+        });
+
+        return {
+          id: s.id,
+          name: s.name,
+          score,
+          avgFairness: (f1 + f2 + f3) / 3,
+          pgy1Fairness: f1,
+          pgy2Fairness: f2,
+          pgy3Fairness: f3,
+          totalNF,
+          streakSD,
+          maxStreak,
+        };
+      }
+
+      // Legacy fallback
       const groups = calculateFairnessMetrics(residents, s.data);
       const score = calculateScheduleScore(residents, s.data);
 
@@ -95,9 +137,9 @@ export const ScheduleComparison: React.FC<Props> = ({
           allStreaks.push(r.maxIntensityStreak);
         });
       });
-      const maxStreak = Math.max(...allStreaks);
-      const streakMean = allStreaks.reduce((a, b) => a + b, 0) / allStreaks.length;
-      const streakSD = Math.sqrt(allStreaks.reduce((sum, n) => sum + Math.pow(n - streakMean, 2), 0) / allStreaks.length);
+      const maxStreak = Math.max(...allStreaks, 0);
+      const streakMean = allStreaks.reduce((a, b) => a + b, 0) / (allStreaks.length || 1);
+      const streakSD = Math.sqrt(allStreaks.reduce((sum, n) => sum + Math.pow(n - streakMean, 2), 0) / (allStreaks.length || 1));
 
       let totalNF = 0;
       const allWeeks = Object.values(s.data) as ScheduleCell[][];

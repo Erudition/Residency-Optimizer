@@ -1,8 +1,8 @@
 
 import { Resident, ScheduleGrid, AssignmentType } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT } from '../../constants';
+import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, fulfillsRequirement } from '../../constants';
 import { ScheduleGenerator } from './types';
-import { canFitBlock, placeBlock, getRequirementCount, isWards } from './utils';
+import { canFitBlock, placeBlock, getRequirementCount } from './utils';
 
 class SeededRNG {
     private seed: number;
@@ -78,7 +78,7 @@ export const ExperimentalGenerator: ScheduleGenerator = {
                     });
                     if (pool.length === 0) break;
                     pool.sort((a, b) => {
-                        const reqT = isWards(type) ? AssignmentType.WARDS_RED : type;
+                        const reqT = fulfillsRequirement(type, AssignmentType.WARDS_RED) ? AssignmentType.WARDS_RED : type;
                         return getRequirementCount(newSchedule[a.id], reqT, a.level) - getRequirementCount(newSchedule[b.id], reqT, b.level);
                     });
                     newSchedule[pool[0].id][w] = { assignment: type, locked: false };
@@ -98,7 +98,7 @@ export const ExperimentalGenerator: ScheduleGenerator = {
                     });
                     if (pool.length === 0) break;
                     pool.sort((a, b) => {
-                        const reqT = isWards(type) ? AssignmentType.WARDS_RED : type;
+                        const reqT = fulfillsRequirement(type, AssignmentType.WARDS_RED) ? AssignmentType.WARDS_RED : type;
                         return getRequirementCount(newSchedule[a.id], reqT, a.level) - getRequirementCount(newSchedule[b.id], reqT, b.level);
                     });
                     newSchedule[pool[0].id][w] = { assignment: type, locked: false };
@@ -129,7 +129,7 @@ export const ExperimentalGenerator: ScheduleGenerator = {
                     const meta = ROTATION_METADATA[req.type];
                     if (!meta) return;
                     const dur = meta.duration;
-                    const possibleTypes = isWards(req.type) ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE, AssignmentType.MET_WARDS] : [req.type];
+                    const possibleTypes = fulfillsRequirement(null, req.type) || req.type === AssignmentType.WARDS_RED ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE] : [req.type];
 
                     while (cur < req.target) {
                         let bestW = -1, bestT = possibleTypes[0], bestScore = Infinity;

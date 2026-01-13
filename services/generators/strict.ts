@@ -1,8 +1,8 @@
 
 import { Resident, ScheduleGrid, AssignmentType } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, CORE_TYPES } from '../../constants';
+import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, CORE_TYPES, fulfillsRequirement } from '../../constants';
 import { ScheduleGenerator } from './types';
-import { canFitBlock, placeBlock, getRequirementCount, isWards, shuffle } from './utils';
+import { canFitBlock, placeBlock, getRequirementCount, shuffle } from './utils';
 
 export const StrictGenerator: ScheduleGenerator = {
     name: "Education First",
@@ -116,9 +116,9 @@ export const StrictGenerator: ScheduleGenerator = {
         sortedBlocks.forEach(block => {
             const res = residents.find(r => r.id === block.residentId)!;
 
-            // Wards Handling: If it's a Ward requirement, consider Red, Blue, and Met
-            const candidateTypes = isWards(block.type)
-                ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE, AssignmentType.MET_WARDS]
+            // Wards Handling: If it's a Ward requirement, consider Red and Blue (NOT Met)
+            const candidateTypes = fulfillsRequirement(block.type, AssignmentType.WARDS_RED)
+                ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE]
                 : [block.type];
 
             let globalBest: { week: number; type: AssignmentType; score: number } | null = null;

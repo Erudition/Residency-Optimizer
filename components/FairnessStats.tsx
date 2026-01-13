@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2, Scale, Flame, Activity, HelpCircle, Moon } f
 interface Props {
     residents: Resident[];
     schedule: ScheduleGrid;
+    precalculated?: any[];
 }
 
 interface TooltipState {
@@ -17,12 +18,13 @@ interface TooltipState {
     content: string[];
 }
 
-export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
+export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule, precalculated }) => {
     const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
     const stats = useMemo(() => {
+        if (precalculated) return precalculated;
         return calculateFairnessMetrics(residents, schedule);
-    }, [residents, schedule]);
+    }, [residents, schedule, precalculated]);
 
     const getScoreColor = (score: number) => {
         if (score >= 90) return 'text-green-600 bg-green-50 border-green-200';

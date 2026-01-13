@@ -319,24 +319,58 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
 };
 
-// DYNAMIC REQUIREMENTS GENERATION
-// Single source of truth: ROTATION_METADATA
-export const REQUIREMENTS: Record<number, { type: AssignmentType, label: string, target: number }[]> = {
-    1: Object.values(ROTATION_METADATA).filter(m => m.targetIntern !== undefined && m.targetIntern > 0).map(m => ({ type: m.type, label: m.label, target: m.targetIntern! })),
+    // Consistent order for requirement columns in UI
+    export const REQUIREMENT_ORDER = [
+        AssignmentType.WARDS_RED,
+        AssignmentType.ICU,
+        AssignmentType.NIGHT_FLOAT,
+        AssignmentType.EM,
+        AssignmentType.CARDS,
+        AssignmentType.ID,
+        AssignmentType.NEPH,
+        AssignmentType.PULM,
+        AssignmentType.ONC,
+        AssignmentType.NEURO,
+        AssignmentType.RHEUM,
+        AssignmentType.GI,
+        AssignmentType.ADD_MED,
+        AssignmentType.ENDO,
+        AssignmentType.GERI,
+        AssignmentType.HPC
+    ];
 
-    // For PGY2/3, we map targetPGY2/3 strict targets + targetSenior shared targets
-    2: Object.values(ROTATION_METADATA).filter(m => m.targetPGY2 !== undefined && m.targetPGY2 > 0).map(m => ({ type: m.type, label: m.label, target: m.targetPGY2! })),
+    // DYNAMIC REQUIREMENTS GENERATION
+    // Single source of truth: ROTATION_METADATA
+    export const REQUIREMENTS: Record<number, { type: AssignmentType, label: string, target: number }[]> = {
+        1: Object.values(ROTATION_METADATA)
+            .filter(m => (m.targetIntern !== undefined && m.targetIntern > 0))
+            .map(m => ({ type: m.type, label: m.label, target: m.targetIntern! })),
 
-    3: Object.values(ROTATION_METADATA).filter(m => m.targetPGY3 !== undefined && m.targetPGY3 > 0).map(m => ({ type: m.type, label: m.label, target: m.targetPGY3! })),
+            2: Object.values(ROTATION_METADATA)
+                .filter(m => (m.targetPGY2 !== undefined && m.targetPGY2 > 0) || (m.targetSenior !== undefined && m.targetSenior > 0))
+                .map(m => ({
+                    type: m.type,
+                    label: m.label,
+                    target: m.targetPGY2 || m.targetSenior!
+                })),
+
+                3: Object.values(ROTATION_METADATA)
+                    .filter(m => (m.targetPGY3 !== undefined && m.targetPGY3 > 0) || (m.targetSenior !== undefined && m.targetSenior > 0))
+                    .map(m => ({
+                        type: m.type,
+                        label: m.label,
+                        target: m.targetPGY3 || m.targetSenior!
+                    })),
 };
 
-// Manually append shared Senior targets (like Wards/ICU) if they apply broadly and aren't caught by specific PGY targets.
-// Although for this system, Wards/ICU are often handled as "Core" blocks rather than strictly named "Required Electives".
-// But we should ensure the Senior Wards/ICU targets exist.
-// Checking `targetSenior` in metadata:
-const seniorTargets = Object.values(ROTATION_METADATA).filter(m => m.targetSenior !== undefined && m.targetSenior > 0).map(m => ({ type: m.type, label: m.label, target: m.targetSenior! }));
-REQUIREMENTS[2].push(...seniorTargets);
-REQUIREMENTS[3].push(...seniorTargets);
+// Sort requirements consistently for UI display
+[1, 2, 3].forEach(level => {
+    REQUIREMENTS[level].sort((a, b) => {
+        const indexA = REQUIREMENT_ORDER.indexOf(a.type);
+        const indexB = REQUIREMENT_ORDER.indexOf(b.type);
+        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+    });
+});
 
 // Classification helpers
 export const CORE_TYPES = Object.keys(ROTATION_METADATA).filter(k =>
@@ -354,3 +388,14 @@ export const ELECTIVE_TYPES = [
 ];
 
 export const VACATION_TYPE = AssignmentType.VACATION;
+export const fulfillsRequirement = (assigned: AssignmentType | null, required: AssignmentType): boolean => {
+    if (!assigned) return false;
+    if (assigned === required) return true;
+
+    // Ward Aggregation logic (Single Source of Truth)
+    if (required === AssignmentType.WARDS_RED) {
+        return assigned === AssignmentType.WARDS_RED || assigned === AssignmentType.WARDS_BLUE;
+    }
+
+    return false;
+};
