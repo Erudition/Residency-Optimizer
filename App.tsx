@@ -5,12 +5,10 @@ import {
   Resident,
   ScheduleGrid,
   AssignmentType,
-  ScheduleCell,
-  AdaptationParams
+  ScheduleCell
 } from './types';
 import { GENERATE_INITIAL_RESIDENTS, ASSIGNMENT_LABELS, ASSIGNMENT_HEX_COLORS, ASSIGNMENT_ABBREVIATIONS } from './constants';
 import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations } from './services/scheduler';
-import { adaptSchedule } from './services/adapter';
 import { ScheduleTable } from './components/ScheduleTable';
 import { Dashboard } from './components/Dashboard';
 import { ResidentManager } from './components/ResidentManager';
@@ -20,6 +18,13 @@ import { FairnessStats } from './components/FairnessStats';
 import { RequirementsStats } from './components/RequirementsStats';
 import { ScheduleComparison } from './components/ScheduleComparison';
 import { ACGMEAudit } from './components/ACGMEAudit';
+import { CompetitorStudio } from './components/CompetitorStudio';
+import {
+  CompetitionParams,
+  CompetitionPriority,
+  AlgorithmConfig,
+  AlgorithmStats,
+} from './types';
 import {
   LayoutGrid,
   BarChart3,
@@ -30,7 +35,6 @@ import {
   Scale,
   ClipboardList,
   Pencil,
-  Wand2,
   ShieldCheck,
   Users,
   Sparkles,
@@ -149,6 +153,32 @@ const RenameModal = ({
   );
 };
 
+const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
+  const colors = [
+    'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
+    'bg-lime-500', 'bg-green-500', 'bg-emerald-500', 'bg-teal-500',
+    'bg-cyan-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500',
+    'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500',
+    'bg-rose-500', 'bg-slate-500', 'bg-gray-500', 'bg-zinc-500'
+  ];
+
+  // Simple hash for ID
+  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const color1 = colors[hash % colors.length];
+  const color2 = colors[(hash * 7) % colors.length];
+  const color3 = colors[(hash * 13) % colors.length];
+  const color4 = colors[(hash * 19) % colors.length];
+
+  return (
+    <div className={`grid grid-cols-2 rounded-sm overflow-hidden flex-shrink-0 bg-white shadow-sm border border-black/5`} style={{ width: size, height: size }}>
+      <div className={color1}></div>
+      <div className={color2}></div>
+      <div className={color3}></div>
+      <div className={color4}></div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [residents, setResidents] = useState<Resident[]>(() =>
     loadState('rsp_residents_v3', GENERATE_INITIAL_RESIDENTS())
@@ -162,18 +192,30 @@ const App: React.FC = () => {
     loadState('rsp_active_id', 'all')
   );
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft'>('schedule');
+
+  const [algoConfig, setAlgoConfig] = useState<AlgorithmConfig[]>([
+    { id: 'stochastic', name: 'Stochastic', description: 'The tried-and-true generalist. Good at everything, master of none. Uses weighted randomness to explore valid slots.', enabled: true, color: '#3b82f6' },
+    { id: 'experimental', name: 'Strict Compliance', description: 'Built for strict compliance. Prioritizes 1-week slots to guarantee minimum staffing coverage at all costs.', enabled: true, color: '#8b5cf6' },
+    { id: 'backtracking', name: 'Backtracking', description: 'Logical and exhaustive. Uses advanced depth-first search with forward checking to solve constraint puzzles.', enabled: true, color: '#10b981' },
+    { id: 'greedy', name: 'Greedy', description: 'The original fast generator. Takes the best immediate choice at every step. Ideal for quick reference drafts.', enabled: false, color: '#f59e0b' },
+  ]);
+
+  const [algoStats, setAlgoStats] = useState<Record<string, AlgorithmStats>>(() =>
+    loadState('rsp_algo_stats_v1', {})
+  );
+
+  const [compParams, setCompParams] = useState<CompetitionParams>(() =>
+    loadState('rsp_comp_params_v1', {
+      tries: 100,
+      priority: CompetitionPriority.BEST_SCORE,
+      algorithmIds: ['stochastic', 'experimental', 'backtracking']
+    })
+  );
+
   const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ current: number, total: number, bestScore: number } | null>(null);
-
-  const [adaptParams, setAdaptParams] = useState<AdaptationParams>(() => loadState('rsp_adapt_params', {
-    fillMissingReqs: true,
-    fixUnderstaffing: true,
-    fixOverstaffing: true,
-    allowResearchOverride: true,
-    allowVacationOverride: false
-  }));
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -217,43 +259,56 @@ const App: React.FC = () => {
 
   const hasViolations = violations.reqs.length > 0 || violations.constraints.length > 0;
 
-  // Simple check for whether to show adapt button - defer expensive calculation to click
-  const showAdaptButton = hasViolations && currentGrid && Object.keys(currentGrid).length > 0;
-
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ resId: string, week: number } | null>(null);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [scheduleToRename, setScheduleToRename] = useState<ScheduleSession | null>(null);
 
+  // Track active workers for cleanup
+  const activeWorkersRef = useRef<Set<Worker>>(new Set());
+
+  // Cleanup workers on unmount (when tab closes)
+  useEffect(() => {
+    return () => {
+      activeWorkersRef.current.forEach(worker => worker.terminate());
+      activeWorkersRef.current.clear();
+    };
+  }, []);
+
   // Helper to spawn a web worker for background generation
-  const runGenerationTask = (residents: Resident[], existing: ScheduleGrid, onProgress: (p: number, a: number) => void): Promise<ScheduleGrid> => {
+  const runGenerationTask = (residents: Resident[], existing: ScheduleGrid, params: CompetitionParams, onProgress: (p: number, a: number) => void): Promise<{ schedule: ScheduleGrid; winnerName: string }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
+      activeWorkersRef.current.add(worker);
+
       worker.onmessage = (e) => {
-        const { type, progress, attemptsMade, data, error } = e.data;
+        const { type, progress, attemptsMade, data, winnerName, error } = e.data;
         if (type === 'progress') {
           onProgress(progress, attemptsMade);
         } else if (type === 'success') {
+          activeWorkersRef.current.delete(worker);
           worker.terminate();
-          resolve(data);
+          resolve({ schedule: data, winnerName: winnerName || 'Unknown' });
         } else if (type === 'error') {
+          activeWorkersRef.current.delete(worker);
           worker.terminate();
           reject(new Error(error));
         }
       };
       worker.onerror = (e) => {
+        activeWorkersRef.current.delete(worker);
         worker.terminate();
         reject(e);
       };
-      worker.postMessage({ residents, existing });
+      worker.postMessage({ residents, existing, params });
     });
   };
 
   useEffect(() => {
     if (schedules.length === 0) {
       const runInit = async () => {
-        const initialGrid = await generateSchedule(residents, {});
-        const initialSession: ScheduleSession = { id: 'init-1', name: 'Schedule 1', data: initialGrid, createdAt: new Date() };
+        const result = await generateSchedule(residents, {});
+        const initialSession: ScheduleSession = { id: 'init-1', name: `S1 (${result.winnerName})`, data: result.schedule, createdAt: new Date() };
         setSchedules([initialSession]);
       };
       runInit();
@@ -263,7 +318,8 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('rsp_residents_v3', JSON.stringify(residents)); }, [residents]);
   useEffect(() => { localStorage.setItem('rsp_schedules_v3', JSON.stringify(schedules)); }, [schedules]);
   useEffect(() => { if (activeScheduleId) localStorage.setItem('rsp_active_id', activeScheduleId); }, [activeScheduleId]);
-  useEffect(() => { localStorage.setItem('rsp_adapt_params', JSON.stringify(adaptParams)); }, [adaptParams]);
+  useEffect(() => { localStorage.setItem('rsp_algo_stats_v1', JSON.stringify(algoStats)); }, [algoStats]);
+  useEffect(() => { localStorage.setItem('rsp_comp_params_v1', JSON.stringify(compParams)); }, [compParams]);
 
   const handleGenerate = () => {
     const salt = Math.floor(Math.random() * 1000000);
@@ -284,13 +340,34 @@ const App: React.FC = () => {
     // Run in background via worker
     (async () => {
       try {
-        const newGrid = await runGenerationTask(residents, {}, (progress, attempts) => {
+        const result = await runGenerationTask(residents, {}, compParams, (progress, attempts) => {
           setSchedules(prev => prev.map(s =>
             s.id === newId ? { ...s, progress, attemptsMade: attempts } : s
           ));
         });
+
+        // Update Stats
+        const winnerId = algoConfig.find(a => a.name === result.winnerName)?.id;
+        if (winnerId) {
+          const score = calculateScheduleScore(residents, result.schedule);
+          const violations = getRequirementViolations(residents, result.schedule).length + getWeeklyViolations(residents, result.schedule).length;
+
+          setAlgoStats(prev => {
+            const current = prev[winnerId] || { bestScore: Infinity, worstScore: -Infinity, bestViolations: Infinity, worstViolations: -Infinity };
+            return {
+              ...prev,
+              [winnerId]: {
+                bestScore: Math.min(current.bestScore, score),
+                worstScore: Math.max(current.worstScore, score),
+                bestViolations: Math.min(current.bestViolations, violations),
+                worstViolations: Math.max(current.worstViolations, violations),
+              }
+            };
+          });
+        }
+
         setSchedules(prev => prev.map(s =>
-          s.id === newId ? { ...s, data: newGrid, isGenerating: false } : s
+          s.id === newId ? { ...s, name: `S${prev.length} (${result.winnerName})`, data: result.schedule, isGenerating: false } : s
         ));
       } catch (e) {
         console.error("Generation failed", e);
@@ -308,14 +385,15 @@ const App: React.FC = () => {
     setBatchProgress({ current: 0, total: TOTAL_ITERATIONS, bestScore: 0 });
 
     for (let i = 0; i < TOTAL_ITERATIONS; i++) {
-      const grid = await runGenerationTask(residents, {}, () => { });
-      const score = calculateScheduleScore(residents, grid);
-      if (score > bestScoreFound) bestScoreFound = score;
+      const result = await runGenerationTask(residents, {}, compParams, () => { });
+      const score = calculateScheduleScore(residents, result.schedule);
+      if (score < bestScoreFound) bestScoreFound = score; // Lower is better
       if (i % 4 === 0 || i === TOTAL_ITERATIONS - 1) {
+        const count = schedules.length + newSessions.length + 1;
         newSessions.push({
           id: crypto.randomUUID(),
-          name: `Winner ${newSessions.length + 1}`,
-          data: grid,
+          name: `S${count} (${result.winnerName})`,
+          data: result.schedule,
           createdAt: new Date()
         });
       }
@@ -323,16 +401,6 @@ const App: React.FC = () => {
     }
     setSchedules(prev => [...prev, ...newSessions]);
     setBatchProgress(null);
-  };
-
-  const handleAdapt = () => {
-    if (!activeScheduleId || !currentGrid) return;
-    const { newSchedule, changesMade } = adaptSchedule(residents, currentGrid, adaptParams);
-    if (changesMade > 0) {
-      setSchedules(prev => prev.map(s => s.id === activeScheduleId ? { ...s, data: newSchedule } : s));
-    } else {
-      alert("Adaptation attempted, but no suitable unlocked cells were found.");
-    }
   };
 
   const handleRename = (newName: string) => {
@@ -487,22 +555,6 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-screen bg-gray-100 text-gray-900 font-sans overflow-hidden ${activeSchedule?.isGenerating ? 'cursor-wait' : ''}`}>
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm z-[50] shrink-0">
-        <div className="flex items-center gap-3">
-          <img src="https://www.hcadam.com/api/public/content/349f5f94cafa4b168f99e74a262b8c24" alt="Residency Scheduler Pro" className="h-10 w-auto object-contain" />
-          <div className="h-6 w-px bg-gray-200 mx-2"></div>
-        </div>
-        <div className="flex items-center gap-2">
-          {showAdaptButton && (
-            <button
-              onClick={handleAdapt}
-              className="flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors shadow-sm text-sm text-white bg-orange-500 hover:bg-orange-600"
-            >
-              <Wand2 size={16} /> Adapt
-            </button>
-          )}
-        </div>
-      </header>
 
       <div className="h-12 bg-gray-200 flex items-stretch shrink-0 z-30 px-2 pt-2 gap-1 relative overflow-y-hidden">
         {/* Bottom Seam Line - Layered at z-30 so it's above inactive (z-20) but below active (z-40) */}
@@ -580,6 +632,7 @@ const App: React.FC = () => {
                   className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-colors relative min-w-[160px] cursor-pointer ${isActive ? 'bg-white border-gray-300 text-blue-600 z-40' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50 z-20'} ${isPending ? 'opacity-70' : ''}`}
                 >
                   {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full flex-shrink-0"></div>}
+                  {!sched.isGenerating && <Identicon id={sched.id} />}
                   {isPending && isActive && <div className="animate-pulse h-2 w-2 bg-blue-400 rounded-full mr-1"></div>}
                   <div className="flex-1 min-w-0 font-bold text-xs truncate">{sched.name}</div>
                   <button onClick={(e) => { e.stopPropagation(); setScheduleToRename(sched); setRenameModalOpen(true); }} className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-opacity"><Pencil size={12} /></button>
@@ -604,15 +657,22 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* Sticky Add Button */}
-        <div className="flex-none flex items-center px-4 border-l border-gray-300 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] z-20 bg-gray-200">
-          <button
-            onClick={handleGenerate}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-300 hover:text-gray-700 transition-colors flex items-center justify-center"
-            title="Quick Draft"
+        {/* Sticky New Tab */}
+        <div className={`flex-none flex items-end relative px-2 ${activeScheduleId === 'draft' ? 'z-40' : 'z-20'}`}>
+          <div
+            onClick={() => {
+              startTransition(() => {
+                setActiveScheduleId('draft');
+              });
+            }}
+            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'draft' ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
           >
-            <Plus size={20} />
-          </button>
+            <Sparkles size={16} />
+            New
+            {activeScheduleId === 'draft' && (
+              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
+            )}
+          </div>
         </div>
       </div>
 
@@ -724,7 +784,7 @@ const App: React.FC = () => {
                                   ...s,
                                   data: Object.fromEntries(Object.entries(s.data).map(([rid, weeks]) => [
                                     rid,
-                                    weeks.map(w => ({ ...w, locked: false }))
+                                    (weeks as ScheduleCell[]).map(w => ({ ...w, locked: false }))
                                   ]))
                                 })));
                               }
@@ -741,6 +801,23 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
+          ) : activeScheduleId === 'draft' ? (
+            <CompetitorStudio
+              algorithms={algoConfig}
+              stats={algoStats}
+              params={compParams}
+              onParamsChange={setCompParams}
+              onToggleAlgorithm={(id) => {
+                setCompParams(prev => ({
+                  ...prev,
+                  algorithmIds: prev.algorithmIds.includes(id)
+                    ? prev.algorithmIds.filter(a => a !== id)
+                    : [...prev.algorithmIds, id]
+                }));
+              }}
+              onCompete={handleGenerate}
+              onClearStats={() => setAlgoStats({})}
+            />
           ) : activeScheduleId === 'all' ? (
             <div className="flex-1 bg-white overflow-y-auto">
               <ScheduleComparison

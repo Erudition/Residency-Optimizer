@@ -27,19 +27,19 @@ export enum AssignmentType {
   ELECTIVE = 'ELECTIVE',
   VACATION = 'VAC',
   MET_WARDS = 'Met Wards', // Fallback or extra ward
-  
+
   // PGY1 Required Electives
   CARDS = 'Cards',
   ID = 'ID',
   NEPH = 'Neph',
   PULM = 'Pulm',
-  
+
   // PGY2 Required Rotations
   ONC = 'Onc',
   NEURO = 'Neuro',
   RHEUM = 'Rheum',
   GI = 'GI',
-  
+
   // PGY3 Required Electives
   ADD_MED = 'Add Med',
   ENDO = 'Endo',
@@ -73,65 +73,92 @@ export interface RotationConfig {
   intensity: number; // 1-5
   duration: number; // Standard block duration
   setting: ClinicalSetting;
-  
+
   // Staffing Constraints per week
   minInterns: number;
   maxInterns: number;
   minSeniors: number;
   maxSeniors: number;
-  
+
   // Targets (Total weeks per resident per year)
-  targetIntern?: number; 
+  targetIntern?: number;
   targetSenior?: number; // General senior target
   targetPGY2?: number;   // Specific PGY2 target
   targetPGY3?: number;   // Specific PGY3 target
-  
+
   notes?: string;
 }
 
 export interface ResidentFairnessMetrics {
-    id: string;
-    name: string;
-    level: number;
-    coreWeeks: number;
-    electiveWeeks: number;
-    requiredWeeks: number;
-    vacationWeeks: number;
-    nightFloatWeeks: number;
-    totalIntensityScore: number;
-    maxIntensityStreak: number;
-    streakSummary: string[];
+  id: string;
+  name: string;
+  level: number;
+  coreWeeks: number;
+  electiveWeeks: number;
+  requiredWeeks: number;
+  vacationWeeks: number;
+  nightFloatWeeks: number;
+  totalIntensityScore: number;
+  maxIntensityStreak: number;
+  streakSummary: string[];
 }
 
 export interface CohortFairnessMetrics {
-    level: number;
-    residents: ResidentFairnessMetrics[];
-    meanCore: number;
-    sdCore: number;
-    meanElective: number;
-    sdElective: number;
-    meanIntensity: number;
-    sdIntensity: number;
-    fairnessScore: number;
+  level: number;
+  residents: ResidentFairnessMetrics[];
+  meanCore: number;
+  sdCore: number;
+  meanElective: number;
+  sdElective: number;
+  meanIntensity: number;
+  sdIntensity: number;
+  fairnessScore: number;
 }
 
 export interface RequirementViolation {
-    residentId: string;
-    type: AssignmentType;
-    target: number;
-    actual: number;
+  residentId: string;
+  type: AssignmentType;
+  target: number;
+  actual: number;
 }
 
 export interface WeeklyViolation {
-    week: number;
-    type: AssignmentType;
-    issue: string;
+  week: number;
+  type: AssignmentType;
+  issue: string;
 }
 
 export interface AdaptationParams {
-    fillMissingReqs: boolean; // Try to replace electives with missing reqs
-    fixUnderstaffing: boolean; // Try to pull from electives to fix min constraints
-    fixOverstaffing: boolean; // Try to push to electives to fix max constraints
-    allowResearchOverride: boolean; // Treat Research as Elective for overrides
-    allowVacationOverride: boolean; // Treat Vacation as Elective for overrides (Dangerous)
+  fillMissingReqs: boolean; // Try to replace electives with missing reqs
+  fixUnderstaffing: boolean; // Try to pull from electives to fix min constraints
+  fixOverstaffing: boolean; // Try to push to electives to fix max constraints
+  allowResearchOverride: boolean; // Treat Research as Elective for overrides
+  allowVacationOverride: boolean; // Treat Vacation as Elective for overrides (Dangerous)
+}
+
+export enum CompetitionPriority {
+  BEST_SCORE = 'Best Score',
+  LEAST_UNDERSTAFFING = 'Least Understaffing',
+  MOST_PGY_REQS = 'Most PGY Requirements Met'
+}
+
+export interface AlgorithmStats {
+  bestScore: number;
+  worstScore: number;
+  bestViolations: number;
+  worstViolations: number;
+}
+
+export interface AlgorithmConfig {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  color: string;
+}
+
+export interface CompetitionParams {
+  tries: number;
+  priority: CompetitionPriority;
+  algorithmIds: string[];
 }

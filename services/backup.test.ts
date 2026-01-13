@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { Resident, ScheduleSession } from '../types';
+import { Resident, ScheduleGrid } from '../types';
 import { GENERATE_INITIAL_RESIDENTS } from '../constants';
+
+// Local definition since ScheduleSession is defined in App.tsx
+interface ScheduleSession {
+    id: string;
+    name: string;
+    data: ScheduleGrid;
+    createdAt: Date;
+}
 
 describe('Backup and Restore Integrity', () => {
     it('should maintain data integrity across export and import cycle', () => {
