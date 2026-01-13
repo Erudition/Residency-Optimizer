@@ -44,38 +44,6 @@ export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
     return residents;
 };
 
-// Requirements Definition - Synchronized with rules.md
-export const REQUIREMENTS: Record<number, { type: AssignmentType, label: string, target: number }[]> = {
-    1: [
-        { type: AssignmentType.WARDS_RED, label: 'Wards (Red/Blue)', target: 12 },
-        { type: AssignmentType.ICU, label: 'ICU', target: 4 },
-        { type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', target: 4 },
-        { type: AssignmentType.EM, label: 'Emergency Medicine', target: 4 },
-        { type: AssignmentType.CARDS, label: 'Cardiology', target: 4 },
-        { type: AssignmentType.ID, label: 'Infectious Disease', target: 2 },
-        { type: AssignmentType.NEPH, label: 'Nephrology', target: 2 },
-        { type: AssignmentType.PULM, label: 'Pulmonology', target: 2 },
-    ],
-    2: [
-        { type: AssignmentType.WARDS_RED, label: 'Senior Wards', target: 8 },
-        { type: AssignmentType.ICU, label: 'Senior ICU', target: 4 },
-        { type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', target: 4 },
-        { type: AssignmentType.ONC, label: 'Onc', target: 4 },
-        { type: AssignmentType.NEURO, label: 'Neuro', target: 4 },
-        { type: AssignmentType.RHEUM, label: 'Rheum', target: 4 },
-        { type: AssignmentType.GI, label: 'GI', target: 4 },
-    ],
-    3: [
-        { type: AssignmentType.WARDS_RED, label: 'Senior Wards', target: 8 },
-        { type: AssignmentType.ICU, label: 'Senior ICU', target: 4 },
-        { type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', target: 4 },
-        { type: AssignmentType.ADD_MED, label: 'Add Med', target: 4 },
-        { type: AssignmentType.ENDO, label: 'Endo', target: 4 },
-        { type: AssignmentType.GERI, label: 'Geri', target: 4 },
-        { type: AssignmentType.HPC, label: 'HPC', target: 4 },
-    ]
-};
-
 export const ASSIGNMENT_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.WARDS_RED]: 'bg-red-200 text-red-900 border-red-300',
     [AssignmentType.WARDS_BLUE]: 'bg-blue-200 text-blue-900 border-blue-300',
@@ -202,11 +170,13 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.ICU, label: 'ICU',
         intensity: 5, setting: ClinicalSetting.CRITICAL_CARE, duration: 4,
         minInterns: 2, maxInterns: 2, minSeniors: 2, maxSeniors: 2,
+        targetIntern: 4, targetSenior: 4
     },
     [AssignmentType.WARDS_RED]: {
         type: AssignmentType.WARDS_RED, label: 'Wards Red',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 2, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
+        targetIntern: 12, targetSenior: 8 // Combined Wards Target often handled in code, but explicit here helps
     },
     [AssignmentType.WARDS_BLUE]: {
         type: AssignmentType.WARDS_BLUE, label: 'Wards Blue',
@@ -217,7 +187,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.NIGHT_FLOAT, label: 'Night Float',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 1, maxInterns: 2, minSeniors: 1, maxSeniors: 3,
-        targetIntern: 2, targetPGY2: 2, targetPGY3: 2,
+        // Relaxed Requirements: No per-resident targets, only staffing minimums
     },
     [AssignmentType.EM]: {
         type: AssignmentType.EM, label: 'Emergency',
@@ -263,49 +233,49 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.ONC, label: 'Heme/Onc',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        targetPGY2: 4, targetSenior: 4,
+        targetPGY2: 4,
     },
     [AssignmentType.NEURO]: {
         type: AssignmentType.NEURO, label: 'Neurology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        targetPGY2: 4, targetSenior: 4,
+        targetPGY2: 4,
     },
     [AssignmentType.RHEUM]: {
         type: AssignmentType.RHEUM, label: 'Rheumatology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        targetPGY2: 4, targetSenior: 4,
+        targetPGY2: 4,
     },
     [AssignmentType.GI]: {
         type: AssignmentType.GI, label: 'Gastroenterology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        targetPGY2: 4, targetSenior: 4,
+        targetPGY2: 4,
     },
     [AssignmentType.ADD_MED]: {
         type: AssignmentType.ADD_MED, label: 'Addiction Med',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
+        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4, // Corrected to 4 per RULES.md (deleted but was source of truth)
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        targetPGY3: 2, targetSenior: 2,
+        targetPGY3: 4,
     },
     [AssignmentType.ENDO]: {
         type: AssignmentType.ENDO, label: 'Endocrinology',
-        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
+        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4, // Corrected to 4
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        targetPGY3: 2, targetSenior: 2,
+        targetPGY3: 4,
     },
     [AssignmentType.GERI]: {
         type: AssignmentType.GERI, label: 'Geriatrics',
-        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
+        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4, // Corrected to 4
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        targetPGY3: 2, targetSenior: 2,
+        targetPGY3: 4,
     },
     [AssignmentType.HPC]: {
         type: AssignmentType.HPC, label: 'Palliative Care',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
+        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4, // Corrected to 4
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        targetPGY3: 2, targetSenior: 2,
+        targetPGY3: 4,
     },
     [AssignmentType.METRO]: {
         type: AssignmentType.METRO, label: 'Metro ICU',
@@ -348,6 +318,25 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         minInterns: 0, maxInterns: 20, minSeniors: 0, maxSeniors: 20,
     },
 };
+
+// DYNAMIC REQUIREMENTS GENERATION
+// Single source of truth: ROTATION_METADATA
+export const REQUIREMENTS: Record<number, { type: AssignmentType, label: string, target: number }[]> = {
+    1: Object.values(ROTATION_METADATA).filter(m => m.targetIntern !== undefined && m.targetIntern > 0).map(m => ({ type: m.type, label: m.label, target: m.targetIntern! })),
+
+    // For PGY2/3, we map targetPGY2/3 strict targets + targetSenior shared targets
+    2: Object.values(ROTATION_METADATA).filter(m => m.targetPGY2 !== undefined && m.targetPGY2 > 0).map(m => ({ type: m.type, label: m.label, target: m.targetPGY2! })),
+
+    3: Object.values(ROTATION_METADATA).filter(m => m.targetPGY3 !== undefined && m.targetPGY3 > 0).map(m => ({ type: m.type, label: m.label, target: m.targetPGY3! })),
+};
+
+// Manually append shared Senior targets (like Wards/ICU) if they apply broadly and aren't caught by specific PGY targets.
+// Although for this system, Wards/ICU are often handled as "Core" blocks rather than strictly named "Required Electives".
+// But we should ensure the Senior Wards/ICU targets exist.
+// Checking `targetSenior` in metadata:
+const seniorTargets = Object.values(ROTATION_METADATA).filter(m => m.targetSenior !== undefined && m.targetSenior > 0).map(m => ({ type: m.type, label: m.label, target: m.targetSenior! }));
+REQUIREMENTS[2].push(...seniorTargets);
+REQUIREMENTS[3].push(...seniorTargets);
 
 // Classification helpers
 export const CORE_TYPES = Object.keys(ROTATION_METADATA).filter(k =>
