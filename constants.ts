@@ -319,48 +319,48 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
 };
 
-    // Consistent order for requirement columns in UI
-    export const REQUIREMENT_ORDER = [
-        AssignmentType.WARDS_RED,
-        AssignmentType.ICU,
-        AssignmentType.NIGHT_FLOAT,
-        AssignmentType.EM,
-        AssignmentType.CARDS,
-        AssignmentType.ID,
-        AssignmentType.NEPH,
-        AssignmentType.PULM,
-        AssignmentType.ONC,
-        AssignmentType.NEURO,
-        AssignmentType.RHEUM,
-        AssignmentType.GI,
-        AssignmentType.ADD_MED,
-        AssignmentType.ENDO,
-        AssignmentType.GERI,
-        AssignmentType.HPC
-    ];
+// Consistent order for requirement columns in UI
+export const REQUIREMENT_ORDER = [
+    AssignmentType.WARDS_RED,
+    AssignmentType.ICU,
+    AssignmentType.NIGHT_FLOAT,
+    AssignmentType.EM,
+    AssignmentType.CARDS,
+    AssignmentType.ID,
+    AssignmentType.NEPH,
+    AssignmentType.PULM,
+    AssignmentType.ONC,
+    AssignmentType.NEURO,
+    AssignmentType.RHEUM,
+    AssignmentType.GI,
+    AssignmentType.ADD_MED,
+    AssignmentType.ENDO,
+    AssignmentType.GERI,
+    AssignmentType.HPC
+];
 
-    // DYNAMIC REQUIREMENTS GENERATION
-    // Single source of truth: ROTATION_METADATA
-    export const REQUIREMENTS: Record<number, { type: AssignmentType, label: string, target: number }[]> = {
-        1: Object.values(ROTATION_METADATA)
-            .filter(m => (m.targetIntern !== undefined && m.targetIntern > 0))
-            .map(m => ({ type: m.type, label: m.label, target: m.targetIntern! })),
+// DYNAMIC REQUIREMENTS GENERATION
+// Single source of truth: ROTATION_METADATA
+export const REQUIREMENTS: Record<number, { type: AssignmentType, label: string, target: number }[]> = {
+    1: Object.values(ROTATION_METADATA)
+        .filter(m => (m.targetIntern !== undefined && m.targetIntern > 0))
+        .map(m => ({ type: m.type, label: m.label, target: m.targetIntern! })),
 
-            2: Object.values(ROTATION_METADATA)
-                .filter(m => (m.targetPGY2 !== undefined && m.targetPGY2 > 0) || (m.targetSenior !== undefined && m.targetSenior > 0))
-                .map(m => ({
-                    type: m.type,
-                    label: m.label,
-                    target: m.targetPGY2 || m.targetSenior!
-                })),
+    2: Object.values(ROTATION_METADATA)
+        .filter(m => (m.targetPGY2 !== undefined && m.targetPGY2 > 0) || (m.targetSenior !== undefined && m.targetSenior > 0))
+        .map(m => ({
+            type: m.type,
+            label: m.label,
+            target: m.targetPGY2 || m.targetSenior!
+        })),
 
-                3: Object.values(ROTATION_METADATA)
-                    .filter(m => (m.targetPGY3 !== undefined && m.targetPGY3 > 0) || (m.targetSenior !== undefined && m.targetSenior > 0))
-                    .map(m => ({
-                        type: m.type,
-                        label: m.label,
-                        target: m.targetPGY3 || m.targetSenior!
-                    })),
+    3: Object.values(ROTATION_METADATA)
+        .filter(m => (m.targetPGY3 !== undefined && m.targetPGY3 > 0) || (m.targetSenior !== undefined && m.targetSenior > 0))
+        .map(m => ({
+            type: m.type,
+            label: m.label,
+            target: m.targetPGY3 || m.targetSenior!
+        })),
 };
 
 // Sort requirements consistently for UI display

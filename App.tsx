@@ -417,31 +417,30 @@ const App: React.FC = () => {
           ));
         });
 
-        // Add each result as a new session
-        let firstId = '';
+        // Pre-generate IDs outside of state callback to ensure we have the correct firstId reference
+        const newIds = results.map((_, idx) => `sched-${Date.now()}-${idx}-${salt}`);
+        const firstId = newIds[0];
+
+        // Update schedules using a functional update to avoid stale state issues from the long-running generation
         setSchedules(prev => {
           const filtered = prev.filter(s => s.id !== newId);
           const nameOffset = filtered.length;
 
-          const newSessions: ScheduleSession[] = results.map((res, idx) => {
-            const sid = `sched-${Date.now()}-${idx}-${salt}`;
-            if (idx === 0) firstId = sid;
-            return {
-              id: sid,
-              name: `S${nameOffset + idx + 1} (${res.winnerName})`,
-              data: res.schedule,
-              createdAt: new Date(),
-              metrics: {
-                stats: calculateStats(residents, res.schedule),
-                violations: {
-                  reqs: getRequirementViolations(residents, res.schedule),
-                  constraints: getWeeklyViolations(residents, res.schedule)
-                },
-                fairness: calculateFairnessMetrics(residents, res.schedule),
-                score: res.score
-              }
-            };
-          });
+          const newSessions: ScheduleSession[] = results.map((res, idx) => ({
+            id: newIds[idx],
+            name: `S${nameOffset + idx + 1} (${res.winnerName})`,
+            data: res.schedule,
+            createdAt: new Date(),
+            metrics: {
+              stats: calculateStats(residents, res.schedule),
+              violations: {
+                reqs: getRequirementViolations(residents, res.schedule),
+                constraints: getWeeklyViolations(residents, res.schedule)
+              },
+              fairness: calculateFairnessMetrics(residents, res.schedule),
+              score: res.score
+            }
+          }));
 
           return [...filtered, ...newSessions];
         });
