@@ -8,7 +8,15 @@ import {
   AssignmentType,
   ScheduleCell
 } from './types';
-import { GENERATE_INITIAL_RESIDENTS, ASSIGNMENT_LABELS, ASSIGNMENT_HEX_COLORS, ASSIGNMENT_ABBREVIATIONS } from './constants';
+import {
+  GENERATE_INITIAL_RESIDENTS,
+  ASSIGNMENT_LABELS,
+  ASSIGNMENT_HEX_COLORS,
+  ASSIGNMENT_ABBREVIATIONS,
+  ACTIVE_START_YEAR,
+  TOTAL_WEEKS
+} from './constants';
+import historicalGridData from './specification/historical_schedules_grid.json';
 import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations } from './services/scheduler';
 import { preloadHistoricalData } from './services/generators/historyPreloader';
 import { ScheduleTable } from './components/ScheduleTable';
@@ -49,7 +57,8 @@ import {
   Trash2,
   RotateCcw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  History
 } from 'lucide-react';
 
 export interface ScheduleSession {
@@ -203,7 +212,20 @@ const App: React.FC = () => {
     loadState('rsp_active_id', 'all')
   );
 
-  const [activeYear, setActiveYear] = useState<number>(2026);
+  const [activeYear, setActiveYear] = useState<number>(ACTIVE_START_YEAR);
+  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cohort'>(() =>
+    loadState('rsp_sort_order', 'pgy')
+  );
+
+  // Dynamic history detection
+  const historicalYears = useMemo(() => 
+    Object.keys(historicalGridData)
+      .map(Number)
+      .filter(y => y < ACTIVE_START_YEAR)
+      .sort((a, b) => a - b),
+  []);
+
+  const historySchedules = useMemo(() => preloadHistoricalData(residents), [residents]);
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft'>('schedule');
 
@@ -250,11 +272,47 @@ const App: React.FC = () => {
     }
   };
 
-  const activeSchedule = useMemo(() => schedules.find(s => s.id === activeScheduleId), [schedules, activeScheduleId]);
+  const getCurrentWeekForYear = (startYear: number): number => {
+    const today = new Date();
+    const ayStart = new Date(startYear, 6, 1); // July 1st
+    if (today < ayStart) return -1;
+    const diffMs = today.getTime() - ayStart.getTime();
+    const weekIdx = Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000));
+    return Math.min(weekIdx, TOTAL_WEEKS - 1);
+  };
+
+  const activeSchedule = useMemo(() => {
+    if (activeScheduleId?.startsWith('history-')) {
+      const year = parseInt(activeScheduleId.replace('history-', ''));
+      const lockedUntil = getCurrentWeekForYear(year);
+      
+      // Augment history with pre-locked flags
+      const baseHistory = historySchedules[year] || {};
+      const augmentedData: ScheduleGrid = {};
+      
+      Object.keys(baseHistory).forEach(resId => {
+        augmentedData[resId] = (baseHistory[resId] || []).map((cell, idx) => ({
+          ...cell,
+          locked: cell.locked || idx <= lockedUntil
+        }));
+      });
+
+      return {
+        id: activeScheduleId,
+        name: `${year} - ${year + 1}`,
+        data: { [year]: augmentedData },
+        createdAt: new Date(),
+        isHistory: true,
+        startYear: year,
+        lockedUntilWeek: lockedUntil
+      } as any;
+    }
+    return schedules.find(s => s.id === activeScheduleId);
+  }, [schedules, activeScheduleId, historySchedules]);
 
   // Derive active residents for the selected year
   const activeResidents = useMemo(() => {
-    return residents.filter(r => {
+    const list = residents.filter(r => {
       const level = activeYear - r.startYear + 1;
       return level >= 1 && level <= 3;
     }).map(r => {
@@ -268,7 +326,19 @@ const App: React.FC = () => {
         clinicType // Used by generators to assign the correct +1 week
       };
     });
-  }, [residents, activeYear]);
+
+    return [...list].sort((a, b) => {
+      if (residentSortOrder === 'cohort') {
+        if (a.cohort !== b.cohort) return a.cohort - b.cohort;
+        if (a.level !== b.level) return a.level - b.level; // Interns (PGY-1) first within cohort
+        return a.name.localeCompare(b.name);
+      } else {
+        // PGY Level sorting: PGY-1 first, PGY-3 last
+        if (a.level !== b.level) return a.level - b.level;
+        return a.name.localeCompare(b.name);
+      }
+    });
+  }, [residents, activeYear, residentSortOrder]);
 
   const { stats, violations } = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating) {
@@ -296,6 +366,10 @@ const App: React.FC = () => {
   const [selectedCell, setSelectedCell] = useState<{ resId: string, week: number } | null>(null);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [scheduleToRename, setScheduleToRename] = useState<ScheduleSession | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('rsp_sort_order', JSON.stringify(residentSortOrder));
+  }, [residentSortOrder]);
 
   // Track active workers for cleanup
   const activeWorkersRef = useRef<Set<Worker>>(new Set());
@@ -411,7 +485,7 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem('rsp_residents_v3', JSON.stringify(residents)); }, [residents]);
   useEffect(() => { localStorage.setItem('rsp_schedules_v3', JSON.stringify(schedules)); }, [schedules]);
-  useEffect(() => { if (activeScheduleId) localStorage.setItem('rsp_active_id', activeScheduleId); }, [activeScheduleId]);
+  useEffect(() => { if (activeScheduleId) localStorage.setItem('rsp_active_id', JSON.stringify(activeScheduleId)); }, [activeScheduleId]);
   useEffect(() => { localStorage.setItem('rsp_algo_stats_v1', JSON.stringify(algoStats)); }, [algoStats]);
   useEffect(() => { localStorage.setItem('rsp_comp_params_v1', JSON.stringify(compParams)); }, [compParams]);
 
@@ -704,6 +778,34 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        {/* Dynamic History Tabs */}
+        {historicalYears.map(year => {
+          const tabId = `history-${year}`;
+          const isActive = activeScheduleId === tabId;
+          return (
+            <div key={tabId} className={`flex-none flex items-end relative mr-1 ${isActive ? 'z-40' : 'z-20'}`}>
+              <div
+                onClick={() => {
+                  startTransition(() => {
+                    setActiveScheduleId(tabId);
+                    setActiveYear(year);
+                    if (['residents', 'backup', 'reset'].includes(activeTab)) {
+                      setActiveTab('schedule');
+                    }
+                  });
+                }}
+                className={`flex items-center gap-2 px-4 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${isActive ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
+              >
+                <History size={14} className={isActive ? 'text-blue-500' : 'text-gray-400'} />
+                {year}-{year + 1}
+                {isActive && (
+                  <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
+                )}
+              </div>
+            </div>
+          );
+        })}
+
         {/* Sticky All Tab */}
         <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'all' ? 'z-40' : 'z-20'}`}>
           <div
@@ -717,7 +819,7 @@ const App: React.FC = () => {
             }}
             className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'all' ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
           >
-            All
+            All {ACTIVE_START_YEAR} Candidates
             {activeScheduleId === 'all' && (
               <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
             )}
@@ -906,15 +1008,18 @@ const App: React.FC = () => {
 
                           <button
                             onClick={() => {
-                              if (confirm("Unpin all assignments across all schedules?")) {
-                                setSchedules(prev => prev.map(s => ({
-                                  ...s,
-                                  data: Object.fromEntries(Object.entries(s.data).map(([rid, weeks]) => [
-                                    rid,
-                                    (weeks as ScheduleCell[]).map(w => ({ ...w, locked: false }))
-                                  ]))
-                                })));
-                              }
+                                if (confirm("Unpin all assignments across all schedules?")) {
+                                  setSchedules(prev => prev.map(s => ({
+                                    ...s,
+                                    data: Object.fromEntries(Object.entries(s.data).map(([year, grid]) => [
+                                      year,
+                                      Object.fromEntries(Object.entries(grid as ScheduleGrid).map(([rid, weeks]) => [
+                                        rid,
+                                        weeks.map(w => ({ ...w, locked: false }))
+                                      ]))
+                                    ]))
+                                  })));
+                                }
                             }}
                             className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg text-gray-700 hover:border-blue-400 hover:text-blue-600 transition-all group font-bold"
                           >
@@ -951,6 +1056,7 @@ const App: React.FC = () => {
                 residents={residents}
                 schedules={schedules}
                 activeScheduleId={activeScheduleId}
+                activeYear={activeYear}
                 onSelect={(id) => {
                   startTransition(() => {
                     setActiveScheduleId(id);
@@ -1019,32 +1125,69 @@ const App: React.FC = () => {
               {activeTab === 'schedule' && (
                 <div className="flex-1 overflow-hidden flex flex-col">
                   {/* Year Tabs Overlay/Bar */}
-                  <div className="px-6 py-3 bg-white border-b flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-4">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Academic Year</span>
+                  <div className="px-6 py-3 bg-white border-b grid grid-cols-3 items-center shrink-0">
+                    {/* Left: Group By */}
+                    <div className="flex items-center gap-3 justify-self-start">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Group By</span>
                       <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
-                        {[2026, 2027, 2028].map(y => (
-                          <button
-                            key={y}
-                            onClick={() => setActiveYear(y)}
-                            className={`px-6 py-1.5 rounded-lg text-xs font-bold transition-all ${activeYear === y ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                          >
-                            {y}
-                          </button>
-                        ))}
+                        <button
+                          onClick={() => setResidentSortOrder('pgy')}
+                          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                          <LayoutGrid size={14} />
+                          PGY Level
+                        </button>
+                        <button
+                          onClick={() => setResidentSortOrder('cohort')}
+                          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                          <Users size={14} />
+                          Cohort
+                        </button>
                       </div>
                     </div>
-                    {hasViolations && (
-                      <div className="flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-full border border-red-100 animate-pulse">
-                        <AlertCircle size={14} />
-                        <span className="text-[10px] font-bold uppercase tracking-tight">Active Conflicts</span>
+
+                    {/* Center: Academic Year */}
+                    <div className="flex items-center gap-3 justify-self-center">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Academic Year</span>
+                      <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+                        {activeSchedule?.isHistory ? (
+                          <div className="px-6 py-1.5 bg-white text-blue-600 shadow-sm rounded-lg text-xs font-bold transition-all">
+                            {activeYear} - {activeYear + 1}
+                          </div>
+                        ) : (
+                          [ACTIVE_START_YEAR, ACTIVE_START_YEAR + 1, ACTIVE_START_YEAR + 2].map(y => (
+                            <button
+                              key={y}
+                              onClick={() => {
+                                startTransition(() => {
+                                  setActiveYear(y);
+                                });
+                              }}
+                              className={`px-6 py-1.5 rounded-lg text-xs font-bold transition-all ${activeYear === y ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                              {y} - {y + 1}
+                            </button>
+                          ))
+                        )}
                       </div>
-                    )}
+                    </div>
+
+                    {/* Right: Violations */}
+                    <div className="justify-self-end">
+                      {hasViolations && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-full border border-red-100 animate-pulse">
+                          <AlertCircle size={14} />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Staffing Violations</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex-1 overflow-hidden p-6">
                     <ScheduleTable
                       residents={activeResidents}
                       schedule={currentGrid}
+                      startYear={activeSchedule?.isHistory ? activeSchedule.startYear : activeYear}
                       onCellClick={handleCellClick}
                       onLockWeek={() => { }}
                       onLockResident={() => { }}
@@ -1056,7 +1199,7 @@ const App: React.FC = () => {
               {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
               {activeTab === 'assignments' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
               {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={activeResidents} schedule={currentGrid} precalculatedViolations={activeSchedule?.metrics?.violations.reqs} /></div>}
-              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={activeSchedule!.data} activeYear={activeYear} /></div>}
               {activeTab === 'relationships' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
               {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={activeSchedule?.metrics?.fairness} /></div>}
               {activeTab === 'export' && (
