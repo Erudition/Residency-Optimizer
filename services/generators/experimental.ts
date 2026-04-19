@@ -1,8 +1,7 @@
-
-import { Resident, ScheduleGrid, AssignmentType } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, fulfillsRequirement } from '../../constants';
 import { ScheduleGenerator } from './types';
-import { canFitBlock, placeBlock, getRequirementCount } from './utils';
+import { canFitBlock, placeBlock, getCumulativeRequirementCount } from './utils';
 
 class SeededRNG {
     private seed: number;
@@ -24,7 +23,7 @@ class SeededRNG {
  */
 export const ExperimentalGenerator: ScheduleGenerator = {
     name: "Staffing First (Week-First)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory): ScheduleGrid => {
         const rng = new SeededRNG(Date.now() + attemptIndex * 7);
         const seededShuffle = <T>(array: T[]): T[] => {
             const a = [...array];
@@ -125,13 +124,12 @@ export const ExperimentalGenerator: ScheduleGenerator = {
 
             reqs.forEach(req => {
                 seededShuffle(residents.filter(r => r.level === level)).forEach(res => {
-                    let cur = getRequirementCount(newSchedule[res.id], req.type, level);
                     const meta = ROTATION_METADATA[req.type];
                     if (!meta) return;
                     const dur = meta.duration;
                     const possibleTypes = fulfillsRequirement(null, req.type) || req.type === AssignmentType.WARDS_RED ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE] : [req.type];
 
-                    while (cur < req.target) {
+                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target) {
                         let bestW = -1, bestT = possibleTypes[0], bestScore = Infinity;
 
                         for (let ww = 0; ww <= TOTAL_WEEKS - dur; ww++) {

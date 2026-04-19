@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import {
   Resident,
   ScheduleGrid,
+  ScheduleHistory,
   AssignmentType,
   ScheduleCell
 } from './types';
@@ -53,7 +54,7 @@ import {
 export interface ScheduleSession {
   id: string;
   name: string;
-  data: ScheduleGrid;
+  data: ScheduleHistory; // Represents multiple active years (e.g. { 2026: ..., 2027: ... })
   createdAt: Date;
   isGenerating?: boolean;
   progress?: number;
@@ -201,6 +202,8 @@ const App: React.FC = () => {
     loadState('rsp_active_id', 'all')
   );
 
+  const [activeYear, setActiveYear] = useState<number>(2026);
+
   const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft'>('schedule');
 
   const [algoConfig, setAlgoConfig] = useState<AlgorithmConfig[]>([
@@ -248,6 +251,17 @@ const App: React.FC = () => {
 
   const activeSchedule = useMemo(() => schedules.find(s => s.id === activeScheduleId), [schedules, activeScheduleId]);
 
+  // Derive active residents for the selected year
+  const activeResidents = useMemo(() => {
+    return residents.filter(r => {
+      const level = activeYear - r.startYear + 1;
+      return level >= 1 && level <= 3;
+    }).map(r => ({
+      ...r,
+      level: (activeYear - r.startYear + 1) as 1 | 2 | 3
+    }));
+  }, [residents, activeYear]);
+
   const { stats, violations } = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating) {
       return {
@@ -256,25 +270,18 @@ const App: React.FC = () => {
       };
     }
 
-    // Use pre-calculated metrics if available
-    if (activeSchedule.metrics) {
-      return {
-        stats: activeSchedule.metrics.stats,
-        violations: activeSchedule.metrics.violations
-      };
-    }
+    const yearData = activeSchedule.data[activeYear] || {};
 
-    // Fallback for legacy data (calculated on demand once)
     return {
-      stats: calculateStats(residents, activeSchedule.data),
+      stats: calculateStats(activeResidents, yearData),
       violations: {
-        reqs: getRequirementViolations(residents, activeSchedule.data),
-        constraints: getWeeklyViolations(residents, activeSchedule.data)
+        reqs: getRequirementViolations(activeResidents, yearData),
+        constraints: getWeeklyViolations(activeResidents, yearData)
       }
     };
-  }, [activeSchedule, residents]);
+  }, [activeSchedule, activeResidents, activeYear]);
 
-  const currentGrid = activeSchedule?.data || {};
+  const currentGrid = activeSchedule?.data[activeYear] || {};
   const hasViolations = violations.reqs.length > 0 || violations.constraints.length > 0;
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -294,7 +301,7 @@ const App: React.FC = () => {
   }, []);
 
   // Helper to spawn a web worker for background generation
-  const runGenerationTask = (residents: Resident[], existing: ScheduleGrid, params: CompetitionParams, onProgress: (p: number, a: number) => void): Promise<{ results: any[] }> => {
+  const runGenerationTask = (residents: Resident[], existing: ScheduleGrid, params: CompetitionParams, onProgress: (p: number, a: number) => void, historicalSchedules?: ScheduleHistory): Promise<{ results: any[] }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
       activeWorkersRef.current.add(worker);
@@ -318,7 +325,7 @@ const App: React.FC = () => {
         worker.terminate();
         reject(e);
       };
-      worker.postMessage({ residents, existing, params });
+      worker.postMessage({ residents, existing, params, historicalSchedules });
     });
   };
 
@@ -371,12 +378,12 @@ const App: React.FC = () => {
         const initialSession: ScheduleSession = {
           id: 'init-1',
           name: `S1 (${sched.winnerName})`,
-          data: sched.schedule,
+          data: { [activeYear]: sched.schedule },
           createdAt: new Date(),
           metrics: {
             stats: calculateStats(residents, sched.schedule),
             violations: {
-              reqs: getRequirementViolations(residents, sched.schedule),
+              reqs: getRequirementViolations(residents, sched.schedule, {}),
               constraints: getWeeklyViolations(residents, sched.schedule)
             },
             fairness: calculateFairnessMetrics(residents, sched.schedule),
@@ -411,11 +418,22 @@ const App: React.FC = () => {
 
     (async () => {
       try {
-        const { results } = await runGenerationTask(residents, {}, compParams, (progress, attempts) => {
+        // Pass ALL previous years in this session as history
+        // If we are in activeYear, the history is any year < activeYear
+        const history: ScheduleHistory = {};
+        if (activeSchedule) {
+          Object.entries(activeSchedule.data).forEach(([year, grid]) => {
+            if (parseInt(year) < activeYear) {
+              history[parseInt(year)] = grid;
+            }
+          });
+        }
+
+        const { results } = await runGenerationTask(activeResidents, {}, compParams, (progress, attempts) => {
           setSchedules(prev => prev.map(s =>
             s.id === newId ? { ...s, progress, attemptsMade: attempts } : s
           ));
-        });
+        }, history);
 
         // Pre-generate IDs outside of state callback to ensure we have the correct firstId reference
         const newIds = results.map((_, idx) => `sched-${Date.now()}-${idx}-${salt}`);
@@ -426,21 +444,28 @@ const App: React.FC = () => {
           const filtered = prev.filter(s => s.id !== newId);
           const nameOffset = filtered.length;
 
-          const newSessions: ScheduleSession[] = results.map((res, idx) => ({
-            id: newIds[idx],
-            name: `S${nameOffset + idx + 1} (${res.winnerName})`,
-            data: res.schedule,
-            createdAt: new Date(),
-            metrics: {
-              stats: calculateStats(residents, res.schedule),
-              violations: {
-                reqs: getRequirementViolations(residents, res.schedule),
-                constraints: getWeeklyViolations(residents, res.schedule)
-              },
-              fairness: calculateFairnessMetrics(residents, res.schedule),
-              score: res.score
-            }
-          }));
+          const newSessions: ScheduleSession[] = results.map((res, idx) => {
+            // Keep history from current active session if we're building on it
+            const integratedData: ScheduleHistory = activeSchedule 
+              ? { ...activeSchedule.data, [activeYear]: res.schedule }
+              : { [activeYear]: res.schedule };
+
+            return {
+              id: newIds[idx],
+              name: `S${nameOffset + idx + 1} (${res.winnerName})`,
+              data: integratedData,
+              createdAt: new Date(),
+              metrics: {
+                stats: calculateStats(residents, res.schedule),
+                violations: {
+                  reqs: getRequirementViolations(residents, res.schedule, history),
+                  constraints: getWeeklyViolations(residents, res.schedule)
+                },
+                fairness: calculateFairnessMetrics(residents, res.schedule),
+                score: res.score
+              }
+            };
+          });
 
           return [...filtered, ...newSessions];
         });
@@ -978,13 +1003,49 @@ const App: React.FC = () => {
             </div>
           ) : (
             <>
-              {activeTab === 'schedule' && <div className="flex-1 overflow-hidden p-6"><ScheduleTable residents={residents} schedule={currentGrid} onCellClick={handleCellClick} onLockWeek={() => { }} onLockResident={() => { }} onToggleLock={() => { }} /></div>}
-              {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={residents} stats={stats} /></div>}
-              {activeTab === 'assignments' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={residents} schedule={currentGrid} /></div>}
-              {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={residents} schedule={currentGrid} precalculatedViolations={activeSchedule?.metrics?.violations.reqs} /></div>}
-              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={residents} schedule={currentGrid} /></div>}
-              {activeTab === 'relationships' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={residents} schedule={currentGrid} /></div>}
-              {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={residents} schedule={currentGrid} precalculated={activeSchedule?.metrics?.fairness} /></div>}
+              {activeTab === 'schedule' && (
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  {/* Year Tabs Overlay/Bar */}
+                  <div className="px-6 py-3 bg-white border-b flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-4">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Academic Year</span>
+                      <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+                        {[2026, 2027, 2028].map(y => (
+                          <button
+                            key={y}
+                            onClick={() => setActiveYear(y)}
+                            className={`px-6 py-1.5 rounded-lg text-xs font-bold transition-all ${activeYear === y ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                          >
+                            {y}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {hasViolations && (
+                      <div className="flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-full border border-red-100 animate-pulse">
+                        <AlertCircle size={14} />
+                        <span className="text-[10px] font-bold uppercase tracking-tight">Active Conflicts</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-hidden p-6">
+                    <ScheduleTable
+                      residents={activeResidents}
+                      schedule={currentGrid}
+                      onCellClick={handleCellClick}
+                      onLockWeek={() => { }}
+                      onLockResident={() => { }}
+                      onToggleLock={() => { }}
+                    />
+                  </div>
+                </div>
+              )}
+              {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
+              {activeTab === 'assignments' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={activeResidents} schedule={currentGrid} precalculatedViolations={activeSchedule?.metrics?.violations.reqs} /></div>}
+              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'relationships' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={activeSchedule?.metrics?.fairness} /></div>}
               {activeTab === 'export' && (
                 <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
                   <div className="max-w-2xl mx-auto">

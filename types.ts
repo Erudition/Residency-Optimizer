@@ -12,7 +12,8 @@ export enum ClinicalSetting {
 export interface Resident {
   id: string;
   name: string;
-  level: PgyLevel;
+  level: PgyLevel; // Computed level for the active year context
+  startYear: number; // The calendar year they started as a PGY-1 (e.g. 2026)
   cohort: number; // 0-4 for the 4+1 cohorts
   avoidResidentIds: string[];
 }
@@ -62,9 +63,11 @@ export interface ScheduleCell {
 }
 
 // Map: ResidentID -> Array of 52 weeks of assignments
-export type ScheduleGrid = Record<string, ScheduleCell[]>;
+export type ScheduleGrid = Record<string, ScheduleCell[]>; // residentId -> Weekly cells
 
-export interface ScheduleStats {
+export type ScheduleHistory = Record<number, ScheduleGrid>; // year -> ScheduleGrid
+
+export interface Requirement {
   [residentId: string]: Record<AssignmentType, number>;
 }
 

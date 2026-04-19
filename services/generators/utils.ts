@@ -24,7 +24,20 @@ export const placeBlock = (schedule: ScheduleGrid, residentId: string, start: nu
 
 export const shuffle = <T>(array: T[]): T[] => [...array].sort(() => Math.random() - 0.5);
 
-export const getRequirementCount = (row: ScheduleCell[], type: AssignmentType, level: number): number => {
+export const getRequirementCount = (row: ScheduleCell[], type: AssignmentType): number => {
     if (!row) return 0;
     return row.filter(c => c && fulfillsRequirement(c.assignment, type)).length;
+};
+
+export const getCumulativeRequirementCount = (residentId: string, currentYearRow: ScheduleCell[], type: AssignmentType, history?: ScheduleHistory): number => {
+    let total = getRequirementCount(currentYearRow, type);
+    if (!history) return total;
+
+    Object.values(history).forEach(grid => {
+        const row = grid[residentId];
+        if (row) {
+            total += row.filter(c => c && fulfillsRequirement(c.assignment, type)).length;
+        }
+    });
+    return total;
 };

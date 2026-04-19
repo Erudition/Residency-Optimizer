@@ -38,34 +38,41 @@ const ProgressBar = ({ value, target, colorClass, min, max }: { value: number, t
     );
 };
 
-export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, schedule }) => {
+export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, activeYear }) => {
 
     const auditData = useMemo(() => {
         return residents.map(r => {
-            const weeks = schedule[r.id] || [];
             let outpatient = 0;
             let inpatient = 0;
             let criticalCare = 0;
-            let criticalCareCore = 0; // Excludes CVICU to suppress >6m violation
+            let criticalCareCore = 0;
             let nightFloat = 0;
 
-            weeks.forEach(c => {
-                if (!c || !c.assignment) return;
-                const meta = ROTATION_METADATA[c.assignment];
-                if (!meta) return;
+            // Compute cumulative totals across all years
+            Object.values(history).forEach(grid => {
+                const weeks = grid[r.id] || [];
+                weeks.forEach(c => {
+                    if (!c || !c.assignment) return;
+                    const meta = ROTATION_METADATA[c.assignment];
+                    if (!meta) return;
 
-                if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
-                if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
-                if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
-                    criticalCare++;
-                    if (c.assignment !== AssignmentType.CVICU) {
-                        criticalCareCore++;
+                    if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
+                    if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
+                    if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
+                        criticalCare++;
+                        if (c.assignment !== AssignmentType.CVICU) {
+                            criticalCareCore++;
+                        }
                     }
-                }
-                if (c.assignment === AssignmentType.NIGHT_FLOAT) nightFloat++;
+                    if (c.assignment === AssignmentType.NIGHT_FLOAT) nightFloat++;
+                });
             });
 
-            const yearTarget = 13.3;
+            // Graduation targets (3 years total)
+            const outpatientTarget = 30; // 10 months foundational
+            const inpatientTarget = 30;  // 10 months total IP/CC
+            const critCareMax = 18;     // 6 months max
+            const critCareMin = 6;      // 2 months min
 
             return {
                 ...r,
@@ -73,13 +80,13 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, schedule }) 
                 inpatient,
                 criticalCare,
                 nightFloat,
-                outpatientProgress: (outpatient / yearTarget) * 100,
-                inpatientProgress: ((inpatient + criticalCare) / yearTarget) * 100,
-                critCareViolation: criticalCareCore > 8,
-                nfViolation: nightFloat > 8
+                outpatientProgress: (outpatient / outpatientTarget) * 100,
+                inpatientProgress: ((inpatient + criticalCare) / inpatientTarget) * 100,
+                critCareViolation: criticalCareCore > critCareMax,
+                nfViolation: nightFloat > 12 // ACGME doesn't have a hard NF limit like ICU but let's keep it
             };
         });
-    }, [residents, schedule]);
+    }, [residents, history]);
 
     const globalStats = useMemo(() => {
         const total = auditData.length;
@@ -134,9 +141,9 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, schedule }) 
                 <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
                         <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                            <ShieldCheck className="text-green-600" /> ACGME Graduation Requirement Audit
+                            <ShieldCheck className="text-green-600" /> ACGME Graduation Requirement Audit (Cumulative)
                         </h2>
-                        <span className="text-xs text-gray-500 italic">Snapshot of single-year progress towards multi-year totals.</span>
+                        <span className="text-xs text-gray-500 italic">Tracking progress across all historical and current schedules.</span>
                     </div>
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-100 text-[10px] uppercase font-bold text-gray-600">

@@ -1,8 +1,7 @@
-
-import { Resident, ScheduleGrid, AssignmentType } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement } from '../../constants';
 import { ScheduleGenerator } from './types';
-import { canFitBlock, placeBlock, shuffle, getRequirementCount } from './utils';
+import { canFitBlock, placeBlock, shuffle, getCumulativeRequirementCount } from './utils';
 
 class SeededRNG {
     private seed: number;
@@ -17,7 +16,7 @@ class SeededRNG {
 
 export const StochasticGenerator: ScheduleGenerator = {
     name: "Stochastic (Balanced Fill)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory): ScheduleGrid => {
         const rng = new SeededRNG(Date.now() + Math.random() * 1000 + attemptIndex * 7);
 
         const seededShuffle = <T>(array: T[]): T[] => {
@@ -96,9 +95,9 @@ export const StochasticGenerator: ScheduleGenerator = {
                     pool.sort((a, b) => {
                         const isW = fulfillsRequirement(type, AssignmentType.WARDS_RED);
                         const reqT = isW ? AssignmentType.WARDS_RED : type;
-                        const fA = getRequirementCount(newSchedule[a.id], reqT, a.level);
+                        const fA = getCumulativeRequirementCount(a.id, newSchedule[a.id], reqT, historicalSchedules);
                         const tA = REQUIREMENTS[a.level]?.find(req => isW ? fulfillsRequirement(null, req.type) : req.type === type)?.target || 0;
-                        const fB = getRequirementCount(newSchedule[b.id], reqT, b.level);
+                        const fB = getCumulativeRequirementCount(b.id, newSchedule[b.id], reqT, historicalSchedules);
                         const tB = REQUIREMENTS[b.level]?.find(req => isW ? fulfillsRequirement(null, req.type) : req.type === type)?.target || 0;
 
                         const uA = fA < tA ? 0 : 1;
@@ -121,13 +120,12 @@ export const StochasticGenerator: ScheduleGenerator = {
 
             reqs.forEach(req => {
                 seededShuffle(residents.filter(r => r.level === level)).forEach(res => {
-                    let cur = getRequirementCount(newSchedule[res.id], req.type, level);
                     const meta = ROTATION_METADATA[req.type];
                     if (!meta) return;
                     const dur = meta.duration;
                     const possibleTypes = fulfillsRequirement(null, req.type) || req.type === AssignmentType.WARDS_RED ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE] : [req.type];
 
-                    while (cur < req.target) {
+                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target) {
                         let bestW = -1, bestT = possibleTypes[0], bestScore = Infinity;
 
                         for (let w = 0; w <= TOTAL_WEEKS - dur; w++) {
@@ -157,7 +155,6 @@ export const StochasticGenerator: ScheduleGenerator = {
 
                         if (bestScore >= 10000) break;
                         placeBlock(newSchedule, res.id, bestW, dur, bestT);
-                        cur += dur;
                     }
                 });
             });

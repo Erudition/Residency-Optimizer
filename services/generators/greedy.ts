@@ -1,12 +1,11 @@
-
-import { Resident, ScheduleGrid, AssignmentType } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement } from '../../constants';
 import { ScheduleGenerator } from './types';
-import { canFitBlock, placeBlock, shuffle, getRequirementCount } from './utils';
+import { canFitBlock, placeBlock, shuffle, getCumulativeRequirementCount } from './utils';
 
 export const GreedyGenerator: ScheduleGenerator = {
     name: "Greedy (Legacy)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex?: number): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex?: number, historicalSchedules?: ScheduleHistory): ScheduleGrid => {
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
         residents.forEach(r => {
@@ -93,7 +92,7 @@ export const GreedyGenerator: ScheduleGenerator = {
 
             pgyRequirements.forEach(req => {
                 shuffle(residents.filter(r => r.level === level)).forEach(res => {
-                    let current = getRequirementCount(newSchedule[res.id], req.type, level);
+                    const current = getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules);
                     const meta = ROTATION_METADATA[req.type];
                     if (!meta) return;
 
@@ -103,7 +102,7 @@ export const GreedyGenerator: ScheduleGenerator = {
                         ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE]
                         : [req.type];
 
-                    while (current < req.target) {
+                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target) {
                         const best = findBestBalancedWindow(res.id, typesToTry, duration);
                         if (best.start === -1) break;
 
@@ -113,7 +112,6 @@ export const GreedyGenerator: ScheduleGenerator = {
 
                         if (currentStaff < maxAllowed) {
                             placeBlock(newSchedule, res.id, best.start, duration, best.type);
-                            current += duration;
                         } else break;
                     }
                 });

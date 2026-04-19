@@ -1,7 +1,7 @@
 
-import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics } from '../types';
+import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics } from '../types';
 import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS } from '../constants';
-import { getRequirementCount } from './generators/utils';
+import { getRequirementCount, getCumulativeRequirementCount } from './generators/utils';
 import { GreedyGenerator } from './generators/greedy';
 import { StochasticGenerator } from './generators/stochastic';
 import { ExperimentalGenerator } from './generators/experimental';
@@ -23,7 +23,8 @@ export const generateSchedule = async (
   residents: Resident[],
   existing: ScheduleGrid,
   params: CompetitionParams = { tries: 300, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 },
-  onProgress?: (progress: number, attemptsMade: number) => void
+  onProgress?: (progress: number, attemptsMade: number) => void,
+  historicalSchedules?: ScheduleHistory
 ): Promise<{ results: CompetitionResult[] }> => {
   const allGenerators = [
     { id: 'greedy', generator: GreedyGenerator, name: 'Greedy' },
@@ -52,12 +53,12 @@ export const generateSchedule = async (
   for (let i = 0; i < attempts.length; i++) {
     const att = attempts[i];
     try {
-      const schedule = att.generator.generate(residents, existing, i);
-      const reqViolations = getRequirementViolations(residents, schedule);
+      const schedule = att.generator.generate(residents, existing, i, historicalSchedules);
+      const reqViolations = getRequirementViolations(residents, schedule, historicalSchedules);
       const weekViolations = getWeeklyViolations(residents, schedule);
       const totalViolations = reqViolations.length + weekViolations.length;
       const currentUnderstaffing = weekViolations.filter(v => v.issue.includes('Min')).length;
-      const score = calculateScheduleScore(residents, schedule);
+      const score = calculateScheduleScore(residents, schedule, historicalSchedules);
 
       results.push({
         schedule,
@@ -111,13 +112,12 @@ export const calculateStats = (residents: Resident[], schedule: ScheduleGrid): S
   return stats;
 };
 
-export const getRequirementViolations = (residents: Resident[], schedule: ScheduleGrid): RequirementViolation[] => {
+export const getRequirementViolations = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): RequirementViolation[] => {
   const violations: RequirementViolation[] = [];
   residents.forEach(r => {
     const reqs = REQUIREMENTS[r.level] || [];
     reqs.forEach(req => {
-      const weeks = schedule[r.id] || [];
-      const count = getRequirementCount(weeks, req.type, r.level);
+      const count = getCumulativeRequirementCount(r.id, schedule[r.id] || [], req.type, historicalSchedules);
       if (count < req.target) {
         violations.push({ residentId: r.id, type: req.type, target: req.target, actual: count });
       }
@@ -266,9 +266,9 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
   return diversity;
 };
 
-export const calculateScheduleScore = (residents: Resident[], schedule: ScheduleGrid): number => {
+export const calculateScheduleScore = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): number => {
   const weeklyViolations = getWeeklyViolations(residents, schedule);
-  const reqViolations = getRequirementViolations(residents, schedule);
+  const reqViolations = getRequirementViolations(residents, schedule, historicalSchedules);
   const fairness = calculateFairnessMetrics(residents, schedule);
 
   // New Cost Function (Lower is Better)

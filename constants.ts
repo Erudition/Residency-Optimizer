@@ -4,45 +4,39 @@ import { AssignmentType, Resident, RotationConfig, ClinicalSetting } from './typ
 export const TOTAL_WEEKS = 52;
 export const COHORT_COUNT = 5;
 
-// Initial Data Generation Helpers
-export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
+export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
     const residents: Resident[] = [];
 
-    // 15 PGY1 (Numbers 1-15)
-    for (let i = 1; i <= 15; i++) {
-        residents.push({
-            id: `pgy1-${i}`,
-            name: `Resident ${i}`,
-            level: 1,
-            cohort: (i - 1) % COHORT_COUNT,
-            avoidResidentIds: [],
-        });
-    }
+    const getClassSize = (startYear: number) => {
+        if (startYear === 2024) return 8; // The 2026 PGY-3s
+        if (startYear === 2025) return 14; // The 2026 PGY-2s
+        return 15; // Standard cohort capacity
+    };
 
-    // 14 PGY2 (Numbers 16-29)
-    for (let i = 16; i <= 29; i++) {
-        residents.push({
-            id: `pgy2-${i}`,
-            name: `Resident ${i}`,
-            level: 2,
-            cohort: (i - 1) % COHORT_COUNT,
-            avoidResidentIds: [],
-        });
-    }
-
-    // 8 PGY3 (Numbers 30-37)
-    for (let i = 30; i <= 37; i++) {
-        residents.push({
-            id: `pgy3-${i}`,
-            name: `Resident ${i}`,
-            level: 3,
-            cohort: (i - 1) % COHORT_COUNT,
-            avoidResidentIds: [],
-        });
+    let idCounter = 1;
+    
+    for (let startYear = activeYear - 2; startYear <= activeYear; startYear++) {
+        const level = (activeYear - startYear + 1) as 1 | 2 | 3;
+        const size = getClassSize(startYear);
+        
+        for (let i = 1; i <= size; i++) {
+            residents.push({
+                id: `c${startYear+3}-${i}`, // e.g. c2029-1
+                name: `Resident ${idCounter}`,
+                level,
+                startYear,
+                cohort: (idCounter - 1) % COHORT_COUNT,
+                avoidResidentIds: [],
+            });
+            idCounter++;
+        }
     }
 
     return residents;
 };
+
+// Fallback baseline for tests
+export const GENERATE_INITIAL_RESIDENTS = () => GENERATE_RESIDENTS_FOR_YEAR(2026);
 
 export const ASSIGNMENT_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.WARDS_RED]: 'bg-red-200 text-red-900 border-red-300',
