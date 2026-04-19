@@ -167,7 +167,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     [AssignmentType.MICU]: {
         type: AssignmentType.MICU, label: 'ICU',
         intensity: 5, setting: ClinicalSetting.CRITICAL_CARE, duration: 4,
-        minInterns: 2, maxInterns: 2, minSeniors: 2, maxSeniors: 2,
+        minInterns: 2, maxInterns: 3, minSeniors: 2, maxSeniors: 2,
         targetIntern: 4, targetSenior: 4
     },
     [AssignmentType.WARDS_RED]: {
@@ -201,7 +201,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     [AssignmentType.WARDS_METRO]: {
         type: AssignmentType.WARDS_METRO, label: 'Met Wards',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 4,
-        minInterns: 0, maxInterns: 3, minSeniors: 0, maxSeniors: 2,
+        minInterns: 1, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
     },
     [AssignmentType.CARDS]: {
         type: AssignmentType.CARDS, label: 'Cardiology',
@@ -230,25 +230,25 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     [AssignmentType.ONC]: {
         type: AssignmentType.ONC, label: 'Heme/Onc',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4,
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
+        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
         targetPGY2: 4,
     },
     [AssignmentType.NEURO]: {
         type: AssignmentType.NEURO, label: 'Neurology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4,
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
+        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
         targetPGY2: 4,
     },
     [AssignmentType.RHEUM]: {
         type: AssignmentType.RHEUM, label: 'Rheumatology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
+        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
         targetPGY2: 4,
     },
     [AssignmentType.GI]: {
         type: AssignmentType.GI, label: 'Gastroenterology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
+        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
         targetPGY2: 4,
     },
     [AssignmentType.ADD_MED]: {
