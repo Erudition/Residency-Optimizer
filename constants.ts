@@ -3,27 +3,35 @@ import { AssignmentType, Resident, RotationConfig, ClinicalSetting } from './typ
 
 export const TOTAL_WEEKS = 52;
 export const COHORT_COUNT = 5;
+export const ACTIVE_START_YEAR = 2026;
 
 export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
     const residents: Resident[] = [];
 
-    const R1_CLASS_2025 = ["Baset, Nawsin","Cho, Kevin Wook Jin","De La Cruz, Aaron Daniel","Deen, Nafis M","Liu, Gongkai","Masud, Saad","Min, Shao-Ting","Thanedar, Sarita","Yu, Tommy","Alvarado, Ramona Davina","Dawood, Umar Asif","Delano, Victoria Remilekun","Echegaray, Sebastian Alexander","Hill, Brittany Marie","Jentz, Austin Lee","Letson, Mia Kang","Millan, Cassandra Marie","Nazeer, Usman Imran","Ndze, Lila Linda","Orden, Martin Basobas","Rendon, Arthur Isaac","Sanderson, Jacob Nakolo","Shah, Vidur Hemant"];
-    const R2_CLASS_2024 = ["Melo, Sebastian","Wright, Andrew Hunter"];
+    const CLASS_2023 = ["Wright, Andrew Hunter","Melo, Sebastian"];
+    const CLASS_2024 = ["Baset, Nawsin","Cho, Kevin Wook Jin","De La Cruz, Aaron Daniel","Deen, Nafis M","Liu, Gongkai","Masud, Saad","Min, Shao-Ting","Mysore, Nishad Narain","Thanedar, Sarita","Yu, Tommy"];
+    const CLASS_2025 = ["Alvarado, Ramona Davina","Dawood, Umar Asif","Delano, Victoria Remilekun","Echegaray, Sebastian Alexander","Hill, Brittany Marie","Jentz, Austin Lee","Letson, Mia Kang","Millan, Cassandra Marie","Nazeer, Usman Imran","Ndze, Lila Linda","Orden, Martin Basobas","Rendon, Arthur Isaac","Sanderson, Jacob Nakolo","Shah, Vidur Hemant"];
+    const CLASS_2026 = ["Alhaddadein, Yara","Chen, Chang-Rong","DeVolder, Mitchell","Gurram, Neha","Hamadneh, Yazan","Joseph, Rachel","King, Matthew","Mukherjee, Lipilekha","Omokaro, Precious","Paripati, Laxmi Mahita Reddy","Quillin, Travis","Rakaba, Michelle","Suresh, Sneha","Thupili, Sasanka","Yekini, Stephen"];
 
     const getNamesForClass = (startYear: number, size: number) => {
-        if (startYear === 2024) return R2_CLASS_2024;
-        if (startYear === 2025) return R1_CLASS_2025;
-        return Array.from({ length: size }, (_, i) => `Intern ${activeYear % 100}-${i + 1}`);
+        if (startYear === 2023) return CLASS_2023;
+        if (startYear === 2024) return CLASS_2024;
+        if (startYear === 2025) return CLASS_2025;
+        if (startYear === 2026) return CLASS_2026;
+        return Array.from({ length: size }, (_, i) => `Intern ${startYear % 100}-${i + 1}`);
     };
 
     const getClassSize = (startYear: number) => {
-        if (startYear === 2024) return 2;
-        if (startYear === 2025) return 23;
-        return 15; // 2026 incoming class
+        if (startYear === 2023) return 2;
+        if (startYear === 2024) return 10;
+        if (startYear === 2025) return 14;
+        if (startYear === 2026) return 15;
+        return 15; // default size for future classes
     };
 
     let idCounter = 1;
     
+    // Track backwards 2 years from activeYear to get the current PGY 1, 2, 3
     for (let startYear = activeYear - 2; startYear <= activeYear; startYear++) {
         const level = (activeYear - startYear + 1) as 1 | 2 | 3;
         const size = getClassSize(startYear);
@@ -31,7 +39,7 @@ export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
         
         for (let i = 0; i < size; i++) {
             residents.push({
-                id: `c${startYear+3}-${i+1}`, 
+                id: `c${startYear}-${i+1}`, 
                 name: names[i] || `Resident ${idCounter}`,
                 level,
                 startYear,
@@ -46,7 +54,46 @@ export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
 };
 
 // Fallback baseline for tests
-export const GENERATE_INITIAL_RESIDENTS = () => GENERATE_RESIDENTS_FOR_YEAR(2026);
+export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
+    const allResidents: Resident[] = [];
+    const classesToInclude = [2023, 2024, 2025, 2026, 2027, 2028];
+    
+    classesToInclude.forEach(startYear => {
+        const size = 15; // Max potential size, or use getClassSize(startYear)
+        // We call GENERATE_RESIDENTS_FOR_YEAR but we need to prevent duplicates if we were to merge.
+        // Actually, let's just create a unique set of all residents for these years.
+        
+        // Simpler: Just generate the classes directly
+        const CLASS_2023 = ["Wright, Andrew Hunter","Melo, Sebastian"];
+        const CLASS_2024 = ["Baset, Nawsin","Cho, Kevin Wook Jin","De La Cruz, Aaron Daniel","Deen, Nafis M","Liu, Gongkai","Masud, Saad","Min, Shao-Ting","Mysore, Nishad Narain","Thanedar, Sarita","Yu, Tommy"];
+        const CLASS_2025 = ["Alvarado, Ramona Davina","Dawood, Umar Asif","Delano, Victoria Remilekun","Echegaray, Sebastian Alexander","Hill, Brittany Marie","Jentz, Austin Lee","Letson, Mia Kang","Millan, Cassandra Marie","Nazeer, Usman Imran","Ndze, Lila Linda","Orden, Martin Basobas","Rendon, Arthur Isaac","Sanderson, Jacob Nakolo","Shah, Vidur Hemant"];
+        const CLASS_2026 = ["Alhaddadein, Yara","Chen, Chang-Rong","DeVolder, Mitchell","Gurram, Neha","Hamadneh, Yazan","Joseph, Rachel","King, Matthew","Mukherjee, Lipilekha","Omokaro, Precious","Paripati, Laxmi Mahita Reddy","Quillin, Travis","Rakaba, Michelle","Suresh, Sneha","Thupili, Sasanka","Yekini, Stephen"];
+
+        const getNames = (year: number) => {
+            if (year === 2023) return CLASS_2023;
+            if (year === 2024) return CLASS_2024;
+            if (year === 2025) return CLASS_2025;
+            if (year === 2026) return CLASS_2026;
+            return [];
+        };
+
+        const names = getNames(startYear);
+        const actualSize = names.length || 15;
+        
+        for (let i = 0; i < actualSize; i++) {
+            allResidents.push({
+                id: `c${startYear}-${i+1}`,
+                name: names[i] || `Intern ${startYear % 100}-${i + 1}`,
+                level: 1, // Base level, will be shifted by activeYear
+                startYear,
+                cohort: i % COHORT_COUNT,
+                avoidResidentIds: [],
+            });
+        }
+    });
+
+    return allResidents;
+};
 
 export const ASSIGNMENT_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.WARDS_RED]: 'bg-red-200 text-red-900 border-red-300',
@@ -189,7 +236,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         targetIntern: 4, targetSenior: 4
     },
     [AssignmentType.WARDS_RED]: {
-        type: AssignmentType.WARDS_RED, label: 'Wards Red',
+        type: AssignmentType.WARDS_RED, label: 'Wards (All)',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 2, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
         targetIntern: 16, targetSenior: 12, targetPGY3: 4 // PGY1: 4 blocks (16w), PGY2: 3 blocks (12w), PGY3: 1 block (4w)
@@ -217,9 +264,9 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         minInterns: 0, maxInterns: 10, minSeniors: 0, maxSeniors: 10,
     },
     [AssignmentType.WARDS_METRO]: {
-        type: AssignmentType.WARDS_METRO, label: 'Met Wards',
+        type: AssignmentType.WARDS_METRO, label: 'Metro Wards',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 4,
-        minInterns: 1, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
+        minInterns: 0, maxInterns: 3, minSeniors: 0, maxSeniors: 2,
     },
     [AssignmentType.CARDS]: {
         type: AssignmentType.CARDS, label: 'Cardiology',

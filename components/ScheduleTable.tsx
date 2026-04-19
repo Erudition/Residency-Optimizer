@@ -7,6 +7,7 @@ import { User, Lock, Calendar } from 'lucide-react';
 interface Props {
   residents: Resident[];
   schedule: ScheduleGrid;
+  startYear: number;
   onCellClick: (residentId: string, week: number) => void;
   onLockWeek: (weekIdx: number) => void;
   onLockResident: (residentId: string) => void;
@@ -15,8 +16,8 @@ interface Props {
 
 const WEEKS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
 
-const getDateForWeek = (weekNum: number) => {
-  const start = new Date(new Date().getFullYear(), 6, 1);
+const getDateForWeek = (weekNum: number, startYear: number) => {
+  const start = new Date(startYear, 6, 1); // July 1st of the start year
   start.setDate(start.getDate() + (weekNum - 1) * 7);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
@@ -34,6 +35,7 @@ interface TooltipData {
 export const ScheduleTable: React.FC<Props> = React.memo(({
   residents,
   schedule,
+  startYear,
   onCellClick,
   onLockWeek,
   onLockResident,
@@ -114,7 +116,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                 style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
               >
                 <div className="flex items-center justify-between h-full px-2 relative">
-                  <span>Trainee</span>
+                  <span>Resident ({residents.length})</span>
                   {/* Resize Handle */}
                   <div
                     className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-600 transition-colors z-50"
@@ -136,7 +138,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   <div className="flex flex-col items-center">
                     <span>W{w}</span>
                     <span className="text-[9px] font-normal text-gray-400 normal-case">
-                      {getDateForWeek(w)}
+                      {getDateForWeek(w, startYear)}
                     </span>
                   </div>
                 </th>
