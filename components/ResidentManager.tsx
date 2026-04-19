@@ -1,8 +1,12 @@
-
 import React, { useState, useRef } from 'react';
 import { Resident, PgyLevel } from '../types';
 import { Trash2, Plus, UserPlus, Upload, Pencil, Check, X, Download, FileText, Info } from 'lucide-react';
 import { COHORT_COUNT } from '../constants';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Select } from './ui/Select';
+import { Card, CardContent } from './ui/Card';
+import { Badge } from './ui/Badge';
 
 interface Props {
   residents: Resident[];
@@ -209,7 +213,8 @@ David Wilson,2,4`;
         className="hidden" 
       />
 
-      <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
+      <Card className="mb-8">
+        <CardContent className="p-6">
         <div className="flex justify-between items-start mb-6">
             <div>
                  <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
@@ -219,18 +224,12 @@ David Wilson,2,4`;
             </div>
            
             <div className="flex gap-2">
-                <button
-                    onClick={handleDownloadTemplate}
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 transition-colors"
-                >
+                <Button variant="secondary" size="sm" onClick={handleDownloadTemplate} className="gap-2">
                     <Download size={14} /> Download Template
-                </button>
-                <button
-                    onClick={handleImportClick}
-                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1.5 rounded hover:bg-blue-50 transition-colors"
-                >
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleImportClick} className="gap-2">
                     <Upload size={14} /> Import CSV
-                </button>
+                </Button>
             </div>
         </div>
 
@@ -255,52 +254,48 @@ David Wilson,2,4`;
              </div>
         </div>
         
-        <div className="flex gap-4 items-end flex-wrap border-t pt-6">
+        <div className="flex gap-4 items-end flex-wrap border-t border-light-5 pt-6">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input
-              type="text"
+            <Input
               value={newResidentName}
               onChange={(e) => setNewResidentName(e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none"
               placeholder="e.g. Dr. Smith"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">PGY Level</label>
-            <select
+            <Select
               value={newResidentLevel}
               onChange={(e) => setNewResidentLevel(Number(e.target.value) as PgyLevel)}
-              className="border border-gray-300 rounded-md p-2 w-24 bg-white"
+              className="w-24"
             >
               <option value={1}>1</option>
               <option value={2}>2</option>
               <option value={3}>3</option>
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Cohort</label>
-            <select
+            <Select
               value={newResidentCohort}
               onChange={(e) => setNewResidentCohort(Number(e.target.value))}
-              className="border border-gray-300 rounded-md p-2 w-24 bg-white"
+              className="w-24"
             >
               {[0,1,2,3,4].map(c => (
                 <option key={c} value={c}>{String.fromCharCode(65 + c)}</option>
               ))}
-            </select>
+            </Select>
           </div>
-          <button
-            onClick={handleAdd}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
-          >
+          <Button variant="primary" size="md" onClick={handleAdd} className="gap-2">
             <Plus size={16} /> Add
-          </button>
+          </Button>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow-sm border mb-12">
-        <div className="p-4 border-b bg-gray-50 font-semibold text-gray-700 grid grid-cols-12 gap-4">
+      <Card className="mb-12">
+        <div className="p-4 border-b border-light-5 bg-gray-50 font-semibold text-gray-700 grid grid-cols-12 gap-4">
             <div className="col-span-6">Name</div>
             <div className="col-span-2 text-center">Level</div>
             <div className="col-span-2 text-center">Cohort</div>
@@ -311,57 +306,52 @@ David Wilson,2,4`;
               const isEditing = editingId === r.id;
               
               return (
-                <div key={r.id} className={`p-4 border-b last:border-0 grid grid-cols-12 gap-4 items-center ${isEditing ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                <div key={r.id} className={`p-4 border-b border-light-5 last:border-0 grid grid-cols-12 gap-4 items-center ${isEditing ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
                     {isEditing ? (
                       <>
                         <div className="col-span-6">
-                          <input 
-                            type="text" 
+                          <Input 
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="w-full border border-blue-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-200 outline-none"
                             autoFocus
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <select
+                          <Select
                             value={editLevel}
                             onChange={(e) => setEditLevel(Number(e.target.value) as PgyLevel)}
-                            className="border border-blue-300 rounded px-1 py-1 text-sm bg-white"
                           >
                             <option value={1}>PGY-1</option>
                             <option value={2}>PGY-2</option>
                             <option value={3}>PGY-3</option>
-                          </select>
+                          </Select>
                         </div>
                         <div className="col-span-2 text-center">
-                          <select
+                          <Select
                             value={editCohort}
                             onChange={(e) => setEditCohort(Number(e.target.value))}
-                            className="border border-blue-300 rounded px-1 py-1 text-sm bg-white"
                           >
                             {[0,1,2,3,4].map(c => (
                               <option key={c} value={c}>{String.fromCharCode(65 + c)}</option>
                             ))}
-                          </select>
+                          </Select>
                         </div>
                         <div className="col-span-2 text-center flex justify-center gap-2">
-                           <button onClick={saveEditing} className="text-green-600 hover:text-green-800 p-1 bg-green-100 rounded hover:bg-green-200" title="Save">
+                           <Button variant="ghost" size="sm" onClick={saveEditing} className="text-green-600 hover:text-green-800 hover:bg-green-100" title="Save">
                              <Check size={16}/>
-                           </button>
-                           <button onClick={cancelEditing} className="text-gray-500 hover:text-gray-700 p-1 bg-gray-200 rounded hover:bg-gray-300" title="Cancel">
+                           </Button>
+                           <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-gray-500 hover:text-gray-700 hover:bg-gray-200" title="Cancel">
                              <X size={16}/>
-                           </button>
+                           </Button>
                         </div>
                       </>
                     ) : (
                       <>
                         <div className="col-span-6 font-medium">{r.name}</div>
                         <div className="col-span-2 text-center">
-                            <span className={`px-2 py-1 rounded text-xs font-bold 
-                                ${r.level === 1 ? 'bg-green-100 text-green-800' : r.level === 2 ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                            <Badge variant={r.level === 1 ? 'success' : r.level === 2 ? 'info' : 'purple'}>
                                 PGY-{r.level}
-                            </span>
+                            </Badge>
                         </div>
                         <div className="col-span-2 text-center font-mono">
                             {String.fromCharCode(65 + r.cohort)}
@@ -369,38 +359,39 @@ David Wilson,2,4`;
                         <div className="col-span-2 text-center flex justify-center gap-2 items-center">
                             {deleteConfirmId === r.id ? (
                                 <>
-                                    <button 
+                                    <Button 
+                                        variant="danger" size="sm"
                                         onClick={(e) => handleRemoveClick(e, r.id)}
-                                        className="bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700 animate-pulse font-medium shadow-sm whitespace-nowrap"
+                                        className="animate-pulse"
                                         title="Click again to confirm deletion"
                                     >
                                         Delete?
-                                    </button>
-                                    <button 
+                                    </Button>
+                                    <Button 
+                                        variant="ghost" size="sm"
                                         onClick={handleCancelDelete}
-                                        className="text-gray-500 hover:text-gray-700 p-1 rounded hover:bg-gray-100"
                                         title="Cancel"
                                     >
                                         <X size={16} />
-                                    </button>
+                                    </Button>
                                 </>
                             ) : (
                                 <>
-                                    <button 
+                                    <Button 
+                                        variant="ghost" size="sm"
                                         onClick={() => startEditing(r)}
-                                        className="text-blue-500 hover:text-blue-700 p-1 rounded hover:bg-blue-50"
                                         title="Edit"
                                     >
                                         <Pencil size={16} />
-                                    </button>
-                                    <button 
-                                        type="button"
+                                    </Button>
+                                    <Button 
+                                        variant="ghost" size="sm"
                                         onClick={(e) => handleRemoveClick(e, r.id)}
-                                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                                        className="text-red hover:bg-red/10"
                                         title="Delete"
                                     >
                                         <Trash2 size={16} />
-                                    </button>
+                                    </Button>
                                 </>
                             )}
                         </div>
@@ -410,7 +401,7 @@ David Wilson,2,4`;
               );
             })}
         </div>
-      </div>
+      </Card>
     </div>
   );
 };
