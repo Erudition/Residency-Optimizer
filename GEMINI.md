@@ -74,3 +74,6 @@ The program rules require that your application include routing logic ensuring t
 Based on new faculty orientation materials:
 *   **Out of Scope Tracking:** The application will not natively track daily admissions caps, rolling 48-hour totals, running patient census, daily 12-hour shift duty hours limits, the 1-day-off-in-7 rule, or Thursday Academic Half-Day (AHD) intra-day coverage. These will be managed organically by the teams.
 *   **In-house 24/7 Supervision:** The system requires that whenever a resident is scheduled for Night Float (NF), MICU, or weekend Wards, a corresponding attending schedule must map exactly 1-to-1 to ensure there are no gaps in 24/7 coverage.
+
+## 9. Reminders
+*   **Important:** Make Pulmonology a staffed rotation.
