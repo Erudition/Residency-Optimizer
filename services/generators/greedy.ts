@@ -55,7 +55,7 @@ export const GreedyGenerator: ScheduleGenerator = {
             return { start: bestStart, type: bestType };
         };
 
-        const coreStaffingTypes = [AssignmentType.ICU, AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE, AssignmentType.NIGHT_FLOAT, AssignmentType.EM];
+        const coreStaffingTypes = [AssignmentType.MICU, AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE, AssignmentType.NIGHT_FLOAT, AssignmentType.EM];
 
         for (let w = 0; w < TOTAL_WEEKS; w++) {
             shuffle(coreStaffingTypes).forEach(type => {

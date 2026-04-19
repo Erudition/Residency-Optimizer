@@ -51,12 +51,12 @@ export const StochasticGenerator: ScheduleGenerator = {
         };
 
         const criticalTypes = [
-            AssignmentType.ICU,
+            AssignmentType.MICU,
             AssignmentType.WARDS_RED,
             AssignmentType.WARDS_BLUE,
             AssignmentType.NIGHT_FLOAT,
             AssignmentType.EM,
-            AssignmentType.MET_WARDS
+            AssignmentType.WARDS_METRO
         ];
 
         // 2. Foundation (Critical Staffing)

@@ -52,7 +52,7 @@ export const ExperimentalGenerator: ScheduleGenerator = {
         };
 
         const staffedTypes = [
-            AssignmentType.ICU,
+            AssignmentType.MICU,
             AssignmentType.WARDS_RED,
             AssignmentType.WARDS_BLUE,
             AssignmentType.NIGHT_FLOAT,

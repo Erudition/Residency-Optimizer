@@ -18,15 +18,18 @@ export interface Resident {
 }
 
 export enum AssignmentType {
-  WARDS_RED = 'Wards-R',
-  WARDS_BLUE = 'Wards-B',
-  ICU = 'ICU',
+  WARDS_RED = 'RED',
+  WARDS_BLUE = 'BLUE',
+  WARDS_METRO = 'METRO',
+  MICU = 'MICU',
+  METRO_ICU = 'METRO_ICU',
+  CVICU = 'CVICU',
   NIGHT_FLOAT = 'NF',
   EM = 'EM',
   CLINIC = 'CCIM',
+  NIMA_BLOCK = 'NIMA',
   ELECTIVE = 'ELECTIVE',
   VACATION = 'VAC',
-  MET_WARDS = 'Met Wards', // Fallback or extra ward
 
   // PGY1 Required Electives
   CARDS = 'Cards',
@@ -44,14 +47,12 @@ export enum AssignmentType {
   ADD_MED = 'Add Med',
   ENDO = 'Endo',
   GERI = 'Geri',
-  HPC = 'HPC', // Hospice & Palliative Care
+  PALLIATIVE = 'HPC', // Hospice & Palliative Care
 
   // Voluntary / Other Electives (Available to all years)
-  METRO = 'Metro',
   RESEARCH = 'Research',
   CCMA = 'CCMA',
   HF = 'Heart Failure',
-  CC_ICU = 'Cardiac ICU',
   ENT = 'ENT',
 }
 

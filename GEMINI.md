@@ -1,3 +1,10 @@
+# Residency Optimizer App
+This project is a collaboration between Github users @Erudition (developer) and @AHWright (Medical Resident). It's developed within a shared Antigravity workspace. You should always update this GEMINI.md (and the files it embeds) with context about the requirements given to you during conversation, especially when you're not specifically asked to put it in a specific file. Keep this document up to date with as much domain knowledge as possible.
+
+The project is built to a Github pages site available at `https://erudition.github.io/Residency-Optimizer/`, built from the main branch. Make sure I am always working in a dedicated feature branch when making changes. Please commit your changes frequently with descriptive commit messages. If code changes are involved, prefer to only commit when tests pass, but if documentation or just GEMINI.md is updated, commit and push immediately after editing.
+
+
+
 # Additional ACGME & Scheduling Constraints
 
 The core curriculum proposal outlines *what* blocks the residents must take, but there are several critical operational and ACGME scheduling constraints discussed during our conversation that must be factored into the underlying logic of the `Residency-Optimizer` application. 
@@ -6,7 +13,7 @@ Here are the rules that must govern the schedule generation:
 
 ## 1. 4+1 Cohort Division Logic
 To seamlessly execute a 4+1 block schedule while keeping both the inpatient services and the outpatient clinics staffed properly year-round:
-*   The residency class must be divided into **5 equal cohorts** (e.g., Cohorts A, B, C, D, and E).
+*   The residency class must be divided into **5 equal cohorts** (e.g., Cohorts A, B, C, D, and E), or as close to equal as possible.
 *   Each week, exactly one cohort will be rotating through their `+1` ambulatory continuity clinic, while the other four are on their 4-week core inpatient assignments. 
 
 ## 2. Inpatient Patient Census Caps (Wards)
@@ -62,3 +69,8 @@ The program rules require that your application include routing logic ensuring t
 *   Addiction Medicine
 *   Emergency Medicine
 *   Neurology
+
+## 8. Faculty & Attending Scope
+Based on new faculty orientation materials:
+*   **Out of Scope Tracking:** The application will not natively track daily admissions caps, rolling 48-hour totals, running patient census, daily 12-hour shift duty hours limits, the 1-day-off-in-7 rule, or Thursday Academic Half-Day (AHD) intra-day coverage. These will be managed organically by the teams.
+*   **In-house 24/7 Supervision:** The system requires that whenever a resident is scheduled for Night Float (NF), MICU, or weekend Wards, a corresponding attending schedule must map exactly 1-to-1 to ensure there are no gaps in 24/7 coverage.

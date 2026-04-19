@@ -40,12 +40,12 @@ export const StrictGenerator: ScheduleGenerator = {
                 if (!assign) return false;
                 // If it's a "Staffing" rotation, they are NOT busy (they are contributing to staffing)
                 return ![
-                    AssignmentType.ICU,
+                    AssignmentType.MICU,
                     AssignmentType.WARDS_RED,
                     AssignmentType.WARDS_BLUE,
                     AssignmentType.NIGHT_FLOAT,
                     AssignmentType.EM,
-                    AssignmentType.MET_WARDS
+                    AssignmentType.WARDS_METRO
                 ].includes(assign);
             }).length;
 
@@ -79,7 +79,7 @@ export const StrictGenerator: ScheduleGenerator = {
                 let needed = req.target - count;
 
                 const isStaffing = [
-                    AssignmentType.ICU,
+                    AssignmentType.MICU,
                     AssignmentType.WARDS_RED,
                     AssignmentType.WARDS_BLUE,
                     AssignmentType.NIGHT_FLOAT,
@@ -105,7 +105,7 @@ export const StrictGenerator: ScheduleGenerator = {
         });
 
         const isStaffingType = (type: AssignmentType | null) => [
-            AssignmentType.ICU,
+            AssignmentType.MICU,
             AssignmentType.WARDS_RED,
             AssignmentType.WARDS_BLUE,
             AssignmentType.NIGHT_FLOAT,
@@ -169,7 +169,7 @@ export const StrictGenerator: ScheduleGenerator = {
         // 7. Last-Mile Staffing Fill (1-week slots)
         // Use the strategy from Experimental to patch any remaining holes in staffing
         const staffedTypes = [
-            AssignmentType.ICU,
+            AssignmentType.MICU,
             AssignmentType.WARDS_RED,
             AssignmentType.WARDS_BLUE,
             AssignmentType.NIGHT_FLOAT,

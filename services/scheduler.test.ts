@@ -55,11 +55,11 @@ describe('Schedule Generator', () => {
             expect(cards, `PGY1 ${r.id} Cards`).toBeGreaterThanOrEqual(4);
 
             // Check for Wards Red/Blue/Met (Total 12 weeks)
-            const wards = assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.MET_WARDS).length;
+            const wards = assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.WARDS_METRO).length;
             expect(wards, `PGY1 ${r.id} Wards`).toBeGreaterThanOrEqual(12);
 
             // Check for ICU (4 weeks)
-            const icu = assignments.filter(a => a === AssignmentType.ICU).length;
+            const icu = assignments.filter(a => a === AssignmentType.MICU).length;
             expect(icu, `PGY1 ${r.id} ICU`).toBeGreaterThanOrEqual(4);
 
             // Check for Night Float (4 weeks)
@@ -97,11 +97,11 @@ describe('Schedule Generator', () => {
             expect(assignments.filter(a => a === AssignmentType.GI).length).toBeGreaterThanOrEqual(2);
 
             // Core Req
-            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.MET_WARDS).length).toBeGreaterThanOrEqual(8);
-            expect(assignments.filter(a => a === AssignmentType.ICU).length).toBeGreaterThanOrEqual(4);
+            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.WARDS_METRO).length).toBeGreaterThanOrEqual(8);
+            expect(assignments.filter(a => a === AssignmentType.MICU).length).toBeGreaterThanOrEqual(4);
             // Core Req
-            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.MET_WARDS).length).toBeGreaterThanOrEqual(8);
-            expect(assignments.filter(a => a === AssignmentType.ICU).length).toBeGreaterThanOrEqual(4);
+            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.WARDS_METRO).length).toBeGreaterThanOrEqual(8);
+            expect(assignments.filter(a => a === AssignmentType.MICU).length).toBeGreaterThanOrEqual(4);
             // expect(assignments.filter(a => a === AssignmentType.NIGHT_FLOAT).length).toBeGreaterThanOrEqual(4);
         });
     });
@@ -114,11 +114,11 @@ describe('Schedule Generator', () => {
             expect(assignments.filter(a => a === AssignmentType.ADD_MED).length).toBeGreaterThanOrEqual(4);
             expect(assignments.filter(a => a === AssignmentType.ENDO).length).toBeGreaterThanOrEqual(4);
             expect(assignments.filter(a => a === AssignmentType.GERI).length).toBeGreaterThanOrEqual(4);
-            expect(assignments.filter(a => a === AssignmentType.HPC).length).toBeGreaterThanOrEqual(4);
+            expect(assignments.filter(a => a === AssignmentType.PALLIATIVE).length).toBeGreaterThanOrEqual(4);
 
             // Core Req
-            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.MET_WARDS).length).toBeGreaterThanOrEqual(8);
-            expect(assignments.filter(a => a === AssignmentType.ICU).length).toBeGreaterThanOrEqual(4);
+            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.WARDS_METRO).length).toBeGreaterThanOrEqual(8);
+            expect(assignments.filter(a => a === AssignmentType.MICU).length).toBeGreaterThanOrEqual(4);
             // expect(assignments.filter(a => a === AssignmentType.NIGHT_FLOAT).length).toBeGreaterThanOrEqual(4);
         });
     });

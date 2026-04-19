@@ -46,6 +46,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, schedule }) 
             let outpatient = 0;
             let inpatient = 0;
             let criticalCare = 0;
+            let criticalCareCore = 0; // Excludes CVICU to suppress >6m violation
             let nightFloat = 0;
 
             weeks.forEach(c => {
@@ -55,7 +56,12 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, schedule }) 
 
                 if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
                 if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
-                if (meta.setting === ClinicalSetting.CRITICAL_CARE) criticalCare++;
+                if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
+                    criticalCare++;
+                    if (c.assignment !== AssignmentType.CVICU) {
+                        criticalCareCore++;
+                    }
+                }
                 if (c.assignment === AssignmentType.NIGHT_FLOAT) nightFloat++;
             });
 
@@ -69,7 +75,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, schedule }) 
                 nightFloat,
                 outpatientProgress: (outpatient / yearTarget) * 100,
                 inpatientProgress: ((inpatient + criticalCare) / yearTarget) * 100,
-                critCareViolation: criticalCare > 8,
+                critCareViolation: criticalCareCore > 8,
                 nfViolation: nightFloat > 8
             };
         });
