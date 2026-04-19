@@ -1132,22 +1132,24 @@ const App: React.FC = () => {
                     {/* Left: Group By */}
                     <div className="flex items-center gap-3 justify-self-start">
                       <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
-                      <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
-                        <Button
-                          onClick={() => setResidentSortOrder('pgy')}
-                          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm' : 'text-muted hover:text-primary'}`}
-                        >
-                          <LayoutGrid size={14} />
-                          PGY Level
-                        </Button>
-                        <Button
-                          onClick={() => setResidentSortOrder('cohort')}
-                          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm' : 'text-muted hover:text-primary'}`}
-                        >
-                          <Users size={14} />
-                          Cohort
-                        </Button>
-                      </div>
+                       <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
+                         <Button
+                           variant="ghost"
+                           onClick={() => setResidentSortOrder('pgy')}
+                           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                         >
+                           <LayoutGrid size={14} />
+                           PGY Level
+                         </Button>
+                         <Button
+                           variant="ghost"
+                           onClick={() => setResidentSortOrder('cohort')}
+                           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                         >
+                           <Users size={14} />
+                           Cohort
+                         </Button>
+                       </div>
                     </div>
 
                     {/* Center: Academic Year */}
@@ -1161,13 +1163,14 @@ const App: React.FC = () => {
                         ) : (
                           [ACTIVE_START_YEAR, ACTIVE_START_YEAR + 1, ACTIVE_START_YEAR + 2].map(y => (
                             <Button
+                              variant="ghost"
                               key={y}
                               onClick={() => {
                                 startTransition(() => {
                                   setActiveYear(y);
                                 });
                               }}
-                              className={`px-6 py-1.5 rounded-lg text-xs font-bold transition-all ${activeYear === y ? 'bg-white text-blue shadow-sm' : 'text-muted hover:text-primary'}`}
+                              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeYear === y ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
                             >
                               {y} - {y + 1}
                             </Button>
