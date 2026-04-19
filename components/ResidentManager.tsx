@@ -7,9 +7,10 @@ import { COHORT_COUNT } from '../constants';
 interface Props {
   residents: Resident[];
   setResidents: React.Dispatch<React.SetStateAction<Resident[]>>;
+  activeYear: number;
 }
 
-export const ResidentManager: React.FC<Props> = ({ residents, setResidents }) => {
+export const ResidentManager: React.FC<Props> = ({ residents, setResidents, activeYear }) => {
   // New Resident State
   const [newResidentName, setNewResidentName] = useState('');
   const [newResidentLevel, setNewResidentLevel] = useState<PgyLevel>(1);
@@ -33,6 +34,7 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents }) =>
       id: newId,
       name: newResidentName,
       level: newResidentLevel,
+      startYear: activeYear - newResidentLevel + 1,
       cohort: newResidentCohort,
       avoidResidentIds: [],
     };
@@ -181,6 +183,7 @@ David Wilson,2,4`;
             id: `imported-${Date.now()}-${idCounter++}`,
             name: cleanName,
             level,
+            startYear: activeYear - level + 1,
             cohort,
             avoidResidentIds: []
         });

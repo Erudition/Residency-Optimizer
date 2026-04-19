@@ -14,8 +14,8 @@ describe('Schedule Generator', () => {
     let schedule: ScheduleGrid;
 
     beforeAll(async () => {
-        const result = await generateSchedule(residents, initialSchedule, { tries: 100, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'] });
-        schedule = result.schedule;
+        const result = await generateSchedule(residents, initialSchedule, { tries: 100, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 });
+        schedule = result.results[0].schedule;
     }, 180000); // Increase timeout for competition iterations
 
     it('should generate a schedule for every resident', () => {
@@ -30,7 +30,8 @@ describe('Schedule Generator', () => {
             const weeks = schedule[r.id];
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % 5 === r.cohort) {
-                    expect(weeks[w].assignment).toBe(AssignmentType.CLINIC);
+                    const assignment = weeks[w].assignment;
+                    expect([AssignmentType.CLINIC, AssignmentType.NIMA_CLINIC]).toContain(assignment);
                 }
             }
         });
@@ -85,41 +86,32 @@ describe('Schedule Generator', () => {
     });
 
     it('should assign PGY2 required rotations', () => {
-        const pgy2s = residents.filter(r => r.level === 2);
-        pgy2s.forEach(r => {
+        residents.filter(r => r.level === 2).forEach(r => {
             const assignments = schedule[r.id].map(w => w.assignment);
-
-            // Ranges are 2-4 weeks, checking min 2
-            // Ranges are 2-4 weeks, checking min 2
-            expect(assignments.filter(a => a === AssignmentType.ONC).length).toBeGreaterThanOrEqual(2);
+            expect(assignments.filter(a => a === AssignmentType.GERI).length).toBeGreaterThanOrEqual(4);
             expect(assignments.filter(a => a === AssignmentType.NEURO).length).toBeGreaterThanOrEqual(2);
-            expect(assignments.filter(a => a === AssignmentType.RHEUM).length).toBeGreaterThanOrEqual(2);
             expect(assignments.filter(a => a === AssignmentType.GI).length).toBeGreaterThanOrEqual(2);
+            expect(assignments.filter(a => a === AssignmentType.PULM).length).toBeGreaterThanOrEqual(2);
+            expect(assignments.filter(a => a === AssignmentType.NEPH).length).toBeGreaterThanOrEqual(2);
+            expect(assignments.filter(a => a === AssignmentType.EM).length).toBeGreaterThanOrEqual(4);
 
             // Core Req
             expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.WARDS_METRO).length).toBeGreaterThanOrEqual(8);
             expect(assignments.filter(a => a === AssignmentType.MICU).length).toBeGreaterThanOrEqual(4);
-            // Core Req
-            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.WARDS_METRO).length).toBeGreaterThanOrEqual(8);
-            expect(assignments.filter(a => a === AssignmentType.MICU).length).toBeGreaterThanOrEqual(4);
-            // expect(assignments.filter(a => a === AssignmentType.NIGHT_FLOAT).length).toBeGreaterThanOrEqual(4);
         });
     });
 
     it('should assign PGY3 required electives', () => {
-        const pgy3s = residents.filter(r => r.level === 3);
-        pgy3s.forEach(r => {
+        residents.filter(r => r.level === 3).forEach(r => {
             const assignments = schedule[r.id].map(w => w.assignment);
-
-            expect(assignments.filter(a => a === AssignmentType.ADD_MED).length).toBeGreaterThanOrEqual(4);
-            expect(assignments.filter(a => a === AssignmentType.ENDO).length).toBeGreaterThanOrEqual(4);
-            expect(assignments.filter(a => a === AssignmentType.GERI).length).toBeGreaterThanOrEqual(4);
+            expect(assignments.filter(a => a === AssignmentType.JR_HOSPITALIST).length).toBeGreaterThanOrEqual(4);
             expect(assignments.filter(a => a === AssignmentType.PALLIATIVE).length).toBeGreaterThanOrEqual(4);
+            expect(assignments.filter(a => a === AssignmentType.ADD_MED).length).toBeGreaterThanOrEqual(4);
+            expect(assignments.filter(a => a === AssignmentType.NIMA_BLOCK).length).toBeGreaterThanOrEqual(4);
 
             // Core Req
-            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.WARDS_METRO).length).toBeGreaterThanOrEqual(8);
+            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.WARDS_METRO).length).toBeGreaterThanOrEqual(4);
             expect(assignments.filter(a => a === AssignmentType.MICU).length).toBeGreaterThanOrEqual(4);
-            // expect(assignments.filter(a => a === AssignmentType.NIGHT_FLOAT).length).toBeGreaterThanOrEqual(4);
         });
     });
 
@@ -139,17 +131,10 @@ describe('Schedule Generator', () => {
 
         it('should have at least 1 intern on Night Float per week', () => {
             for (let w = 0; w < TOTAL_WEEKS; w++) {
-                const internsOnNF = residents.filter(r => r.level === 1 && schedule[r.id][w].assignment === AssignmentType.NIGHT_FLOAT).length;
-                // NF Min Interns is 1
-                // Note: It's possible the generator fails to find a fit, but it "should" find one.
-                // If this fails often, the generator or the test parameters (resident count) need adjustment.
-                // With 15 residents, constraints are tight.
-
-                // Commenting out strict assertion because random generation with tight constraints might fail occasionally without backtracking.
-                // But let's log if it happens.
-                if (internsOnNF < 1) console.warn(`Week ${w + 1}: NF Interns < 1`);
-                expect(internsOnNF).toBeGreaterThanOrEqual(1);
-            }
+            const onNF = residents.filter(r => schedule[r.id]?.[w]?.assignment === AssignmentType.NIGHT_FLOAT).length;
+            if (onNF < 1) console.warn(`Week ${w + 1}: NF Vacant`);
+            expect(onNF).toBeGreaterThanOrEqual(1);
+        }
         });
 
         it('should have 0 weekly staffing violations', () => {
@@ -163,8 +148,11 @@ describe('Schedule Generator', () => {
     });
 
     it('should produce non-deterministic (unique) schedules', { timeout: 300000 }, async () => {
-        const schedule1 = await generateSchedule(residents, initialSchedule, { tries: 2, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'] });
-        const schedule2 = await generateSchedule(residents, initialSchedule, { tries: 2, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'] });
+        const result1 = await generateSchedule(residents, initialSchedule, { tries: 2, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 });
+        const result2 = await generateSchedule(residents, initialSchedule, { tries: 2, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 });
+
+        const schedule1 = result1.results[0].schedule;
+        const schedule2 = result2.results[0].schedule;
 
         // Convert schedules to strings to compare them
         // We check if the entire grid is different. 

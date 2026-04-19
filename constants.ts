@@ -7,10 +7,19 @@ export const COHORT_COUNT = 5;
 export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
     const residents: Resident[] = [];
 
+    const R1_CLASS_2025 = ["Baset, Nawsin","Cho, Kevin Wook Jin","De La Cruz, Aaron Daniel","Deen, Nafis M","Liu, Gongkai","Masud, Saad","Min, Shao-Ting","Thanedar, Sarita","Yu, Tommy","Alvarado, Ramona Davina","Dawood, Umar Asif","Delano, Victoria Remilekun","Echegaray, Sebastian Alexander","Hill, Brittany Marie","Jentz, Austin Lee","Letson, Mia Kang","Millan, Cassandra Marie","Nazeer, Usman Imran","Ndze, Lila Linda","Orden, Martin Basobas","Rendon, Arthur Isaac","Sanderson, Jacob Nakolo","Shah, Vidur Hemant"];
+    const R2_CLASS_2024 = ["Melo, Sebastian","Wright, Andrew Hunter"];
+
+    const getNamesForClass = (startYear: number, size: number) => {
+        if (startYear === 2024) return R2_CLASS_2024;
+        if (startYear === 2025) return R1_CLASS_2025;
+        return Array.from({ length: size }, (_, i) => `Intern ${activeYear % 100}-${i + 1}`);
+    };
+
     const getClassSize = (startYear: number) => {
-        if (startYear === 2024) return 8; // The 2026 PGY-3s
-        if (startYear === 2025) return 14; // The 2026 PGY-2s
-        return 15; // Standard cohort capacity
+        if (startYear === 2024) return 2;
+        if (startYear === 2025) return 23;
+        return 15; // 2026 incoming class
     };
 
     let idCounter = 1;
@@ -18,11 +27,12 @@ export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
     for (let startYear = activeYear - 2; startYear <= activeYear; startYear++) {
         const level = (activeYear - startYear + 1) as 1 | 2 | 3;
         const size = getClassSize(startYear);
+        const names = getNamesForClass(startYear, size);
         
-        for (let i = 1; i <= size; i++) {
+        for (let i = 0; i < size; i++) {
             residents.push({
-                id: `c${startYear+3}-${i}`, // e.g. c2029-1
-                name: `Resident ${idCounter}`,
+                id: `c${startYear+3}-${i+1}`, 
+                name: names[i] || `Resident ${idCounter}`,
                 level,
                 startYear,
                 cohort: (idCounter - 1) % COHORT_COUNT,
@@ -67,6 +77,8 @@ export const ASSIGNMENT_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.HF]: 'bg-red-100 text-red-800 border-red-200',
     [AssignmentType.CVICU]: 'bg-rose-200 text-rose-900 border-rose-300',
     [AssignmentType.ENT]: 'bg-teal-200 text-teal-900 border-teal-300',
+    [AssignmentType.NIMA_CLINIC]: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    [AssignmentType.JR_HOSPITALIST]: 'bg-indigo-100 text-indigo-800 border-indigo-200',
 };
 
 export const ASSIGNMENT_HEX_COLORS: Record<AssignmentType, string> = {
@@ -98,6 +110,8 @@ export const ASSIGNMENT_HEX_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.HF]: '#fee2e2',
     [AssignmentType.CVICU]: '#fecdd3',
     [AssignmentType.ENT]: '#99f6e4',
+    [AssignmentType.NIMA_CLINIC]: '#fde047',
+    [AssignmentType.JR_HOSPITALIST]: '#c7d2fe',
 };
 
 export const ASSIGNMENT_LABELS: Record<AssignmentType, string> = {
@@ -129,6 +143,8 @@ export const ASSIGNMENT_LABELS: Record<AssignmentType, string> = {
     [AssignmentType.HF]: 'Heart Failure',
     [AssignmentType.CVICU]: 'Cardiac ICU',
     [AssignmentType.ENT]: 'Otolaryngology',
+    [AssignmentType.NIMA_CLINIC]: 'NIMA (Clinic)',
+    [AssignmentType.JR_HOSPITALIST]: 'Junior Hospitalist',
 };
 
 export const ASSIGNMENT_ABBREVIATIONS: Record<AssignmentType, string> = {
@@ -160,6 +176,8 @@ export const ASSIGNMENT_ABBREVIATIONS: Record<AssignmentType, string> = {
     [AssignmentType.HF]: 'HF',
     [AssignmentType.CVICU]: 'CC-ICU',
     [AssignmentType.ENT]: 'ENT',
+    [AssignmentType.NIMA_CLINIC]: 'NIMA',
+    [AssignmentType.JR_HOSPITALIST]: 'JH',
 };
 
 // Configuration of each rotation's constraints and metadata
@@ -174,7 +192,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.WARDS_RED, label: 'Wards Red',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 2, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
-        targetIntern: 12, targetSenior: 8 // Combined Wards Target often handled in code, but explicit here helps
+        targetIntern: 16, targetSenior: 12, targetPGY3: 4 // PGY1: 4 blocks (16w), PGY2: 3 blocks (12w), PGY3: 1 block (4w)
     },
     [AssignmentType.WARDS_BLUE]: {
         type: AssignmentType.WARDS_BLUE, label: 'Wards Blue',
@@ -183,15 +201,15 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.NIGHT_FLOAT]: {
         type: AssignmentType.NIGHT_FLOAT, label: 'Night Float',
-        intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 4,
+        intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 1, maxInterns: 2, minSeniors: 1, maxSeniors: 3,
-        // Relaxed Requirements: No per-resident targets, only staffing minimums
+        targetIntern: 2, targetSenior: 2 // 2 weeks per year per proposal
     },
     [AssignmentType.EM]: {
         type: AssignmentType.EM, label: 'Emergency',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 1, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
-        targetIntern: 4
+        targetIntern: 0, targetPGY2: 4 // Restricted to PGY2/3 per proposal
     },
     [AssignmentType.CLINIC]: {
         type: AssignmentType.CLINIC, label: 'Clinic',
@@ -212,48 +230,48 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     [AssignmentType.ID]: {
         type: AssignmentType.ID, label: 'Infectious Disease',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
-        minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 0,
+        minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 4,
         targetIntern: 2,
     },
     [AssignmentType.NEPH]: {
         type: AssignmentType.NEPH, label: 'Nephrology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
-        minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 0,
-        targetIntern: 2,
+        minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 4,
+        targetIntern: 0, targetPGY2: 2
     },
     [AssignmentType.PULM]: {
         type: AssignmentType.PULM, label: 'Pulmonology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
-        minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 0,
-        targetIntern: 2,
+        minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 4,
+        targetIntern: 0, targetPGY2: 2
     },
     [AssignmentType.ONC]: {
         type: AssignmentType.ONC, label: 'Heme/Onc',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4,
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
-        targetPGY2: 4,
+        minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
+        targetPGY2: 0, targetPGY3: 0 // Individualized choice in proposal
     },
     [AssignmentType.NEURO]: {
         type: AssignmentType.NEURO, label: 'Neurology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4,
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
-        targetPGY2: 4,
+        minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
+        targetPGY2: 2, // 2 weeks in PGY2
     },
     [AssignmentType.RHEUM]: {
         type: AssignmentType.RHEUM, label: 'Rheumatology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
-        targetPGY2: 4,
+        minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
+        targetPGY2: 0,
     },
     [AssignmentType.GI]: {
         type: AssignmentType.GI, label: 'Gastroenterology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
-        targetPGY2: 4,
+        targetPGY2: 2, // 2 weeks in PGY2
     },
     [AssignmentType.ADD_MED]: {
         type: AssignmentType.ADD_MED, label: 'Addiction Med',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4, // Corrected to 4 per RULES.md (deleted but was source of truth)
+        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4, 
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
         targetPGY3: 4,
     },
@@ -265,9 +283,9 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.GERI]: {
         type: AssignmentType.GERI, label: 'Geriatrics',
-        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4, // Corrected to 4
+        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        targetPGY3: 4,
+        targetPGY2: 4,
     },
     [AssignmentType.PALLIATIVE]: {
         type: AssignmentType.PALLIATIVE, label: 'Palliative Care',
@@ -320,6 +338,18 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.VACATION, label: 'Vacation',
         intensity: 0, setting: ClinicalSetting.NON_CLINICAL, duration: 1,
         minInterns: 0, maxInterns: 20, minSeniors: 0, maxSeniors: 20,
+    },
+    [AssignmentType.JR_HOSPITALIST]: {
+        type: AssignmentType.JR_HOSPITALIST, label: 'Junior Hospitalist',
+        intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 4,
+        minInterns: 0, maxInterns: 0, minSeniors: 1, maxSeniors: 2,
+        targetPGY3: 4
+    },
+
+    [AssignmentType.NIMA_CLINIC]: {
+        type: AssignmentType.NIMA_CLINIC, label: 'NIMA Clinic',
+        intensity: 2, setting: ClinicalSetting.OUTPATIENT, duration: 1,
+        minInterns: 0, maxInterns: 10, minSeniors: 0, maxSeniors: 10,
     },
 };
 
@@ -400,7 +430,10 @@ export const fulfillsRequirement = (assigned: AssignmentType | null, required: A
 
     // Ward Aggregation logic (Single Source of Truth)
     if (required === AssignmentType.WARDS_RED) {
-        return assigned === AssignmentType.WARDS_RED || assigned === AssignmentType.WARDS_BLUE || assigned === AssignmentType.WARDS_METRO;
+        return assigned === AssignmentType.WARDS_RED || 
+               assigned === AssignmentType.WARDS_BLUE || 
+               assigned === AssignmentType.WARDS_METRO || 
+               assigned === AssignmentType.JR_HOSPITALIST;
     }
 
     // ICU Aggregation logc

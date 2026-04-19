@@ -12,7 +12,7 @@ describe('Scheduler Stress Test', () => {
         for (let i = 0; i < 20; i++) {
             console.log(`Run ${i + 1}...`);
             const result = await generateSchedule(residents, {});
-            const violations = getRequirementViolations(residents, result.schedule);
+            const violations = getRequirementViolations(residents, result.results[0].schedule);
 
             // Focus on PGY1 Cards which is the main hardness check
             const cardsViolations = violations.filter(v => v.type === AssignmentType.CARDS);

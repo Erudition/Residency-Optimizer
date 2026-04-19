@@ -1,5 +1,5 @@
 import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement } from '../../constants';
+import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
 import { ScheduleGenerator } from './types';
 import { canFitBlock, placeBlock, shuffle, getCumulativeRequirementCount } from './utils';
 
@@ -35,16 +35,18 @@ export const StochasticGenerator: ScheduleGenerator = {
             if (!newSchedule[r.id] || newSchedule[r.id].length !== TOTAL_WEEKS) {
                 newSchedule[r.id] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null, locked: false }));
             }
+            const clinicType = r.clinicType || AssignmentType.CLINIC;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
-                if (w % 5 === r.cohort) {
-                    newSchedule[r.id][w] = { assignment: AssignmentType.CLINIC, locked: true };
+                if (w % COHORT_COUNT === r.cohort) {
+                    newSchedule[r.id][w] = { assignment: clinicType, locked: true };
                 }
             }
         });
 
         const getAssignedCount = (week: number, type: AssignmentType, level?: number) => {
             return residents.filter(r => {
-                if (level && r.level !== level) return false;
+                if (level === 1) return r.level === 1 && newSchedule[r.id]?.[week]?.assignment === type;
+                if (level === 2) return r.level >= 2 && newSchedule[r.id]?.[week]?.assignment === type;
                 return newSchedule[r.id]?.[week]?.assignment === type;
             }).length;
         };
@@ -55,7 +57,8 @@ export const StochasticGenerator: ScheduleGenerator = {
             AssignmentType.WARDS_BLUE,
             AssignmentType.NIGHT_FLOAT,
             AssignmentType.EM,
-            AssignmentType.WARDS_METRO
+            AssignmentType.WARDS_METRO,
+            AssignmentType.JR_HOSPITALIST
         ];
 
         // 2. Foundation (Critical Staffing)
@@ -71,8 +74,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                     nI = false; nS = false;
                     for (let i = 0; i < duration; i++) {
                         if (getAssignedCount(w + i, type, 1) < (meta.minInterns || 0)) nI = true;
-                        const s = getAssignedCount(w + i, type, 2) + getAssignedCount(w + i, type, 3);
-                        if (s < (meta.minSeniors || 0)) nS = true;
+                        if (getAssignedCount(w + i, type, 2) < (meta.minSeniors || 0)) nS = true;
                     }
                 };
                 check();
@@ -83,7 +85,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                         if (r.level > 1 && !nS) return false;
                         for (let i = 0; i < duration; i++) {
                             const curI = getAssignedCount(w + i, type, 1);
-                            const curS = getAssignedCount(w + i, type, 2) + getAssignedCount(w + i, type, 3);
+                            const curS = getAssignedCount(w + i, type, 2);
                             if (r.level === 1 && curI >= (meta.maxInterns || 99)) return false;
                             if (r.level > 1 && curS >= (meta.maxSeniors || 99)) return false;
                         }
@@ -137,7 +139,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                                 let score = 0;
                                 for (let i = 0; i < dur; i++) {
                                     const cI = getAssignedCount(w + i, t, 1);
-                                    const cS = getAssignedCount(w + i, t, 2) + getAssignedCount(w + i, t, 3);
+                                    const cS = getAssignedCount(w + i, t, 2);
                                     if (res.level === 1) {
                                         if (cI >= (m.maxInterns || 99)) score += 10000;
                                         if (cI < (m.minInterns || 0)) score -= 200;

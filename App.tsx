@@ -10,6 +10,7 @@ import {
 } from './types';
 import { GENERATE_INITIAL_RESIDENTS, ASSIGNMENT_LABELS, ASSIGNMENT_HEX_COLORS, ASSIGNMENT_ABBREVIATIONS } from './constants';
 import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations } from './services/scheduler';
+import { preloadHistoricalData } from './services/generators/historyPreloader';
 import { ScheduleTable } from './components/ScheduleTable';
 import { Dashboard } from './components/Dashboard';
 import { ResidentManager } from './components/ResidentManager';
@@ -256,10 +257,17 @@ const App: React.FC = () => {
     return residents.filter(r => {
       const level = activeYear - r.startYear + 1;
       return level >= 1 && level <= 3;
-    }).map(r => ({
-      ...r,
-      level: (activeYear - r.startYear + 1) as 1 | 2 | 3
-    }));
+    }).map(r => {
+      const level = (activeYear - r.startYear + 1) as 1 | 2 | 3;
+      // PGY-2s go to NIMA clinic per MHS proposal
+      const clinicType = level === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+      
+      return {
+        ...r,
+        level,
+        clinicType // Used by generators to assign the correct +1 week
+      };
+    });
   }, [residents, activeYear]);
 
   const { stats, violations } = useMemo(() => {
@@ -373,20 +381,25 @@ const App: React.FC = () => {
   useEffect(() => {
     if (schedules.length === 0) {
       const runInit = async () => {
-        const result = await generateSchedule(residents, {});
+        // Preload historical data from JSON
+        const history = preloadHistoricalData(residents);
+        
+        // Generate current active year based on that history
+        const result = await generateSchedule(activeResidents, {}, compParams, undefined, history);
         const sched = result.results[0];
+        
         const initialSession: ScheduleSession = {
           id: 'init-1',
           name: `S1 (${sched.winnerName})`,
-          data: { [activeYear]: sched.schedule },
+          data: { ...history, [activeYear]: sched.schedule },
           createdAt: new Date(),
           metrics: {
-            stats: calculateStats(residents, sched.schedule),
+            stats: calculateStats(activeResidents, sched.schedule),
             violations: {
-              reqs: getRequirementViolations(residents, sched.schedule, {}),
-              constraints: getWeeklyViolations(residents, sched.schedule)
+              reqs: getRequirementViolations(activeResidents, sched.schedule, history),
+              constraints: getWeeklyViolations(activeResidents, sched.schedule)
             },
-            fairness: calculateFairnessMetrics(residents, sched.schedule),
+            fairness: calculateFairnessMetrics(activeResidents, sched.schedule),
             score: sched.score
           }
         };
@@ -394,7 +407,7 @@ const App: React.FC = () => {
       };
       runInit();
     }
-  }, [schedules.length, residents]);
+  }, [schedules.length, residents, activeResidents, activeYear, compParams]);
 
   useEffect(() => { localStorage.setItem('rsp_residents_v3', JSON.stringify(residents)); }, [residents]);
   useEffect(() => { localStorage.setItem('rsp_schedules_v3', JSON.stringify(schedules)); }, [schedules]);
@@ -422,7 +435,7 @@ const App: React.FC = () => {
         // If we are in activeYear, the history is any year < activeYear
         const history: ScheduleHistory = {};
         if (activeSchedule) {
-          Object.entries(activeSchedule.data).forEach(([year, grid]) => {
+          (Object.entries(activeSchedule.data) as [string, ScheduleGrid][]).forEach(([year, grid]) => {
             if (parseInt(year) < activeYear) {
               history[parseInt(year)] = grid;
             }
@@ -815,7 +828,7 @@ const App: React.FC = () => {
         <div className="absolute inset-0 flex flex-col">
           {activeScheduleId === 'settings' ? (
             <div className="flex-1 overflow-hidden flex flex-col bg-white">
-              {activeTab === 'residents' && <div className="flex-1 overflow-y-auto"><ResidentManager residents={residents} setResidents={setResidents} /></div>}
+              {activeTab === 'residents' && <div className="flex-1 overflow-y-auto"><ResidentManager residents={residents} setResidents={setResidents} activeYear={activeYear} /></div>}
               {activeTab === 'backup' && (
                 <div className="flex-1 overflow-y-auto p-12 bg-gray-50">
                   <div className="max-w-xl mx-auto space-y-8">

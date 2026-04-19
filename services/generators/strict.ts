@@ -44,7 +44,8 @@ export const StrictGenerator: ScheduleGenerator = {
                     AssignmentType.WARDS_BLUE,
                     AssignmentType.NIGHT_FLOAT,
                     AssignmentType.EM,
-                    AssignmentType.WARDS_METRO
+                    AssignmentType.WARDS_METRO,
+                    AssignmentType.JR_HOSPITALIST,
                 ].includes(assign);
             }).length;
 
@@ -108,7 +109,9 @@ export const StrictGenerator: ScheduleGenerator = {
             AssignmentType.WARDS_RED,
             AssignmentType.WARDS_BLUE,
             AssignmentType.NIGHT_FLOAT,
-            AssignmentType.EM
+            AssignmentType.EM,
+            AssignmentType.WARDS_METRO,
+            AssignmentType.JR_HOSPITALIST
         ].includes(type as AssignmentType);
 
         // 6. Place Blocks

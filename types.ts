@@ -16,6 +16,7 @@ export interface Resident {
   startYear: number; // The calendar year they started as a PGY-1 (e.g. 2026)
   cohort: number; // 0-4 for the 4+1 cohorts
   avoidResidentIds: string[];
+  clinicType?: AssignmentType;
 }
 
 export enum AssignmentType {
@@ -44,17 +45,18 @@ export enum AssignmentType {
   RHEUM = 'Rheum',
   GI = 'GI',
 
-  // PGY3 Required Electives
   ADD_MED = 'Add Med',
   ENDO = 'Endo',
   GERI = 'Geri',
   PALLIATIVE = 'HPC', // Hospice & Palliative Care
+  JR_HOSPITALIST = 'Jr Hosp',
 
   // Voluntary / Other Electives (Available to all years)
   RESEARCH = 'Research',
   CCMA = 'CCMA',
   HF = 'Heart Failure',
   ENT = 'ENT',
+  NIMA_CLINIC = 'NIMA (Clinic)',
 }
 
 export interface ScheduleCell {
@@ -66,6 +68,8 @@ export interface ScheduleCell {
 export type ScheduleGrid = Record<string, ScheduleCell[]>; // residentId -> Weekly cells
 
 export type ScheduleHistory = Record<number, ScheduleGrid>; // year -> ScheduleGrid
+
+export type ScheduleStats = Record<string, Record<AssignmentType, number>>;
 
 export interface Requirement {
   [residentId: string]: Record<AssignmentType, number>;
