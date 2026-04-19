@@ -58,7 +58,7 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
 
   const ChartSection = ({ title, dataSet }: { title: string, dataSet: any[] }) => (
     <div className="mb-8 p-4 bg-white rounded-lg border shadow-sm">
-      <h3 className="text-lg font-bold mb-4 text-gray-700">{title} Workload Distribution</h3>
+      <h3 className="text-lg font-bold mb-4 text-primary">{title} Workload Distribution</h3>
       <div className="h-[400px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={dataSet} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
@@ -116,7 +116,7 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full pb-64">
+    <div className="p-6 bg-light-1 min-h-full pb-64">
       <ChartSection title="PGY 1 (Interns)" dataSet={pgy1Data} />
       <ChartSection title="PGY 2" dataSet={pgy2Data} />
       <ChartSection title="PGY 3" dataSet={pgy3Data} />

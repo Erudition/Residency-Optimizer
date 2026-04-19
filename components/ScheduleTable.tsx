@@ -109,17 +109,17 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     <div className="flex flex-col h-full bg-white border rounded-lg shadow-sm overflow-hidden relative">
       <div className="overflow-auto spreadsheet-container relative flex-1 pb-64">
         <table className="border-separate border-spacing-0 w-max">
-          <thead className="sticky top-0 z-30 bg-gray-50 text-xs uppercase text-gray-500 font-semibold shadow-sm h-12">
+          <thead className="sticky top-0 z-30 bg-light-1 text-xs uppercase text-muted font-semibold shadow-sm h-12">
             <tr>
               <th
-                className="sticky left-0 z-40 p-0 border-b border-r border-gray-200 text-left align-middle bg-white/80 backdrop-blur-md transition-all"
+                className="sticky left-0 z-40 p-0 border-b border-r border-light-5 text-left align-middle bg-white/80 backdrop-blur-md transition-all"
                 style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
               >
                 <div className="flex items-center justify-between h-full px-2 relative">
                   <span>Resident ({residents.length})</span>
                   {/* Resize Handle */}
                   <div
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-600 transition-colors z-50"
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue transition-colors z-50"
                     onMouseDown={startResize}
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -128,7 +128,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               {WEEKS.map((w, idx) => (
                 <th
                   key={w}
-                  className="border-b border-gray-200 p-1 min-w-[80px] text-center bg-gray-50 cursor-context-menu hover:bg-blue-50 transition-colors"
+                  className="border-b border-light-5 p-1 min-w-[80px] text-center bg-light-1 cursor-context-menu hover:bg-light-blue/20 transition-colors"
                   onContextMenu={(e) => {
                     e.preventDefault();
                     onLockWeek(idx);
@@ -137,7 +137,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                 >
                   <div className="flex flex-col items-center">
                     <span>W{w}</span>
-                    <span className="text-[9px] font-normal text-gray-400 normal-case">
+                    <span className="text-[9px] font-normal text-muted normal-case">
                       {getDateForWeek(w, startYear)}
                     </span>
                   </div>
@@ -150,9 +150,9 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               const residentSchedule = schedule[resident.id] || [];
 
               return (
-                <tr key={resident.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={resident.id} className="hover:bg-light-1 transition-colors">
                   <td
-                    className="sticky left-0 z-20 border-b border-r border-gray-200 p-2 font-medium text-gray-900 group bg-white/80 backdrop-blur-md cursor-context-menu hover:bg-blue-50 transition-colors"
+                    className="sticky left-0 z-20 border-b border-r border-light-5 p-2 font-medium text-black group bg-white/80 backdrop-blur-md cursor-context-menu hover:bg-light-blue/20 transition-colors"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -164,7 +164,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                       <span className="flex items-center gap-2 truncate" title={resident.name}>
                         {resident.name}
                       </span>
-                      <span className="text-xs text-gray-400 truncate">
+                      <span className="text-xs text-muted truncate">
                         PGY-{resident.level} • Cohort {String.fromCharCode(65 + resident.cohort)}
                       </span>
                     </div>
@@ -179,7 +179,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     return (
                       <td
                         key={`${resident.id}-${w}`}
-                        className={`border-b border-gray-100 border-r p-1 text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-gray-100'}`}
+                        className={`border-b border-light-3 border-r p-1 text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-light-2'}`}
                         onClick={() => onCellClick(resident.id, idx)}
                         onContextMenu={(e) => {
                           e.preventDefault();
@@ -199,12 +199,12 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                               <span className="truncate w-full block">
                                 {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
                               </span>
-                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-70 text-gray-700" />}
+                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-70 text-primary" />}
                             </>
                           ) : (
                             <>
                               <span className="text-gray-300">-</span>
-                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-40 text-gray-400" />}
+                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-40 text-muted" />}
                             </>
                           )}
                         </div>
@@ -229,14 +229,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
 
           {tooltip.peers.length > 0 && (
             <div className="border-t border-gray-700 pt-2 mt-1">
-              <div className="text-gray-400 mb-1 text-[10px] uppercase font-semibold">With:</div>
+              <div className="text-muted mb-1 text-[10px] uppercase font-semibold">With:</div>
               <div className="space-y-1">
                 {[1, 2, 3].map(pgy => {
                   const pgyGroup = tooltip.peers.filter(r => r.level === pgy);
                   if (pgyGroup.length === 0) return null;
                   return (
                     <div key={pgy} className="flex gap-1 items-start">
-                      <span className="text-[10px] text-gray-500 font-bold w-10 shrink-0">PGY-{pgy}:</span>
+                      <span className="text-[10px] text-muted font-bold w-10 shrink-0">PGY-{pgy}:</span>
                       <div className="flex flex-wrap gap-1">
                         {pgyGroup.map(r => (
                           <span key={r.id} className="bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">

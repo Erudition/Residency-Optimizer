@@ -1,6 +1,9 @@
 import React from 'react';
 import { Activity, Play, Settings2, Trash2, Trophy } from 'lucide-react';
 import { AlgorithmConfig, AlgorithmStats, CompetitionParams, CompetitionPriority } from '../types';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Select } from './ui/Select';
 
 interface Props {
     algorithms: AlgorithmConfig[];
@@ -26,7 +29,7 @@ export const CompetitorStudio: React.FC<Props> = ({
             {/* Header Bar */}
             <div className="bg-white border-b border-slate-200 px-8 py-6 flex items-center justify-between shadow-sm sticky top-0 z-10 transition-all">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-200">
+                    <div className="p-3 bg-blue rounded-xl text-white shadow-lg shadow-blue-200">
                         <Settings2 size={24} />
                     </div>
                     <div>
@@ -44,17 +47,17 @@ export const CompetitorStudio: React.FC<Props> = ({
                             max={20}
                             value={params.topN || 1}
                             onChange={(e) => onParamsChange({ ...params, topN: parseInt(e.target.value) || 1 })}
-                            className="w-16 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-center"
+                            className="w-16 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue transition-all text-center"
                         />
-                        <select
+                        <Select
                             value={params.priority}
                             onChange={(e) => onParamsChange({ ...params, priority: e.target.value as CompetitionPriority })}
-                            className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+                            className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue transition-all cursor-pointer"
                         >
                             {Object.values(CompetitionPriority).map(p => (
                                 <option key={p} value={p}>{p}</option>
                             ))}
-                        </select>
+                        </Select>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -65,18 +68,18 @@ export const CompetitorStudio: React.FC<Props> = ({
                             max={10000}
                             value={params.tries}
                             onChange={(e) => onParamsChange({ ...params, tries: parseInt(e.target.value) || 100 })}
-                            className="w-24 bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                            className="w-24 bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue transition-all"
                         />
                     </div>
 
-                    <button
+                    <Button variant="primary" size="md" 
                         onClick={onCompete}
                         disabled={params.algorithmIds.length === 0}
-                        className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 active:scale-95 group"
+                         className="flex items-center gap-2.5 bg-blue hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 active:scale-95 group" 
                     >
                         <Play size={18} fill="currentColor" className="group-hover:translate-x-0.5 transition-transform" />
                         <span>Compete</span>
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -107,18 +110,18 @@ export const CompetitorStudio: React.FC<Props> = ({
                                             </div>
                                             <h3 className="font-black text-slate-800 text-lg tracking-tight">{algo.name}</h3>
                                         </div>
-                                        <button
+                                        <Button
                                             onClick={() => onToggleAlgorithm(algo.id)}
                                             className={`
                         w-12 h-6 rounded-full relative transition-all duration-300
-                        ${isEnabled ? 'bg-blue-600' : 'bg-slate-300'}
+                        ${isEnabled ? 'bg-blue' : 'bg-slate-300'}
                       `}
                                         >
                                             <div className={`
                         absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all duration-300
                         ${isEnabled ? 'translate-x-6' : 'translate-x-0'}
                       `} />
-                                        </button>
+                                        </Button>
                                     </div>
 
                                     {/* Card Body */}

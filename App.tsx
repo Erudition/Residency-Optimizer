@@ -29,6 +29,8 @@ import { RequirementsStats } from './components/RequirementsStats';
 import { ScheduleComparison } from './components/ScheduleComparison';
 import { ACGMEAudit } from './components/ACGMEAudit';
 import { CompetitorStudio } from './components/CompetitorStudio';
+import { Button } from './components/ui/Button';
+import { Input } from './components/ui/Input';
 import {
   CompetitionParams,
   CompetitionPriority,
@@ -119,26 +121,26 @@ const AssignmentModal = ({
         <h3 className="text-lg font-bold mb-4">Edit Assignment</h3>
         <div className="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto pr-2">
           {Object.entries(ASSIGNMENT_LABELS).map(([key, label]) => (
-            <button
+            <Button
               key={key}
               onClick={() => onSave(key as AssignmentType)}
               className={`p-3 rounded border text-sm font-medium transition-colors text-left
-                ${current === key ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-500' : 'hover:bg-gray-50 border-gray-200'}
+                ${current === key ? 'ring-2 ring-blue-500 bg-light-blue/20 border-blue' : 'hover:bg-light-1 border-light-5'}
               `}
             >
               {label}
-            </button>
+            </Button>
           ))}
-          <button
+          <Button
             onClick={() => onSave(null)}
-            className="p-3 rounded border border-gray-200 text-sm font-medium text-red-600 hover:bg-red-50 col-span-2"
+            className="p-3 rounded border border-light-5 text-sm font-medium text-red hover:bg-red/10 col-span-2"
           >
             Clear Assignment
-          </button>
+          </Button>
         </div>
-        <button onClick={onClose} className="mt-4 w-full py-2 bg-gray-100 rounded hover:bg-gray-200">
+        <Button variant="secondary" size="md"  onClick={onClose}  className="mt-4 w-full py-2 bg-light-2 rounded hover:bg-light-3" >
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -165,8 +167,8 @@ const RenameModal = ({
           autoFocus
         />
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
-          <button onClick={() => onSave(name)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+          <Button variant="secondary" size="md"  onClick={onClose}  className="px-4 py-2 text-secondary hover:bg-light-2 rounded" >Cancel</Button>
+          <Button onClick={() => onSave(name)} className="px-4 py-2 bg-blue text-white rounded hover:bg-blue-700">Save</Button>
         </div>
       </div>
     </div>
@@ -735,12 +737,12 @@ const App: React.FC = () => {
   };
 
   const NavButton = ({ id, label, icon: Icon, badgeCount }: any) => (
-    <button
+    <Button
       onClick={() => startTransition(() => setActiveTab(id))}
       className={`flex items-center gap-2 py-3 px-4 text-sm font-medium border-b-2 transition-all relative whitespace-nowrap
         ${activeTab === id
-          ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+          ? 'border-blue text-blue bg-light-blue/20/50'
+          : 'border-transparent text-muted hover:text-primary hover:border-light-6'}
         `}
     >
       <Icon size={16} />
@@ -750,13 +752,13 @@ const App: React.FC = () => {
           {badgeCount}
         </span>
       )}
-    </button>
+    </Button>
   );
 
   return (
-    <div className={`flex flex-col h-screen bg-gray-100 text-gray-900 font-sans overflow-hidden ${activeSchedule?.isGenerating || isPending ? 'cursor-wait' : ''}`}>
+    <div className={`flex flex-col h-screen bg-light-2 text-black font-sans overflow-hidden ${activeSchedule?.isGenerating || isPending ? 'cursor-wait' : ''}`}>
 
-      <div className="h-12 bg-gray-200 flex items-stretch shrink-0 z-30 px-2 pt-2 gap-1 relative overflow-y-hidden">
+      <div className="h-12 bg-light-3 flex items-stretch shrink-0 z-30 px-2 pt-2 gap-1 relative overflow-y-hidden">
         {/* Bottom Seam Line - Layered at z-30 so it's above inactive (z-20) but below active (z-40) */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-300 z-30" />
 
@@ -769,7 +771,7 @@ const App: React.FC = () => {
                 setActiveTab('residents');
               });
             }}
-            className={`flex items-center justify-center w-12 h-10 rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'settings' ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
+            className={`flex items-center justify-center w-12 h-10 rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'settings' ? 'bg-white border-light-6 text-blue z-50' : 'bg-light-2 border-transparent text-muted hover:bg-light-1'}`}
           >
             <SettingsIcon size={20} />
             {activeScheduleId === 'settings' && (
@@ -794,9 +796,9 @@ const App: React.FC = () => {
                     }
                   });
                 }}
-                className={`flex items-center gap-2 px-4 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${isActive ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
+                className={`flex items-center gap-2 px-4 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${isActive ? 'bg-white border-light-6 text-blue z-50' : 'bg-light-2 border-transparent text-muted hover:bg-light-1'}`}
               >
-                <History size={14} className={isActive ? 'text-blue-500' : 'text-gray-400'} />
+                <History size={14} className={isActive ? 'text-blue-500' : 'text-muted'} />
                 {year}-{year + 1}
                 {isActive && (
                   <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
@@ -817,7 +819,7 @@ const App: React.FC = () => {
                 }
               });
             }}
-            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'all' ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
+            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'all' ? 'bg-white border-light-6 text-blue z-50' : 'bg-light-2 border-transparent text-muted hover:bg-light-1'}`}
           >
             All {ACTIVE_START_YEAR} Candidates
             {activeScheduleId === 'all' && (
@@ -830,12 +832,12 @@ const App: React.FC = () => {
         <div className="flex-1 relative flex items-end overflow-hidden">
           {canScrollLeft && (
             <div className="absolute left-0 top-0 bottom-0 z-40 w-12 flex items-center justify-start bg-gradient-to-r from-gray-200 to-transparent pointer-events-none">
-              <button
+              <Button
                 onClick={() => scrollTabs('left')}
-                className="ml-1 p-1 rounded-full bg-white/80 hover:bg-white text-gray-700 shadow-md pointer-events-auto transition-all transform hover:scale-110"
+                className="ml-1 p-1 rounded-full bg-white/80 hover:bg-white text-primary shadow-md pointer-events-auto transition-all transform hover:scale-110"
               >
                 <ChevronLeft size={16} />
-              </button>
+              </Button>
             </div>
           )}
 
@@ -857,14 +859,14 @@ const App: React.FC = () => {
                       }
                     });
                   }}
-                  className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-colors relative min-w-[160px] cursor-pointer ${isActive ? 'bg-white border-gray-300 text-blue-600 z-40' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50 z-20'} ${isPending ? 'opacity-70' : ''}`}
+                  className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-colors relative min-w-[160px] cursor-pointer ${isActive ? 'bg-white border-light-6 text-blue z-40' : 'bg-light-2 border-transparent text-muted hover:bg-light-1 z-20'} ${isPending ? 'opacity-70' : ''}`}
                 >
-                  {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full flex-shrink-0"></div>}
+                  {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-blue border-t-transparent rounded-full flex-shrink-0"></div>}
                   {!sched.isGenerating && <Identicon id={sched.id} />}
                   {isPending && isActive && <div className="animate-pulse h-2 w-2 bg-blue-400 rounded-full mr-1"></div>}
                   <div className="flex-1 min-w-0 font-bold text-xs truncate pr-6">{sched.name}</div>
                   <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-full shadow-sm">
-                    <button onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-1 rounded-full hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors"><X size={12} /></button>
+                    <Button onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-1 rounded-full hover:bg-red-100 text-muted hover:text-red-500 transition-colors"><X size={12} /></Button>
                   </div>
                   {isActive && (
                     <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-50" />
@@ -876,12 +878,12 @@ const App: React.FC = () => {
 
           {canScrollRight && (
             <div className="absolute right-0 top-0 bottom-0 z-40 w-12 flex items-center justify-end bg-gradient-to-l from-gray-200 to-transparent pointer-events-none">
-              <button
+              <Button
                 onClick={() => scrollTabs('right')}
-                className="mr-1 p-1 rounded-full bg-white/80 hover:bg-white text-gray-700 shadow-md pointer-events-auto transition-all transform hover:scale-110"
+                className="mr-1 p-1 rounded-full bg-white/80 hover:bg-white text-primary shadow-md pointer-events-auto transition-all transform hover:scale-110"
               >
                 <ChevronRight size={16} />
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -894,7 +896,7 @@ const App: React.FC = () => {
                 setActiveScheduleId('draft');
               });
             }}
-            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'draft' ? 'bg-white border-gray-300 text-blue-600 z-50' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-50'}`}
+            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'draft' ? 'bg-white border-light-6 text-blue z-50' : 'bg-light-2 border-transparent text-muted hover:bg-light-1'}`}
           >
             <Sparkles size={16} />
             New
@@ -906,7 +908,7 @@ const App: React.FC = () => {
       </div>
 
       {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && !activeSchedule?.isGenerating) && (
-        <div className="px-6 bg-white border-b border-gray-200 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
+        <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
           <NavButton id="assignments" label="Assignments" icon={Table} badgeCount={violations.constraints.length} />
@@ -919,7 +921,7 @@ const App: React.FC = () => {
       )}
 
       {activeScheduleId === 'settings' && (
-        <div className="px-6 bg-white border-b border-gray-200 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
+        <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="residents" label="Residents" icon={Users} />
           <NavButton id="backup" label="Backup" icon={Download} />
           <NavButton id="reset" label="Reset Data" icon={RotateCcw} />
@@ -932,32 +934,32 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-hidden flex flex-col bg-white">
               {activeTab === 'residents' && <div className="flex-1 overflow-y-auto"><ResidentManager residents={residents} setResidents={setResidents} activeYear={activeYear} /></div>}
               {activeTab === 'backup' && (
-                <div className="flex-1 overflow-y-auto p-12 bg-gray-50">
+                <div className="flex-1 overflow-y-auto p-12 bg-light-1">
                   <div className="max-w-xl mx-auto space-y-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-                      <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3 mb-2">
-                        <Download className="text-blue-600" />
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-light-5">
+                      <h2 className="text-2xl font-black text-black flex items-center gap-3 mb-2">
+                        <Download className="text-blue" />
                         System Backup
                       </h2>
-                      <p className="text-gray-500 font-medium">Export your data for safekeeping or import an existing backup file.</p>
+                      <p className="text-muted font-medium">Export your data for safekeeping or import an existing backup file.</p>
 
                       <div className="mt-8 grid grid-cols-1 gap-4">
-                        <div className="p-6 bg-blue-50/50 border border-blue-100 rounded-xl space-y-4">
-                          <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Export Data</h3>
-                          <p className="text-sm text-gray-500">Download all residents and schedule versions into a single JSON file.</p>
-                          <button
+                        <div className="p-6 bg-light-blue/20/50 border border-blue-100 rounded-xl space-y-4">
+                          <h3 className="text-xs font-black text-blue uppercase tracking-widest">Export Data</h3>
+                          <p className="text-sm text-muted">Download all residents and schedule versions into a single JSON file.</p>
+                          <Button variant="primary" size="md" 
                             onClick={handleExportJSON}
-                            className="w-full flex items-center justify-center gap-3 p-4 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-md group"
+                             className="w-full flex items-center justify-center gap-3 p-4 bg-blue text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-md group" 
                           >
                             <Download size={18} className="group-hover:-translate-y-1 transition-transform" />
                             Download Backup (.json)
-                          </button>
+                          </Button>
                         </div>
 
-                        <div className="p-6 bg-white border border-gray-200 rounded-xl space-y-4">
-                          <h3 className="text-xs font-black text-gray-600 uppercase tracking-widest">Import Data</h3>
-                          <p className="text-sm text-gray-500">Upload a previously exported JSON file. <span className="text-red-500 font-bold">Warning: This will overwrite your current data.</span></p>
-                          <label className="w-full flex items-center justify-center gap-3 p-4 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-all cursor-pointer border border-dashed border-gray-300">
+                        <div className="p-6 bg-white border border-light-5 rounded-xl space-y-4">
+                          <h3 className="text-xs font-black text-secondary uppercase tracking-widest">Import Data</h3>
+                          <p className="text-sm text-muted">Upload a previously exported JSON file. <span className="text-red-500 font-bold">Warning: This will overwrite your current data.</span></p>
+                          <label className="w-full flex items-center justify-center gap-3 p-4 bg-light-2 text-primary rounded-lg font-bold hover:bg-light-3 transition-all cursor-pointer border border-dashed border-light-6">
                             <Plus size={18} />
                             Select Backup File
                             <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
@@ -969,44 +971,44 @@ const App: React.FC = () => {
                 </div>
               )}
               {activeTab === 'reset' && (
-                <div className="flex-1 overflow-y-auto p-12 bg-gray-50">
+                <div className="flex-1 overflow-y-auto p-12 bg-light-1">
                   <div className="max-w-xl mx-auto space-y-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-                      <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3 mb-2">
-                        <RotateCcw className="text-blue-600" />
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-light-5">
+                      <h2 className="text-2xl font-black text-black flex items-center gap-3 mb-2">
+                        <RotateCcw className="text-blue" />
                         System Reset
                       </h2>
-                      <p className="text-gray-500 font-medium">Clear specific parts of the system or perform a full factory reset.</p>
+                      <p className="text-muted font-medium">Clear specific parts of the system or perform a full factory reset.</p>
 
                       <div className="mt-8 space-y-4">
-                        <div className="p-4 border border-red-100 bg-red-50/30 rounded-xl space-y-4">
-                          <h3 className="text-xs font-black text-red-600 uppercase tracking-widest">Danger Zone</h3>
+                        <div className="p-4 border border-red-100 bg-red/10/30 rounded-xl space-y-4">
+                          <h3 className="text-xs font-black text-red uppercase tracking-widest">Danger Zone</h3>
 
-                          <button
+                          <Button
                             onClick={() => { if (confirm("This will delete ALL data. Are you sure?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); setSchedules([]); setActiveScheduleId('all'); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-red-200 rounded-lg text-red-600 hover:bg-red-600 hover:text-white transition-all group font-bold"
+                            className="w-full flex items-center justify-between p-4 bg-white border border-red-200 rounded-lg text-red hover:bg-red-600 hover:text-white transition-all group font-bold"
                           >
                             <span className="flex items-center gap-3"><Trash2 size={18} /> Clear All Records</span>
                             <span className="text-[10px] uppercase opacity-50 group-hover:opacity-100">Factory Reset</span>
-                          </button>
+                          </Button>
 
-                          <button
+                          <Button
                             onClick={() => { if (confirm("Reset all residents to defaults?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg text-gray-700 hover:border-red-400 hover:text-red-500 transition-all group font-bold"
+                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red-500 transition-all group font-bold"
                           >
                             <span className="flex items-center gap-3"><Users size={18} /> Reset Residents</span>
                             <span className="text-[10px] uppercase opacity-50">Set to Default</span>
-                          </button>
+                          </Button>
 
-                          <button
+                          <Button
                             onClick={() => { if (confirm("Delete all schedule versions?")) { setSchedules([]); setActiveScheduleId('all'); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg text-gray-700 hover:border-red-400 hover:text-red-500 transition-all group font-bold"
+                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red-500 transition-all group font-bold"
                           >
                             <span className="flex items-center gap-3"><Database size={18} /> Delete All Schedules</span>
                             <span className="text-[10px] uppercase opacity-50">Clear Versions</span>
-                          </button>
+                          </Button>
 
-                          <button
+                          <Button
                             onClick={() => {
                                 if (confirm("Unpin all assignments across all schedules?")) {
                                   setSchedules(prev => prev.map(s => ({
@@ -1021,11 +1023,11 @@ const App: React.FC = () => {
                                   })));
                                 }
                             }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg text-gray-700 hover:border-blue-400 hover:text-blue-600 transition-all group font-bold"
+                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-blue-400 hover:text-blue transition-all group font-bold"
                           >
                             <span className="flex items-center gap-3"><LayoutGrid size={18} /> Unpin All Weeks</span>
                             <span className="text-[10px] uppercase opacity-50">Unlock All</span>
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -1077,13 +1079,13 @@ const App: React.FC = () => {
           ) : activeSchedule?.isGenerating ? (
             <div className="flex-1 flex flex-col items-center justify-center bg-white p-12 text-center">
               <div className="relative">
-                <div className="absolute inset-0 bg-blue-100 rounded-full animate-ping opacity-25"></div>
+                <div className="absolute inset-0 bg-light-blue rounded-full animate-ping opacity-25"></div>
                 <div className="relative bg-white p-6 rounded-full shadow-sm border mb-8">
-                  <Loader2 size={48} className="text-blue-600 animate-spin" />
+                  <Loader2 size={48} className="text-blue animate-spin" />
                 </div>
               </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">Generating Candidate Schedules</h3>
-              <p className="text-gray-500 font-medium max-w-sm mb-8">
+              <h3 className="text-2xl font-black text-black mb-2">Generating Candidate Schedules</h3>
+              <p className="text-muted font-medium max-w-sm mb-8">
                 Running {(compParams.tries * compParams.algorithmIds.length).toLocaleString()} permutations to {getPriorityText()}
               </p>
 
@@ -1093,11 +1095,11 @@ const App: React.FC = () => {
                   if (!algo) return null;
                   return (
                     <div key={algoId} className="space-y-1">
-                      <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      <div className="flex justify-between text-[10px] font-black text-muted uppercase tracking-widest">
                         <span>{algo.name}</span>
                         <span>{activeSchedule.progress || 0}%</span>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200">
+                      <div className="w-full bg-light-2 rounded-full h-2 overflow-hidden border border-light-5">
                         <div
                           className="h-full transition-all duration-500 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]"
                           style={{
@@ -1111,10 +1113,10 @@ const App: React.FC = () => {
                 })}
 
                 <div className="flex justify-between items-center pt-2">
-                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  <div className="text-[10px] font-bold text-muted uppercase tracking-widest">
                     ETA: {getEta()}
                   </div>
-                  <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50 py-1 px-3 rounded-full inline-block">
+                  <div className="text-[10px] font-bold text-blue uppercase tracking-widest bg-light-blue/20 py-1 px-3 rounded-full inline-block">
                     {activeSchedule.attemptsMade ? `${activeSchedule.attemptsMade.toLocaleString()} permutations checked` : 'Initializing engine...'}
                   </div>
                 </div>
@@ -1128,46 +1130,46 @@ const App: React.FC = () => {
                   <div className="px-6 py-3 bg-white border-b grid grid-cols-3 items-center shrink-0">
                     {/* Left: Group By */}
                     <div className="flex items-center gap-3 justify-self-start">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Group By</span>
-                      <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
-                        <button
+                      <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
+                      <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
+                        <Button
                           onClick={() => setResidentSortOrder('pgy')}
-                          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm' : 'text-muted hover:text-primary'}`}
                         >
                           <LayoutGrid size={14} />
                           PGY Level
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => setResidentSortOrder('cohort')}
-                          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm' : 'text-muted hover:text-primary'}`}
                         >
                           <Users size={14} />
                           Cohort
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
                     {/* Center: Academic Year */}
                     <div className="flex items-center gap-3 justify-self-center">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Academic Year</span>
-                      <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+                      <span className="text-[10px] font-black text-muted uppercase tracking-wider">Academic Year</span>
+                      <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
                         {activeSchedule?.isHistory ? (
-                          <div className="px-6 py-1.5 bg-white text-blue-600 shadow-sm rounded-lg text-xs font-bold transition-all">
+                          <div className="px-6 py-1.5 bg-white text-blue shadow-sm rounded-lg text-xs font-bold transition-all">
                             {activeYear} - {activeYear + 1}
                           </div>
                         ) : (
                           [ACTIVE_START_YEAR, ACTIVE_START_YEAR + 1, ACTIVE_START_YEAR + 2].map(y => (
-                            <button
+                            <Button
                               key={y}
                               onClick={() => {
                                 startTransition(() => {
                                   setActiveYear(y);
                                 });
                               }}
-                              className={`px-6 py-1.5 rounded-lg text-xs font-bold transition-all ${activeYear === y ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                              className={`px-6 py-1.5 rounded-lg text-xs font-bold transition-all ${activeYear === y ? 'bg-white text-blue shadow-sm' : 'text-muted hover:text-primary'}`}
                             >
                               {y} - {y + 1}
-                            </button>
+                            </Button>
                           ))
                         )}
                       </div>
@@ -1176,7 +1178,7 @@ const App: React.FC = () => {
                     {/* Right: Violations */}
                     <div className="justify-self-end">
                       {hasViolations && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-full border border-red-100 animate-pulse">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-red/10 text-red rounded-full border border-red-100 animate-pulse">
                           <AlertCircle size={14} />
                           <span className="text-[10px] font-bold uppercase tracking-wider">Staffing Violations</span>
                         </div>
@@ -1203,40 +1205,40 @@ const App: React.FC = () => {
               {activeTab === 'relationships' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
               {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={activeSchedule?.metrics?.fairness} /></div>}
               {activeTab === 'export' && (
-                <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
+                <div className="flex-1 overflow-y-auto p-8 bg-light-1">
                   <div className="max-w-2xl mx-auto">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-light-5 flex flex-col">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
+                        <div className="p-2 bg-green/10 rounded-lg text-green">
                           <FileSpreadsheet size={24} />
                         </div>
                         <div>
-                          <h3 className="font-bold text-gray-800">Printable Schedule (XLSX)</h3>
-                          <p className="text-xs text-gray-500">Formatted spreadsheet for the active version</p>
+                          <h3 className="font-bold text-primary">Printable Schedule (XLSX)</h3>
+                          <p className="text-xs text-muted">Formatted spreadsheet for the active version</p>
                         </div>
                       </div>
 
                       <div className="flex-1 space-y-4">
-                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                          <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Active Target:</div>
-                          <div className="text-sm font-bold text-gray-700 truncate">
+                        <div className="p-4 bg-light-1 rounded-lg border border-light-3">
+                          <div className="text-[10px] text-muted uppercase font-bold mb-1">Active Target:</div>
+                          <div className="text-sm font-bold text-primary truncate">
                             {activeSchedule?.name || 'No active schedule'}
                           </div>
                         </div>
 
-                        <button
+                        <Button variant="primary" size="md" 
                           onClick={handleExportXLSX}
                           disabled={isExporting}
-                          className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-lg font-bold flex items-center justify-center gap-3 shadow-md transition-all active:scale-95"
+                           className="w-full py-4 bg-green hover:bg-emerald-700 disabled:bg-light-3 disabled:cursor-not-allowed text-white rounded-lg font-bold flex items-center justify-center gap-3 shadow-md transition-all active:scale-95" 
                         >
                           {isExporting ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
                           Export Current to Excel
-                        </button>
+                        </Button>
                       </div>
 
-                      <div className="mt-6 bg-amber-50 p-4 rounded-lg flex gap-3 items-start">
-                        <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-amber-800 leading-relaxed">
+                      <div className="mt-6 bg-highlight p-4 rounded-lg flex gap-3 items-start">
+                        <AlertCircle size={16} className="text-orange shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-orange-dark leading-relaxed">
                           XLSX exports contain coloring and labeling suitable for printing, but
                           <strong> cannot be imported back into the system.</strong> Use JSON for backups.
                         </p>

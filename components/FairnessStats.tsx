@@ -29,7 +29,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
     const getScoreColor = (score: number) => {
         if (score >= 90) return 'text-green-600 bg-green-50 border-green-200';
         if (score >= 75) return 'text-orange-600 bg-orange-50 border-orange-200';
-        return 'text-red-600 bg-red-50 border-red-200';
+        return 'text-red bg-red/10 border-red-200';
     };
 
     const handleHeaderEnter = (e: React.MouseEvent, title: string, text: string) => {
@@ -59,15 +59,15 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
     };
 
     return (
-        <div className="h-full overflow-y-auto bg-gray-50 p-6 pb-64 relative">
+        <div className="h-full overflow-y-auto bg-light-1 p-6 pb-64 relative">
             <div className="max-w-6xl mx-auto space-y-8">
 
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <Scale className="w-6 h-6 text-blue-600" />
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-light-5">
+                    <h2 className="text-xl font-bold text-primary flex items-center gap-2">
+                        <Scale className="w-6 h-6 text-blue" />
                         Schedule Fairness & Balance Analysis
                     </h2>
-                    <p className="mt-2 text-gray-600">
+                    <p className="mt-2 text-secondary">
                         This report analyzes workload distribution across three main categories: <strong>Core</strong> (High Intensity), <strong>Required</strong> (Specialty reqs), and <strong>Electives</strong> (Flexible time).
                         <br />
                         It also tracks an overall <strong>Intensity Score</strong> to prevent burnout.
@@ -75,9 +75,9 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                 </div>
 
                 {stats.map(group => (
-                    <div key={group.level} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                            <h3 className="text-lg font-bold text-gray-800">PGY-{group.level} Cohort</h3>
+                    <div key={group.level} className="bg-white rounded-lg shadow-sm border border-light-5 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-light-3 flex justify-between items-center bg-light-1/50">
+                            <h3 className="text-lg font-bold text-primary">PGY-{group.level} Cohort</h3>
                             <div className={`px-4 py-1.5 rounded-full border font-bold text-sm flex items-center gap-2 ${getScoreColor(group.fairnessScore)}`}>
                                 {group.fairnessScore >= 90 ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                                 Fairness Score: {group.fairnessScore}%
@@ -86,24 +86,24 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
 
                         <div className="p-6">
                             <div className="grid grid-cols-3 gap-6 mb-6">
-                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                    <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Core Weeks (Avg)</div>
-                                    <div className="text-2xl font-bold text-gray-800">{group.meanCore.toFixed(1)} <span className="text-sm font-normal text-gray-500">± {group.sdCore.toFixed(2)}</span></div>
+                                <div className="bg-light-blue/20 p-4 rounded-lg border border-blue-100">
+                                    <div className="text-xs font-bold text-blue uppercase tracking-wider mb-1">Core Weeks (Avg)</div>
+                                    <div className="text-2xl font-bold text-primary">{group.meanCore.toFixed(1)} <span className="text-sm font-normal text-muted">± {group.sdCore.toFixed(2)}</span></div>
                                 </div>
                                 <div className="bg-green-50 p-4 rounded-lg border border-green-100">
                                     <div className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Elective Weeks (Avg)</div>
-                                    <div className="text-2xl font-bold text-gray-800">{group.meanElective.toFixed(1)} <span className="text-sm font-normal text-gray-500">± {group.sdElective.toFixed(2)}</span></div>
+                                    <div className="text-2xl font-bold text-primary">{group.meanElective.toFixed(1)} <span className="text-sm font-normal text-muted">± {group.sdElective.toFixed(2)}</span></div>
                                 </div>
                                 <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
                                     <div className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-1">Intensity Score (Avg)</div>
-                                    <div className="text-2xl font-bold text-gray-800">{group.meanIntensity.toFixed(0)} <span className="text-sm font-normal text-gray-500">± {group.sdIntensity.toFixed(1)}</span></div>
+                                    <div className="text-2xl font-bold text-primary">{group.meanIntensity.toFixed(0)} <span className="text-sm font-normal text-muted">± {group.sdIntensity.toFixed(1)}</span></div>
                                 </div>
                             </div>
 
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm min-w-[800px]">
                                     <thead>
-                                        <tr className="text-xs text-gray-500 border-b border-gray-100">
+                                        <tr className="text-xs text-muted border-b border-light-3">
                                             <th className="text-left py-3 px-2 font-medium pl-2">Resident</th>
 
                                             <th
@@ -113,7 +113,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                             >
                                                 <div className="flex items-center justify-end gap-1">
                                                     Core
-                                                    <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                                    <HelpCircle size={12} className="text-muted opacity-50" />
                                                 </div>
                                             </th>
 
@@ -124,7 +124,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                             >
                                                 <div className="flex items-center justify-end gap-1">
                                                     Electives
-                                                    <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                                    <HelpCircle size={12} className="text-muted opacity-50" />
                                                 </div>
                                             </th>
 
@@ -136,7 +136,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                                 <div className="flex items-center justify-end gap-1">
                                                     <Moon size={14} />
                                                     Night Float
-                                                    <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                                    <HelpCircle size={12} className="text-muted opacity-50" />
                                                 </div>
                                             </th>
 
@@ -148,7 +148,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                                 <div className="flex items-center justify-end gap-1">
                                                     <Flame size={14} />
                                                     Intensity
-                                                    <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                                    <HelpCircle size={12} className="text-muted opacity-50" />
                                                 </div>
                                             </th>
 
@@ -160,7 +160,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                                 <div className="flex items-center justify-end gap-1">
                                                     <Activity size={14} />
                                                     Streak
-                                                    <HelpCircle size={12} className="text-gray-400 opacity-50" />
+                                                    <HelpCircle size={12} className="text-muted opacity-50" />
                                                 </div>
                                             </th>
 
@@ -173,19 +173,19 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                             const isOutlier = dev > 3;
 
                                             return (
-                                                <tr key={r.id} className="hover:bg-gray-50">
-                                                    <td className="py-3 px-2 font-medium text-gray-900 pl-2">{r.name}</td>
+                                                <tr key={r.id} className="hover:bg-light-1">
+                                                    <td className="py-3 px-2 font-medium text-black pl-2">{r.name}</td>
 
-                                                    <td className="py-3 px-2 text-right text-gray-600">
+                                                    <td className="py-3 px-2 text-right text-secondary">
                                                         {r.coreWeeks}
-                                                        <span className="text-xs text-gray-400 ml-1">
+                                                        <span className="text-xs text-muted ml-1">
                                                             ({(r.coreWeeks - group.meanCore) > 0 ? '+' : ''}{(r.coreWeeks - group.meanCore).toFixed(1)})
                                                         </span>
                                                     </td>
 
-                                                    <td className="py-3 px-2 text-right text-gray-600">
+                                                    <td className="py-3 px-2 text-right text-secondary">
                                                         {r.electiveWeeks}
-                                                        <span className="text-xs text-gray-400 ml-1">
+                                                        <span className="text-xs text-muted ml-1">
                                                             ({(r.electiveWeeks - group.meanElective) > 0 ? '+' : ''}{(r.electiveWeeks - group.meanElective).toFixed(1)})
                                                         </span>
                                                     </td>
@@ -194,7 +194,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                                         {r.nightFloatWeeks}
                                                     </td>
 
-                                                    <td className="py-3 px-2 text-right font-mono text-gray-700">
+                                                    <td className="py-3 px-2 text-right font-mono text-primary">
                                                         {r.totalIntensityScore}
                                                     </td>
 
@@ -205,14 +205,14 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                                     >
                                                         <span className={`px-2 py-0.5 rounded font-bold text-xs ${r.maxIntensityStreak >= 8 ? 'bg-red-100 text-red-700' :
                                                             r.maxIntensityStreak >= 5 ? 'bg-orange-100 text-orange-700' :
-                                                                'bg-gray-100 text-gray-600'
+                                                                'bg-light-2 text-secondary'
                                                             }`}>
                                                             {r.maxIntensityStreak} wks
                                                         </span>
                                                     </td>
                                                     <td className="py-3 px-2 text-right pr-2">
                                                         {isOutlier && (
-                                                            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
+                                                            <span className="text-xs bg-red-100 text-red px-2 py-0.5 rounded font-bold">
                                                                 High Dev
                                                             </span>
                                                         )}

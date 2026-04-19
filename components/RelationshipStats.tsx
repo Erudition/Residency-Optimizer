@@ -126,30 +126,30 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
   };
 
   return (
-    <div className="p-6 h-full overflow-y-auto bg-gray-50 pb-64">
+    <div className="p-6 h-full overflow-y-auto bg-light-1 pb-64">
       <div className="max-w-6xl mx-auto space-y-6">
 
         {/* Explanation Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex gap-4">
-            <div className="p-3 bg-blue-50 rounded-full h-fit text-blue-600">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-light-5 flex gap-4">
+            <div className="p-3 bg-light-blue/20 rounded-full h-fit text-blue">
               <Network size={24} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-800">What is Diversity %?</h3>
-              <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+              <h3 className="font-bold text-primary">What is Diversity %?</h3>
+              <p className="text-xs text-secondary mt-1 leading-relaxed">
                 It measures the percentage of unique residents this person has shared a team with.
                 <strong> Goal: 50% or higher.</strong> High diversity ensures cross-cohort collaboration and prevents team isolation.
               </p>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex gap-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-light-5 flex gap-4">
             <div className="p-3 bg-orange-50 rounded-full h-fit text-orange-600">
               <Handshake size={24} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-800">What is Max Overlap?</h3>
-              <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+              <h3 className="font-bold text-primary">What is Max Overlap?</h3>
+              <p className="text-xs text-secondary mt-1 leading-relaxed">
                 Tracks the partner someone works with most frequently.
                 <strong> Goal: Under 10 weeks.</strong> Excessive overlap with one person can limit exposure to different clinical styles and feedback.
               </p>
@@ -158,36 +158,36 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="text-lg font-bold text-gray-800">Co-Working Diversity Report</h2>
+          <div className="p-4 border-b border-light-5 bg-light-1">
+            <h2 className="text-lg font-bold text-primary">Co-Working Diversity Report</h2>
           </div>
           <table className="w-full text-sm text-left border-collapse">
-            <thead className="text-xs text-gray-500 uppercase bg-gray-100 border-b sticky top-0 z-10">
+            <thead className="text-xs text-muted uppercase bg-light-2 border-b sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 cursor-pointer hover:bg-gray-200" onClick={() => handleHeaderClick('name')}>
+                <th className="px-6 py-3 cursor-pointer hover:bg-light-3" onClick={() => handleHeaderClick('name')}>
                   <div className="flex items-center gap-1">Resident <ArrowUpDown size={12} /></div>
                 </th>
-                <th className="px-6 py-3 cursor-pointer hover:bg-gray-200 text-center" onClick={() => handleHeaderClick('uniqueCount')}>
+                <th className="px-6 py-3 cursor-pointer hover:bg-light-3 text-center" onClick={() => handleHeaderClick('uniqueCount')}>
                   <div className="flex items-center gap-1 justify-center">Unique Co-workers <ArrowUpDown size={12} /></div>
                 </th>
-                <th className="px-6 py-3 cursor-pointer hover:bg-gray-200" onClick={() => handleHeaderClick('percent')}>
+                <th className="px-6 py-3 cursor-pointer hover:bg-light-3" onClick={() => handleHeaderClick('percent')}>
                   <div className="flex items-center gap-1">Diversity % <ArrowUpDown size={12} /></div>
                 </th>
-                <th className="px-6 py-3 cursor-pointer hover:bg-gray-200" onClick={() => handleHeaderClick('maxOverlapWeeks')}>
+                <th className="px-6 py-3 cursor-pointer hover:bg-light-3" onClick={() => handleHeaderClick('maxOverlapWeeks')}>
                   <div className="flex items-center gap-1">Most Frequent Partner <ArrowUpDown size={12} /></div>
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {sortedStats.map(row => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-900 border-r border-gray-50">
+                <tr key={row.id} className="hover:bg-light-1">
+                  <td className="px-6 py-4 font-medium text-black border-r border-gray-50">
                     <div>{row.name}</div>
-                    <div className="text-xs text-gray-400">PGY-{row.level}</div>
+                    <div className="text-xs text-muted">PGY-{row.level}</div>
                   </td>
                   <td className="px-6 py-4 text-center border-r border-gray-50">
-                    <span className="font-bold text-base text-gray-900">{row.uniqueCount}</span>
-                    <span className="text-gray-500 text-xs ml-1">/ {row.totalPossible}</span>
+                    <span className="font-bold text-base text-black">{row.uniqueCount}</span>
+                    <span className="text-muted text-xs ml-1">/ {row.totalPossible}</span>
                   </td>
                   <td className="px-6 py-4 border-r border-gray-50">
                     <span className={`px-2 py-1 rounded text-xs font-bold border ${getDiversityColor(row.percent)}`}>
@@ -196,8 +196,8 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className="font-medium text-gray-900">{row.maxOverlapName}</span>
-                      <span className={`text-xs ${row.maxOverlapWeeks > 8 ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                      <span className="font-medium text-black">{row.maxOverlapName}</span>
+                      <span className={`text-xs ${row.maxOverlapWeeks > 8 ? 'text-red font-bold' : 'text-muted'}`}>
                         {row.maxOverlapWeeks} weeks together
                       </span>
                     </div>

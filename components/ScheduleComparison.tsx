@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ScheduleGrid, ScheduleHistory, Resident, AssignmentType, ScheduleCell } from '../types';
 import { calculateFairnessMetrics, calculateScheduleScore } from '../services/scheduler';
 import { Sparkles, Loader2, Info, Download, Users, Plus, ChevronUp, ChevronDown, ArrowUpDown, Pencil } from 'lucide-react';
+import { Button } from './ui/Button';
 
 interface ScheduleSession {
   id: string;
@@ -86,7 +87,7 @@ export const ScheduleComparison: React.FC<Props> = ({
 
   const SortIcon = ({ column }: { column: keyof ScheduleMetrics }) => {
     if (sortConfig.key !== column) return <ArrowUpDown size={12} className="ml-1 opacity-20" />;
-    return sortConfig.direction === 'asc' ? <ChevronUp size={12} className="ml-1 text-blue-600" /> : <ChevronDown size={12} className="ml-1 text-blue-600" />;
+    return sortConfig.direction === 'asc' ? <ChevronUp size={12} className="ml-1 text-blue" /> : <ChevronDown size={12} className="ml-1 text-blue" />;
   };
 
   const metrics: ScheduleMetrics[] = useMemo(() => {
@@ -213,13 +214,13 @@ export const ScheduleComparison: React.FC<Props> = ({
   }, [metrics]);
 
   const getColor = (val: number, min: number, max: number, higherIsBetter: boolean) => {
-    if (min === max) return 'bg-gray-50 text-gray-900';
+    if (min === max) return 'bg-light-1 text-black';
     let ratio = (val - min) / (max - min);
     if (!higherIsBetter) ratio = 1 - ratio;
     if (ratio >= 0.8) return 'bg-green-100 text-green-900 font-bold';
     if (ratio >= 0.6) return 'bg-green-50 text-green-900 font-medium';
-    if (ratio >= 0.4) return 'bg-gray-50 text-gray-900';
-    if (ratio >= 0.2) return 'bg-red-50 text-red-900 font-medium';
+    if (ratio >= 0.4) return 'bg-light-1 text-black';
+    if (ratio >= 0.2) return 'bg-red/10 text-red-900 font-medium';
     return 'bg-red-100 text-red-900 font-bold';
   };
 
@@ -229,8 +230,8 @@ export const ScheduleComparison: React.FC<Props> = ({
     <div className="flex flex-col h-full bg-white">
       <div className="p-8 flex justify-between items-center bg-white border-b">
         <div>
-          <h2 className="text-3xl font-black text-gray-900">Schedule Comparison</h2>
-          <p className="text-sm text-gray-500 font-medium tracking-tight">Compare metrics across generated schedules to find the optimal balance.</p>
+          <h2 className="text-3xl font-black text-black">Schedule Comparison</h2>
+          <p className="text-sm text-muted font-medium tracking-tight">Compare metrics across generated schedules to find the optimal balance.</p>
         </div>
         <div className="flex items-center gap-3">
           {/* Batch Optimize button removed */}
@@ -239,58 +240,58 @@ export const ScheduleComparison: React.FC<Props> = ({
 
       <div className="flex-1 overflow-auto p-8">
         {schedules.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50/50 p-12 text-center">
+          <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-light-5 rounded-3xl bg-light-1/50 p-12 text-center">
             <div className="bg-white p-4 rounded-full shadow-sm border mb-4">
               <Plus size={32} className="text-blue-500 animate-pulse" />
             </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2">No schedules yet</h3>
-            <p className="text-gray-500 font-medium max-w-sm">Get started by clicking the <strong>"+" icon</strong> in the tab bar or <strong>Batch Optimize</strong> above to generate your first schedule version.</p>
+            <h3 className="text-xl font-black text-black mb-2">No schedules yet</h3>
+            <p className="text-muted font-medium max-w-sm">Get started by clicking the <strong>"+" icon</strong> in the tab bar or <strong>Batch Optimize</strong> above to generate your first schedule version.</p>
           </div>
         ) : (
-          <div className="rounded-xl overflow-hidden shadow-sm border border-gray-200">
+          <div className="rounded-xl overflow-hidden shadow-sm border border-light-5">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="bg-gray-100 border-b border-gray-300 text-gray-500 uppercase text-[10px] font-black tracking-widest">
-                  <th className="py-4 px-6 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('name')}>
+                <tr className="bg-light-2 border-b border-light-6 text-muted uppercase text-[10px] font-black tracking-widest">
+                  <th className="py-4 px-6 text-left cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('name')}>
                     <div className="flex items-center">Schedule Name <SortIcon column="name" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('score')}>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('score')}>
                     <div className="flex items-center justify-center">Score (Lower Better) <SortIcon column="score" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('avgFairness')}>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('avgFairness')}>
                     <div className="flex items-center justify-center">AVG Fairness <SortIcon column="avgFairness" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('pgy1Fairness')}>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('pgy1Fairness')}>
                     <div className="flex items-center justify-center">PGY-1 <SortIcon column="pgy1Fairness" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('pgy2Fairness')}>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('pgy2Fairness')}>
                     <div className="flex items-center justify-center">PGY-2 <SortIcon column="pgy2Fairness" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-gray-200 transition-colors border-r-2 border-blue-100" onClick={() => handleSort('pgy3Fairness')}>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors border-r-2 border-blue-100" onClick={() => handleSort('pgy3Fairness')}>
                     <div className="flex items-center justify-center">PGY-3 <SortIcon column="pgy3Fairness" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('totalNF')}>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('totalNF')}>
                     <div className="flex items-center justify-center">Night Shifts <SortIcon column="totalNF" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('streakSD')}>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('streakSD')}>
                     <div className="flex items-center justify-center">Streak SD <SortIcon column="streakSD" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('maxStreak')}>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('maxStreak')}>
                     <div className="flex items-center justify-center">Max Streak <SortIcon column="maxStreak" /></div>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {generatingSchedules.map(gs => (
-                  <tr key={gs.id} className="border-b border-gray-50 animate-pulse bg-blue-50/20">
+                  <tr key={gs.id} className="border-b border-gray-50 animate-pulse bg-light-blue/20/20">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <Loader2 size={16} className="animate-spin text-blue-400" />
-                        <span className="text-gray-400 font-bold italic">{gs.name}...</span>
+                        <span className="text-muted font-bold italic">{gs.name}...</span>
                       </div>
                     </td>
                     <td colSpan={8} className="py-4 px-6">
-                      <div className="w-full bg-blue-100/50 h-2 rounded-full overflow-hidden">
+                      <div className="w-full bg-light-blue/50 h-2 rounded-full overflow-hidden">
                         <div className="h-full bg-blue-400/50 animate-pulse" style={{ width: '30%' }}></div>
                       </div>
                     </td>
@@ -299,20 +300,20 @@ export const ScheduleComparison: React.FC<Props> = ({
                 {sortedMetrics.map(m => {
                   const isActive = m.id === activeScheduleId;
                   return (
-                    <tr key={m.id} className={`border-b border-gray-100 transition-colors hover:bg-gray-50 ${isActive ? 'bg-blue-50/40' : ''}`}>
+                    <tr key={m.id} className={`border-b border-light-3 transition-colors hover:bg-light-1 ${isActive ? 'bg-light-blue/20/40' : ''}`}>
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
                           <Identicon id={m.id} size={14} />
                           <div className="flex items-center gap-2 group/name cursor-pointer" onClick={() => onSelect(m.id)}>
-                            <span className="font-black text-blue-600 hover:text-blue-800 hover:underline text-left">
+                            <span className="font-black text-blue hover:text-blue-800 hover:underline text-left">
                               {m.name}
                             </span>
-                            <button
+                            <Button
                               onClick={(e) => { e.stopPropagation(); onRename(m.id); }}
-                              className="p-1 text-gray-400 hover:text-blue-600 opacity-0 group-hover/name:opacity-100 transition-opacity"
+                              className="p-1 text-muted hover:text-blue opacity-0 group-hover/name:opacity-100 transition-opacity"
                             >
                               <Pencil size={12} />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </td>
@@ -355,7 +356,7 @@ export const ScheduleComparison: React.FC<Props> = ({
         )}
       </div>
 
-      <div className="p-6 bg-gray-50 border-t text-[10px] font-bold text-gray-400 flex justify-between items-center uppercase tracking-widest">
+      <div className="p-6 bg-light-1 border-t text-[10px] font-bold text-muted flex justify-between items-center uppercase tracking-widest">
         <div className="flex gap-8">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-green-100 border border-green-200"></div>
@@ -365,7 +366,7 @@ export const ScheduleComparison: React.FC<Props> = ({
             <div className="w-3 h-3 rounded-full bg-red-100 border border-red-200"></div>
             <span>Below Average</span>
           </div>
-          <div className="flex items-center gap-2 border-l border-gray-300 pl-8">
+          <div className="flex items-center gap-2 border-l border-light-6 pl-8">
             <Info size={14} className="text-gray-300" />
             <span>Cost = (Violations × 10k) + (PGY3 Inequity) + (Streak Deviation)</span>
           </div>

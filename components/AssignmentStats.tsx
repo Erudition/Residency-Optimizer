@@ -161,16 +161,16 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
 
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden relative">
-      <div className="p-4 bg-gray-50 border-b">
-        <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+      <div className="p-4 bg-light-1 border-b">
+        <h2 className="text-lg font-bold text-primary flex items-center gap-2">
           Assignment Heatmap
         </h2>
-        <p className="text-sm text-gray-500">View staffing levels vs. constraints. Hover over row headers for rule details.</p>
+        <p className="text-sm text-muted">View staffing levels vs. constraints. Hover over row headers for rule details.</p>
       </div>
 
       <div className="flex-1 overflow-auto spreadsheet-container pb-64">
         <table className="border-separate border-spacing-0 w-max">
-          <thead className="sticky top-0 z-30 bg-gray-50 text-xs text-gray-500 font-semibold h-10 shadow-sm">
+          <thead className="sticky top-0 z-30 bg-light-1 text-xs text-muted font-semibold h-10 shadow-sm">
             <tr>
               <th
                 className="sticky left-0 z-40 bg-white/80 backdrop-blur-md border-b border-r p-0 text-left transition-all"
@@ -180,13 +180,13 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                   <span className="truncate pr-2">Assignment</span>
                   {/* Resize Handle */}
                   <div
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-600 transition-colors z-50"
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue transition-colors z-50"
                     onMouseDown={startResize}
                   />
                 </div>
               </th>
               {WEEKS.map(w => (
-                <th key={w} className="border-b border-gray-200 min-w-[30px] text-center w-8 text-[10px]">
+                <th key={w} className="border-b border-light-5 min-w-[30px] text-center w-8 text-[10px]">
                   {w}
                 </th>
               ))}
@@ -206,19 +206,19 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
               }
 
               return (
-                <tr key={type} className="hover:bg-gray-50">
+                <tr key={type} className="hover:bg-light-1">
                   <td
-                    className="sticky left-0 z-20 bg-white/80 backdrop-blur-md border-b border-r px-3 py-1 font-medium text-gray-700 whitespace-nowrap cursor-help group transition-all"
+                    className="sticky left-0 z-20 bg-white/80 backdrop-blur-md border-b border-r px-3 py-1 font-medium text-primary whitespace-nowrap cursor-help group transition-all"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
                     onMouseEnter={(e) => handleRowHeaderEnter(e, type)}
                     onMouseLeave={() => setRowTooltip(null)}
                   >
                     <div className="flex items-center justify-between overflow-hidden">
-                      <span className={`truncate ${hasViolation ? 'text-red-600 font-bold' : ''}`}>
+                      <span className={`truncate ${hasViolation ? 'text-red font-bold' : ''}`}>
                         {ASSIGNMENT_LABELS[type]}
                       </span>
                       {rangeLabel && (
-                        <span className={`text-[10px] ml-1 font-mono shrink-0 ${hasViolation ? 'text-red-500' : 'text-gray-400'}`}>
+                        <span className={`text-[10px] ml-1 font-mono shrink-0 ${hasViolation ? 'text-red-500' : 'text-muted'}`}>
                           {rangeLabel}
                         </span>
                       )}
@@ -234,7 +234,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                     return (
                       <td
                         key={i}
-                        className={`border-b text-center cursor-default relative p-0 ${error ? 'border-red-500 border-2 z-10' : 'border-gray-100'}`}
+                        className={`border-b text-center cursor-default relative p-0 ${error ? 'border-red-500 border-2 z-10' : 'border-light-3'}`}
                         onMouseEnter={(e) => handleCellEnter(e, type, i)}
                         onMouseLeave={() => setCellTooltip(null)}
                       >
@@ -245,7 +245,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                         ) : (
                           error ? (
                             // Only show error background if 0 counts is actually an error (min > 0)
-                            <div className="w-full h-8 bg-red-50"></div>
+                            <div className="w-full h-8 bg-red/10"></div>
                           ) : null
                         )}
                       </td>
@@ -281,7 +281,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
               if (pgyGroup.length === 0) return null;
               return (
                 <div key={pgy}>
-                  <div className="text-[10px] uppercase text-gray-400 font-bold mb-0.5">PGY-{pgy} ({pgyGroup.length})</div>
+                  <div className="text-[10px] uppercase text-muted font-bold mb-0.5">PGY-{pgy} ({pgyGroup.length})</div>
                   <div className="flex flex-wrap gap-1">
                     {pgyGroup.map(r => (
                       <span key={r.id} className="bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
@@ -300,7 +300,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
       {/* Row Tooltip (Metadata Constraints) */}
       {rowTooltip && (
         <div
-          className="fixed z-[200] bg-white text-gray-800 text-xs rounded-lg shadow-xl border border-gray-200 p-4 pointer-events-none transform -translate-y-1/2 ml-2 min-w-[240px]"
+          className="fixed z-[200] bg-white text-primary text-xs rounded-lg shadow-xl border border-light-5 p-4 pointer-events-none transform -translate-y-1/2 ml-2 min-w-[240px]"
           style={{ left: rowTooltip.x, top: rowTooltip.y }}
         >
           <h4 className="font-bold text-sm text-blue-700 mb-2 border-b pb-1">
@@ -312,18 +312,18 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
             return (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <span className="text-gray-500">Intensity:</span>
+                  <span className="text-muted">Intensity:</span>
                   <span className="font-bold">{meta.intensity}/5</span>
 
-                  <span className="text-gray-500">Setting:</span>
+                  <span className="text-muted">Setting:</span>
                   <span className="font-medium">{meta.setting}</span>
 
-                  <span className="text-gray-500">Duration:</span>
+                  <span className="text-muted">Duration:</span>
                   <span className="font-medium">{meta.duration} Weeks</span>
                 </div>
 
-                <div className="bg-gray-50 p-2 rounded border border-gray-100 mt-2">
-                  <div className="text-xs font-bold text-gray-500 uppercase mb-1">Weekly Staffing</div>
+                <div className="bg-light-1 p-2 rounded border border-light-3 mt-2">
+                  <div className="text-xs font-bold text-muted uppercase mb-1">Weekly Staffing</div>
                   <div className="flex justify-between">
                     <span>PGY-1:</span>
                     <span className="font-mono">{meta.minInterns} - {meta.maxInterns > 15 ? '∞' : meta.maxInterns}</span>
@@ -335,7 +335,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                 </div>
 
                 {(meta.targetIntern !== undefined || meta.targetSenior !== undefined || meta.targetPGY2 !== undefined || meta.targetPGY3 !== undefined) && (
-                  <div className="bg-blue-50 p-2 rounded border border-blue-100">
+                  <div className="bg-light-blue/20 p-2 rounded border border-blue-100">
                     <div className="text-xs font-bold text-blue-500 uppercase mb-1">Annual Targets</div>
                     {meta.targetIntern !== undefined && <div>PGY-1: {meta.targetIntern} weeks</div>}
                     {meta.targetPGY2 !== undefined ? (

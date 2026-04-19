@@ -19,19 +19,19 @@ const ProgressBar = ({ value, target, colorClass, min, max }: { value: number, t
     return (
         <div className="w-full">
             <div className="flex justify-between text-[10px] font-bold mb-1 uppercase tracking-tight">
-                <span className={isViolation ? 'text-red-600' : 'text-gray-500'}>
+                <span className={isViolation ? 'text-red' : 'text-muted'}>
                     {value} weeks {isViolation && '(VIOLATION)'}
                 </span>
-                <span className="text-gray-400">Target: {target}w</span>
+                <span className="text-muted">Target: {target}w</span>
             </div>
-            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+            <div className="h-2 w-full bg-light-2 rounded-full overflow-hidden border border-light-5">
                 <div
                     className={`h-full transition-all duration-500 ${isViolation ? 'bg-red-500' : colorClass}`}
                     style={{ width: `${percentage}%` }}
                 />
             </div>
             {(min !== undefined || max !== undefined) && (
-                <div className="text-[9px] text-gray-400 mt-0.5">
+                <div className="text-[9px] text-muted mt-0.5">
                     Requirement: {min || 0}-{max || '∞'} weeks total
                 </div>
             )}
@@ -101,55 +101,55 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
     }, [auditData]);
 
     return (
-        <div className="p-6 h-full overflow-y-auto bg-gray-50 pb-64">
+        <div className="p-6 h-full overflow-y-auto bg-light-1 pb-64">
             <div className="max-w-7xl mx-auto space-y-6">
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><Hospital size={20} /></div>
-                            <div className="text-xs font-bold text-gray-500 uppercase">Outpatient Compliance</div>
+                            <div className="p-2 bg-light-blue/20 rounded-lg text-blue"><Hospital size={20} /></div>
+                            <div className="text-xs font-bold text-muted uppercase">Outpatient Compliance</div>
                         </div>
-                        <div className="text-2xl font-bold text-gray-800">{globalStats.outpatientMet} / {globalStats.total}</div>
-                        <div className="text-[10px] text-gray-400 mt-1">Goal: 10 Months (~13.3w / yr)</div>
+                        <div className="text-2xl font-bold text-primary">{globalStats.outpatientMet} / {globalStats.total}</div>
+                        <div className="text-[10px] text-muted mt-1">Goal: 10 Months (~13.3w / yr)</div>
                     </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-green-50 rounded-lg text-green-600"><Building2 size={20} /></div>
-                            <div className="text-xs font-bold text-gray-500 uppercase">Inpatient Compliance</div>
+                            <div className="text-xs font-bold text-muted uppercase">Inpatient Compliance</div>
                         </div>
-                        <div className="text-2xl font-bold text-gray-800">{globalStats.inpatientMet} / {globalStats.total}</div>
-                        <div className="text-[10px] text-gray-400 mt-1">Goal: 10 Months (~13.3w / yr)</div>
+                        <div className="text-2xl font-bold text-primary">{globalStats.inpatientMet} / {globalStats.total}</div>
+                        <div className="text-[10px] text-muted mt-1">Goal: 10 Months (~13.3w / yr)</div>
                     </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Clock size={20} /></div>
-                            <div className="text-xs font-bold text-gray-500 uppercase">Crit Care Ceiling</div>
+                            <div className="text-xs font-bold text-muted uppercase">Crit Care Ceiling</div>
                         </div>
-                        <div className="text-2xl font-bold text-gray-800">{globalStats.critCareSafe} / {globalStats.total}</div>
-                        <div className="text-[10px] text-gray-400 mt-1">Goal: Max 6 Months (~8w / yr)</div>
+                        <div className="text-2xl font-bold text-primary">{globalStats.critCareSafe} / {globalStats.total}</div>
+                        <div className="text-[10px] text-muted mt-1">Goal: Max 6 Months (~8w / yr)</div>
                     </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-orange-50 rounded-lg text-orange-600"><ShieldCheck size={20} /></div>
-                            <div className="text-xs font-bold text-gray-500 uppercase">Night Float Safe</div>
+                            <div className="text-xs font-bold text-muted uppercase">Night Float Safe</div>
                         </div>
-                        <div className="text-2xl font-bold text-gray-800">{globalStats.nfSafe} / {globalStats.total}</div>
-                        <div className="text-[10px] text-gray-400 mt-1">Goal: Max 2 Months / yr</div>
+                        <div className="text-2xl font-bold text-primary">{globalStats.nfSafe} / {globalStats.total}</div>
+                        <div className="text-[10px] text-muted mt-1">Goal: Max 2 Months / yr</div>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <div className="bg-white rounded-xl shadow-md border border-light-5 overflow-hidden">
+                    <div className="p-4 border-b bg-light-1 flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-primary flex items-center gap-2">
                             <ShieldCheck className="text-green-600" /> ACGME Graduation Requirement Audit (Cumulative)
                         </h2>
-                        <span className="text-xs text-gray-500 italic">Tracking progress across all historical and current schedules.</span>
+                        <span className="text-xs text-muted italic">Tracking progress across all historical and current schedules.</span>
                     </div>
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-100 text-[10px] uppercase font-bold text-gray-600">
+                        <thead className="bg-light-2 text-[10px] uppercase font-bold text-secondary">
                             <tr>
-                                <th className="px-6 py-3 sticky left-0 bg-gray-100 z-10 w-48">Resident</th>
+                                <th className="px-6 py-3 sticky left-0 bg-light-2 z-10 w-48">Resident</th>
                                 <th className="px-6 py-3">Outpatient (10m)</th>
                                 <th className="px-6 py-3">Inpatient (10m)</th>
                                 <th className="px-6 py-3">Crit Care (2-6m)</th>
@@ -158,11 +158,11 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {auditData.map(d => (
-                                <tr key={d.id} className="hover:bg-gray-50">
+                                <tr key={d.id} className="hover:bg-light-1">
                                     <td className="px-6 py-4 font-medium sticky left-0 bg-white z-10 border-r">
                                         <div className="flex flex-col">
-                                            <span className="text-gray-900">{d.name}</span>
-                                            <span className="text-[10px] text-gray-400">PGY-{d.level} • Cohort {String.fromCharCode(65 + d.cohort)}</span>
+                                            <span className="text-black">{d.name}</span>
+                                            <span className="text-[10px] text-muted">PGY-{d.level} • Cohort {String.fromCharCode(65 + d.cohort)}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 w-1/4">
@@ -175,7 +175,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                                         <ProgressBar value={d.criticalCare} target={2.6} colorClass="bg-purple-500" max={8} />
                                     </td>
                                     <td className="px-6 py-4 w-40 text-center">
-                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${d.nfViolation ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${d.nfViolation ? 'bg-red/10 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
                                             {d.nfViolation ? <ShieldAlert size={12} /> : <ShieldCheck size={12} />}
                                             {d.nightFloat} weeks
                                         </div>
