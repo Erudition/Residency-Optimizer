@@ -80,3 +80,11 @@ Based on new faculty orientation materials:
 *   **Naming update:** Use "AMCS Consults" instead of "CVICU" when referring to advanced cardiovascular mechanical support to avoid accidental triggering of the ACGME critical care limits.
 *   **Staffing strategy:** Pair interns (PGY-1s) and Seniors (PGY-2 or PGY-3) to rotate together on the pulmonology consult/procedural service.
 *   **ICU Staffing:** The ideal complement of residents at MICU is 4 interns (PGY1s) and 2 senior residents (PGY2s or PGY3s). Due to native intern supply limits, the 4th intern slot will be backfilled by a dedicated NP/PA.
+
+## 10. UI Presentation Standards
+*   **Resident Sorting:** The default resident display order must prioritize PGY-1s (Interns) at the top of the list, followed by PGY-2s and PGY-3s. Within each PGY level, residents should be sorted alphabetically. In Cohort view, this same seniority-last (PGY 1 → 2 → 3) sub-sort must apply within each cohort.
+*   **Academic Year Display:** Toggle buttons and labels for academic years must display the full academic year range (e.g., "2026 - 2027") rather than a single starting year.
+
+## 11. Development Verification Requirements
+*   **Post-Change Type Check:** After any code modification, you MUST run `npx tsc --noEmit` and confirm zero errors before claiming completion. Vite's dev server does not perform type checking—it only transpiles—so runtime ReferenceErrors and missing imports will not surface until the user hits them in the browser.
+*   **Browser Verification:** If a dev server is running, check the browser console for errors after changes. Do not rely solely on the absence of terminal output from Vite as evidence of correctness.
