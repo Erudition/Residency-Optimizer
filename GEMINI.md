@@ -1,7 +1,9 @@
 # Residency Optimizer App
 This project is a collaboration between Github users @Erudition (developer) and @AHWright (Medical Resident). It's developed within a shared Antigravity workspace. You should always update this GEMINI.md (and the files it embeds) with context about the requirements given to you during conversation, especially when you're not specifically asked to put it in a specific file. Keep this document up to date with as much domain knowledge as possible.
 
-The project is built to a Github pages site available at `https://erudition.github.io/Residency-Optimizer/`, built from the main branch. Make sure I am always working in a dedicated feature branch when making changes. Please commit your changes frequently with descriptive commit messages. If code changes are involved, prefer to only commit when tests pass, but if documentation or just GEMINI.md is updated, commit and push immediately after editing.
+The project is built to a Github pages site available at `https://erudition.github.io/Residency-Optimizer/`, built from the main branch. Make sure I am always working in a dedicated feature branch when making changes. 
+
+After any code modification, you MUST run `npx tsc --noEmit` and confirm zero errors before claiming completion. Vite's dev server does not perform type checking—it only transpiles—so runtime ReferenceErrors and missing imports will not surface until the user hits them in the browser. Once the code compiles cleanly, please commit your changes with a descriptive commit messages. If code changes are involved, prefer to only commit when tests pass, but if documentation or just GEMINI.md is updated, commit and push immediately after editing. If there is a backlog of many files to commit, try to break them down into separate commits with related files grouped.
 
 
 
@@ -85,6 +87,3 @@ Based on new faculty orientation materials:
 *   **Resident Sorting:** The default resident display order must prioritize PGY-1s (Interns) at the top of the list, followed by PGY-2s and PGY-3s. Within each PGY level, residents should be sorted alphabetically. In Cohort view, this same seniority-last (PGY 1 → 2 → 3) sub-sort must apply within each cohort.
 *   **Academic Year Display:** Toggle buttons and labels for academic years must display the full academic year range (e.g., "2026 - 2027") rather than a single starting year.
 
-## 11. Development Verification Requirements
-*   **Post-Change Type Check:** After any code modification, you MUST run `npx tsc --noEmit` and confirm zero errors before claiming completion. Vite's dev server does not perform type checking—it only transpiles—so runtime ReferenceErrors and missing imports will not surface until the user hits them in the browser.
-*   **Browser Verification:** If a dev server is running, check the browser console for errors after changes. Do not rely solely on the absence of terminal output from Vite as evidence of correctness.
