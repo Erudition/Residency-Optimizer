@@ -217,10 +217,10 @@ David Wilson,2,4`;
         <CardContent className="p-6">
         <div className="flex justify-between items-start mb-6">
             <div>
-                 <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
+                 <h2 className="text-xl font-bold flex items-center gap-2 text-primary">
                     <UserPlus className="w-5 h-5" /> Manage Residents
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">Add residents manually or bulk import via CSV.</p>
+                <p className="text-sm text-muted mt-1">Add residents manually or bulk import via CSV.</p>
             </div>
            
             <div className="flex gap-2">
@@ -234,11 +234,11 @@ David Wilson,2,4`;
         </div>
 
         {/* Import Rules / Legend */}
-        <div className="bg-blue-50 border border-blue-100 rounded-md p-4 mb-6 text-sm text-blue-900 flex gap-3 items-start">
-             <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+        <div className="bg-light-blue/20 border border-light-blue/40 rounded-md p-4 mb-6 text-sm text-navy-dark flex gap-3 items-start">
+             <Info className="w-5 h-5 text-blue shrink-0 mt-0.5" />
              <div>
                 <div className="font-bold mb-1">CSV Format Guidelines:</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-blue-800/80 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-navy/80 text-xs">
                     <ul className="list-disc list-inside space-y-1">
                         <li><strong>Column 1 (Name):</strong> Resident Full Name (Required).</li>
                         <li><strong>Column 2 (Level):</strong> PGY Level (1, 2, or 3) (Required).</li>
@@ -248,7 +248,7 @@ David Wilson,2,4`;
                         <li>If cohort is blank, it will be auto-assigned.</li>
                     </ul>
                 </div>
-                <div className="mt-2 text-xs font-mono bg-white/50 p-1.5 rounded border border-blue-100 inline-block text-blue-700">
+                <div className="mt-2 text-xs font-mono bg-white/50 p-1.5 rounded border border-light-blue/40 inline-block text-blue-2-dark">
                     Example: "Dr. Smith, 1, 0"
                 </div>
              </div>
@@ -256,7 +256,7 @@ David Wilson,2,4`;
         
         <div className="flex gap-4 items-end flex-wrap border-t border-light-5 pt-6">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium text-primary mb-1">Name</label>
             <Input
               value={newResidentName}
               onChange={(e) => setNewResidentName(e.target.value)}
@@ -264,7 +264,7 @@ David Wilson,2,4`;
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">PGY Level</label>
+            <label className="block text-sm font-medium text-primary mb-1">PGY Level</label>
             <Select
               value={newResidentLevel}
               onChange={(e) => setNewResidentLevel(Number(e.target.value) as PgyLevel)}
@@ -276,7 +276,7 @@ David Wilson,2,4`;
             </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cohort</label>
+            <label className="block text-sm font-medium text-primary mb-1">Cohort</label>
             <Select
               value={newResidentCohort}
               onChange={(e) => setNewResidentCohort(Number(e.target.value))}
@@ -295,7 +295,7 @@ David Wilson,2,4`;
       </Card>
 
       <Card className="mb-12">
-        <div className="p-4 border-b border-light-5 bg-gray-50 font-semibold text-gray-700 grid grid-cols-12 gap-4">
+        <div className="p-4 border-b border-light-5 bg-light-1 font-semibold text-primary grid grid-cols-12 gap-4">
             <div className="col-span-6">Name</div>
             <div className="col-span-2 text-center">Level</div>
             <div className="col-span-2 text-center">Cohort</div>
@@ -306,7 +306,7 @@ David Wilson,2,4`;
               const isEditing = editingId === r.id;
               
               return (
-                <div key={r.id} className={`p-4 border-b border-light-5 last:border-0 grid grid-cols-12 gap-4 items-center ${isEditing ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                <div key={r.id} className={`p-4 border-b border-light-5 last:border-0 grid grid-cols-12 gap-4 items-center ${isEditing ? 'bg-light-blue/20' : 'hover:bg-light-1'}`}>
                     {isEditing ? (
                       <>
                         <div className="col-span-6">
@@ -337,10 +337,10 @@ David Wilson,2,4`;
                           </Select>
                         </div>
                         <div className="col-span-2 text-center flex justify-center gap-2">
-                           <Button variant="ghost" size="sm" onClick={saveEditing} className="text-green-600 hover:text-green-800 hover:bg-green-100" title="Save">
+                           <Button variant="ghost" size="sm" onClick={saveEditing} className="text-green hover:text-green-dark hover:bg-lime-green/40" title="Save">
                              <Check size={16}/>
                            </Button>
-                           <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-gray-500 hover:text-gray-700 hover:bg-gray-200" title="Cancel">
+                           <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-muted hover:text-primary hover:bg-light-3" title="Cancel">
                              <X size={16}/>
                            </Button>
                         </div>

@@ -27,9 +27,9 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
     }, [residents, schedule, precalculated]);
 
     const getScoreColor = (score: number) => {
-        if (score >= 90) return 'text-green-600 bg-green-50 border-green-200';
-        if (score >= 75) return 'text-orange-600 bg-orange-50 border-orange-200';
-        return 'text-red bg-red/10 border-red-200';
+        if (score >= 90) return 'text-green bg-lime-green/20 border-lime-green';
+        if (score >= 75) return 'text-orange bg-creamsicle/30 border-creamsicle';
+        return 'text-red bg-red/10 border-red/40';
     };
 
     const handleHeaderEnter = (e: React.MouseEvent, title: string, text: string) => {
@@ -86,16 +86,16 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
 
                         <div className="p-6">
                             <div className="grid grid-cols-3 gap-6 mb-6">
-                                <div className="bg-light-blue/20 p-4 rounded-lg border border-blue-100">
+                                <div className="bg-light-blue/20 p-4 rounded-lg border border-light-blue/40">
                                     <div className="text-xs font-bold text-blue uppercase tracking-wider mb-1">Core Weeks (Avg)</div>
                                     <div className="text-2xl font-bold text-primary">{group.meanCore.toFixed(1)} <span className="text-sm font-normal text-muted">± {group.sdCore.toFixed(2)}</span></div>
                                 </div>
-                                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                                    <div className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Elective Weeks (Avg)</div>
+                                <div className="bg-lime-green/20 p-4 rounded-lg border border-lime-green/40">
+                                    <div className="text-xs font-bold text-green uppercase tracking-wider mb-1">Elective Weeks (Avg)</div>
                                     <div className="text-2xl font-bold text-primary">{group.meanElective.toFixed(1)} <span className="text-sm font-normal text-muted">± {group.sdElective.toFixed(2)}</span></div>
                                 </div>
-                                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                                    <div className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-1">Intensity Score (Avg)</div>
+                                <div className="bg-light-purple/30 p-4 rounded-lg border border-purple-100">
+                                    <div className="text-xs font-bold text-purple uppercase tracking-wider mb-1">Intensity Score (Avg)</div>
                                     <div className="text-2xl font-bold text-primary">{group.meanIntensity.toFixed(0)} <span className="text-sm font-normal text-muted">± {group.sdIntensity.toFixed(1)}</span></div>
                                 </div>
                             </div>
@@ -203,8 +203,8 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                                         onMouseEnter={(e) => handleStreakEnter(e, r.name, r.maxIntensityStreak, r.streakSummary)}
                                                         onMouseLeave={handleMouseLeave}
                                                     >
-                                                        <span className={`px-2 py-0.5 rounded font-bold text-xs ${r.maxIntensityStreak >= 8 ? 'bg-red-100 text-red-700' :
-                                                            r.maxIntensityStreak >= 5 ? 'bg-orange-100 text-orange-700' :
+                                                        <span className={`px-2 py-0.5 rounded font-bold text-xs ${r.maxIntensityStreak >= 8 ? 'bg-red/20 text-red-2-dark' :
+                                                            r.maxIntensityStreak >= 5 ? 'bg-creamsicle/50 text-orange-700' :
                                                                 'bg-light-2 text-secondary'
                                                             }`}>
                                                             {r.maxIntensityStreak} wks
@@ -212,7 +212,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                                     </td>
                                                     <td className="py-3 px-2 text-right pr-2">
                                                         {isOutlier && (
-                                                            <span className="text-xs bg-red-100 text-red px-2 py-0.5 rounded font-bold">
+                                                            <span className="text-xs bg-red/20 text-red px-2 py-0.5 rounded font-bold">
                                                                 High Dev
                                                             </span>
                                                         )}
@@ -230,14 +230,14 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
 
             {tooltip && (
                 <div
-                    className="fixed z-[250] bg-gray-900 text-white text-xs rounded p-2 shadow-xl max-w-xs pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px]"
+                    className="fixed z-[250] bg-black text-white text-xs rounded p-2 shadow-xl max-w-xs pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px]"
                     style={{ left: tooltip.x, top: tooltip.y }}
                 >
-                    <div className="font-bold mb-1 border-b border-gray-700 pb-1">{tooltip.title}</div>
+                    <div className="font-bold mb-1 border-b border-light-9 pb-1">{tooltip.title}</div>
                     {tooltip.type === 'streak' ? (
                         <div className="flex flex-wrap gap-1 max-w-[200px] mt-1">
                             {tooltip.content.map((item, i) => (
-                                <span key={i} className="bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
+                                <span key={i} className="bg-light-9 px-1.5 py-0.5 rounded text-[10px]">
                                     {item}
                                 </span>
                             ))}

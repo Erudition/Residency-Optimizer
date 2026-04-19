@@ -125,7 +125,7 @@ const AssignmentModal = ({
               key={key}
               onClick={() => onSave(key as AssignmentType)}
               className={`p-3 rounded border text-sm font-medium transition-colors text-left
-                ${current === key ? 'ring-2 ring-blue-500 bg-light-blue/20 border-blue' : 'hover:bg-light-1 border-light-5'}
+                ${current === key ? 'ring-2 ring-blue bg-light-blue/20 border-blue' : 'hover:bg-light-1 border-light-5'}
               `}
             >
               {label}
@@ -163,12 +163,12 @@ const RenameModal = ({
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full border rounded p-2 mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full border rounded p-2 mb-4 focus:ring-2 focus:ring-blue outline-none"
           autoFocus
         />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" size="md"  onClick={onClose}  className="px-4 py-2 text-secondary hover:bg-light-2 rounded" >Cancel</Button>
-          <Button onClick={() => onSave(name)} className="px-4 py-2 bg-blue text-white rounded hover:bg-blue-700">Save</Button>
+          <Button onClick={() => onSave(name)} className="px-4 py-2 bg-blue text-white rounded hover:bg-blue-2-dark">Save</Button>
         </div>
       </div>
     </div>
@@ -177,11 +177,11 @@ const RenameModal = ({
 
 const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
   const colors = [
-    'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
-    'bg-lime-500', 'bg-green-500', 'bg-emerald-500', 'bg-teal-500',
-    'bg-cyan-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500',
-    'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500',
-    'bg-rose-500', 'bg-slate-500', 'bg-gray-500', 'bg-zinc-500'
+    'bg-red-2', 'bg-orange-500', 'bg-yellow', 'bg-yellow-500',
+    'bg-lime-500', 'bg-green-2', 'bg-green-2', 'bg-teal-500',
+    'bg-cyan-500', 'bg-sky-500', 'bg-blue', 'bg-purple',
+    'bg-violet-500', 'bg-purple', 'bg-fuchsia', 'bg-pink-500',
+    'bg-rose-500', 'bg-slate-500', 'bg-light-6', 'bg-zinc-500'
   ];
 
   // Simple hash for ID
@@ -748,7 +748,7 @@ const App: React.FC = () => {
       <Icon size={16} />
       {label}
       {badgeCount > 0 && (
-        <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full font-bold ml-1 animate-pulse">
+        <span className="bg-red-2 text-white text-[10px] px-1.5 rounded-full font-bold ml-1 animate-pulse">
           {badgeCount}
         </span>
       )}
@@ -760,7 +760,7 @@ const App: React.FC = () => {
 
       <div className="h-12 bg-light-3 flex items-stretch shrink-0 z-30 px-2 pt-2 gap-1 relative overflow-y-hidden">
         {/* Bottom Seam Line - Layered at z-30 so it's above inactive (z-20) but below active (z-40) */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-300 z-30" />
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-light-4 z-30" />
 
         {/* Settings Tab */}
         <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'settings' ? 'z-40' : 'z-20'}`}>
@@ -798,7 +798,7 @@ const App: React.FC = () => {
                 }}
                 className={`flex items-center gap-2 px-4 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${isActive ? 'bg-white border-light-6 text-blue z-50' : 'bg-light-2 border-transparent text-muted hover:bg-light-1'}`}
               >
-                <History size={14} className={isActive ? 'text-blue-500' : 'text-muted'} />
+                <History size={14} className={isActive ? 'text-blue' : 'text-muted'} />
                 {year}-{year + 1}
                 {isActive && (
                   <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
@@ -863,10 +863,10 @@ const App: React.FC = () => {
                 >
                   {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-blue border-t-transparent rounded-full flex-shrink-0"></div>}
                   {!sched.isGenerating && <Identicon id={sched.id} />}
-                  {isPending && isActive && <div className="animate-pulse h-2 w-2 bg-blue-400 rounded-full mr-1"></div>}
+                  {isPending && isActive && <div className="animate-pulse h-2 w-2 bg-blue-2 rounded-full mr-1"></div>}
                   <div className="flex-1 min-w-0 font-bold text-xs truncate pr-6">{sched.name}</div>
                   <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-full shadow-sm">
-                    <Button onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-1 rounded-full hover:bg-red-100 text-muted hover:text-red-500 transition-colors"><X size={12} /></Button>
+                    <Button onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-1 rounded-full hover:bg-red/20 text-muted hover:text-red transition-colors"><X size={12} /></Button>
                   </div>
                   {isActive && (
                     <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-50" />
@@ -944,12 +944,12 @@ const App: React.FC = () => {
                       <p className="text-muted font-medium">Export your data for safekeeping or import an existing backup file.</p>
 
                       <div className="mt-8 grid grid-cols-1 gap-4">
-                        <div className="p-6 bg-light-blue/20/50 border border-blue-100 rounded-xl space-y-4">
+                        <div className="p-6 bg-light-blue/20/50 border border-light-blue/40 rounded-xl space-y-4">
                           <h3 className="text-xs font-black text-blue uppercase tracking-widest">Export Data</h3>
                           <p className="text-sm text-muted">Download all residents and schedule versions into a single JSON file.</p>
                           <Button variant="primary" size="md" 
                             onClick={handleExportJSON}
-                             className="w-full flex items-center justify-center gap-3 p-4 bg-blue text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-md group" 
+                             className="w-full flex items-center justify-center gap-3 p-4 bg-blue text-white rounded-lg font-bold hover:bg-blue-2-dark transition-all shadow-md group" 
                           >
                             <Download size={18} className="group-hover:-translate-y-1 transition-transform" />
                             Download Backup (.json)
@@ -958,7 +958,7 @@ const App: React.FC = () => {
 
                         <div className="p-6 bg-white border border-light-5 rounded-xl space-y-4">
                           <h3 className="text-xs font-black text-secondary uppercase tracking-widest">Import Data</h3>
-                          <p className="text-sm text-muted">Upload a previously exported JSON file. <span className="text-red-500 font-bold">Warning: This will overwrite your current data.</span></p>
+                          <p className="text-sm text-muted">Upload a previously exported JSON file. <span className="text-red font-bold">Warning: This will overwrite your current data.</span></p>
                           <label className="w-full flex items-center justify-center gap-3 p-4 bg-light-2 text-primary rounded-lg font-bold hover:bg-light-3 transition-all cursor-pointer border border-dashed border-light-6">
                             <Plus size={18} />
                             Select Backup File
@@ -981,12 +981,12 @@ const App: React.FC = () => {
                       <p className="text-muted font-medium">Clear specific parts of the system or perform a full factory reset.</p>
 
                       <div className="mt-8 space-y-4">
-                        <div className="p-4 border border-red-100 bg-red/10/30 rounded-xl space-y-4">
+                        <div className="p-4 border border-red/20 bg-red/10/30 rounded-xl space-y-4">
                           <h3 className="text-xs font-black text-red uppercase tracking-widest">Danger Zone</h3>
 
                           <Button
                             onClick={() => { if (confirm("This will delete ALL data. Are you sure?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); setSchedules([]); setActiveScheduleId('all'); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-red-200 rounded-lg text-red hover:bg-red-600 hover:text-white transition-all group font-bold"
+                            className="w-full flex items-center justify-between p-4 bg-white border border-red/40 rounded-lg text-red hover:bg-red hover:text-white transition-all group font-bold"
                           >
                             <span className="flex items-center gap-3"><Trash2 size={18} /> Clear All Records</span>
                             <span className="text-[10px] uppercase opacity-50 group-hover:opacity-100">Factory Reset</span>
@@ -994,7 +994,7 @@ const App: React.FC = () => {
 
                           <Button
                             onClick={() => { if (confirm("Reset all residents to defaults?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red-500 transition-all group font-bold"
+                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red transition-all group font-bold"
                           >
                             <span className="flex items-center gap-3"><Users size={18} /> Reset Residents</span>
                             <span className="text-[10px] uppercase opacity-50">Set to Default</span>
@@ -1002,7 +1002,7 @@ const App: React.FC = () => {
 
                           <Button
                             onClick={() => { if (confirm("Delete all schedule versions?")) { setSchedules([]); setActiveScheduleId('all'); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red-500 transition-all group font-bold"
+                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red transition-all group font-bold"
                           >
                             <span className="flex items-center gap-3"><Database size={18} /> Delete All Schedules</span>
                             <span className="text-[10px] uppercase opacity-50">Clear Versions</span>
@@ -1178,7 +1178,7 @@ const App: React.FC = () => {
                     {/* Right: Violations */}
                     <div className="justify-self-end">
                       {hasViolations && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-red/10 text-red rounded-full border border-red-100 animate-pulse">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-red/10 text-red rounded-full border border-red/20 animate-pulse">
                           <AlertCircle size={14} />
                           <span className="text-[10px] font-bold uppercase tracking-wider">Staffing Violations</span>
                         </div>

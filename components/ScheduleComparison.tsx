@@ -22,11 +22,11 @@ interface ScheduleSession {
 
 const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
   const colors = [
-    'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
-    'bg-lime-500', 'bg-green-500', 'bg-emerald-500', 'bg-teal-500',
-    'bg-cyan-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500',
-    'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500',
-    'bg-rose-500', 'bg-slate-500', 'bg-gray-500', 'bg-zinc-500'
+    'bg-red-2', 'bg-orange-500', 'bg-yellow', 'bg-yellow-500',
+    'bg-lime-500', 'bg-green-2', 'bg-green-2', 'bg-teal-500',
+    'bg-cyan-500', 'bg-sky-500', 'bg-blue', 'bg-purple',
+    'bg-violet-500', 'bg-purple', 'bg-fuchsia', 'bg-pink-500',
+    'bg-rose-500', 'bg-slate-500', 'bg-light-6', 'bg-zinc-500'
   ];
 
   const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -217,11 +217,11 @@ export const ScheduleComparison: React.FC<Props> = ({
     if (min === max) return 'bg-light-1 text-black';
     let ratio = (val - min) / (max - min);
     if (!higherIsBetter) ratio = 1 - ratio;
-    if (ratio >= 0.8) return 'bg-green-100 text-green-900 font-bold';
-    if (ratio >= 0.6) return 'bg-green-50 text-green-900 font-medium';
+    if (ratio >= 0.8) return 'bg-lime-green/40 text-green-dark font-bold';
+    if (ratio >= 0.6) return 'bg-lime-green/20 text-green-dark font-medium';
     if (ratio >= 0.4) return 'bg-light-1 text-black';
-    if (ratio >= 0.2) return 'bg-red/10 text-red-900 font-medium';
-    return 'bg-red-100 text-red-900 font-bold';
+    if (ratio >= 0.2) return 'bg-red/10 text-red-2-dark font-medium';
+    return 'bg-red/20 text-red-2-dark font-bold';
   };
 
   const generatingSchedules = schedules.filter(s => s.isGenerating);
@@ -242,7 +242,7 @@ export const ScheduleComparison: React.FC<Props> = ({
         {schedules.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-light-5 rounded-3xl bg-light-1/50 p-12 text-center">
             <div className="bg-white p-4 rounded-full shadow-sm border mb-4">
-              <Plus size={32} className="text-blue-500 animate-pulse" />
+              <Plus size={32} className="text-blue animate-pulse" />
             </div>
             <h3 className="text-xl font-black text-black mb-2">No schedules yet</h3>
             <p className="text-muted font-medium max-w-sm">Get started by clicking the <strong>"+" icon</strong> in the tab bar or <strong>Batch Optimize</strong> above to generate your first schedule version.</p>
@@ -267,7 +267,7 @@ export const ScheduleComparison: React.FC<Props> = ({
                   <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('pgy2Fairness')}>
                     <div className="flex items-center justify-center">PGY-2 <SortIcon column="pgy2Fairness" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors border-r-2 border-blue-100" onClick={() => handleSort('pgy3Fairness')}>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors border-r-2 border-light-blue/40" onClick={() => handleSort('pgy3Fairness')}>
                     <div className="flex items-center justify-center">PGY-3 <SortIcon column="pgy3Fairness" /></div>
                   </th>
                   <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('totalNF')}>
@@ -292,7 +292,7 @@ export const ScheduleComparison: React.FC<Props> = ({
                     </td>
                     <td colSpan={8} className="py-4 px-6">
                       <div className="w-full bg-light-blue/50 h-2 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-400/50 animate-pulse" style={{ width: '30%' }}></div>
+                        <div className="h-full bg-blue-2/50 animate-pulse" style={{ width: '30%' }}></div>
                       </div>
                     </td>
                   </tr>
@@ -305,7 +305,7 @@ export const ScheduleComparison: React.FC<Props> = ({
                         <div className="flex items-center gap-3">
                           <Identicon id={m.id} size={14} />
                           <div className="flex items-center gap-2 group/name cursor-pointer" onClick={() => onSelect(m.id)}>
-                            <span className="font-black text-blue hover:text-blue-800 hover:underline text-left">
+                            <span className="font-black text-blue hover:text-navy hover:underline text-left">
                               {m.name}
                             </span>
                             <Button
@@ -332,7 +332,7 @@ export const ScheduleComparison: React.FC<Props> = ({
                       <td className={`py-4 px-6 text-center font-mono text-xs ${getColor(m.pgy2Fairness, ranges.pgyFairness.min, ranges.pgyFairness.max, true)}`}>
                         {m.pgy2Fairness}%
                       </td>
-                      <td className={`py-4 px-6 text-center font-mono text-xs border-r-2 border-blue-100 ${getColor(m.pgy3Fairness, ranges.pgyFairness.min, ranges.pgyFairness.max, true)}`}>
+                      <td className={`py-4 px-6 text-center font-mono text-xs border-r-2 border-light-blue/40 ${getColor(m.pgy3Fairness, ranges.pgyFairness.min, ranges.pgyFairness.max, true)}`}>
                         {m.pgy3Fairness}%
                       </td>
 
@@ -359,15 +359,15 @@ export const ScheduleComparison: React.FC<Props> = ({
       <div className="p-6 bg-light-1 border-t text-[10px] font-bold text-muted flex justify-between items-center uppercase tracking-widest">
         <div className="flex gap-8">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-100 border border-green-200"></div>
+            <div className="w-3 h-3 rounded-full bg-lime-green/40 border border-lime-green"></div>
             <span>Above average</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-100 border border-red-200"></div>
+            <div className="w-3 h-3 rounded-full bg-red/20 border border-red/40"></div>
             <span>Below Average</span>
           </div>
           <div className="flex items-center gap-2 border-l border-light-6 pl-8">
-            <Info size={14} className="text-gray-300" />
+            <Info size={14} className="text-light-5" />
             <span>Cost = (Violations × 10k) + (PGY3 Inequity) + (Streak Deviation)</span>
           </div>
         </div>

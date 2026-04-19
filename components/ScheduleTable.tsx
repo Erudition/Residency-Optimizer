@@ -119,7 +119,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   <span>Resident ({residents.length})</span>
                   {/* Resize Handle */}
                   <div
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue transition-colors z-50"
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-2 active:bg-blue transition-colors z-50"
                     onMouseDown={startResize}
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -203,7 +203,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                             </>
                           ) : (
                             <>
-                              <span className="text-gray-300">-</span>
+                              <span className="text-light-5">-</span>
                               {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-40 text-muted" />}
                             </>
                           )}
@@ -221,14 +221,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       {/* Portal-like Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-[150] bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px] w-64"
+          className="fixed z-[150] bg-black text-white text-xs rounded-lg py-2 px-3 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px] w-64"
           style={{ left: tooltip.x, top: tooltip.y }}
         >
           <div className="font-bold text-sm mb-1">{tooltip.assignmentName}</div>
-          <div className="text-gray-300 mb-2">{tooltip.progress}</div>
+          <div className="text-light-5 mb-2">{tooltip.progress}</div>
 
           {tooltip.peers.length > 0 && (
-            <div className="border-t border-gray-700 pt-2 mt-1">
+            <div className="border-t border-light-9 pt-2 mt-1">
               <div className="text-muted mb-1 text-[10px] uppercase font-semibold">With:</div>
               <div className="space-y-1">
                 {[1, 2, 3].map(pgy => {
@@ -239,7 +239,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                       <span className="text-[10px] text-muted font-bold w-10 shrink-0">PGY-{pgy}:</span>
                       <div className="flex flex-wrap gap-1">
                         {pgyGroup.map(r => (
-                          <span key={r.id} className="bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
+                          <span key={r.id} className="bg-light-9 px-1.5 py-0.5 rounded text-[10px]">
                             {r.name}
                           </span>
                         ))}
@@ -252,7 +252,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
           )}
 
           {/* Arrow */}
-          <div className="absolute left-1/2 -bottom-1 w-2 h-2 bg-gray-900 transform -translate-x-1/2 rotate-45"></div>
+          <div className="absolute left-1/2 -bottom-1 w-2 h-2 bg-black transform -translate-x-1/2 rotate-45"></div>
         </div>
       )}
     </div>

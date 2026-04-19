@@ -25,34 +25,34 @@ export const CompetitorStudio: React.FC<Props> = ({
     onClearStats
 }) => {
     return (
-        <div className="flex flex-col h-full bg-slate-50">
+        <div className="flex flex-col h-full bg-light-1">
             {/* Header Bar */}
-            <div className="bg-white border-b border-slate-200 px-8 py-6 flex items-center justify-between shadow-sm sticky top-0 z-10 transition-all">
+            <div className="bg-white border-b border-light-5 px-8 py-6 flex items-center justify-between shadow-sm sticky top-0 z-10 transition-all">
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-blue rounded-xl text-white shadow-lg shadow-blue-200">
                         <Settings2 size={24} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black text-slate-800 tracking-tight">New Schedule</h1>
-                        <p className="text-slate-500 text-sm font-medium">Fine-tune iterations and select your generation algorithms</p>
+                        <h1 className="text-2xl font-black text-primary tracking-tight">New Schedule</h1>
+                        <p className="text-muted text-sm font-medium">Fine-tune iterations and select your generation algorithms</p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Top</label>
+                        <label className="text-xs font-bold text-muted uppercase tracking-widest">Top</label>
                         <input
                             type="number"
                             min={1}
                             max={20}
                             value={params.topN || 1}
                             onChange={(e) => onParamsChange({ ...params, topN: parseInt(e.target.value) || 1 })}
-                            className="w-16 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue transition-all text-center"
+                            className="w-16 bg-light-2 border border-light-5 rounded-lg px-3 py-2 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition-all text-center"
                         />
                         <Select
                             value={params.priority}
                             onChange={(e) => onParamsChange({ ...params, priority: e.target.value as CompetitionPriority })}
-                            className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue transition-all cursor-pointer"
+                            className="bg-light-2 border border-light-5 rounded-lg px-4 py-2.5 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition-all cursor-pointer"
                         >
                             {Object.values(CompetitionPriority).map(p => (
                                 <option key={p} value={p}>{p}</option>
@@ -61,21 +61,21 @@ export const CompetitorStudio: React.FC<Props> = ({
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">of</label>
+                        <label className="text-xs font-bold text-muted uppercase tracking-widest">of</label>
                         <input
                             type="number"
                             min={1}
                             max={10000}
                             value={params.tries}
                             onChange={(e) => onParamsChange({ ...params, tries: parseInt(e.target.value) || 100 })}
-                            className="w-24 bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue transition-all"
+                            className="w-24 bg-light-2 border border-light-5 rounded-lg px-4 py-2.5 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition-all"
                         />
                     </div>
 
                     <Button variant="primary" size="md" 
                         onClick={onCompete}
                         disabled={params.algorithmIds.length === 0}
-                         className="flex items-center gap-2.5 bg-blue hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 active:scale-95 group" 
+                         className="flex items-center gap-2.5 bg-blue hover:bg-blue-2-dark disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 active:scale-95 group" 
                     >
                         <Play size={18} fill="currentColor" className="group-hover:translate-x-0.5 transition-transform" />
                         <span>Compete</span>
@@ -98,7 +98,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                                     key={algo.id}
                                     className={`
                     flex flex-col rounded-3xl overflow-hidden transition-all duration-300 group
-                    ${isEnabled ? 'bg-white shadow-xl shadow-slate-200 ring-2' : 'bg-slate-100 opacity-60 grayscale-[0.5]'}
+                    ${isEnabled ? 'bg-white shadow-xl shadow-slate-200 ring-2' : 'bg-light-2 opacity-60 grayscale-[0.5]'}
                   `}
                                     style={{ rigColor: algo.color, ringColor: isEnabled ? `${algo.color}40` : 'transparent' }}
                                 >
@@ -108,13 +108,13 @@ export const CompetitorStudio: React.FC<Props> = ({
                                             <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: algo.color }}>
                                                 <Activity size={20} />
                                             </div>
-                                            <h3 className="font-black text-slate-800 text-lg tracking-tight">{algo.name}</h3>
+                                            <h3 className="font-black text-primary text-lg tracking-tight">{algo.name}</h3>
                                         </div>
                                         <Button
                                             onClick={() => onToggleAlgorithm(algo.id)}
                                             className={`
                         w-12 h-6 rounded-full relative transition-all duration-300
-                        ${isEnabled ? 'bg-blue' : 'bg-slate-300'}
+                        ${isEnabled ? 'bg-blue' : 'bg-light-4'}
                       `}
                                         >
                                             <div className={`
@@ -126,7 +126,7 @@ export const CompetitorStudio: React.FC<Props> = ({
 
                                     {/* Card Body */}
                                     <div className="p-6 flex-1 flex flex-col gap-6">
-                                        <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                                        <p className="text-muted text-sm font-medium leading-relaxed">
                                             {algo.description}
                                         </p>
 
@@ -134,31 +134,31 @@ export const CompetitorStudio: React.FC<Props> = ({
                                         <div className="space-y-4">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Trophy size={14} className="text-yellow-500" />
-                                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Statistics</span>
+                                                <span className="text-xs font-black text-muted uppercase tracking-widest">Statistics</span>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 hover:border-slate-200 transition-colors">
-                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">Best Cost</div>
-                                                    <div className="text-sm font-black text-slate-800">
+                                                <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Best Cost</div>
+                                                    <div className="text-sm font-black text-primary">
                                                         {algoStats.bestScore === Infinity ? '—' : Math.round(algoStats.bestScore).toLocaleString()}
                                                     </div>
                                                 </div>
-                                                <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 hover:border-slate-200 transition-colors">
-                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">Fewest Viol.</div>
-                                                    <div className="text-sm font-black text-slate-800">
+                                                <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Fewest Viol.</div>
+                                                    <div className="text-sm font-black text-primary">
                                                         {algoStats.bestViolations === Infinity ? '—' : algoStats.bestViolations}
                                                     </div>
                                                 </div>
-                                                <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 hover:border-slate-200 transition-colors">
-                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">Worst Cost</div>
-                                                    <div className="text-sm font-black text-slate-800">
+                                                <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Worst Cost</div>
+                                                    <div className="text-sm font-black text-primary">
                                                         {algoStats.worstScore === -Infinity ? '—' : Math.round(algoStats.worstScore).toLocaleString()}
                                                     </div>
                                                 </div>
-                                                <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 hover:border-slate-200 transition-colors">
-                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">Most Viol.</div>
-                                                    <div className="text-sm font-black text-slate-800">
+                                                <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Most Viol.</div>
+                                                    <div className="text-sm font-black text-primary">
                                                         {algoStats.worstViolations === -Infinity ? '—' : algoStats.worstViolations}
                                                     </div>
                                                 </div>

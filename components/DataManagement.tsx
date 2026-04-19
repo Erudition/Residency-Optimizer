@@ -130,8 +130,8 @@ export const DataManagement: React.FC<Props> = ({
                     </div>
 
                     <div className="mt-6 bg-light-blue/20 p-4 rounded-lg flex gap-3 items-start">
-                        <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-blue-800 leading-relaxed">
+                        <Info size={16} className="text-blue shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-navy leading-relaxed">
                             JSON files are the only way to move your data between browsers or computers.
                             <strong> Always download a backup after making significant changes.</strong>
                         </p>

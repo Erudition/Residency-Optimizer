@@ -180,7 +180,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                   <span className="truncate pr-2">Assignment</span>
                   {/* Resize Handle */}
                   <div
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue transition-colors z-50"
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-2 active:bg-blue transition-colors z-50"
                     onMouseDown={startResize}
                   />
                 </div>
@@ -218,7 +218,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                         {ASSIGNMENT_LABELS[type]}
                       </span>
                       {rangeLabel && (
-                        <span className={`text-[10px] ml-1 font-mono shrink-0 ${hasViolation ? 'text-red-500' : 'text-muted'}`}>
+                        <span className={`text-[10px] ml-1 font-mono shrink-0 ${hasViolation ? 'text-red' : 'text-muted'}`}>
                           {rangeLabel}
                         </span>
                       )}
@@ -234,7 +234,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                     return (
                       <td
                         key={i}
-                        className={`border-b text-center cursor-default relative p-0 ${error ? 'border-red-500 border-2 z-10' : 'border-light-3'}`}
+                        className={`border-b text-center cursor-default relative p-0 ${error ? 'border-red border-2 z-10' : 'border-light-3'}`}
                         onMouseEnter={(e) => handleCellEnter(e, type, i)}
                         onMouseLeave={() => setCellTooltip(null)}
                       >
@@ -261,11 +261,11 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
       {/* Cell Tooltip (Assignees) */}
       {cellTooltip && (
         <div
-          className="fixed z-[200] bg-gray-900 text-white text-xs rounded-lg py-3 px-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px] min-w-[200px]"
+          className="fixed z-[200] bg-black text-white text-xs rounded-lg py-3 px-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px] min-w-[200px]"
           style={{ left: cellTooltip.x, top: cellTooltip.y }}
         >
-          <div className="flex items-center gap-2 mb-2 border-b border-gray-700 pb-1">
-            {cellTooltip.error && <AlertTriangle size={14} className="text-red-400" />}
+          <div className="flex items-center gap-2 mb-2 border-b border-light-9 pb-1">
+            {cellTooltip.error && <AlertTriangle size={14} className="text-red-2" />}
             <span className="font-bold text-sm">{cellTooltip.type}</span>
           </div>
 
@@ -284,7 +284,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                   <div className="text-[10px] uppercase text-muted font-bold mb-0.5">PGY-{pgy} ({pgyGroup.length})</div>
                   <div className="flex flex-wrap gap-1">
                     {pgyGroup.map(r => (
-                      <span key={r.id} className="bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
+                      <span key={r.id} className="bg-light-9 px-1.5 py-0.5 rounded text-[10px]">
                         {r.name}
                       </span>
                     ))}
@@ -293,7 +293,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
               );
             })}
           </div>
-          <div className="absolute left-1/2 -bottom-1 w-2 h-2 bg-gray-900 transform -translate-x-1/2 rotate-45"></div>
+          <div className="absolute left-1/2 -bottom-1 w-2 h-2 bg-black transform -translate-x-1/2 rotate-45"></div>
         </div>
       )}
 
@@ -303,7 +303,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
           className="fixed z-[200] bg-white text-primary text-xs rounded-lg shadow-xl border border-light-5 p-4 pointer-events-none transform -translate-y-1/2 ml-2 min-w-[240px]"
           style={{ left: rowTooltip.x, top: rowTooltip.y }}
         >
-          <h4 className="font-bold text-sm text-blue-700 mb-2 border-b pb-1">
+          <h4 className="font-bold text-sm text-blue-2-dark mb-2 border-b pb-1">
             {ASSIGNMENT_LABELS[rowTooltip.type]}
           </h4>
 
@@ -335,8 +335,8 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                 </div>
 
                 {(meta.targetIntern !== undefined || meta.targetSenior !== undefined || meta.targetPGY2 !== undefined || meta.targetPGY3 !== undefined) && (
-                  <div className="bg-light-blue/20 p-2 rounded border border-blue-100">
-                    <div className="text-xs font-bold text-blue-500 uppercase mb-1">Annual Targets</div>
+                  <div className="bg-light-blue/20 p-2 rounded border border-light-blue/40">
+                    <div className="text-xs font-bold text-blue uppercase mb-1">Annual Targets</div>
                     {meta.targetIntern !== undefined && <div>PGY-1: {meta.targetIntern} weeks</div>}
                     {meta.targetPGY2 !== undefined ? (
                       <div>PGY-2: {meta.targetPGY2} weeks</div>

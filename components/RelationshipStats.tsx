@@ -120,9 +120,9 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
   };
 
   const getDiversityColor = (pct: number) => {
-    if (pct < 30) return 'text-red-900 bg-red-100 border-red-200';
-    if (pct < 50) return 'text-orange-900 bg-orange-100 border-orange-200';
-    return 'text-green-900 bg-green-100 border-green-200';
+    if (pct < 30) return 'text-red-2-dark bg-red/20 border-red/40';
+    if (pct < 50) return 'text-orange-dark bg-creamsicle/50 border-creamsicle';
+    return 'text-green-dark bg-lime-green/40 border-lime-green';
   };
 
   return (
@@ -144,7 +144,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-light-5 flex gap-4">
-            <div className="p-3 bg-orange-50 rounded-full h-fit text-orange-600">
+            <div className="p-3 bg-creamsicle/30 rounded-full h-fit text-orange">
               <Handshake size={24} />
             </div>
             <div>

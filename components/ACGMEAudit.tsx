@@ -26,7 +26,7 @@ const ProgressBar = ({ value, target, colorClass, min, max }: { value: number, t
             </div>
             <div className="h-2 w-full bg-light-2 rounded-full overflow-hidden border border-light-5">
                 <div
-                    className={`h-full transition-all duration-500 ${isViolation ? 'bg-red-500' : colorClass}`}
+                    className={`h-full transition-all duration-500 ${isViolation ? 'bg-red-2' : colorClass}`}
                     style={{ width: `${percentage}%` }}
                 />
             </div>
@@ -115,7 +115,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                     </div>
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-green-50 rounded-lg text-green-600"><Building2 size={20} /></div>
+                            <div className="p-2 bg-lime-green/20 rounded-lg text-green"><Building2 size={20} /></div>
                             <div className="text-xs font-bold text-muted uppercase">Inpatient Compliance</div>
                         </div>
                         <div className="text-2xl font-bold text-primary">{globalStats.inpatientMet} / {globalStats.total}</div>
@@ -123,7 +123,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                     </div>
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Clock size={20} /></div>
+                            <div className="p-2 bg-light-purple/30 rounded-lg text-purple"><Clock size={20} /></div>
                             <div className="text-xs font-bold text-muted uppercase">Crit Care Ceiling</div>
                         </div>
                         <div className="text-2xl font-bold text-primary">{globalStats.critCareSafe} / {globalStats.total}</div>
@@ -131,7 +131,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                     </div>
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-orange-50 rounded-lg text-orange-600"><ShieldCheck size={20} /></div>
+                            <div className="p-2 bg-creamsicle/30 rounded-lg text-orange"><ShieldCheck size={20} /></div>
                             <div className="text-xs font-bold text-muted uppercase">Night Float Safe</div>
                         </div>
                         <div className="text-2xl font-bold text-primary">{globalStats.nfSafe} / {globalStats.total}</div>
@@ -142,7 +142,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                 <div className="bg-white rounded-xl shadow-md border border-light-5 overflow-hidden">
                     <div className="p-4 border-b bg-light-1 flex items-center justify-between">
                         <h2 className="text-lg font-bold text-primary flex items-center gap-2">
-                            <ShieldCheck className="text-green-600" /> ACGME Graduation Requirement Audit (Cumulative)
+                            <ShieldCheck className="text-green" /> ACGME Graduation Requirement Audit (Cumulative)
                         </h2>
                         <span className="text-xs text-muted italic">Tracking progress across all historical and current schedules.</span>
                     </div>
@@ -166,16 +166,16 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 w-1/4">
-                                        <ProgressBar value={d.outpatient} target={13} colorClass="bg-blue-500" />
+                                        <ProgressBar value={d.outpatient} target={13} colorClass="bg-blue" />
                                     </td>
                                     <td className="px-6 py-4 w-1/4">
-                                        <ProgressBar value={d.inpatient + d.criticalCare} target={13} colorClass="bg-green-500" />
+                                        <ProgressBar value={d.inpatient + d.criticalCare} target={13} colorClass="bg-green-2" />
                                     </td>
                                     <td className="px-6 py-4 w-1/4">
-                                        <ProgressBar value={d.criticalCare} target={2.6} colorClass="bg-purple-500" max={8} />
+                                        <ProgressBar value={d.criticalCare} target={2.6} colorClass="bg-purple" max={8} />
                                     </td>
                                     <td className="px-6 py-4 w-40 text-center">
-                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${d.nfViolation ? 'bg-red/10 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${d.nfViolation ? 'bg-red/10 text-red-2-dark border-red/40' : 'bg-lime-green/20 text-green-dark border-lime-green'}`}>
                                             {d.nfViolation ? <ShieldAlert size={12} /> : <ShieldCheck size={12} />}
                                             {d.nightFloat} weeks
                                         </div>

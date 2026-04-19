@@ -27,7 +27,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             <div className="bg-white rounded-lg shadow-sm border border-light-5 overflow-hidden mb-8">
                 <div className="px-6 py-4 border-b border-light-3 bg-light-1/50 flex items-center gap-2">
                     <span className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide
-              ${level === 1 ? 'bg-green-100 text-green-800' : level === 2 ? 'bg-light-blue text-blue-800' : 'bg-purple-100 text-purple-800'}
+              ${level === 1 ? 'bg-lime-green/40 text-green-dark' : level === 2 ? 'bg-light-blue text-navy' : 'bg-light-purple/50 text-purple-2'}
            `}>
                         PGY-{level}
                     </span>
@@ -71,12 +71,12 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                                                         </span>
                                                         {isMet ? (
                                                             isOver ? (
-                                                                <span className="text-[10px] bg-light-blue text-blue-700 px-1.5 rounded-full" title={`Exceeds target of ${req.target}`}>+{count - req.target}</span>
+                                                                <span className="text-[10px] bg-light-blue text-blue-2-dark px-1.5 rounded-full" title={`Exceeds target of ${req.target}`}>+{count - req.target}</span>
                                                             ) : (
-                                                                <CheckCircle2 size={14} className="text-green-500 opacity-80" />
+                                                                <CheckCircle2 size={14} className="text-green-2 opacity-80" />
                                                             )
                                                         ) : (
-                                                            <span className="text-[10px] bg-red-100 text-red-700 px-1.5 rounded-full" title={`Needs ${req.target - count} more`}>-{req.target - count}</span>
+                                                            <span className="text-[10px] bg-red/20 text-red-2-dark px-1.5 rounded-full" title={`Needs ${req.target - count} more`}>-{req.target - count}</span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -85,11 +85,11 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
                                         <td className="py-2 px-4 text-center">
                                             {metAll ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-lime-green/20 text-green-dark border border-lime-green/40">
                                                     <CheckCircle2 size={12} /> Met
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red/10 text-red-700 border border-red-100">
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red/10 text-red-2-dark border border-red/20">
                                                     <AlertCircle size={12} /> Incomplete
                                                 </span>
                                             )}
