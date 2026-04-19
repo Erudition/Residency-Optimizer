@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Resident, ScheduleGrid } from '../types';
+import { Resident, ScheduleGrid, AssignmentType } from '../types';
 import { ArrowUpDown, Info, Network, Users, Handshake } from 'lucide-react';
 import { calculateDiversityStats } from '../services/scheduler';
 
@@ -27,7 +27,13 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
     residents.forEach(r => matrix[r.id] = {});
 
     const relevantTypes = [
-      'Wards-R', 'Wards-B', 'ICU', 'NF', 'EM', 'CCIM', 'Met Wards', 'Metro'
+      AssignmentType.WARDS_RED,
+      AssignmentType.WARDS_BLUE,
+      AssignmentType.MICU,
+      AssignmentType.NIGHT_FLOAT,
+      AssignmentType.EM,
+      AssignmentType.WARDS_METRO,
+      AssignmentType.JR_HOSPITALIST
     ];
 
     for (let w = 0; w < 52; w++) {

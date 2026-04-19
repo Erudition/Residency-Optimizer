@@ -111,11 +111,13 @@ export const ExperimentalGenerator: ScheduleGenerator = {
                 seededShuffle(residents.filter(r => r.level === level)).forEach(res => {
                     const meta = ROTATION_METADATA[req.type];
                     if (!meta) return;
-                    const dur = meta.duration;
                     const possibleTypes = fulfillsRequirement(null, req.type) || req.type === AssignmentType.WARDS_RED ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE] : [req.type];
 
                     while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target) {
-                        let bestW = -1, bestT = possibleTypes[0], bestScore = Infinity;
+                        let bestW = -1;
+                        let bestT: AssignmentType | null = null;
+                        let bestScore = Infinity;
+                        const dur = ROTATION_METADATA[req.type].duration;
 
                         for (let ww = 0; ww <= TOTAL_WEEKS - dur; ww++) {
                             if (!canFitBlock(newSchedule, res.id, ww, dur)) continue;
@@ -135,7 +137,7 @@ export const ExperimentalGenerator: ScheduleGenerator = {
                             });
                         }
 
-                        if (bestScore >= 10000) break;
+                        if (bestScore >= 10000 || bestT === null) break;
                         placeBlock(newSchedule, res.id, bestW, dur, bestT);
                     }
                 });

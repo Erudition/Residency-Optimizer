@@ -47,6 +47,7 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
       [AssignmentType.HF]: s[AssignmentType.HF] || 0,
       [AssignmentType.CVICU]: s[AssignmentType.CVICU] || 0,
       [AssignmentType.ENT]: s[AssignmentType.ENT] || 0,
+      [AssignmentType.JR_HOSPITALIST]: s[AssignmentType.JR_HOSPITALIST] || 0,
     };
   }), [residents, stats]);
 
@@ -106,7 +107,8 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
 
             <Bar dataKey={AssignmentType.ELECTIVE} stackId="a" fill="#86efac" name="Elective" />
             <Bar dataKey={AssignmentType.VACATION} stackId="a" fill="#e5e7eb" name="Vacation" />
-            <Bar dataKey={AssignmentType.WARDS_METRO} stackId="a" fill="#99f6e4" name="Met Wards" />
+            <Bar dataKey={AssignmentType.WARDS_METRO} stackId="a" fill="#99f6e4" name="Metro Wards" />
+            <Bar dataKey={AssignmentType.JR_HOSPITALIST} stackId="a" fill="#6366f1" name="Jr Hospitalist" />
           </BarChart>
         </ResponsiveContainer>
       </div>

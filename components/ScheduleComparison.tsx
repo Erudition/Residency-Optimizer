@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { ScheduleGrid, Resident, AssignmentType, ScheduleCell } from '../types';
+import { ScheduleGrid, ScheduleHistory, Resident, AssignmentType, ScheduleCell } from '../types';
 import { calculateFairnessMetrics, calculateScheduleScore } from '../services/scheduler';
 import { Sparkles, Loader2, Info, Download, Users, Plus, ChevronUp, ChevronDown, ArrowUpDown, Pencil } from 'lucide-react';
 
 interface ScheduleSession {
   id: string;
   name: string;
-  data: ScheduleGrid;
+  data: ScheduleHistory;
   isGenerating?: boolean;
   metrics?: {
     stats: any;
@@ -50,6 +50,7 @@ interface Props {
   activeScheduleId: string | null;
   onSelect: (id: string) => void;
   onRename: (id: string) => void;
+  activeYear: number;
 }
 
 interface ScheduleMetrics {
@@ -70,7 +71,8 @@ export const ScheduleComparison: React.FC<Props> = ({
   schedules,
   activeScheduleId,
   onSelect,
-  onRename
+  onRename,
+  activeYear
 }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduleMetrics, direction: 'asc' | 'desc' }>({ key: 'score', direction: 'asc' });
@@ -102,8 +104,9 @@ export const ScheduleComparison: React.FC<Props> = ({
         const streakMean = allStreaks.reduce((a, b) => a + b, 0) / (allStreaks.length || 1);
         const streakSD = Math.sqrt(allStreaks.reduce((sum, n) => sum + Math.pow(n - streakMean, 2), 0) / (allStreaks.length || 1));
 
+        const yearData = s.data[activeYear] || {};
         let totalNF = 0;
-        Object.values(s.data).forEach(weeks => {
+        Object.values(yearData).forEach(weeks => {
           (weeks as any[]).forEach(c => { if (c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
         });
 
@@ -142,7 +145,8 @@ export const ScheduleComparison: React.FC<Props> = ({
       const streakSD = Math.sqrt(allStreaks.reduce((sum, n) => sum + Math.pow(n - streakMean, 2), 0) / (allStreaks.length || 1));
 
       let totalNF = 0;
-      const allWeeks = Object.values(s.data) as ScheduleCell[][];
+      const activeGrid = s.data[activeYear] || {};
+      const allWeeks = Object.values(activeGrid) as ScheduleCell[][];
       allWeeks.forEach(weeks => {
         weeks.forEach(c => { if (c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
       });

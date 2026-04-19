@@ -244,7 +244,13 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
   residents.forEach(r => {
     const partners = new Set<string>();
     const clinicalTypes = [
-      'Wards-R', 'Wards-B', 'ICU', 'NF', 'EM', 'CCIM', 'Met Wards', 'Metro'
+      AssignmentType.WARDS_RED,
+      AssignmentType.WARDS_BLUE,
+      AssignmentType.MICU,
+      AssignmentType.NIGHT_FLOAT,
+      AssignmentType.EM,
+      AssignmentType.WARDS_METRO,
+      AssignmentType.JR_HOSPITALIST
     ];
 
     for (let w = 0; w < TOTAL_WEEKS; w++) {

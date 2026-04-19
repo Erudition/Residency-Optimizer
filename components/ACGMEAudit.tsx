@@ -1,12 +1,13 @@
 
 import React, { useMemo } from 'react';
-import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting } from '../types';
+import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting, ScheduleHistory } from '../types';
 import { ROTATION_METADATA } from '../constants';
 import { ShieldCheck, ShieldAlert, Clock, Building2, Hospital, Stethoscope } from 'lucide-react';
 
 interface Props {
     residents: Resident[];
-    schedule: ScheduleGrid;
+    history: ScheduleHistory;
+    activeYear: number;
 }
 
 const ProgressBar = ({ value, target, colorClass, min, max }: { value: number, target: number, colorClass: string, min?: number, max?: number }) => {
