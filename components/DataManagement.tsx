@@ -107,7 +107,7 @@ export const DataManagement: React.FC<Props> = ({
                     <div className="space-y-3 flex-1">
                         <Button
                             onClick={handleExportJSON}
-                            className="w-full flex items-center justify-between p-3 border rounded-lg hover:bg-light-1 transition-colors group"
+                            className="w-full flex items-center justify-between p-3 border hover:bg-light-1 transition-colors group"
                         >
                             <div className="flex items-center gap-3">
                                 <Download size={18} className="text-muted group-hover:text-purple-2" />

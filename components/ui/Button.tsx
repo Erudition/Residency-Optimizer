@@ -15,10 +15,10 @@ export function Button({ variant = 'primary', size = 'md', className = '', child
   };
 
   const variantClasses = {
-    primary: "bg-red text-white border border-red-2-dark shadow-[0_3px_0_var(--tw-shadow-color)] shadow-red-2-dark hover:bg-red-2 active:translate-y-[3px] active:shadow-none",
-    secondary: "bg-white text-black border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:bg-light-2 active:translate-y-[3px] active:shadow-none",
+    primary: "bg-orange text-black border border-button-border shadow-[0_3px_0_var(--tw-shadow-color)] shadow-button-shadow hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none",
+    secondary: "bg-white text-black border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none",
     danger: "bg-white text-red border border-red shadow-[0_3px_0_var(--tw-shadow-color)] shadow-red hover:bg-red/10 active:translate-y-[3px] active:shadow-none",
-    ghost: "bg-transparent text-primary hover:bg-light-3"
+    ghost: "bg-transparent text-gray-700 hover:bg-light-3"
   };
 
   return (

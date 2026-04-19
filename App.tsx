@@ -738,10 +738,11 @@ const App: React.FC = () => {
 
   const NavButton = ({ id, label, icon: Icon, badgeCount }: any) => (
     <Button
+      variant="ghost"
       onClick={() => startTransition(() => setActiveTab(id))}
       className={`flex items-center gap-2 py-3 px-4 text-sm font-medium border-b-2 transition-all relative whitespace-nowrap
         ${activeTab === id
-          ? 'border-blue text-blue bg-light-blue/20/50'
+          ? 'border-blue text-blue bg-light-blue/20'
           : 'border-transparent text-muted hover:text-primary hover:border-light-6'}
         `}
     >
@@ -756,7 +757,7 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className={`flex flex-col h-screen bg-light-2 text-black font-sans overflow-hidden ${activeSchedule?.isGenerating || isPending ? 'cursor-wait' : ''}`}>
+    <div className={`flex flex-col h-screen bg-light-1 bg-[url('https://res.cloudinary.com/dmukukwp6/image/upload/carpet_light_27d74f73b5.png')] bg-repeat text-black font-sans overflow-hidden ${activeSchedule?.isGenerating || isPending ? 'cursor-wait' : ''}`}>
 
       <div className="h-12 bg-light-3 flex items-stretch shrink-0 z-30 px-2 pt-2 gap-1 relative overflow-y-hidden">
         {/* Bottom Seam Line - Layered at z-30 so it's above inactive (z-20) but below active (z-40) */}
@@ -771,11 +772,11 @@ const App: React.FC = () => {
                 setActiveTab('residents');
               });
             }}
-            className={`flex items-center justify-center w-12 h-10 rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'settings' ? 'bg-white border-light-6 text-blue z-50' : 'bg-light-2 border-transparent text-muted hover:bg-light-1'}`}
+            className={`flex items-center justify-center w-12 h-10 rounded-t-lg border-t border-x transition-all relative cursor-pointer ${activeScheduleId === 'settings' ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
           >
             <SettingsIcon size={20} />
             {activeScheduleId === 'settings' && (
-              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
+              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
             )}
           </div>
         </div>
@@ -796,12 +797,12 @@ const App: React.FC = () => {
                     }
                   });
                 }}
-                className={`flex items-center gap-2 px-4 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${isActive ? 'bg-white border-light-6 text-blue z-50' : 'bg-light-2 border-transparent text-muted hover:bg-light-1'}`}
+                className={`flex items-center gap-2 px-4 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-all relative cursor-pointer ${isActive ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
               >
-                <History size={14} className={isActive ? 'text-blue' : 'text-muted'} />
+                <History size={14} className={isActive ? 'text-white' : 'text-blue'} />
                 {year}-{year + 1}
                 {isActive && (
-                  <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
+                  <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
                 )}
               </div>
             </div>
@@ -819,11 +820,11 @@ const App: React.FC = () => {
                 }
               });
             }}
-            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'all' ? 'bg-white border-light-6 text-blue z-50' : 'bg-light-2 border-transparent text-muted hover:bg-light-1'}`}
+            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-all relative cursor-pointer ${activeScheduleId === 'all' ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
           >
             All {ACTIVE_START_YEAR} Candidates
             {activeScheduleId === 'all' && (
-              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
+              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
             )}
           </div>
         </div>
@@ -859,17 +860,17 @@ const App: React.FC = () => {
                       }
                     });
                   }}
-                  className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-colors relative min-w-[160px] cursor-pointer ${isActive ? 'bg-white border-light-6 text-blue z-40' : 'bg-light-2 border-transparent text-muted hover:bg-light-1 z-20'} ${isPending ? 'opacity-70' : ''}`}
+                  className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-all relative min-w-[160px] cursor-pointer ${isActive ? 'bg-blue text-white border-blue-2-dark z-40' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2 z-20'} ${isPending ? 'opacity-70' : ''}`}
                 >
-                  {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-blue border-t-transparent rounded-full flex-shrink-0"></div>}
+                  {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full flex-shrink-0"></div>}
                   {!sched.isGenerating && <Identicon id={sched.id} />}
                   {isPending && isActive && <div className="animate-pulse h-2 w-2 bg-blue-2 rounded-full mr-1"></div>}
                   <div className="flex-1 min-w-0 font-bold text-xs truncate pr-6">{sched.name}</div>
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-full shadow-sm">
-                    <Button onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-1 rounded-full hover:bg-red/20 text-muted hover:text-red transition-colors"><X size={12} /></Button>
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20 hover:bg-white/40 rounded-full">
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-1 rounded-full text-white/80 hover:text-white transition-colors"><X size={12} /></Button>
                   </div>
                   {isActive && (
-                    <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-50" />
+                    <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-50" />
                   )}
                 </div>
               );
@@ -896,12 +897,12 @@ const App: React.FC = () => {
                 setActiveScheduleId('draft');
               });
             }}
-            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-colors relative cursor-pointer ${activeScheduleId === 'draft' ? 'bg-white border-light-6 text-blue z-50' : 'bg-light-2 border-transparent text-muted hover:bg-light-1'}`}
+            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-all relative cursor-pointer ${activeScheduleId === 'draft' ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
           >
             <Sparkles size={16} />
             New
             {activeScheduleId === 'draft' && (
-              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-white z-20" />
+              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
             )}
           </div>
         </div>
@@ -944,12 +945,12 @@ const App: React.FC = () => {
                       <p className="text-muted font-medium">Export your data for safekeeping or import an existing backup file.</p>
 
                       <div className="mt-8 grid grid-cols-1 gap-4">
-                        <div className="p-6 bg-light-blue/20/50 border border-light-blue/40 rounded-xl space-y-4">
+                        <div className="p-6 bg-light-blue/20 border border-light-blue/40 rounded-xl space-y-4">
                           <h3 className="text-xs font-black text-blue uppercase tracking-widest">Export Data</h3>
                           <p className="text-sm text-muted">Download all residents and schedule versions into a single JSON file.</p>
                           <Button variant="primary" size="md" 
                             onClick={handleExportJSON}
-                             className="w-full flex items-center justify-center gap-3 p-4 bg-blue text-white rounded-lg font-bold hover:bg-blue-2-dark transition-all shadow-md group" 
+                             className="w-full flex items-center justify-center gap-3 p-4 hover:-2-dark transition-all group" 
                           >
                             <Download size={18} className="group-hover:-translate-y-1 transition-transform" />
                             Download Backup (.json)
@@ -1229,7 +1230,7 @@ const App: React.FC = () => {
                         <Button variant="primary" size="md" 
                           onClick={handleExportXLSX}
                           disabled={isExporting}
-                           className="w-full py-4 bg-green hover:bg-emerald-700 disabled:bg-light-3 disabled:cursor-not-allowed text-white rounded-lg font-bold flex items-center justify-center gap-3 shadow-md transition-all active:scale-95" 
+                           className="w-full py-4 bg-green hover:bg-emerald-700 disabled:bg-light-3 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all" 
                         >
                           {isExporting ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
                           Export Current to Excel

@@ -75,7 +75,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                     <Button variant="primary" size="md" 
                         onClick={onCompete}
                         disabled={params.algorithmIds.length === 0}
-                         className="flex items-center gap-2.5 bg-blue hover:bg-blue-2-dark disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 active:scale-95 group" 
+                         className="flex items-center gap-2.5 hover:-2-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all group" 
                     >
                         <Play size={18} fill="currentColor" className="group-hover:translate-x-0.5 transition-transform" />
                         <span>Compete</span>
@@ -110,8 +110,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                                             </div>
                                             <h3 className="font-black text-primary text-lg tracking-tight">{algo.name}</h3>
                                         </div>
-                                        <Button
-                                            onClick={() => onToggleAlgorithm(algo.id)}
+                                        <button onClick={() => onToggleAlgorithm(algo.id)}
                                             className={`
                         w-12 h-6 rounded-full relative transition-all duration-300
                         ${isEnabled ? 'bg-blue' : 'bg-light-4'}
@@ -121,10 +120,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                         absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all duration-300
                         ${isEnabled ? 'translate-x-6' : 'translate-x-0'}
                       `} />
-                                        </Button>
-                                    </div>
-
-                                    {/* Card Body */}
+                                        </button></div>{/* Card Body */}
                                     <div className="p-6 flex-1 flex flex-col gap-6">
                                         <p className="text-muted text-sm font-medium leading-relaxed">
                                             {algo.description}
