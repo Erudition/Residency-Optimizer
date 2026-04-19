@@ -46,3 +46,19 @@ While the curriculum leaves space for "Subspecialties", the ACGME requires that 
 7.  Nephrology
 8.  Pulmonology
 9.  Rheumatology
+
+## 6. Rotation Month Minimums & Maximums
+Based on ACGME Program Requirements (Section 4):
+*   **Total Clinical Experiences:** Minimum of 30 months overall.
+*   **Inpatient and Critical Care Elements:** Minimum of 10 months.
+*   **Critical Care Specifics:** Minimum of 2 months and a Maximum of 6 months. Must not occur solely in PGY-1.
+*   **Outpatient/Ambulatory:** Minimum of 10 months foundational experiences.
+*   **Individualized Experiences:** At least 6 months directed to future practice.
+
+## 7. Mandatory Multidisciplinary Clinical Experiences
+The program rules require that your application include routing logic ensuring that every single resident accomplishes dedicated clinical experiences in:
+*   Geriatric Medicine
+*   Hospice and Palliative Medicine
+*   Addiction Medicine
+*   Emergency Medicine
+*   Neurology
