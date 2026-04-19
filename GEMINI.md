@@ -77,3 +77,4 @@ Based on new faculty orientation materials:
 
 ## 9. Reminders
 *   **Important:** Make Pulmonology a staffed rotation.
+*   **Naming update:** Change the name "CVICU" to "ECMO consult rotation", "Vent rotation", or similar.
