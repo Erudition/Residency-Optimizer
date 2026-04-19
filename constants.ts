@@ -281,7 +281,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         minInterns: 0, maxInterns: 3, minSeniors: 0, maxSeniors: 3,
     },
     [AssignmentType.NIMA_BLOCK]: {
-        type: AssignmentType.NIMA_BLOCK, label: 'NIMA Block',
+        type: AssignmentType.NIMA_BLOCK, label: 'Primary Care',
         intensity: 2, setting: ClinicalSetting.OUTPATIENT, duration: 4,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 4,
         targetPGY3: 4,
