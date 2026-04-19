@@ -2,7 +2,7 @@
 
 This schedule reflects an **X+Y (4+1)** alternating block model. In this structure, the academic year consists of ten 5-week cycles per year. For each cycle, residents spend 4 weeks on a core rotation, followed immediately by 1 week dedicated entirely to continuity clinic. 
 *   **Total Cycle:** 10 core blocks (40 weeks) + 10 clinic weeks (10 weeks) + 2 weeks standard vacation/holiday = 52 weeks.
-*   **Continuity Structure:** Residents will be assigned to a specific track (Track A: exclusively **CCIM** or Track B: exclusively **NIMA**) for their 5th-week clinic blocks over the three years.
+*   **Continuity Structure:** For the 2026-2027 academic year, the **PGY-2 class** will complete their "+1" continuity clinic blocks at **NIMA**, remaining at this site to finish out their residency. The **PGY-1** and **current PGY-3** classes are assigned to **CCIM** for their longitudinal continuity site.
 
 In addition to the 5th-week clinic, residents will cycle through dedicated month-long (4-week) ambulatory rotations (such as completing a month in the NIMA clinic) to satisfy ACGME general outpatient requirements and provide staffing support.
 
@@ -17,13 +17,13 @@ Interns focus heavily on direct inpatient management, primary care foundations, 
 | **4** | **General Inpatient Wards** | Wards B, Wards R, Wards Metro |
 | **2** | **Critical Care (Main / Metro)** | ICU Main or ICU Metro |
 | **1** | **Split: Night Float / Subspecialty** | 2 weeks Night Float (NF) + 2 weeks Subspecialty Elective |
-| **3** | **Electives / Subspecialties / Vacation** | E.g., Cardiology, Infectious Disease, vacation blocks |
+| **3** | **Electives / Subspecialties / Vacation** | E.g., Cardiology, Infectious Disease; Includes Intern Jeopardy Assignment |
 
 ---
 
 ## PGY-2: Junior Resident Year
 **Theme: Supervisory Roles, Advanced Triage, & Ambulatory Immersion**
-The PGY-2 takes on team leadership on Wards and gains intensive triage exposure via Emergency Medicine. They also augment their clinic experience with a full 4-week dedicated stint serving at NIMA. *Note: CVICU and Metro ICU are available strictly as electives.*
+The PGY-2 takes on team leadership on Wards and gains intensive triage exposure via Emergency Medicine. *Note: CVICU and NIMA are available strictly as electives, whereas Metro ICU can be actively assigned as a core rotation.*
 
 | Blocks (4-weeks each) | Rotation Types | Specific Rotations Used |
 | :---: | :--- | :--- |
@@ -32,8 +32,9 @@ The PGY-2 takes on team leadership on Wards and gains intensive triage exposure 
 | **1** | **Emergency Medicine** | Emergency Medicine (EM) *(Can be split into two 2-week blocks)* |
 | **1** | **Split: Night Float / Elective** | 2 weeks Supervisory Night Float (NF) + 2 weeks Elective (e.g., CVICU) |
 | **1** | **Mandatory Geriatrics** | Geriatrics |
-| **1** | **Mandatory Neurology** | Neurology |
-| **2** | **Consults / Subspecialty / Vacation** | Gastroenterology, Pulmonology, Nephrology, etc. |
+| **1** | **Split: Mandatory Consults** | 2 weeks Neurology + 2 weeks Gastroenterology |
+| **1** | **Split: Mandatory Consults** | 2 weeks Pulmonology + 2 weeks Nephrology |
+| **1** | **Subspecialty / Elective / Vacation** | Additional Consults, Board Prep, Vacation |
 
 ---
 
@@ -43,12 +44,21 @@ Senior residents polish their ward management, engage with their final rigorous 
 
 | Blocks (4-weeks each) | Rotation Types | Specific Rotations Used |
 | :---: | :--- | :--- |
-| **2** | **Senior Supervisory Wards** | Wards B, Wards R, Wards Metro |
+| **1** | **Senior Supervisory Wards** | Wards B, Wards R, Wards Metro |
+| **1** | **Junior Hospitalist** | 1-on-1 with Attending (Acts as Senior Jeopardy) |
 | **2** | **Critical Care Core** | ICU Main or ICU Metro (Resident's Choice) |
 | **1** | **Hospice & Palliative Care** | Hospice and Palliative Care |
 | **1** | **Addiction Medicine** | Addiction Medicine |
 | **1** | **Staffing Assignment: NIMA** | 4 solid weeks assigned to NIMA |
-| **3** | **Subspecialty / Individualized** | Endocrinology, Rheumatology, Heme-Onc, CVICU, Board Prep |
+| **2** | **Subspecialty / Individualized** | Endocrinology, Rheumatology, Heme-Onc, CVICU, Board Prep |
+| **1** | **Split: Night Float / Elective** | 2 weeks Night Float (NF) + 2 weeks Elective |
+
+---
+
+## Jeopardy & Backup Coverage
+To maintain the required 4+1 structure and preserve inpatient caps without compromising continuity clinics or required subspecialty blocks, Jeopardy coverage is strictly defined to avoid utilizing the ambulatory "+1" cohort:
+*   **Senior Jeopardy:** Covered by the PGY-3 residents assigned to the *Junior Hospitalist* block. If pulled to cover the ICU or Wards, the supervising attending assumes primary responsibility for their hospitalist patients.
+*   **Intern Jeopardy:** Handled by a PGY-1 currently assigned to a flexible *Elective/Consult* block.
 
 ---
 
@@ -56,6 +66,6 @@ Senior residents polish their ward management, engage with their final rigorous 
 *   **Total Wards + ICU**: ~ 14 to 15 months `[Min Required: 10]`
 *   **Total ICU**: 5 months exact (PGY1 = 2, PGY2 = 1, PGY3 = 2). `[Min 2, Max 6, evenly spread, avoiding PGY-1 exclusivity]`
 *   **Dedicated Outpatient Blocks**: 10 continuity weeks per year plus 1 block at NIMA `[Meets Min 10 months requirement]`
-*   **Night Float**: 2 weeks per year in PGY1 and PGY2 `[Meets max 2 per year / 4 total limits]`
+*   **Night Float**: 2 weeks per year in PGY1, PGY2, and PGY3 `[Meets max 2 per year / 4 total limits]`
 *   **Subspecialties**: All 9 IM ABIM subspecialties can be represented easily through 4-week and 2-week split blocks. 
 *   **Mandatory Multi-disciplinary**: Geriatrics, Palliative, Addiction, EM, Neurology explicitly scheduled. EM uses 4 weeks exactly.
