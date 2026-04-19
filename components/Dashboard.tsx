@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Resident, ScheduleStats, AssignmentType } from '../types';
-import { ASSIGNMENT_COLORS } from '../constants';
+import { ASSIGNMENT_COLORS, ASSIGNMENT_HEX_COLORS } from '../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface Props {
@@ -77,38 +77,38 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
               wrapperStyle={{ zIndex: 100 }}
             />
             <Legend verticalAlign="bottom" height={36} />
-            <Bar dataKey={AssignmentType.WARDS_RED} stackId="a" fill="#fca5a5" name="Wards Red" />
-            <Bar dataKey={AssignmentType.WARDS_BLUE} stackId="a" fill="#93c5fd" name="Wards Blue" />
-            <Bar dataKey={AssignmentType.MICU} stackId="a" fill="#d8b4fe" name="ICU" />
-            <Bar dataKey={AssignmentType.NIGHT_FLOAT} stackId="a" fill="#c7d2fe" name="Night Float" />
-            <Bar dataKey={AssignmentType.EM} stackId="a" fill="#fdba74" name="EM" />
-            <Bar dataKey={AssignmentType.CLINIC} stackId="a" fill="#fde047" name="Clinic" />
-            <Bar dataKey={AssignmentType.CARDS} stackId="a" fill="#fda4af" name="Cardiology" />
-            <Bar dataKey={AssignmentType.ID} stackId="a" fill="#d9f99d" name="Inf. Disease" />
-            <Bar dataKey={AssignmentType.NEPH} stackId="a" fill="#fcd34d" name="Nephrology" />
-            <Bar dataKey={AssignmentType.PULM} stackId="a" fill="#a5f3fc" name="Pulmonology" />
+            <Bar dataKey={AssignmentType.WARDS_RED} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.WARDS_RED]} name="Wards Red" />
+            <Bar dataKey={AssignmentType.WARDS_BLUE} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.WARDS_BLUE]} name="Wards Blue" />
+            <Bar dataKey={AssignmentType.MICU} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.MICU]} name="ICU" />
+            <Bar dataKey={AssignmentType.NIGHT_FLOAT} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.NIGHT_FLOAT]} name="Night Float" />
+            <Bar dataKey={AssignmentType.EM} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.EM]} name="EM" />
+            <Bar dataKey={AssignmentType.CLINIC} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.CLINIC]} name="Clinic" />
+            <Bar dataKey={AssignmentType.CARDS} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.CARDS]} name="Cardiology" />
+            <Bar dataKey={AssignmentType.ID} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ID]} name="Inf. Disease" />
+            <Bar dataKey={AssignmentType.NEPH} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.NEPH]} name="Nephrology" />
+            <Bar dataKey={AssignmentType.PULM} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.PULM]} name="Pulmonology" />
 
-            <Bar dataKey={AssignmentType.METRO_ICU} stackId="a" fill="#e879f9" name="Metro ICU" />
-            <Bar dataKey={AssignmentType.ONC} stackId="a" fill="#f9a8d4" name="Heme/Onc" />
-            <Bar dataKey={AssignmentType.NEURO} stackId="a" fill="#a78bfa" name="Neurology" />
-            <Bar dataKey={AssignmentType.RHEUM} stackId="a" fill="#6ee7b7" name="Rheumatology" />
-            <Bar dataKey={AssignmentType.GI} stackId="a" fill="#fbbf24" name="GI" />
+            <Bar dataKey={AssignmentType.METRO_ICU} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.METRO_ICU]} name="Metro ICU" />
+            <Bar dataKey={AssignmentType.ONC} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ONC]} name="Heme/Onc" />
+            <Bar dataKey={AssignmentType.NEURO} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.NEURO]} name="Neurology" />
+            <Bar dataKey={AssignmentType.RHEUM} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.RHEUM]} name="Rheumatology" />
+            <Bar dataKey={AssignmentType.GI} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.GI]} name="GI" />
 
-            <Bar dataKey={AssignmentType.ADD_MED} stackId="a" fill="#d6d3d1" name="Addiction Med" />
-            <Bar dataKey={AssignmentType.ENDO} stackId="a" fill="#ffedd5" name="Endocrinology" />
-            <Bar dataKey={AssignmentType.GERI} stackId="a" fill="#cbd5e1" name="Geriatrics" />
-            <Bar dataKey={AssignmentType.PALLIATIVE} stackId="a" fill="#bae6fd" name="Palliative" />
+            <Bar dataKey={AssignmentType.ADD_MED} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ADD_MED]} name="Addiction Med" />
+            <Bar dataKey={AssignmentType.ENDO} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ENDO]} name="Endocrinology" />
+            <Bar dataKey={AssignmentType.GERI} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.GERI]} name="Geriatrics" />
+            <Bar dataKey={AssignmentType.PALLIATIVE} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.PALLIATIVE]} name="Palliative" />
 
-            <Bar dataKey={AssignmentType.RESEARCH} stackId="a" fill="#e2e8f0" name="Research" />
-            <Bar dataKey={AssignmentType.CCMA} stackId="a" fill="#fce7f3" name="CCMA" />
-            <Bar dataKey={AssignmentType.HF} stackId="a" fill="#fee2e2" name="Heart Failure" />
-            <Bar dataKey={AssignmentType.CVICU} stackId="a" fill="#fecdd3" name="Cardiac ICU" />
-            <Bar dataKey={AssignmentType.ENT} stackId="a" fill="#99f6e4" name="ENT" />
+            <Bar dataKey={AssignmentType.RESEARCH} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.RESEARCH]} name="Research" />
+            <Bar dataKey={AssignmentType.CCMA} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.CCMA]} name="CCMA" />
+            <Bar dataKey={AssignmentType.HF} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.HF]} name="Heart Failure" />
+            <Bar dataKey={AssignmentType.CVICU} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.CVICU]} name="Cardiac ICU" />
+            <Bar dataKey={AssignmentType.ENT} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ENT]} name="ENT" />
 
-            <Bar dataKey={AssignmentType.ELECTIVE} stackId="a" fill="#86efac" name="Elective" />
-            <Bar dataKey={AssignmentType.VACATION} stackId="a" fill="#e5e7eb" name="Vacation" />
-            <Bar dataKey={AssignmentType.WARDS_METRO} stackId="a" fill="#99f6e4" name="Metro Wards" />
-            <Bar dataKey={AssignmentType.JR_HOSPITALIST} stackId="a" fill="#6366f1" name="Jr Hospitalist" />
+            <Bar dataKey={AssignmentType.ELECTIVE} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ELECTIVE]} name="Elective" />
+            <Bar dataKey={AssignmentType.VACATION} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.VACATION]} name="Vacation" />
+            <Bar dataKey={AssignmentType.WARDS_METRO} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.WARDS_METRO]} name="Metro Wards" />
+            <Bar dataKey={AssignmentType.JR_HOSPITALIST} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.JR_HOSPITALIST]} name="Jr Hospitalist" />
           </BarChart>
         </ResponsiveContainer>
       </div>
