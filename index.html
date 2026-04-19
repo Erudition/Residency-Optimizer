@@ -108,20 +108,20 @@
                   "highlight": "rgba(235,157,42,.2)",
                   "footer": "#08042f",
                   "black": "#000",
-                  "blue": "#2F80FA",
+                  "blue": "rgb(var(--blue) / <alpha-value>)",
                   "blue-2": "#589DF8",
                   "blue-2-dark": "#1E2F46",
                   "brown": "#3B2B26",
                   "burnt-orange": "#DF6133",
                   "burnt-orange-dark": "#8E2600",
-                  "orange": "#EB9D2A",
+                  "orange": "rgb(var(--orange) / <alpha-value>)",
                   "orange-dark": "#C77800",
                   "creamsicle": "#FFD699",
                   "creamsicle-dark": "#E38907",
                   "fuchsia": "#A621C8",
                   "fuchsia-dark": "#74108D",
                   "gray": "#8F8F8C",
-                  "green": "#6AA84F",
+                  "green": "rgb(var(--green) / <alpha-value>)",
                   "green-dark": "#4D7533",
                   "green-2": "#36C46F",
                   "gold": "#FFBA53",
@@ -136,14 +136,14 @@
                   "lime-green": "#96E5B6",
                   "navy": "#1E2F46",
                   "navy-dark": "#0F233D",
-                  "pink": "#E34C6F",
+                  "pink": "rgb(var(--pink) / <alpha-value>)",
                   "pink-dark": "#8C0D3B",
                   "pale-blue": "#D2E6FF",
                   "pale-blue-dark": "#648DC2",
-                  "purple": "#B62AD9",
+                  "purple": "rgb(var(--purple) / <alpha-value>)",
                   "purple-2": "#40396E",
                   "purple-2-dark": "#3C3154",
-                  "red": "#F54E00",
+                  "red": "rgb(var(--red) / <alpha-value>)",
                   "red-2": "#F87A4C",
                   "red-2-dark": "#C03300",
                   "salmon": "#F35454",
@@ -520,6 +520,33 @@
 } };
   </script>
   <style>
+    :root {
+      --bg: 253 253 248;
+      --accent: 229 231 224;
+      --text-primary: 35 37 29;
+      --text-secondary: 77 79 70;
+      --text-muted: 115 117 107;
+      --border: 210 211 204;
+      --input-bg: 255 255 255;
+      --input-border: 210 211 204;
+      --input-bg-hover: 243 244 246;
+      --input-border-hover: 47 128 250;
+      
+      --red: 245 78 0;
+      --blue: 47 128 250;
+      --orange: 235 157 42;
+      --green: 106 168 79;
+      --purple: 182 42 217;
+      --pink: 227 76 111;
+    }
+
+    body {
+      background-color: #FDFDF8;
+      background-image: url('https://res.cloudinary.com/dmukukwp6/image/upload/carpet_light_27d74f73b5.png');
+      background-repeat: repeat;
+    }
+
+
     /* Custom scrollbar for large spreadsheet */
     .spreadsheet-container::-webkit-scrollbar {
       height: 12px;
