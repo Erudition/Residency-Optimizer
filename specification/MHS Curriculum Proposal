@@ -74,6 +74,12 @@ To ensure compliance with the program's explicit Time Away Request rules and pro
 *   **Structure:** Vacation time must be taken on consecutive days bridged to a weekend (weekends are counted as regular days off, not PTO). Coverage requests require minimum 60-day notice.
 *   **Leaves of Absence (Medical, Parental, & Caregiver Leave):** In accordance with ABIM and ACGME guidelines, the program supports necessary parental, medical, and caregiver leave. The 4+1 curriculum is structurally designed to help absorb standard extended leaves by remapping them over your designated Elective blocks, minimizing the risk to core clinical minimums. However, individual scheduling needs and potential impacts on graduation timelines will be addressed on a case-by-case basis with program leadership.
 
+### Schedule Adjustments for Required Rotations (Deficit Recovery)
+If a resident takes PTO or extended leave during a **mandated** rotation (e.g., Mandatory Geriatrics, Split Neurology), the scheduling engine will enforce the following deficit recovery rules:
+*   **The Competency Override (Standard 1-Week PTO):** If a resident takes 1 week of PTO during a 4-week mandatory block, the system does not force a makeup. Completing 3 of 4 weeks satisfies competency exposure minimums.
+*   **The Minimum Threshold Flag (Short Blocks):** If PTO reduces a 2-week mandatory split block (e.g., Pulmonology) to 1 week or less, the system triggers a **Subspecialty Deficit Flag**. The algorithm will then identify the resident's next "Pure Elective" block and automatically overwrite the necessary weeks to recuperate the mandated exposure.
+*   **Leave of Absence Re-calc:** During extended leave (e.g., parental/medical), the engine removes scheduled Wards/ICU blocks. Upon return, it cannibalizes subsequent pure elective blocks to reinstate any missed ACGME mandatory minimums. If insufficient elective time remains, the resident is flagged for a potential Training Extension.
+
 ---
 
 ## ACGME Balance Audit
