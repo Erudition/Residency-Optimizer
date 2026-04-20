@@ -1,6 +1,7 @@
 # Proposed MHS Internal Medicine Curriculum (4+1 Model)
 
-This schedule reflects an **X+Y (4+1)** alternating block model. In this structure, the academic year consists of ten 5-week cycles per year. For each cycle, residents spend 4 weeks on a core rotation, followed immediately by 1 week dedicated entirely to continuity clinic. 
+This schedule reflects an **X+Y (4+1)** alternating block model. In this structure, the academic year consists of ten 5-week cycles per year. For each cycle, residents spend 4 weeks on a core rotation, followed immediately by 1 week dedicated entirely to continuity clinic.
+
 *   **Total Cycle:** 10 core blocks (40 weeks) + 10 clinic weeks (10 weeks) + 2 weeks standard vacation/holiday = 52 weeks.
 *   **Continuity Structure:** For the 2026-2027 academic year, the **PGY-2 class** will complete their "+1" continuity clinic blocks at **NIMA**, remaining at this site to finish out their residency. The **PGY-1** and **current PGY-3** classes are assigned to **CCIM** for their longitudinal continuity site.
 
@@ -61,6 +62,7 @@ Senior residents polish their ward management, engage with their final rigorous 
 
 ## Jeopardy & Backup Coverage
 To maintain the required 4+1 structure and preserve inpatient caps without compromising continuity clinics or mandatory subspecialty blocks, Jeopardy coverage is strictly defined to utilize residents on flexible time, guaranteeing continuous year-round availability. Interns are explicitly protected from Jeopardy pulls.
+
 *   **Jeopardy Hierarchy:** If an intern calls out, Attendings or Seniors will pick up the patient volume directly.
 *   **1st Line (PGY-3):** Handled by a PGY-3 currently assigned to a flexible *Elective* or easy *Consult* block.
 *   **2nd Line (PGY-2):** If no PGY-3 is available, a PGY-2 on an easy *Elective* or *Consult* block will be pulled.
@@ -70,6 +72,7 @@ To maintain the required 4+1 structure and preserve inpatient caps without compr
 
 ## Leave & Vacation Policy
 To ensure compliance with the program's explicit Time Away Request rules and protect the 4+1 patient continuity rhythm, the scheduling engine and block assignments must reflect the following constraints:
+
 *   **Rotation Restrictions:** PTO/Vacation is strictly **PROHIBITED** during Wards, ICU, and the "+1" CCIM/NIMA continuity clinic blocks. Vacations must be requested and mapped exclusively out of flexible Elective or Consult blocks.
 *   **Blackout Dates:** No PTO is permitted during program transition periods: **June 22 - July 10** and **August 10 - 31**. 
 *   **Structure:** Vacation time must be taken on consecutive days bridged to a weekend (weekends are counted as regular days off, not PTO). Coverage requests require minimum 60-day notice.
@@ -77,6 +80,7 @@ To ensure compliance with the program's explicit Time Away Request rules and pro
 
 ### Schedule Adjustments for Required Rotations (Deficit Recovery)
 If a resident takes PTO or extended leave during a **mandated** rotation (e.g., Mandatory Geriatrics, Split Neurology), the scheduling engine will enforce the following deficit recovery rules:
+
 *   **The Competency Override (Standard 1-Week PTO):** If a resident takes 1 week of PTO during a 4-week mandatory block, the system does not force a makeup. Completing 3 of 4 weeks satisfies competency exposure minimums.
 *   **The Minimum Threshold Flag (Short Blocks):** If PTO reduces a 2-week mandatory split block (e.g., Pulmonology) to 1 week or less, the system triggers a **Subspecialty Deficit Flag**. The algorithm will then identify the resident's next "Pure Elective" block and automatically overwrite the necessary weeks to recuperate the mandated exposure.
 *   **Leave of Absence Re-calc:** During extended leave (e.g., parental/medical), the engine removes scheduled Wards/ICU blocks. Upon return, it cannibalizes subsequent pure elective blocks to reinstate any missed ACGME mandatory minimums. If insufficient elective time remains, the resident is flagged for a potential Training Extension.
