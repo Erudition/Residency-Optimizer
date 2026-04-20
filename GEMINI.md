@@ -78,5 +78,5 @@ Based on new faculty orientation materials:
 ## 9. Reminders
 *   **Important:** Make Pulmonology a staffed rotation.
 *   **Naming update:** Use "AMCS Consults" instead of "CVICU" when referring to advanced cardiovascular mechanical support to avoid accidental triggering of the ACGME critical care limits.
-*   **Staffing strategy:** Pair upper levels (PGY3s) and PGY2s to rotate together on the pulmonology consult/procedural service.
-*   **ICU Staffing:** The ideal complement of residents at MICU is 4 interns (PGY1s) and 2 senior residents (PGY2s or PGY3s).
+*   **Staffing strategy:** Pair interns (PGY-1s) and Seniors (PGY-2 or PGY-3) to rotate together on the pulmonology consult/procedural service.
+*   **ICU Staffing:** The ideal complement of residents at MICU is 4 interns (PGY1s) and 2 senior residents (PGY2s or PGY3s). Due to native intern supply limits, the 4th intern slot will be backfilled by a dedicated NP/PA.
