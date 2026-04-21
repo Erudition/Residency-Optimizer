@@ -87,3 +87,6 @@ Based on new faculty orientation materials:
 *   **Resident Sorting:** The default resident display order must prioritize PGY-1s (Interns) at the top of the list, followed by PGY-2s and PGY-3s. Within each PGY level, residents should be sorted alphabetically. In Cohort view, this same seniority-last (PGY 1 → 2 → 3) sub-sort must apply within each cohort.
 *   **Academic Year Display:** Toggle buttons and labels for academic years must display the full academic year range (e.g., "2026 - 2027") rather than a single starting year.
 
+## 11. Process Management & Background Tasks
+*   **Vitest Testing:** When running Vitest tests via the shell, always use `--run` (or equivalent) to disable watch mode. This is especially critical when piping output to a file or running in the background, as watch mode can prevent the IDE from correctly terminating the process, leading to stale background tasks.
+
