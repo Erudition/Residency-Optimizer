@@ -236,7 +236,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         targetIntern: 4, targetSenior: 4
     },
     [AssignmentType.WARDS_RED]: {
-        type: AssignmentType.WARDS_RED, label: 'Wards (All)',
+        type: AssignmentType.WARDS_RED, label: 'Wards',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 2, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
         targetIntern: 16, targetSenior: 12, targetPGY3: 4 // PGY1: 4 blocks (16w), PGY2: 3 blocks (12w), PGY3: 1 block (4w)

@@ -800,7 +800,7 @@ const App: React.FC = () => {
                 className={`flex items-center gap-2 px-4 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-all relative cursor-pointer ${isActive ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
               >
                 <History size={14} className={isActive ? 'text-white' : 'text-blue'} />
-                {year}-{year + 1}
+                AY {year}-{year + 1} ({year - ACTIVE_START_YEAR}y)
                 {isActive && (
                   <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
                 )}
@@ -822,7 +822,7 @@ const App: React.FC = () => {
             }}
             className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-all relative cursor-pointer ${activeScheduleId === 'all' ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
           >
-            All {ACTIVE_START_YEAR} Candidates
+            AY {ACTIVE_START_YEAR}-{ACTIVE_START_YEAR + 1} (Current)
             {activeScheduleId === 'all' && (
               <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
             )}
