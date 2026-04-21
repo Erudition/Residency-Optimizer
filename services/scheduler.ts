@@ -24,7 +24,8 @@ export const generateSchedule = async (
   existing: ScheduleGrid,
   params: CompetitionParams = { tries: 300, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 },
   onProgress?: (progress: number, attemptsMade: number) => void,
-  historicalSchedules?: ScheduleHistory
+  historicalSchedules?: ScheduleHistory,
+  cohortAssignments?: Record<string, number>
 ): Promise<{ results: CompetitionResult[] }> => {
   const allGenerators = [
     { id: 'greedy', generator: GreedyGenerator, name: 'Greedy' },
@@ -53,7 +54,7 @@ export const generateSchedule = async (
   for (let i = 0; i < attempts.length; i++) {
     const att = attempts[i];
     try {
-      const schedule = att.generator.generate(residents, existing, i, historicalSchedules);
+      const schedule = att.generator.generate(residents, existing, i, historicalSchedules, cohortAssignments);
       const reqViolations = getRequirementViolations(residents, schedule, historicalSchedules);
       const weekViolations = getWeeklyViolations(residents, schedule);
       const totalViolations = reqViolations.length + weekViolations.length;

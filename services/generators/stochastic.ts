@@ -16,9 +16,8 @@ class SeededRNG {
 
 export const StochasticGenerator: ScheduleGenerator = {
     name: "Stochastic (Balanced Fill)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const rng = new SeededRNG(Date.now() + Math.random() * 1000 + attemptIndex * 7);
-
         const seededShuffle = <T>(array: T[]): T[] => {
             const newArray = [...array];
             for (let i = newArray.length - 1; i > 0; i--) {
@@ -36,8 +35,9 @@ export const StochasticGenerator: ScheduleGenerator = {
                 newSchedule[r.id] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null, locked: false }));
             }
             const clinicType = r.clinicType || AssignmentType.CLINIC;
+            const cohort = cohortAssignments ? cohortAssignments[r.id] : 0;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
-                if (w % COHORT_COUNT === r.cohort) {
+                if (w % COHORT_COUNT === cohort) {
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
                 }
             }
@@ -62,57 +62,47 @@ export const StochasticGenerator: ScheduleGenerator = {
         ];
 
         // 2. Foundation (Critical Staffing)
+        // We use a progressive filler to ensure minimums are met while respecting cohort gaps.
         criticalTypes.forEach(type => {
             const meta = ROTATION_METADATA[type];
             if (!meta) return;
             const duration = meta.duration || 4;
-            const weeksIndices = seededShuffle(Array.from({ length: TOTAL_WEEKS - duration + 1 }, (_, i) => i));
 
-            weeksIndices.forEach(w => {
-                let nI = false, nS = false;
-                const check = () => {
-                    nI = false; nS = false;
-                    for (let i = 0; i < duration; i++) {
-                        if (getAssignedCount(w + i, type, 1) < (meta.minInterns || 0)) nI = true;
-                        if (getAssignedCount(w + i, type, 2) < (meta.minSeniors || 0)) nS = true;
-                    }
-                };
-                check();
-
-                while (nI || nS) {
-                    const pool = residents.filter(r => {
-                        if (r.level === 1 && !nI) return false;
-                        if (r.level > 1 && !nS) return false;
-                        for (let i = 0; i < duration; i++) {
-                            const curI = getAssignedCount(w + i, type, 1);
-                            const curS = getAssignedCount(w + i, type, 2);
-                            if (r.level === 1 && curI >= (meta.maxInterns || 99)) return false;
-                            if (r.level > 1 && curS >= (meta.maxSeniors || 99)) return false;
-                        }
-                        return canFitBlock(newSchedule, r.id, w, duration);
-                    });
-
-                    if (pool.length === 0) break;
-
-                    pool.sort((a, b) => {
+            for (let w = 0; w < TOTAL_WEEKS; w++) {
+                // Interns
+                while (getAssignedCount(w, type, 1) < (meta.minInterns || 0)) {
+                    const pool = seededShuffle(residents.filter(r => {
+                        return r.level === 1 && !newSchedule[r.id][w].assignment && getAssignedCount(w, type, 1) < (meta.maxInterns || 99);
+                    })).sort((a, b) => {
                         const isW = fulfillsRequirement(type, AssignmentType.WARDS_RED);
                         const reqT = isW ? AssignmentType.WARDS_RED : type;
-                        const fA = getCumulativeRequirementCount(a.id, newSchedule[a.id], reqT, historicalSchedules);
-                        const tA = REQUIREMENTS[a.level]?.find(req => isW ? fulfillsRequirement(null, req.type) : req.type === type)?.target || 0;
-                        const fB = getCumulativeRequirementCount(b.id, newSchedule[b.id], reqT, historicalSchedules);
-                        const tB = REQUIREMENTS[b.level]?.find(req => isW ? fulfillsRequirement(null, req.type) : req.type === type)?.target || 0;
-
-                        const uA = fA < tA ? 0 : 1;
-                        const uB = fB < tB ? 0 : 1;
-                        if (uA !== uB) return uA - uB;
-
-                        return (newSchedule[a.id].filter(x => x.assignment).length) - (newSchedule[b.id].filter(x => x.assignment).length);
+                        return getCumulativeRequirementCount(a.id, newSchedule[a.id], reqT, historicalSchedules) - 
+                               getCumulativeRequirementCount(b.id, newSchedule[b.id], reqT, historicalSchedules);
                     });
-
-                    placeBlock(newSchedule, pool[0].id, w, duration, type);
-                    check();
+                    
+                    if (pool.length === 0) break;
+                    let d = 1;
+                    while (d < duration && w + d < TOTAL_WEEKS && !newSchedule[pool[0].id][w + d].assignment) d++;
+                    placeBlock(newSchedule, pool[0].id, w, d, type);
                 }
-            });
+
+                // Seniors
+                while (getAssignedCount(w, type, 2) < (meta.minSeniors || 0)) {
+                    const pool = seededShuffle(residents.filter(r => {
+                        return r.level >= 2 && !newSchedule[r.id][w].assignment && getAssignedCount(w, type, 2) < (meta.maxSeniors || 99);
+                    })).sort((a, b) => {
+                        const isW = fulfillsRequirement(type, AssignmentType.WARDS_RED);
+                        const reqT = isW ? AssignmentType.WARDS_RED : type;
+                        return getCumulativeRequirementCount(a.id, newSchedule[a.id], reqT, historicalSchedules) - 
+                               getCumulativeRequirementCount(b.id, newSchedule[b.id], reqT, historicalSchedules);
+                    });
+                    
+                    if (pool.length === 0) break;
+                    let d = 1;
+                    while (d < duration && w + d < TOTAL_WEEKS && !newSchedule[pool[0].id][w + d].assignment) d++;
+                    placeBlock(newSchedule, pool[0].id, w, d, type);
+                }
+            }
         });
 
         // 3. Smart Fill (Educational Requirements)

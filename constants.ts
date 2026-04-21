@@ -43,7 +43,6 @@ export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
                 name: names[i] || `Resident ${idCounter}`,
                 level,
                 startYear,
-                cohort: (idCounter - 1) % COHORT_COUNT,
                 avoidResidentIds: [],
             });
             idCounter++;
@@ -86,7 +85,6 @@ export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
                 name: names[i] || `Intern ${startYear % 100}-${i + 1}`,
                 level: 1, // Base level, will be shifted by activeYear
                 startYear,
-                cohort: i % COHORT_COUNT,
                 avoidResidentIds: [],
             });
         }
@@ -319,25 +317,25 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     [AssignmentType.ADD_MED]: {
         type: AssignmentType.ADD_MED, label: 'Addiction Med',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4, 
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
+        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 4,
         targetPGY3: 4,
     },
     [AssignmentType.ENDO]: {
         type: AssignmentType.ENDO, label: 'Endocrinology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4, // Corrected to 4
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
+        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 4,
         targetPGY3: 4,
     },
     [AssignmentType.GERI]: {
         type: AssignmentType.GERI, label: 'Geriatrics',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
+        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 4,
         targetPGY2: 4,
     },
     [AssignmentType.PALLIATIVE]: {
         type: AssignmentType.PALLIATIVE, label: 'Palliative Care',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4, // Corrected to 4
-        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
+        minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 4,
         targetPGY3: 4,
     },
     [AssignmentType.METRO_ICU]: {

@@ -5,7 +5,7 @@ import { canFitBlock, placeBlock, shuffle, getCumulativeRequirementCount } from 
 
 export const GreedyGenerator: ScheduleGenerator = {
     name: "Greedy (Legacy)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex?: number, historicalSchedules?: ScheduleHistory): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex?: number, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
         residents.forEach(r => {
@@ -15,8 +15,9 @@ export const GreedyGenerator: ScheduleGenerator = {
                 newSchedule[r.id] = newSchedule[r.id].map(cell => (cell && cell.locked) ? cell : { assignment: null, locked: false });
             }
 
+            const cohort = cohortAssignments ? cohortAssignments[r.id] : 0;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
-                if (w % 5 === r.cohort) {
+                if (w % 5 === cohort) {
                     newSchedule[r.id][w] = { assignment: AssignmentType.CLINIC, locked: true };
                 }
             }
@@ -75,11 +76,14 @@ export const GreedyGenerator: ScheduleGenerator = {
                     const candidate = shuffle(residents).find(r => {
                         if (needsIntern && r.level !== 1) return false;
                         if (needsSenior && r.level === 1) return false;
-                        return canFitBlock(newSchedule, r.id, w, duration);
+                        return !newSchedule[r.id][w].assignment; // Must be free this week
                     });
 
                     if (candidate) {
-                        placeBlock(newSchedule, candidate.id, w, duration, type);
+                        // Place for as long as possible up to duration
+                        let d = 1;
+                        while (d < duration && w + d < TOTAL_WEEKS && !newSchedule[candidate.id][w + d].assignment) d++;
+                        placeBlock(newSchedule, candidate.id, w, d, type);
                         if (candidate.level === 1) interns++; else seniors++;
                     } else break;
                     safety++;

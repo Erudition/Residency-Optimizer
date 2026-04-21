@@ -18,13 +18,11 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
   // New Resident State
   const [newResidentName, setNewResidentName] = useState('');
   const [newResidentLevel, setNewResidentLevel] = useState<PgyLevel>(1);
-  const [newResidentCohort, setNewResidentCohort] = useState<number>(0);
   
   // Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editLevel, setEditLevel] = useState<PgyLevel>(1);
-  const [editCohort, setEditCohort] = useState<number>(0);
 
   // Delete Confirmation State
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -39,7 +37,6 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
       name: newResidentName,
       level: newResidentLevel,
       startYear: activeYear - newResidentLevel + 1,
-      cohort: newResidentCohort,
       avoidResidentIds: [],
     };
     setResidents(prev => [...prev, newResident]);
@@ -73,14 +70,12 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
     setEditingId(resident.id);
     setEditName(resident.name);
     setEditLevel(resident.level);
-    setEditCohort(resident.cohort);
   };
 
   const cancelEditing = () => {
     setEditingId(null);
     setEditName('');
     setEditLevel(1);
-    setEditCohort(0);
   };
 
   const saveEditing = () => {
@@ -91,7 +86,6 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
             ...r,
             name: editName,
             level: editLevel,
-            cohort: editCohort
           };
         }
         return r;
@@ -108,12 +102,10 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
   };
 
   const handleDownloadTemplate = () => {
-    const csvContent = `Name,Level,Cohort
-John Doe,1,0
-Jane Smith,2,1
-Robert Brown,3,2
-Alice Johnson,1,
-David Wilson,2,4`;
+    const csvContent = `Name,Level
+John Doe,1
+Jane Smith,2
+Robert Brown,3`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -157,9 +149,7 @@ David Wilson,2,4`;
         
         const parts = line.split(',').map(p => p.trim());
         
-        // Flexible format: 
-        // 1. Name, Level, Cohort
-        // 2. Name, Level (Cohort auto-assigned)
+        // Flexible format: Name, Level
         if (parts.length < 2) continue; 
 
         const name = parts[0];
@@ -170,25 +160,11 @@ David Wilson,2,4`;
         
         if (!cleanName || isNaN(level) || ![1, 2, 3].includes(level)) continue;
 
-        let cohort = 0;
-        if (parts[2]) {
-            const parsedCohort = parseInt(parts[2]);
-            if (!isNaN(parsedCohort) && parsedCohort >= 0 && parsedCohort < COHORT_COUNT) {
-                cohort = parsedCohort;
-            } else {
-                 cohort = (newResidents.length) % COHORT_COUNT;
-            }
-        } else {
-             // Auto distribute
-             cohort = (newResidents.length) % COHORT_COUNT;
-        }
-
         newResidents.push({
             id: `imported-${Date.now()}-${idCounter++}`,
             name: cleanName,
             level,
             startYear: activeYear - level + 1,
-            cohort,
             avoidResidentIds: []
         });
     }
@@ -276,15 +252,15 @@ David Wilson,2,4`;
             </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-primary mb-1">Cohort</label>
+            <label className="block text-sm font-medium text-primary mb-1">PGY Level</label>
             <Select
-              value={newResidentCohort}
-              onChange={(e) => setNewResidentCohort(Number(e.target.value))}
+              value={newResidentLevel}
+              onChange={(e) => setNewResidentLevel(Number(e.target.value) as PgyLevel)}
               className="w-24"
             >
-              {[0,1,2,3,4].map(c => (
-                <option key={c} value={c}>{String.fromCharCode(65 + c)}</option>
-              ))}
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={3}>3</option>
             </Select>
           </div>
           <Button variant="primary" size="md" onClick={handleAdd} className="gap-2">
@@ -296,9 +272,8 @@ David Wilson,2,4`;
 
       <Card className="mb-12">
         <div className="p-4 border-b border-light-5 bg-light-1 font-semibold text-primary grid grid-cols-12 gap-4">
-            <div className="col-span-6">Name</div>
+            <div className="col-span-8">Name</div>
             <div className="col-span-2 text-center">Level</div>
-            <div className="col-span-2 text-center">Cohort</div>
             <div className="col-span-2 text-center">Actions</div>
         </div>
         <div className="overflow-visible min-h-[100px]">
@@ -309,7 +284,7 @@ David Wilson,2,4`;
                 <div key={r.id} className={`p-4 border-b border-light-5 last:border-0 grid grid-cols-12 gap-4 items-center ${isEditing ? 'bg-light-blue/20' : 'hover:bg-light-1'}`}>
                     {isEditing ? (
                       <>
-                        <div className="col-span-6">
+                        <div className="col-span-8">
                           <Input 
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
@@ -326,16 +301,6 @@ David Wilson,2,4`;
                             <option value={3}>PGY-3</option>
                           </Select>
                         </div>
-                        <div className="col-span-2 text-center">
-                          <Select
-                            value={editCohort}
-                            onChange={(e) => setEditCohort(Number(e.target.value))}
-                          >
-                            {[0,1,2,3,4].map(c => (
-                              <option key={c} value={c}>{String.fromCharCode(65 + c)}</option>
-                            ))}
-                          </Select>
-                        </div>
                         <div className="col-span-2 text-center flex justify-center gap-2">
                            <Button variant="ghost" size="sm" onClick={saveEditing} className="text-green hover:text-green-dark hover:bg-lime-green/40" title="Save">
                              <Check size={16}/>
@@ -347,14 +312,11 @@ David Wilson,2,4`;
                       </>
                     ) : (
                       <>
-                        <div className="col-span-6 font-medium">{r.name}</div>
+                        <div className="col-span-8 font-medium">{r.name}</div>
                         <div className="col-span-2 text-center">
                             <Badge variant={r.level === 1 ? 'success' : r.level === 2 ? 'info' : 'purple'}>
                                 PGY-{r.level}
                             </Badge>
-                        </div>
-                        <div className="col-span-2 text-center font-mono">
-                            {String.fromCharCode(65 + r.cohort)}
                         </div>
                         <div className="col-span-2 text-center flex justify-center gap-2 items-center">
                             {deleteConfirmId === r.id ? (

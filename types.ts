@@ -14,7 +14,6 @@ export interface Resident {
   name: string;
   level: PgyLevel; // Computed level for the active year context
   startYear: number; // The calendar year they started as a PGY-1 (e.g. 2026)
-  cohort: number; // 0-4 for the 4+1 cohorts
   avoidResidentIds: string[];
   clinicType?: AssignmentType;
 }

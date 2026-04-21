@@ -8,6 +8,7 @@ interface Props {
   residents: Resident[];
   schedule: ScheduleGrid;
   startYear: number;
+  cohortAssignments: Record<string, number>;
   onCellClick: (residentId: string, week: number) => void;
   onLockWeek: (weekIdx: number) => void;
   onLockResident: (residentId: string) => void;
@@ -36,6 +37,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   residents,
   schedule,
   startYear,
+  cohortAssignments,
   onCellClick,
   onLockWeek,
   onLockResident,
@@ -165,7 +167,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                         {resident.name}
                       </span>
                       <span className="text-xs text-muted truncate">
-                        PGY-{resident.level} • Cohort {String.fromCharCode(65 + resident.cohort)}
+                        PGY-{resident.level} • Cohort {String.fromCharCode(65 + (cohortAssignments[resident.id] ?? 0))}
                       </span>
                     </div>
                   </td>

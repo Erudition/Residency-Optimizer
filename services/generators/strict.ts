@@ -5,7 +5,7 @@ import { canFitBlock, placeBlock, getCumulativeRequirementCount, shuffle } from 
 
 export const StrictGenerator: ScheduleGenerator = {
     name: "Education First",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
         // 1. Initialize empty schedule
@@ -17,8 +17,9 @@ export const StrictGenerator: ScheduleGenerator = {
 
         // 2. Pre-assign Clinic (Locked)
         residents.forEach(r => {
+            const cohort = cohortAssignments ? cohortAssignments[r.id] : 0;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
-                if (w % 5 === r.cohort) {
+                if (w % COHORT_COUNT === cohort) {
                     newSchedule[r.id][w] = { assignment: AssignmentType.CLINIC, locked: true };
                 }
             }
@@ -125,17 +126,19 @@ export const StrictGenerator: ScheduleGenerator = {
 
             let globalBest: { week: number; type: AssignmentType; score: number } | null = null;
 
+            // 6. Place Blocks (Gap-Aware)
             candidateTypes.forEach(cType => {
                 const meta = ROTATION_METADATA[cType];
                 if (!meta) return;
 
+                // Search for valid start weeks for this block
                 for (let w = 0; w <= TOTAL_WEEKS - block.duration; w++) {
                     if (!canFitBlock(newSchedule, res.id, w, block.duration)) continue;
 
                     let score = 0;
                     for (let i = 0; i < block.duration; i++) {
                         const week = w + i;
-                        const assignedOnThis = residents.filter(r => newSchedule[r.id][week].assignment === cType);
+                        const assignedOnThis = residents.filter(r => newSchedule[r.id][week]?.assignment === cType);
                         const currentCount = res.level === 1
                             ? assignedOnThis.filter(r => r.level === 1).length
                             : assignedOnThis.filter(r => r.level > 1).length;
@@ -144,9 +147,9 @@ export const StrictGenerator: ScheduleGenerator = {
                         const max = res.level === 1 ? (meta.maxInterns || 99) : (meta.maxSeniors || 99);
 
                         if (isStaffingType(cType)) {
-                            if (currentCount < min) score -= 1000; // Major bonus for contributing to min
-                            if (currentCount >= max) score += 10000; // Critical penalty for exceeding max
-                            score += currentCount * 100; // Balancing
+                            if (currentCount < min) score -= 1000;
+                            if (currentCount >= max) score += 10000;
+                            score += currentCount * 100;
                         } else {
                             const poolSize = getResidualCapacity(week, res.level);
                             const minNeeded = res.level === 1 ? minInternsNeeded : minSeniorsNeeded;
