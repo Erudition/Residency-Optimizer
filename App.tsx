@@ -70,6 +70,7 @@ export interface ScheduleSession {
   createdAt: Date;
   isGenerating?: boolean;
   progress?: number;
+  progressLabel?: string;
   attemptsMade?: number;
   metrics?: {
     stats: any;
@@ -312,35 +313,29 @@ const App: React.FC = () => {
     return schedules.find(s => s.id === activeScheduleId);
   }, [schedules, activeScheduleId, historySchedules]);
 
-  // Derive active residents for the selected year
-  const activeResidents = useMemo(() => {
-    const list = residents.filter(r => {
-      const level = activeYear - r.startYear + 1;
+  // Helper to derive active residents for any year (graduation aware)
+  const getResidentsForYear = (year: number) => {
+    return residents.filter(r => {
+      const level = year - r.startYear + 1;
       return level >= 1 && level <= 3;
     }).map(r => {
-      const level = (activeYear - r.startYear + 1) as 1 | 2 | 3;
-      // PGY-2s go to NIMA clinic per MHS proposal
+      const level = (year - r.startYear + 1) as 1 | 2 | 3;
       const clinicType = level === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
-      
-      return {
-        ...r,
-        level,
-        clinicType // Used by generators to assign the correct +1 week
-      };
-    });
-
-    return [...list].sort((a, b) => {
+      return { ...r, level, clinicType };
+    }).sort((a, b) => {
       if (residentSortOrder === 'cohort') {
         if (a.cohort !== b.cohort) return a.cohort - b.cohort;
-        if (a.level !== b.level) return a.level - b.level; // Interns (PGY-1) first within cohort
+        if (a.level !== b.level) return a.level - b.level;
         return a.name.localeCompare(b.name);
       } else {
-        // PGY Level sorting: PGY-1 first, PGY-3 last
         if (a.level !== b.level) return a.level - b.level;
         return a.name.localeCompare(b.name);
       }
     });
-  }, [residents, activeYear, residentSortOrder]);
+  };
+
+  // Derive active residents for the selected year
+  const activeResidents = useMemo(() => getResidentsForYear(activeYear), [residents, activeYear, residentSortOrder]);
 
   const { stats, violations } = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating) {
@@ -385,7 +380,7 @@ const App: React.FC = () => {
   }, []);
 
   // Helper to spawn a web worker for background generation
-  const runGenerationTask = (residents: Resident[], existing: ScheduleGrid, params: CompetitionParams, onProgress: (p: number, a: number) => void, historicalSchedules?: ScheduleHistory): Promise<{ results: any[] }> => {
+  const runGenerationTask = (residents: Resident[], existing: ScheduleGrid, params: CompetitionParams, onProgress: (p: number, a: number) => void, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): Promise<{ results: any[] }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
       activeWorkersRef.current.add(worker);
@@ -409,7 +404,7 @@ const App: React.FC = () => {
         worker.terminate();
         reject(e);
       };
-      worker.postMessage({ residents, existing, params, historicalSchedules });
+      worker.postMessage({ residents, existing, params, historicalSchedules, cohortAssignments });
     });
   };
 
@@ -499,7 +494,8 @@ const App: React.FC = () => {
       name: `Generating...`,
       data: {},
       createdAt: new Date(),
-      isGenerating: true
+      isGenerating: true,
+      progress: 0,
     };
 
     setSchedules(prev => [...prev, newSession]);
@@ -507,75 +503,73 @@ const App: React.FC = () => {
 
     (async () => {
       try {
-        // Pass ALL previous years in this session as history
-        // If we are in activeYear, the history is any year < activeYear
-        const history: ScheduleHistory = {};
-        if (activeSchedule) {
-          (Object.entries(activeSchedule.data) as [string, ScheduleGrid][]).forEach(([year, grid]) => {
-            if (parseInt(year) < activeYear) {
-              history[parseInt(year)] = grid;
-            }
-          });
+        const yearsToGenerate = [ACTIVE_START_YEAR, ACTIVE_START_YEAR + 1, ACTIVE_START_YEAR + 2];
+        const runningData: ScheduleHistory = {};
+        let finalWinnerName = "";
+        let finalScore = 0;
+
+        for (let i = 0; i < yearsToGenerate.length; i++) {
+          const year = yearsToGenerate[i];
+          const activeResForYear = getResidentsForYear(year);
+          const cohortMap = Object.fromEntries(activeResForYear.map(r => [r.id, r.cohort]));
+
+          // Update progress label
+          setSchedules(prev => prev.map(s =>
+            s.id === newId ? { ...s, progressLabel: `Year ${i + 1} of 3 (${year})` } : s
+          ));
+
+          const { results } = await runGenerationTask(
+            activeResForYear, 
+            {}, 
+            compParams, 
+            (progress, attempts) => {
+              // Adjust progress to be relative to the 3-year process
+              const overallProgress = Math.round((i * 100 + progress) / yearsToGenerate.length);
+              setSchedules(prev => prev.map(s =>
+                s.id === newId ? { ...s, progress: overallProgress, attemptsMade: attempts } : s
+              ));
+            }, 
+            runningData,
+            cohortMap
+          );
+
+          const best = results[0];
+          runningData[year] = best.schedule;
+          if (year === activeYear) {
+            finalWinnerName = best.winnerName;
+            finalScore = best.score;
+          }
+          
+          // Small delay to allow state updates and UI responsiveness
+          await new Promise(r => setTimeout(r, 100));
         }
 
-        const { results } = await runGenerationTask(activeResidents, {}, compParams, (progress, attempts) => {
-          setSchedules(prev => prev.map(s =>
-            s.id === newId ? { ...s, progress, attemptsMade: attempts } : s
-          ));
-        }, history);
-
-        // Pre-generate IDs outside of state callback to ensure we have the correct firstId reference
-        const newIds = results.map((_, idx) => `sched-${Date.now()}-${idx}-${salt}`);
+        const newIds = [0].map((_, idx) => `sched-${Date.now()}-${idx}-${salt}`);
         const firstId = newIds[0];
 
-        // Update schedules using a functional update to avoid stale state issues from the long-running generation
         setSchedules(prev => {
           const filtered = prev.filter(s => s.id !== newId);
           const nameOffset = filtered.length;
 
-          const newSessions: ScheduleSession[] = results.map((res, idx) => {
-            // Keep history from current active session if we're building on it
-            const integratedData: ScheduleHistory = activeSchedule 
-              ? { ...activeSchedule.data, [activeYear]: res.schedule }
-              : { [activeYear]: res.schedule };
-
+          const newSessions: ScheduleSession[] = [0].map((_, idx) => {
             return {
               id: newIds[idx],
-              name: `S${nameOffset + idx + 1} (${res.winnerName})`,
-              data: integratedData,
+              name: `S${nameOffset + idx + 1} (${finalWinnerName})`,
+              data: runningData,
               createdAt: new Date(),
               metrics: {
-                stats: calculateStats(residents, res.schedule),
+                stats: calculateStats(residents, runningData[activeYear]),
                 violations: {
-                  reqs: getRequirementViolations(residents, res.schedule, history),
-                  constraints: getWeeklyViolations(residents, res.schedule)
+                  reqs: getRequirementViolations(residents, runningData[activeYear], runningData),
+                  constraints: getWeeklyViolations(residents, runningData[activeYear])
                 },
-                fairness: calculateFairnessMetrics(residents, res.schedule),
-                score: res.score
+                fairness: calculateFairnessMetrics(residents, runningData[activeYear]),
+                score: finalScore
               }
             };
           });
 
           return [...filtered, ...newSessions];
-        });
-
-        // Update Stats for algorithm benchmarks
-        results.forEach(res => {
-          const winnerId = algoConfig.find(a => a.name === res.winnerName)?.id;
-          if (winnerId) {
-            setAlgoStats(prev => {
-              const current = prev[winnerId] || { bestScore: Infinity, worstScore: -Infinity, bestViolations: Infinity, worstViolations: -Infinity };
-              return {
-                ...prev,
-                [winnerId]: {
-                  bestScore: Math.min(current.bestScore, res.score),
-                  worstScore: Math.max(current.worstScore, res.score),
-                  bestViolations: Math.min(current.bestViolations, res.totalViolations),
-                  worstViolations: Math.max(current.worstViolations, res.totalViolations),
-                }
-              };
-            });
-          }
         });
 
         if (firstId) {
@@ -584,9 +578,9 @@ const App: React.FC = () => {
           });
         }
       } catch (e) {
-        console.error("Generation failed", e);
+        console.error("3-Year Generation failed", e);
         setSchedules(prev => prev.filter(s => s.id !== newId));
-        alert("Failed to generate schedule.");
+        alert("Failed to generate 3-year schedule.");
       }
     })();
   };
@@ -889,7 +883,7 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* Sticky New Tab */}
+        {/* Sticky Generate Tab */}
         <div className={`flex-none flex items-end relative px-2 ${activeScheduleId === 'draft' ? 'z-40' : 'z-20'}`}>
           <div
             onClick={() => {
@@ -900,7 +894,7 @@ const App: React.FC = () => {
             className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-all relative cursor-pointer ${activeScheduleId === 'draft' ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
           >
             <Sparkles size={16} />
-            New
+            Generate
             {activeScheduleId === 'draft' && (
               <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
             )}
@@ -908,7 +902,7 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && !activeSchedule?.isGenerating) && (
+      {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft' && !activeSchedule?.isGenerating) && (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
@@ -1097,7 +1091,7 @@ const App: React.FC = () => {
                   return (
                     <div key={algoId} className="space-y-1">
                       <div className="flex justify-between text-[10px] font-black text-muted uppercase tracking-widest">
-                        <span>{algo.name}</span>
+                        <span>{activeSchedule.progressLabel || algo.name}</span>
                         <span>{activeSchedule.progress || 0}%</span>
                       </div>
                       <div className="w-full bg-light-2 rounded-full h-2 overflow-hidden border border-light-5">
