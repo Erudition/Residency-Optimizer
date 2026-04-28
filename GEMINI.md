@@ -91,3 +91,9 @@ Based on new faculty orientation materials:
 ## 11. Process Management & Background Tasks
 *   **Vitest Testing:** When running Vitest tests via the shell, always use `--run` (or equivalent) to disable watch mode. This is especially critical when piping output to a file or running in the background, as watch mode can prevent the IDE from correctly terminating the process, leading to stale background tasks.
 
+## 12. Deficit Recovery & Scheduling Engine Logic
+The application must programmatically enforce the following recovery rules when a resident takes PTO or extended leave:
+*   **Competency Override:** If PTO reduces a 4-week mandatory block to 3 weeks, do NOT force a makeup.
+*   **Minimum Threshold Flag:** If PTO reduces a 2-week mandatory split block to 1 week or less, the engine must trigger a **Subspecialty Deficit Flag** and automatically overwrite the resident's next available "Pure Elective" block to recover the mandated time.
+*   **Leave of Absence Re-calc:** For extended leaves, the engine must drop conflicting core blocks. Upon return, it must automatically cannibalize future pure elective time to fulfill missing ACGME mandatory minimums. If insufficient elective time remains, the engine must flag the resident for a "Training Extension".
+
