@@ -81,6 +81,10 @@ export interface ScheduleSession {
     fairness: any[];
     score: number;
   };
+  cohortAssignments?: Record<number, Record<string, number>>; // year-specific mappings
+  isHistory?: boolean;
+  startYear?: number;
+  lockedUntilWeek?: number;
 }
 
 const loadState = <T,>(key: string, fallback: T): T => {
@@ -228,7 +232,7 @@ const App: React.FC = () => {
       .sort((a, b) => a - b),
   []);
 
-  const historySchedules = useMemo(() => preloadHistoricalData(residents), [residents]);
+  const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => preloadHistoricalData(residents), [residents]);
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft'>('schedule');
 
@@ -304,6 +308,7 @@ const App: React.FC = () => {
         id: activeScheduleId,
         name: `${year} - ${year + 1}`,
         data: { [year]: augmentedData },
+        cohortAssignments: { [year]: historicalCohortsByYear[year] },
         createdAt: new Date(),
         isHistory: true,
         startYear: year,
@@ -453,25 +458,32 @@ const App: React.FC = () => {
     if (schedules.length === 0) {
       const runInit = async () => {
         // Preload historical data from JSON
-        const history = preloadHistoricalData(residents);
+        const { history, cohortAssignments: histCohorts } = preloadHistoricalData(residents);
         
         // Generate current active year based on that history
-        const cohortMap = Object.fromEntries(activeResidents.map(r => [r.id, r.cohort]));
-        const { results } = await runGenerationTask(activeResidents, {}, compParams, undefined, history, cohortMap);
+        // Assign default cohorts for active residents if not in history
+        const activeResForYear = getResidentsForYear(activeYear);
+        const cohortMap: Record<string, number> = {};
+        activeResForYear.forEach((r, idx) => {
+          cohortMap[r.id] = histCohorts[activeYear]?.[r.id] ?? (idx % 5);
+        });
+
+        const { results } = await runGenerationTask(activeResForYear, {}, compParams, undefined, history, cohortMap);
         const sched = results[0];
         
         const initialSession: ScheduleSession = {
           id: 'init-1',
           name: `S1 (${sched.winnerName})`,
           data: { ...history, [activeYear]: sched.schedule },
+          cohortAssignments: { ...histCohorts, [activeYear]: cohortMap },
           createdAt: new Date(),
           metrics: {
-            stats: calculateStats(activeResidents, sched.schedule),
+            stats: calculateStats(activeResForYear, sched.schedule),
             violations: {
-              reqs: getRequirementViolations(activeResidents, sched.schedule, history),
-              constraints: getWeeklyViolations(activeResidents, sched.schedule)
+              reqs: getRequirementViolations(activeResForYear, sched.schedule, history),
+              constraints: getWeeklyViolations(activeResForYear, sched.schedule)
             },
-            fairness: calculateFairnessMetrics(activeResidents, sched.schedule),
+            fairness: calculateFairnessMetrics(activeResForYear, sched.schedule),
             score: sched.score
           }
         };
@@ -506,13 +518,20 @@ const App: React.FC = () => {
       try {
         const yearsToGenerate = [ACTIVE_START_YEAR, ACTIVE_START_YEAR + 1, ACTIVE_START_YEAR + 2];
         const runningData: ScheduleHistory = {};
+        const runningCohorts: Record<number, Record<string, number>> = {};
         let finalWinnerName = "";
         let finalScore = 0;
 
         for (let i = 0; i < yearsToGenerate.length; i++) {
           const year = yearsToGenerate[i];
           const activeResForYear = getResidentsForYear(year);
-          const cohortMap = Object.fromEntries(activeResForYear.map(r => [r.id, r.cohort]));
+          
+          // Use historical cohorts if available, otherwise default to idx % 5
+          const cohortMap: Record<string, number> = {};
+          activeResForYear.forEach((r, idx) => {
+            cohortMap[r.id] = historicalCohortsByYear[year]?.[r.id] ?? (idx % 5);
+          });
+          runningCohorts[year] = cohortMap;
 
           // Update progress label
           setSchedules(prev => prev.map(s =>
@@ -557,6 +576,7 @@ const App: React.FC = () => {
               id: newIds[idx],
               name: `S${nameOffset + idx + 1} (${finalWinnerName})`,
               data: runningData,
+              cohortAssignments: runningCohorts,
               createdAt: new Date(),
               metrics: {
                 stats: calculateStats(residents, runningData[activeYear]),
@@ -1189,6 +1209,7 @@ const App: React.FC = () => {
                       residents={activeResidents}
                       schedule={currentGrid}
                       startYear={activeSchedule?.isHistory ? activeSchedule.startYear : activeYear}
+                      cohortAssignments={activeSchedule?.cohortAssignments?.[activeYear]}
                       onCellClick={handleCellClick}
                       onLockWeek={() => { }}
                       onLockResident={() => { }}

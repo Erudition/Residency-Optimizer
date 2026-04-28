@@ -97,3 +97,8 @@ The application must programmatically enforce the following recovery rules when 
 *   **Minimum Threshold Flag:** If PTO reduces a 2-week mandatory split block to 1 week or less, the engine must trigger a **Subspecialty Deficit Flag** and automatically overwrite the resident's next available "Pure Elective" block to recover the mandated time.
 *   **Leave of Absence Re-calc:** For extended leaves, the engine must drop conflicting core blocks. Upon return, it must automatically cannibalize future pure elective time to fulfill missing ACGME mandatory minimums. If insufficient elective time remains, the engine must flag the resident for a "Training Extension".
 
+## 13. Year-Specific Cohort Mapping
+*   **Constraint**: Residents do not have a persistent `cohort` property. Cohort assignments are strictly year-specific and must be managed via external mapping (e.g., `ScheduleSession.cohortAssignments`).
+*   **Historical Data**: Cohorts for 2024 and 2025 are hardcoded in `historyPreloader.ts` to ensure historical accuracy and prevent UI crashes during navigation.
+*   **UI Stability**: Components (like `ScheduleTable`) must handle optional or missing cohort data defensively (e.g., fallback to 'N/A') to maintain functionality across different academic years.
+

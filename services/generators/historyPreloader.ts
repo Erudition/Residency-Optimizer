@@ -2,8 +2,59 @@ import { ScheduleHistory, AssignmentType, Resident } from '../../types';
 import { ACTIVE_START_YEAR } from '../../constants';
 import historicalGridData from '../../specification/historical_schedules_grid.json';
 
-export const preloadHistoricalData = (residents: Resident[]): ScheduleHistory => {
+const HISTORICAL_COHORTS: Record<number, Record<string, number>> = {
+    2024: {
+        "Patel, Neil": 1,
+        "Baset, Nawsin": 5,
+        "Cho, Kevin Wook Jin": 5,
+        "De La Cruz, Aaron Daniel": 5,
+        "Deen, Nafis M": 4,
+        "Liu, Gongkai": 4,
+        "Masud, Saad": 4,
+        "Min, Shao-Ting": 3,
+        "Mysore, Nishad Narain": 3,
+        "Thanedar, Sarita": 2,
+        "Yu, Tommy": 2,
+        "Melo, Sebastian": 3,
+        "Wright, Andrew Hunter": 2
+    },
+    2025: {
+        "Alvarado, Ramona Davina": 5,
+        "Dawood, Umar Asif": 5,
+        "Delano, Victoria Remilekun": 5,
+        "Echegaray, Sebastian Alexander": 5,
+        "Hill, Brittany Marie": 4,
+        "Jentz, Austin Lee": 4,
+        "Letson, Mia Kang": 4,
+        "Millan, Cassandra Marie": 4,
+        "Nazeer, Usman Imran": 3,
+        "Ndze, Lila Linda": 3,
+        "Orden, Martin Basobas": 3,
+        "Rendon, Arthur Isaac": 3,
+        "Sanderson, Jacob Nakolo": 2,
+        "Shah, Vidur Hemant": 2,
+        "Baset, Nawsin": 3,
+        "Cho, Kevin Wook Jin": 5,
+        "De La Cruz, Aaron Daniel": 3,
+        "Deen, Nafis M": 4,
+        "Liu, Gongkai": 2,
+        "Masud, Saad": 2,
+        "Melo, Sebastian": 1,
+        "Min, Shao-Ting": 1,
+        "Thanedar, Sarita": 4,
+        "Wright, Andrew Hunter": 1,
+        "Yu, Tommy": 5
+    }
+};
+
+export interface PreloadedHistory {
+    history: ScheduleHistory;
+    cohortAssignments: Record<number, Record<string, number>>;
+}
+
+export const preloadHistoricalData = (residents: Resident[]): PreloadedHistory => {
     const history: ScheduleHistory = {};
+    const cohortAssignments: Record<number, Record<string, number>> = {};
 
     const findId = (name: string) => residents.find(r => r.name === name)?.id;
 
@@ -11,12 +62,10 @@ export const preloadHistoricalData = (residents: Resident[]): ScheduleHistory =>
 
     years.forEach(year => {
         history[year] = {};
+        cohortAssignments[year] = {};
         const yearData = (historicalGridData as any)[year];
         if (!yearData) return;
 
-        // Years before the current one (ACTIVE_START_YEAR - 1) are fully completed
-        // and should be locked unconditionally. The current year's locking is
-        // determined at runtime by getCurrentWeekForYear() in App.tsx.
         const isFullyCompleted = year < ACTIVE_START_YEAR - 1;
 
         Object.entries(yearData).forEach(([name, assignments]) => {
@@ -27,8 +76,14 @@ export const preloadHistoricalData = (residents: Resident[]): ScheduleHistory =>
                 assignment: type as AssignmentType,
                 locked: isFullyCompleted
             }));
+
+            // Map cohort if available
+            const cohort = HISTORICAL_COHORTS[year]?.[name];
+            if (cohort) {
+                cohortAssignments[year][id] = cohort;
+            }
         });
     });
 
-    return history;
+    return { history, cohortAssignments };
 };
