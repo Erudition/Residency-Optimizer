@@ -58,7 +58,7 @@ Senior residents polish their ward management, engage with their final rigorous 
 | **1** | **Addiction Medicine** | Addiction Medicine |
 | **1** | **Split: Heme-Onc / Emergency Med** | 2 weeks Hematology-Oncology + 2 weeks Emergency Medicine (EM) |
 | **1** | **Split: Endocrinology / Elective** | 2 weeks Outpatient Endocrinology + 2 weeks Elective |
-| **1** | **Subspecialty / Elective / Individualized** | Pure Elective, AMCS Consults, Board Prep, or Core Consults |
+| **1** | **Subspecialty / Elective / Individualized** | Elective, Board Prep, or Research|
 | **1** | **Split: Night Float / Elective** | 2 weeks Night Float (NF) + 2 weeks Elective |
 
 ---
