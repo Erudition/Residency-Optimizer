@@ -120,7 +120,7 @@ export const ASSIGNMENT_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.RESEARCH]: 'bg-light-3 text-black border-light-5',
     [AssignmentType.CCMA]: 'bg-light-purple/50 text-purple-2 border-purple',
     [AssignmentType.HF]: 'bg-red/20 text-red-2-dark border-red/40',
-    [AssignmentType.CVICU]: 'bg-pink/40 text-pink-dark border-pink',
+    [AssignmentType.AMCS_CONSULTS]: 'bg-pink/40 text-pink-dark border-pink',
     [AssignmentType.ENT]: 'bg-teal-2/50 text-teal-2-dark border-teal-2',
     [AssignmentType.NIMA_CLINIC]: 'bg-light-yellow/30 text-light-yellow-dark border-light-yellow',
     [AssignmentType.JR_HOSPITALIST]: 'bg-light-purple/50 text-purple-2 border-light-purple',
@@ -153,7 +153,7 @@ export const ASSIGNMENT_HEX_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.RESEARCH]: '#D2D3CC',
     [AssignmentType.CCMA]: '#E2D6FF',
     [AssignmentType.HF]: '#F87A4C',
-    [AssignmentType.CVICU]: '#E34C6F',
+    [AssignmentType.AMCS_CONSULTS]: '#E34C6F',
     [AssignmentType.ENT]: '#6BC0B3',
     [AssignmentType.NIMA_CLINIC]: '#F7A501',
     [AssignmentType.JR_HOSPITALIST]: '#9FC4FF',
@@ -186,7 +186,7 @@ export const ASSIGNMENT_LABELS: Record<AssignmentType, string> = {
     [AssignmentType.RESEARCH]: 'Research',
     [AssignmentType.CCMA]: 'CCMA',
     [AssignmentType.HF]: 'Heart Failure',
-    [AssignmentType.CVICU]: 'Cardiac ICU',
+    [AssignmentType.AMCS_CONSULTS]: 'AMCS Consults',
     [AssignmentType.ENT]: 'Otolaryngology',
     [AssignmentType.NIMA_CLINIC]: 'NIMA (Clinic)',
     [AssignmentType.JR_HOSPITALIST]: 'Junior Hospitalist',
@@ -219,7 +219,7 @@ export const ASSIGNMENT_ABBREVIATIONS: Record<AssignmentType, string> = {
     [AssignmentType.RESEARCH]: 'RSCH',
     [AssignmentType.CCMA]: 'CCMA',
     [AssignmentType.HF]: 'HF',
-    [AssignmentType.CVICU]: 'CC-ICU',
+    [AssignmentType.AMCS_CONSULTS]: 'AMCS',
     [AssignmentType.ENT]: 'ENT',
     [AssignmentType.NIMA_CLINIC]: 'NIMA',
     [AssignmentType.JR_HOSPITALIST]: 'JH',
@@ -349,9 +349,9 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 4,
         targetPGY3: 4,
     },
-    [AssignmentType.CVICU]: {
-        type: AssignmentType.CVICU, label: 'Cardiac ICU',
-        intensity: 3, setting: ClinicalSetting.CRITICAL_CARE, duration: 2,
+    [AssignmentType.AMCS_CONSULTS]: {
+        type: AssignmentType.AMCS_CONSULTS, label: 'AMCS Consults',
+        intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
     },
     [AssignmentType.CCMA]: {
@@ -483,7 +483,7 @@ export const fulfillsRequirement = (assigned: AssignmentType | null, required: A
 
     // ICU Aggregation logc
     if (required === AssignmentType.MICU) {
-        return assigned === AssignmentType.MICU || assigned === AssignmentType.METRO_ICU || assigned === AssignmentType.CVICU;
+        return assigned === AssignmentType.MICU || assigned === AssignmentType.METRO_ICU;
     }
 
     return false;

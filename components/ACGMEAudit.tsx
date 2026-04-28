@@ -61,7 +61,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                     if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
                     if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
                         criticalCare++;
-                        if (c.assignment !== AssignmentType.CVICU) {
+                        if (c.assignment !== AssignmentType.AMCS_CONSULTS) {
                             criticalCareCore++;
                         }
                     }

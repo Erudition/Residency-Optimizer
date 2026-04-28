@@ -4,7 +4,7 @@ REPLACEMENTS = {
     "AssignmentType.ICU": "AssignmentType.MICU",
     "AssignmentType.MET_WARDS": "AssignmentType.WARDS_METRO",
     "AssignmentType.METRO": "AssignmentType.METRO_ICU",
-    "AssignmentType.CC_ICU": "AssignmentType.CVICU",
+    "AssignmentType.CC_ICU": "AssignmentType.AMCS_CONSULTS",
     "AssignmentType.HPC": "AssignmentType.PALLIATIVE",
 }
 

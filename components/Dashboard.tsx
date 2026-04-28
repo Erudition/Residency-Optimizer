@@ -45,7 +45,7 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
       [AssignmentType.RESEARCH]: s[AssignmentType.RESEARCH] || 0,
       [AssignmentType.CCMA]: s[AssignmentType.CCMA] || 0,
       [AssignmentType.HF]: s[AssignmentType.HF] || 0,
-      [AssignmentType.CVICU]: s[AssignmentType.CVICU] || 0,
+      [AssignmentType.AMCS_CONSULTS]: s[AssignmentType.AMCS_CONSULTS] || 0,
       [AssignmentType.ENT]: s[AssignmentType.ENT] || 0,
       [AssignmentType.JR_HOSPITALIST]: s[AssignmentType.JR_HOSPITALIST] || 0,
     };
@@ -102,7 +102,7 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
             <Bar dataKey={AssignmentType.RESEARCH} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.RESEARCH]} name="Research" />
             <Bar dataKey={AssignmentType.CCMA} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.CCMA]} name="CCMA" />
             <Bar dataKey={AssignmentType.HF} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.HF]} name="Heart Failure" />
-            <Bar dataKey={AssignmentType.CVICU} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.CVICU]} name="Cardiac ICU" />
+            <Bar dataKey={AssignmentType.AMCS_CONSULTS} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.AMCS_CONSULTS]} name="AMCS Consults" />
             <Bar dataKey={AssignmentType.ENT} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ENT]} name="ENT" />
 
             <Bar dataKey={AssignmentType.ELECTIVE} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ELECTIVE]} name="Elective" />

@@ -24,7 +24,7 @@ export enum AssignmentType {
   WARDS_METRO = 'METRO',
   MICU = 'MICU',
   METRO_ICU = 'METRO_ICU',
-  CVICU = 'CVICU',
+  AMCS_CONSULTS = 'AMCS_CONSULTS',
   NIGHT_FLOAT = 'NF',
   EM = 'EM',
   CLINIC = 'CCIM',
