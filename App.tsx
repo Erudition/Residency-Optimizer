@@ -456,8 +456,9 @@ const App: React.FC = () => {
         const history = preloadHistoricalData(residents);
         
         // Generate current active year based on that history
-        const result = await generateSchedule(activeResidents, {}, compParams, undefined, history);
-        const sched = result.results[0];
+        const cohortMap = Object.fromEntries(activeResidents.map(r => [r.id, r.cohort]));
+        const { results } = await runGenerationTask(activeResidents, {}, compParams, undefined, history, cohortMap);
+        const sched = results[0];
         
         const initialSession: ScheduleSession = {
           id: 'init-1',
