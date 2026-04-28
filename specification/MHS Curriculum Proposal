@@ -87,7 +87,7 @@ If a resident takes PTO or extended leave during a **mandated** rotation (e.g., 
 
 *   **The Minimum Threshold Flag (Short Blocks):** If PTO reduces a 2-week mandatory split block (e.g., Pulmonology) to 1 week or less, the resident must makeup the time at a future date. 
 
-*   **Leave of Absence Re-calc:** During extended leave (e.g., parental/medical), the engine removes scheduled Wards/ICU blocks. Upon return, it cannibalizes subsequent pure elective blocks to reinstate any missed ACGME mandatory minimums. If insufficient elective time remains, the resident is flagged for a potential Training Extension.
+*   **Leaves of Absence Makeup:** During extended leave (e.g., parental/medical), core required blocks will be removed during the absence. Upon return, subsequent pure elective blocks will be utilized to reinstate any missed ACGME mandatory minimums. If insufficient elective time remains, the resident may require a Training Extension.
 
 ---
 
