@@ -104,3 +104,9 @@ The application must programmatically enforce the following recovery rules when 
 *   **Historical Data**: Cohorts for 2024 and 2025 are hardcoded in `historyPreloader.ts` to ensure historical accuracy and prevent UI crashes during navigation.
 *   **UI Stability**: Components (like `ScheduleTable`) must handle optional or missing cohort data defensively (e.g., fallback to 'N/A') to maintain functionality across different academic years.
 
+## 14. Jeopardy & Backup Coverage Logic
+The system must ensure a guaranteed backup pool exists every week to handle call-outs without breaking ACGME inpatient caps:
+*   **Jeopardy Pool Definition**: Any PGY-2 or PGY-3 resident currently assigned to a **flexible block** (Elective or Subspecialty Consult).
+*   **Exclusion**: Interns (PGY-1s) and residents on Core rotations (Wards, ICU, NF, EM, Clinic) are EXCLUDED from the jeopardy pool.
+*   **Minimum Pool Size**: The engine should prioritize maintaining at least **one PGY-3 and one PGY-2** on a flexible block per week to serve as 1st and 2nd line jeopardy.
+*   **Auditing**: A "Jeopardy Gap" violation must be flagged if a week has zero senior residents available on flexible time.

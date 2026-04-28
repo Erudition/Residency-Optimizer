@@ -1,5 +1,5 @@
 import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, CORE_TYPES, fulfillsRequirement } from '../../constants';
+import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, CORE_TYPES, fulfillsRequirement, ELECTIVE_TYPES, REQUIRED_TYPES } from '../../constants';
 import { ScheduleGenerator } from './types';
 import { canFitBlock, placeBlock, getCumulativeRequirementCount, shuffle } from './utils';
 
@@ -149,7 +149,19 @@ export const StrictGenerator: ScheduleGenerator = {
                         if (isStaffingType(cType)) {
                             if (currentCount < min) score -= 1000;
                             if (currentCount >= max) score += 10000;
+
+                            // --- Jeopardy Awareness ---
+                            if (res.level > 1) {
+                                const poolSize = residents.filter(r => {
+                                    if (r.level !== res.level) return false;
+                                    const a = newSchedule[r.id][week].assignment;
+                                    return a === null || ELECTIVE_TYPES.includes(a) || REQUIRED_TYPES.includes(a);
+                                }).length;
+                                if (poolSize <= 1) score += 5000; // Leave at least one senior
+                            }
+
                             score += currentCount * 100;
+
                         } else {
                             const poolSize = getResidualCapacity(week, res.level);
                             const minNeeded = res.level === 1 ? minInternsNeeded : minSeniorsNeeded;

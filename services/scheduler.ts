@@ -148,9 +148,26 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       if (interns > meta.maxInterns) violations.push({ week: w + 1, type, issue: `Max Interns Exceeded: ${interns}/${meta.maxInterns}` });
       if (seniors > meta.maxSeniors) violations.push({ week: w + 1, type, issue: `Max Seniors Exceeded: ${seniors}/${meta.maxSeniors}` });
     });
+
+    // --- Jeopardy Pool Check ---
+    const flexibleSeniors = residents.filter(r => {
+      const assignment = schedule[r.id]?.[w]?.assignment;
+      return r.level > 1 && (ELECTIVE_TYPES.includes(assignment) || REQUIRED_TYPES.includes(assignment));
+    });
+
+    const pgy2Pool = flexibleSeniors.filter(r => r.level === 2).length;
+    const pgy3Pool = flexibleSeniors.filter(r => r.level === 3).length;
+
+    if (pgy3Pool === 0) {
+      violations.push({ week: w + 1, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: No PGY-3 available for 1st-line backup` });
+    }
+    if (pgy2Pool === 0) {
+      violations.push({ week: w + 1, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: No PGY-2 available for 2nd-line backup` });
+    }
   }
   return violations;
 };
+
 
 const calculateSD = (values: number[], mean: number): number => {
   if (values.length === 0) return 0;

@@ -1,5 +1,5 @@
 import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, fulfillsRequirement } from '../../constants';
+import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, fulfillsRequirement, ELECTIVE_TYPES, REQUIRED_TYPES } from '../../constants';
 import { ScheduleGenerator } from './types';
 import { canFitBlock, placeBlock, getCumulativeRequirementCount, getRequirementCount } from './utils';
 
@@ -143,7 +143,19 @@ export const ExperimentalGenerator: ScheduleGenerator = {
                                 const cS = getCount(w, t, 2);
                                 if (res.level === 1 && cI >= (m.maxInterns || 99)) score += 10000;
                                 if (res.level > 1 && cS >= (m.maxSeniors || 99)) score += 10000;
+
+                                // --- Jeopardy Awareness ---
+                                if (res.level > 1 && [AssignmentType.MICU, AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE, AssignmentType.NIGHT_FLOAT, AssignmentType.EM, AssignmentType.WARDS_METRO].includes(t)) {
+                                    const poolSize = residents.filter(r => {
+                                        if (r.level !== res.level) return false;
+                                        const a = newSchedule[r.id][w].assignment;
+                                        return a === null || ELECTIVE_TYPES.includes(a) || REQUIRED_TYPES.includes(a);
+                                    }).length;
+                                    if (poolSize <= 1) score += 5000; // Leave at least one senior
+                                }
+
                                 score += (cI + cS) * 5;
+
                                 
                                 if (score < bestScore) {
                                     bestScore = score; bestW = w; bestT = t;
