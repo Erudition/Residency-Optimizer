@@ -306,7 +306,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.RHEUM, label: 'Rheumatology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
-        targetPGY2: 0, targetPGY3: 2,
+        targetPGY2: 2, targetPGY3: 0,
     },
     [AssignmentType.GI]: {
         type: AssignmentType.GI, label: 'Gastroenterology',
