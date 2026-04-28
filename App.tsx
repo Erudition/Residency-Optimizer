@@ -342,26 +342,33 @@ const App: React.FC = () => {
   // Derive active residents for the selected year
   const activeResidents = useMemo(() => getResidentsForYear(activeYear), [residents, activeYear, residentSortOrder]);
 
-  const { stats, violations } = useMemo(() => {
-    if (!activeSchedule || activeSchedule.isGenerating) {
+  const currentGrid = useMemo(() => {
+    if (activeScheduleId === 'all') return {};
+    return activeSchedule?.data?.[activeYear] || historySchedules[activeYear] || {};
+  }, [activeSchedule, activeYear, historySchedules, activeScheduleId]);
+
+  const { stats, violations, fairness } = useMemo(() => {
+    if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') {
       return {
         stats: {} as any,
-        violations: { reqs: [], constraints: [] }
+        violations: { reqs: [], constraints: [] },
+        fairness: []
       };
     }
 
-    const yearData = activeSchedule.data[activeYear] || {};
+    // For requirement violations, we need full history (historical + active session data)
+    const fullHistory = { ...historySchedules, ...(activeSchedule.data || {}) };
 
     return {
-      stats: calculateStats(activeResidents, yearData),
+      stats: calculateStats(activeResidents, currentGrid),
       violations: {
-        reqs: getRequirementViolations(activeResidents, yearData),
-        constraints: getWeeklyViolations(activeResidents, yearData)
-      }
+        reqs: getRequirementViolations(activeResidents, currentGrid, fullHistory),
+        constraints: getWeeklyViolations(activeResidents, currentGrid)
+      },
+      fairness: calculateFairnessMetrics(activeResidents, currentGrid)
     };
-  }, [activeSchedule, activeResidents, activeYear]);
+  }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId]);
 
-  const currentGrid = activeSchedule?.data[activeYear] || {};
   const hasViolations = violations.reqs.length > 0 || violations.constraints.length > 0;
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -577,16 +584,7 @@ const App: React.FC = () => {
               name: `S${nameOffset + idx + 1} (${finalWinnerName})`,
               data: runningData,
               cohortAssignments: runningCohorts,
-              createdAt: new Date(),
-              metrics: {
-                stats: calculateStats(residents, runningData[activeYear]),
-                violations: {
-                  reqs: getRequirementViolations(residents, runningData[activeYear], runningData),
-                  constraints: getWeeklyViolations(residents, runningData[activeYear])
-                },
-                fairness: calculateFairnessMetrics(residents, runningData[activeYear]),
-                score: finalScore
-              }
+              createdAt: new Date()
             };
           });
 
@@ -1209,7 +1207,7 @@ const App: React.FC = () => {
                       residents={activeResidents}
                       schedule={currentGrid}
                       startYear={activeSchedule?.isHistory ? activeSchedule.startYear : activeYear}
-                      cohortAssignments={activeSchedule?.cohortAssignments?.[activeYear]}
+                      cohortAssignments={activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {}}
                       onCellClick={handleCellClick}
                       onLockWeek={() => { }}
                       onLockResident={() => { }}
@@ -1220,10 +1218,10 @@ const App: React.FC = () => {
               )}
               {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
               {activeTab === 'assignments' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
-              {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={activeResidents} schedule={currentGrid} precalculatedViolations={activeSchedule?.metrics?.violations.reqs} /></div>}
-              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={activeSchedule!.data} activeYear={activeYear} /></div>}
+              {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={activeResidents} schedule={currentGrid} precalculatedViolations={violations.reqs} /></div>}
+              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={activeSchedule?.data || {}} activeYear={activeYear} /></div>}
               {activeTab === 'relationships' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
-              {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={activeSchedule?.metrics?.fairness} /></div>}
+              {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={fairness} /></div>}
               {activeTab === 'export' && (
                 <div className="flex-1 overflow-y-auto p-8 bg-light-1">
                   <div className="max-w-2xl mx-auto">

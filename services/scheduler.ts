@@ -105,20 +105,22 @@ export const generateSchedule = async (
 
 export const calculateStats = (residents: Resident[], schedule: ScheduleGrid): ScheduleStats => {
   const stats: ScheduleStats = {};
+  const safeGrid = schedule || {};
   residents.forEach(r => {
     stats[r.id] = {} as Record<AssignmentType, number>;
     Object.values(AssignmentType).forEach(t => stats[r.id][t] = 0);
-    (schedule[r.id] || []).forEach(cell => { if (cell && cell.assignment) stats[r.id][cell.assignment]++; });
+    (safeGrid[r.id] || []).forEach(cell => { if (cell && cell.assignment) stats[r.id][cell.assignment]++; });
   });
   return stats;
 };
 
 export const getRequirementViolations = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): RequirementViolation[] => {
   const violations: RequirementViolation[] = [];
+  const safeGrid = schedule || {};
   residents.forEach(r => {
     const reqs = REQUIREMENTS[r.level] || [];
     reqs.forEach(req => {
-      const count = getCumulativeRequirementCount(r.id, schedule[r.id] || [], req.type, historicalSchedules);
+      const count = getCumulativeRequirementCount(r.id, safeGrid[r.id] || [], req.type, historicalSchedules);
       if (count < req.target) {
         violations.push({ residentId: r.id, type: req.type, target: req.target, actual: count });
       }
@@ -129,6 +131,8 @@ export const getRequirementViolations = (residents: Resident[], schedule: Schedu
 
 export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid): WeeklyViolation[] => {
   const violations: WeeklyViolation[] = [];
+  if (!schedule) return violations;
+
   for (let w = 0; w < TOTAL_WEEKS; w++) {
     Object.values(AssignmentType).forEach(type => {
       const meta = ROTATION_METADATA[type];
@@ -156,10 +160,11 @@ const calculateSD = (values: number[], mean: number): number => {
 };
 
 export const calculateFairnessMetrics = (residents: Resident[], schedule: ScheduleGrid): CohortFairnessMetrics[] => {
+  const safeGrid = schedule || {};
   return [1, 2, 3].map(level => {
     const groupRes = residents.filter(r => r.level === level);
     const resMetrics: ResidentFairnessMetrics[] = groupRes.map(r => {
-      const weeks = schedule[r.id] || [];
+      const weeks = safeGrid[r.id] || [];
       let core = 0, elec = 0, req = 0, vac = 0, nf = 0, intensity = 0;
 
       let currentStreak = 0;
@@ -241,6 +246,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
 
 export const calculateDiversityStats = (residents: Resident[], schedule: ScheduleGrid): Record<string, number> => {
   const diversity: Record<string, number> = {};
+  const safeGrid = schedule || {};
 
   residents.forEach(r => {
     const partners = new Set<string>();
@@ -255,10 +261,10 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
     ];
 
     for (let w = 0; w < TOTAL_WEEKS; w++) {
-      const myAssign = schedule[r.id]?.[w]?.assignment;
+      const myAssign = safeGrid[r.id]?.[w]?.assignment;
       if (myAssign && clinicalTypes.includes(myAssign)) {
         residents.forEach(peer => {
-          if (peer.id !== r.id && schedule[peer.id]?.[w]?.assignment === myAssign) {
+          if (peer.id !== r.id && safeGrid[peer.id]?.[w]?.assignment === myAssign) {
             partners.add(peer.id);
           }
         });

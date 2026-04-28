@@ -32,7 +32,7 @@ export const CohortKanban: React.FC<Props> = ({
     }));
 
     residents.forEach(r => {
-      const cohortIdx = cohortAssignments[r.id] ?? 0;
+      const cohortIdx = (cohortAssignments?.[r.id]) ?? 0;
       if (cohorts[cohortIdx]) {
         cohorts[cohortIdx].residents.push(r);
       }

@@ -77,11 +77,9 @@ export const preloadHistoricalData = (residents: Resident[]): PreloadedHistory =
                 locked: isFullyCompleted
             }));
 
-            // Map cohort if available
-            const cohort = HISTORICAL_COHORTS[year]?.[name];
-            if (cohort) {
-                cohortAssignments[year][id] = cohort;
-            }
+            // Map cohort if available, fallback to 0
+            const cohort = HISTORICAL_COHORTS[year]?.[name] ?? 0;
+            cohortAssignments[year][id] = cohort;
         });
     });
 
