@@ -282,7 +282,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.NEPH, label: 'Nephrology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
-        targetIntern: 0, targetPGY2: 2
+        targetIntern: 2, targetPGY2: 0
     },
     [AssignmentType.PULM]: {
         type: AssignmentType.PULM, label: 'Pulmonology',
