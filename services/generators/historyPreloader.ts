@@ -1,6 +1,6 @@
 import { ScheduleHistory, AssignmentType, Resident } from '../../types';
 import { ACTIVE_START_YEAR } from '../../constants';
-import historicalGridData from '../../specification/historical_schedules_grid.json';
+import historicalGridData from '../../specification/historical_schedules_grid_v2.json';
 
 const HISTORICAL_COHORTS: Record<number, Record<string, number>> = {
     2024: {

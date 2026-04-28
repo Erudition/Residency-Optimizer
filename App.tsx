@@ -16,7 +16,7 @@ import {
   ACTIVE_START_YEAR,
   TOTAL_WEEKS
 } from './constants';
-import historicalGridData from './specification/historical_schedules_grid.json';
+import historicalGridData from './specification/historical_schedules_grid_v2.json';
 import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations } from './services/scheduler';
 import { preloadHistoricalData } from './services/generators/historyPreloader';
 import { ScheduleTable } from './components/ScheduleTable';
