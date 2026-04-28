@@ -5,6 +5,8 @@ The project is built to a Github pages site available at `https://erudition.gith
 
 After any code modification, you MUST run `npx tsc --noEmit` and confirm zero errors before claiming completion. Vite's dev server does not perform type checking—it only transpiles—so runtime ReferenceErrors and missing imports will not surface until the user hits them in the browser. Once the code compiles cleanly, please commit your changes with a descriptive commit messages. If code changes are involved, prefer to only commit when tests pass, but if documentation or just GEMINI.md is updated, commit and push immediately after editing. If there is a backlog of many files to commit, try to break them down into separate commits with related files grouped.
 
+All work should be done in short-lived feature branches. WHen you have a plan, create a branch, commit the changes in atomic batches, and if you are not the repository owner,open a pull request when done.
+
 
 
 # Additional ACGME & Scheduling Constraints
