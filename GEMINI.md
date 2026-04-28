@@ -82,6 +82,7 @@ Based on new faculty orientation materials:
 *   **Naming update:** Use "AMCS Consults" instead of "CVICU" when referring to advanced cardiovascular mechanical support to avoid accidental triggering of the ACGME critical care limits.
 *   **Staffing strategy:** Pair interns (PGY-1s) and Seniors (PGY-2 or PGY-3) to rotate together on the pulmonology consult/procedural service.
 *   **ICU Staffing:** The ideal complement of residents at MICU is 4 interns (PGY1s) and 2 senior residents (PGY2s or PGY3s). Due to native intern supply limits, the 4th intern slot will be backfilled by a dedicated NP/PA.
+*   **Subspecialty Capacities:** Both Nephrology (Renal) and Hematology-Oncology (Heme-Onc) rotations can accept a maximum of 2 residents at any given time.
 
 ## 10. UI Presentation Standards
 *   **Resident Sorting:** The default resident display order must prioritize PGY-1s (Interns) at the top of the list, followed by PGY-2s and PGY-3s. Within each PGY level, residents should be sorted alphabetically. In Cohort view, this same seniority-last (PGY 1 → 2 → 3) sub-sort must apply within each cohort.

@@ -281,7 +281,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     [AssignmentType.NEPH]: {
         type: AssignmentType.NEPH, label: 'Nephrology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
-        minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 4,
+        minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
         targetIntern: 0, targetPGY2: 2
     },
     [AssignmentType.PULM]: {
@@ -292,9 +292,9 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.ONC]: {
         type: AssignmentType.ONC, label: 'Heme/Onc',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4,
+        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
-        targetPGY2: 0, targetPGY3: 0 // Individualized choice in proposal
+        targetPGY2: 0, targetPGY3: 2 
     },
     [AssignmentType.NEURO]: {
         type: AssignmentType.NEURO, label: 'Neurology',
@@ -304,9 +304,9 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.RHEUM]: {
         type: AssignmentType.RHEUM, label: 'Rheumatology',
-        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
+        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
-        targetPGY2: 0,
+        targetPGY2: 0, targetPGY3: 2,
     },
     [AssignmentType.GI]: {
         type: AssignmentType.GI, label: 'Gastroenterology',
@@ -322,9 +322,9 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.ENDO]: {
         type: AssignmentType.ENDO, label: 'Endocrinology',
-        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4, // Corrected to 4
+        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2, 
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 4,
-        targetPGY3: 4,
+        targetPGY3: 2,
     },
     [AssignmentType.GERI]: {
         type: AssignmentType.GERI, label: 'Geriatrics',
