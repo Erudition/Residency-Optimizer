@@ -67,9 +67,9 @@ Senior residents polish their ward management, engage with their final rigorous 
 To maintain the required 4+1 structure and preserve inpatient caps without compromising continuity clinics or mandatory subspecialty blocks, jeopardy coverage is strictly defined to utilize residents on flexible time, guaranteeing continuous year-round availability. Interns are explicitly protected from Jeopardy pulls.
 
 *   **Jeopardy Hierarchy:** If an intern calls out, Attendings or Seniors will pick up the patient volume directly.
-*   **1st Line (PGY-3):** Handled by a PGY-3 currently assigned to a flexible *Elective* or *Consult* block.
-*   **2nd Line (PGY-2):** If no PGY-3 is available, a PGY-2 on an easy *Elective* or *Consult* block will be pulled.
-*   **Final Line (Chiefs):** Chief residents serve as the absolute last line of backup coverage.
+*   **1st Line (PGY-3):** Handled by a PGY-3 currently assigned to an *Elective* or *Consult* block.
+*   **2nd Line (PGY-2):** If no PGY-3 is available, a PGY-2 on an *Elective* or *Consult* block will be pulled.
+*   **Final Line (Chiefs):** Chief residents serve as the last line of backup coverage.
 
 ---
 
