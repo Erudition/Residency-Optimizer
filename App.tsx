@@ -772,9 +772,12 @@ const App: React.FC = () => {
     if (y === currentAY) return `AY ${y}-${(y+1).toString().slice(-2)} (Current)`;
     
     const diff = y - currentAY;
+    if (diff === 1) return `AY ${y}-${(y+1).toString().slice(-2)} (Next)`;
+    
     const sign = diff > 0 ? '+' : '';
     return `AY ${y}-${(y+1).toString().slice(-2)} (${sign}${diff}y)`;
   };
+
 
 
   return (
