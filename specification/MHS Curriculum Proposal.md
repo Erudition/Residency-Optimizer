@@ -1,8 +1,7 @@
 # Proposed MHS Internal Medicine Curriculum (4+1 Model)
 
-> [!IMPORTANT]
-> **Authoritative Source of Truth**
-> This curriculum proposal serves as the absolute and final authority for all scheduling structures, rotation lengths, target PGY distributions, and curriculum logic. In the event of any disagreement or conflict between this document and other files (such as `constants.ts`, `Rotation_Reference.md`, or historical records), **this document supersedes them.** Schedule algorithms and programmatic definitions must be updated to match the rules established here.
+
+
 This schedule reflects an **X+Y (4+1)** alternating block model. In this structure, the academic year consists of ten 5-week cycles per year. For each cycle, residents spend 4 weeks on a core rotation, followed immediately by 1 week dedicated entirely to continuity clinic.
 
 *   **Total Cycle:** 10 core blocks (40 weeks) + 10 clinic weeks (10 weeks) + 2 weeks standard vacation/holiday = 52 weeks.

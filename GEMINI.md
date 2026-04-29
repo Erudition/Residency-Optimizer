@@ -135,3 +135,6 @@ To maintain year-independent data integrity, the application treats **Start Year
 *   **Hard Constraint**: The AI must NOT change staffing ratios (e.g., `maxSeniors`, `maxInterns`) or educational requirement targets (e.g., `minWeeks`) without explicit human permission.
 *   **Impossibility Reporting**: If the existing constraints create a mathematical impossibility (e.g., requirement > capacity), the AI must report this as a bottleneck (see `bottlenecks_discovered.md`) but must attempt to generate the most compliant schedule possible under the *original* constraints.
 
+> [!IMPORTANT]
+> **Authoritative Source of Truth**
+> The MHS Curriculum Proposal.md serves as the absolute and final authority for all scheduling structures, rotation lengths, target PGY distributions, and curriculum logic. In the event of any disagreement or conflict between this document and other files (such as `constants.ts`, `Rotation_Reference.md`, or historical records), **this document supersedes them.** Schedule algorithms and programmatic definitions must be updated to match the rules established here.
