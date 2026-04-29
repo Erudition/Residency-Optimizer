@@ -46,13 +46,15 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
   }, [data, algorithms]);
 
   const bestScore = useMemo(() => {
-    if (data.length === 0) return 0;
+    if (data.length === 0) return Infinity;
     const lastRow = data[data.length - 1];
-    return Math.max(...lastRow);
+    return Math.min(...lastRow.filter(s => s !== 1000000)); // Filter out uninitialized costs
   }, [data]);
 
+
   return (
-    <div className="bg-white rounded-3xl shadow-xl p-8 border border-light-5 flex flex-col gap-6 h-[550px] animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="bg-white rounded-3xl shadow-xl p-8 border border-light-5 flex flex-col gap-6 h-[550px]">
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="w-2.5 h-2.5 rounded-full bg-green animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -127,11 +129,11 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
         </ResponsiveContainer>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-4">
         {algorithms.map((algo, i) => {
           const isCanceled = canceledIds.has(algo.id);
-          const currentBest = data.length > 0 ? data[data.length - 1][i] : -Infinity;
-          const isWinner = currentBest === bestScore && currentBest !== -Infinity;
+          const currentBest = data.length > 0 ? data[data.length - 1][i] : Infinity;
+          const isWinner = currentBest === bestScore && currentBest !== Infinity;
 
           return (
             <div 
@@ -153,7 +155,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
                 )}
               </div>
               <div className="text-xl font-black text-primary leading-none flex items-baseline gap-1">
-                {currentBest === -Infinity ? '---' : currentBest.toFixed(1)}
+                {currentBest === Infinity || currentBest === 1000000 ? '---' : currentBest.toFixed(0)}
                 {isWinner && <span className="text-[8px] text-blue font-black uppercase">Best</span>}
               </div>
               <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">Attempt #{data.length}</div>

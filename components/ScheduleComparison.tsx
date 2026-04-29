@@ -108,7 +108,7 @@ export const ScheduleComparison: React.FC<Props> = ({
         const yearData = s.data[activeYear] || {};
         let totalNF = 0;
         Object.values(yearData).forEach(weeks => {
-          (weeks as any[]).forEach(c => { if (c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
+          (weeks as any[]).forEach(c => { if (c && c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
         });
 
         return {
@@ -126,8 +126,9 @@ export const ScheduleComparison: React.FC<Props> = ({
       }
 
       // Legacy fallback
-      const groups = calculateFairnessMetrics(residents, s.data);
-      const score = calculateScheduleScore(residents, s.data);
+      const currentGrid = s.data[activeYear] || {};
+      const groups = calculateFairnessMetrics(residents, currentGrid);
+      const score = calculateScheduleScore(residents, currentGrid);
 
       const f1 = groups.find(g => g.level === 1)?.fairnessScore || 0;
       const f2 = groups.find(g => g.level === 2)?.fairnessScore || 0;
@@ -146,10 +147,8 @@ export const ScheduleComparison: React.FC<Props> = ({
       const streakSD = Math.sqrt(allStreaks.reduce((sum, n) => sum + Math.pow(n - streakMean, 2), 0) / (allStreaks.length || 1));
 
       let totalNF = 0;
-      const activeGrid = s.data[activeYear] || {};
-      const allWeeks = Object.values(activeGrid) as ScheduleCell[][];
-      allWeeks.forEach(weeks => {
-        weeks.forEach(c => { if (c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
+      Object.values(currentGrid).forEach(weeks => {
+        (weeks as any[]).forEach(c => { if (c && c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
       });
 
       return {
@@ -162,10 +161,10 @@ export const ScheduleComparison: React.FC<Props> = ({
         pgy3Fairness: f3,
         totalNF,
         streakSD,
-        maxStreak,
+        maxStreak
       };
     });
-  }, [schedules, residents]);
+  }, [schedules, residents, activeYear]);
 
   const sortedMetrics = useMemo(() => {
     return [...metrics].sort((a, b) => {
@@ -282,25 +281,13 @@ export const ScheduleComparison: React.FC<Props> = ({
                 </tr>
               </thead>
               <tbody>
-                {generatingSchedules.map(gs => (
-                  <tr key={gs.id} className="border-b border-gray-50 animate-pulse bg-light-blue/20/20">
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <Loader2 size={16} className="animate-spin text-blue-400" />
-                        <span className="text-muted font-bold italic">{gs.name}...</span>
-                      </div>
-                    </td>
-                    <td colSpan={8} className="py-4 px-6">
-                      <div className="w-full bg-light-blue/50 h-2 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-2/50 animate-pulse" style={{ width: '30%' }}></div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
                 {sortedMetrics.map(m => {
                   const isActive = m.id === activeScheduleId;
                   return (
-                    <tr key={m.id} className={`border-b border-light-3 transition-colors hover:bg-light-1 ${isActive ? 'bg-light-blue/20/40' : ''}`}>
+                    <tr 
+                      key={m.id} 
+                      className={`border-b border-light-3 transition-colors hover:bg-light-1 ${isActive ? 'bg-light-blue/20/40' : ''}`}
+                    >
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
                           <Identicon id={m.id} size={14} />

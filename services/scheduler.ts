@@ -20,7 +20,8 @@ export const generateSchedule = async (
   params: CompetitionParams,
   algorithmIds: string[],
   isAlgorithmCanceled: (id: string) => boolean,
-  onProgress: (iteration: number, scores: number[], attempts: number) => void
+  onProgress: (iteration: number, scores: number[], attempts: number) => void,
+  isPromoted: () => boolean = () => false
 ): Promise<{ results: CompetitionResult[] }> => {
   const { residents, existing, cohortAssignments } = constraints;
   const allGenerators = [
@@ -37,7 +38,8 @@ export const generateSchedule = async (
 
   const results: CompetitionResult[] = [];
   const algorithmBestScores: Record<string, number> = {};
-  selectedGenerators.forEach(g => algorithmBestScores[g.id] = -Infinity);
+  // Standardizing on Cost: Lower is Better. Initial best is Infinity.
+  selectedGenerators.forEach(g => algorithmBestScores[g.id] = Infinity);
 
   console.log(`Starting Unified Multi-Year Competition (${totalYears} years)...`);
 
@@ -45,6 +47,11 @@ export const generateSchedule = async (
   const tries = params.tries || 300;
 
   while (i < tries) {
+    if (isPromoted()) {
+      console.log("Promotion triggered - ending generation early with best results found so far.");
+      break;
+    }
+
     const currentBestScores: number[] = [];
     
     for (let idx = 0; idx < selectedGenerators.length; idx++) {
@@ -60,6 +67,7 @@ export const generateSchedule = async (
         let attemptUnderstaffing = 0;
         let attemptFullData: Record<number, ScheduleGrid> = {};
         let runningHistory = { ...historicalSchedules };
+        let totalCost = 0;
 
         // Generate each year in sequence for this attempt
         for (let y = startYear; y < startYear + totalYears; y++) {
@@ -76,26 +84,27 @@ export const generateSchedule = async (
           const yearExisting = existing[y] || {};
           const yearSchedule = g.generator.generate(yearResidents, yearExisting, i + idx, runningHistory, cohortAssignments[y]);
           
+          const yearCost = calculateScheduleScore(yearResidents, yearSchedule, runningHistory);
           const reqViolations = getRequirementViolations(yearResidents, yearSchedule, runningHistory);
           const weekViolations = getWeeklyViolations(yearResidents, yearSchedule);
           
           attemptTotalViolations += reqViolations.length + weekViolations.length;
           attemptUnderstaffing += weekViolations.filter(v => v.issue.includes('Min')).length;
           attemptFullData[y] = yearSchedule;
+          totalCost += yearCost;
           
           // Update running history for the next year in the block
           runningHistory[y] = yearSchedule;
         }
         
-        // Holistic score: aggregate across all years
-        const score = 10000 - (attemptTotalViolations * 100) - (attemptUnderstaffing * 500);
+        const score = totalCost;
 
-        // Check if this multi-year package qualifies for Top N
-        const currentWorstScore = results.length >= (params.topN || 1) ? results[results.length - 1].score : -Infinity;
+        // Check if this multi-year package qualifies for Top N (Lower is Better)
+        const currentWorstScore = results.length >= (params.topN || 1) ? results[results.length - 1].score : Infinity;
         
-        if (score >= currentWorstScore || results.length < (params.topN || 1)) {
+        if (score <= currentWorstScore || results.length < (params.topN || 1)) {
           const result: CompetitionResult = {
-            schedule: attemptFullData, // In multi-year mode, 'schedule' holds the full record
+            schedule: attemptFullData, 
             winnerName: g.name,
             score,
             totalViolations: attemptTotalViolations,
@@ -103,34 +112,22 @@ export const generateSchedule = async (
           };
 
           results.push(result);
-          results.sort((a, b) => {
-            if (params.priority === CompetitionPriority.LEAST_UNDERSTAFFING) {
-              if (a.understaffing !== b.understaffing) return a.understaffing - b.understaffing;
-              if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-              return b.score - a.score;
-            } else {
-              if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-              return b.score - a.score;
-            }
-          });
+          results.sort((a, b) => a.score - b.score); // ASC sort (lower cost first)
 
           if (results.length > (params.topN || 1)) {
             results.pop();
           }
         }
 
-        if (score > algorithmBestScores[g.id]) {
+        if (score < algorithmBestScores[g.id]) {
           algorithmBestScores[g.id] = score;
         }
       } catch (e) {
         console.error(`Generator ${g.name} failed attempt ${i}`, e);
       }
-      currentBestScores.push(algorithmBestScores[g.id] === -Infinity ? 0 : algorithmBestScores[g.id]);
+      currentBestScores.push(algorithmBestScores[g.id] === Infinity ? 1000000 : algorithmBestScores[g.id]);
     }
 
-    i++;
-    onProgress(i, currentBestScores, i);
-    
     if (i % 10 === 0) {
       await new Promise(resolve => setTimeout(resolve, 0));
     }
