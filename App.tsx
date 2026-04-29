@@ -29,6 +29,7 @@ import { RequirementsStats } from './components/RequirementsStats';
 import { ScheduleComparison } from './components/ScheduleComparison';
 import { ACGMEAudit } from './components/ACGMEAudit';
 import { CompetitorStudio } from './components/CompetitorStudio';
+import { CohortKanban } from './components/CohortKanban';
 import { Button } from './components/ui/Button';
 import { Input } from './components/ui/Input';
 import {
@@ -234,7 +235,7 @@ const App: React.FC = () => {
 
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => preloadHistoricalData(residents), [residents]);
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
 
   const [algoConfig, setAlgoConfig] = useState<AlgorithmConfig[]>([
     { id: 'stochastic', name: 'Stochastic', description: 'The tried-and-true generalist. Good at everything, master of none. Uses weighted randomness to explore valid slots.', enabled: true, color: '#3b82f6' },
@@ -608,6 +609,24 @@ const App: React.FC = () => {
     }
     setModalOpen(false);
   };
+
+  const handleAssignCohort = (residentId: string, cohortIndex: number) => {
+    if (!activeScheduleId) return;
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+
+      const updatedCohorts = { ...(s.cohortAssignments || {}) };
+      const yearMapping = { ...(updatedCohorts[activeYear] || {}) };
+      yearMapping[residentId] = cohortIndex;
+      updatedCohorts[activeYear] = yearMapping;
+
+      return {
+        ...s,
+        cohortAssignments: updatedCohorts
+      };
+    }));
+  };
+
   const handleExportJSON = () => {
     try {
       const data = {
@@ -891,6 +910,7 @@ const App: React.FC = () => {
           <NavButton id="assignments" label="Assignments" icon={Table} badgeCount={violations.constraints.length} />
           <NavButton id="requirements" label="Requirements" icon={ClipboardList} badgeCount={violations.reqs.length} />
           <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} />
+          <NavButton id="cohorts" label="Cohorts" icon={Users} />
           <NavButton id="relationships" label="Relationships" icon={Network} />
           <NavButton id="fairness" label="Fairness" icon={Scale} />
           <NavButton id="export" label="Export" icon={FileSpreadsheet} />
@@ -1183,6 +1203,16 @@ const App: React.FC = () => {
               {activeTab === 'assignments' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
               {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={activeResidents} schedule={currentGrid} precalculatedViolations={violations.reqs} /></div>}
               {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={activeSchedule?.data || {}} activeYear={activeYear} /></div>}
+              {activeTab === 'cohorts' && (
+                <div className="flex-1 overflow-hidden">
+                  <CohortKanban
+                    residents={activeResidents}
+                    activeYear={activeYear}
+                    cohortAssignments={activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {}}
+                    onAssignCohort={handleAssignCohort}
+                  />
+                </div>
+              )}
               {activeTab === 'relationships' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
               {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={fairness} /></div>}
               {activeTab === 'export' && (
