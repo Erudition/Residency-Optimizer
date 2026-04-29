@@ -89,15 +89,18 @@ export const CohortKanban: React.FC<Props> = ({
             <p className="text-xs text-muted font-medium">Assign residents to 4+1 blocks for AY {activeYear}-{activeYear+1}</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-xs font-bold text-muted">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-green-500" /> PGY-1
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-blue-500" /> PGY-2
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-purple-500" /> PGY-3
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-light-2 rounded-full border border-light-4/50">
+          <span className="text-[10px] font-black text-muted uppercase tracking-tighter mr-1">Legend:</span>
+          <div className="flex items-center gap-4 text-[10px] font-bold text-muted">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-green-500" /> PGY-1
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-blue-500" /> PGY-2
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-purple-500" /> PGY-3
+            </div>
           </div>
         </div>
       </div>
