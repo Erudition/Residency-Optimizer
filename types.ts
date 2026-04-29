@@ -156,6 +156,14 @@ export interface AlgorithmStats {
   worstViolations: number;
 }
 
+export interface CompetitionResult {
+  schedule: ScheduleHistory;
+  winnerName: string;
+  score: number;
+  totalViolations: number;
+  understaffing: number;
+}
+
 export interface AlgorithmConfig {
   id: string;
   name: string;
@@ -165,11 +173,11 @@ export interface AlgorithmConfig {
 }
 
 export interface CompetitionParams {
-  tries?: number; // Optional iteration limit (primarily for tests)
+  tries: number;
   priority: CompetitionPriority;
-  algorithmIds: string[];
+  algorithmIds?: string[];
   topN: number;
-  multiYear: number;
+  multiYear?: boolean;
 }
 
 

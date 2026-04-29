@@ -1,5 +1,5 @@
 
-import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint } from '../types';
+import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult } from '../types';
 import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS } from '../constants';
 import { getRequirementCount, getCumulativeRequirementCount } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
@@ -11,13 +11,6 @@ import { EducationFirstGenerator } from './generators/educationFirst';
  * Main Scheduling Engine - Competition Mode (Async)
  * Returns both the schedule and the name of the winning algorithm.
  */
-export interface CompetitionResult {
-  schedule: ScheduleGrid;
-  winnerName: string;
-  score: number;
-  totalViolations: number;
-  understaffing: number;
-}
 
 export const generateSchedule = async (
   startYear: number,
@@ -102,7 +95,7 @@ export const generateSchedule = async (
         
         if (score >= currentWorstScore || results.length < (params.topN || 1)) {
           const result: CompetitionResult = {
-            schedule: attemptFullData as any, // In multi-year mode, 'schedule' holds the full record
+            schedule: attemptFullData, // In multi-year mode, 'schedule' holds the full record
             winnerName: g.name,
             score,
             totalViolations: attemptTotalViolations,

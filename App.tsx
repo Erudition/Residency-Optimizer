@@ -249,7 +249,7 @@ const App: React.FC = () => {
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => preloadHistoricalData(residents), [residents]);
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
-
+  
   const [algoConfig, setAlgoConfig] = useState<AlgorithmConfig[]>([
     { id: 'stochastic', name: 'Stochastic', description: 'The tried-and-true generalist. Good at everything, master of none. Uses weighted randomness to explore valid slots.', enabled: true, color: '#3b82f6' },
     { id: 'experimental', name: 'Staffing First', description: 'Staffing-centric optimization. Prioritizes 1-week slots to guarantee hospital minimums are met at all costs.', enabled: true, color: '#8b5cf6' },
@@ -263,7 +263,9 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  const [convergenceData, setConvergenceData] = useState<ConvergenceDataPoint[]>([]);
+  const [convergenceData, setConvergenceData] = useState<number[][]>([]);
+  const convergenceBufferRef = useRef<number[][]>([]);
+  const lastUpdateRef = useRef<number>(0);
   const [canceledAlgoIds, setCanceledAlgoIds] = useState<Set<string>>(new Set());
   const activeWorkersRef = useRef<Set<Worker>>(new Set());
   const currentWorkerRef = useRef<Worker | null>(null);
@@ -342,6 +344,14 @@ const App: React.FC = () => {
     }
     return schedules.find(s => s.id === activeScheduleId);
   }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear]);
+  
+  // Sync convergence data from buffer when switching back to dashboard
+  useEffect(() => {
+    if (activeTab === 'loading' && activeSchedule?.isGenerating && convergenceBufferRef.current.length > convergenceData.length) {
+      setConvergenceData([...convergenceBufferRef.current]);
+    }
+  }, [activeTab, activeSchedule?.isGenerating, convergenceData.length]);
+
 
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
@@ -573,6 +583,8 @@ const App: React.FC = () => {
           setSchedules(prev => [...prev, newSession]);
           setActiveScheduleId(newId);
           setConvergenceData([]);
+          convergenceBufferRef.current = [];
+          lastUpdateRef.current = Date.now();
         });
 
         const { results } = await runGenerationTask(
@@ -594,13 +606,21 @@ const App: React.FC = () => {
               ));
               
               if (scores) {
-                setConvergenceData(prev => [...prev, scores]);
+                convergenceBufferRef.current.push(scores);
+                
+                // Only trigger a re-render if the dashboard is visible AND we haven't updated in 500ms
+                // This prevents UI flicker and background lag
+                const now = Date.now();
+                if (now - lastUpdateRef.current > 500) {
+                  setConvergenceData([...convergenceBufferRef.current]);
+                  lastUpdateRef.current = now;
+                }
               }
             });
           },
-          historicalSchedules,
+          historySchedules,
           activeSchedule?.cohortAssignments || {}, // Pass existing cohorts if we have them
-          algorithms.map(a => a.id),
+          compParams.algorithmIds || [],
           controller.signal
         );
 
@@ -608,6 +628,8 @@ const App: React.FC = () => {
         const salt = Math.floor(Math.random() * 1000000);
         const newIds = results.map((_: any, idx: number) => `sched-${Date.now()}-${idx}-${salt}`);
         
+        setConvergenceData([...convergenceBufferRef.current]);
+
         startTransition(() => {
           setSchedules(prev => {
             const filtered = prev.filter(s => s.id !== newId);
@@ -1095,6 +1117,7 @@ const App: React.FC = () => {
               {convergenceData.length > 0 ? (
                 <GenerationDashboard 
                   data={convergenceData}
+                  maxTries={compParams.tries}
                   onStop={stopGeneration}
                   onSelectWinners={() => {
                     if (currentWorkerRef.current) {

@@ -4,6 +4,7 @@ import { ConvergenceDataPoint } from '../types';
 
 interface Props {
   data: number[][]; // Each element is an array of scores, one per algorithm
+  maxTries: number;
   onStop: () => void;
   onSelectWinners: () => void;
   onCancelAlgorithm: (id: string) => void;
@@ -11,7 +12,23 @@ interface Props {
   canceledIds: Set<string>;
 }
 
-export const GenerationDashboard: React.FC<Props> = ({ data, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
+export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
+  const startTimeRef = React.useRef<number>(Date.now());
+  
+  const eta = useMemo(() => {
+    if (data.length < 5) return 'Calculating...';
+    const elapsed = Date.now() - startTimeRef.current;
+    const progress = data.length / maxTries;
+    if (progress >= 1) return 'Done';
+    
+    const remainingTime = (elapsed / progress) - elapsed;
+    const seconds = Math.ceil(remainingTime / 1000);
+    
+    if (seconds > 60) {
+      return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+    }
+    return `${seconds}s`;
+  }, [data.length, maxTries]);
   const chartData = useMemo(() => {
     const aggregated: any[] = [];
     const stride = Math.max(1, Math.floor(data.length / 300)); // Fewer points for faster rendering
@@ -43,7 +60,11 @@ export const GenerationDashboard: React.FC<Props> = ({ data, onStop, onSelectWin
             <h2 className="text-xl font-black text-primary tracking-tight">
               Global Multi-Year Convergence
             </h2>
-            <p className="text-muted text-sm font-medium">Holistic optimization across all academic years</p>
+            <div className="flex items-center gap-3">
+              <p className="text-muted text-sm font-medium">Holistic optimization across all academic years</p>
+              <div className="h-1 w-1 rounded-full bg-light-6" />
+              <p className="text-blue text-xs font-black uppercase tracking-widest">Est. {eta}</p>
+            </div>
           </div>
         </div>
         <div className="flex gap-3">

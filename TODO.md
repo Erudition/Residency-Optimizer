@@ -13,3 +13,5 @@
 - [ ] UI: Tooltips show hints that right-clicking a cell locks it but this has been broken for several iterations, change to double-click
 - [ ] UI: Make sure double-click-to-lock works on week headers (locks entire column) and resident names in the list (locks entire row)
 - [ ] Assignment staffing: Move to weight-based system where some PGY-1/PGY-3 staffing levels within the min-max are preferred over others, to prioritize schedules that don't frequently staff rotations lightly or heavily
+- [ ] UI: Get rid of the pulsing "! STAFFING VIOLATIONS" pill, it's redundant with the pulsing alert badge on the Assignments tab
+- [ ] UI: Rename "Assignments" tab to "Coverage"
