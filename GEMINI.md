@@ -1,3 +1,10 @@
+# Scheduling & Algorithmic Rules
+
+## 1. Vacation Scheduling (Human-Only)
+*   **Hard Constraint**: Algorithms and automated generators are FORBIDDEN from scheduling "Vacation" weeks. 
+*   **Human Ownership**: Only human users may assign vacation time.
+*   **Algorithmic Behavior**: The scheduling engine should only fill core inpatient blocks, mandatory subspecialties, and "Elective" blocks. Residents will manually replace elective blocks with their chosen subspecialties or vacation weeks.
+
 # Residency Optimizer App
 This project is a collaboration between Github users @Erudition (developer) and @AHWright (Medical Resident). It's developed within a shared Antigravity workspace. You should always update this GEMINI.md (and the files it embeds) with context about the requirements given to you during conversation, especially when you're not specifically asked to put it in a specific file. Keep this document up to date with as much domain knowledge as possible.
 
