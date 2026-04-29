@@ -92,7 +92,7 @@ export interface ScheduleSession {
   lockedUntilWeek?: number;
 }
 
-const APP_DATA_VERSION = 4;
+const APP_DATA_VERSION = 5;
 
 const loadState = <T,>(key: string, fallback: T): T => {
   try {
@@ -1011,11 +1011,11 @@ const App: React.FC = () => {
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
-          <NavButton id="assignments" label="Assignments" icon={Table} badgeCount={violations.constraints.length} />
+          <NavButton id="assignments" label="Coverage" icon={Table} badgeCount={violations.constraints.length} />
           <NavButton id="requirements" label="Requirements" icon={ClipboardList} badgeCount={violations.reqs.length} />
           <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} />
           <NavButton id="cohorts" label="Cohorts" icon={Users} />
-          <NavButton id="relationships" label="Relationships" icon={Network} />
+          <NavButton id="relationships" label="Coworking" icon={Network} />
           <NavButton id="fairness" label="Fairness" icon={Scale} />
           <NavButton id="export" label="Export" icon={FileSpreadsheet} />
         </div>
@@ -1176,14 +1176,6 @@ const App: React.FC = () => {
                     </div>
 
                     {/* Right: Violations */}
-                    <div>
-                      {hasViolations && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-red/10 text-red rounded-full border border-red/20 animate-pulse">
-                          <AlertCircle size={14} />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Staffing Violations</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
                   <div className="flex-1 overflow-hidden p-6">
                     <ScheduleTable

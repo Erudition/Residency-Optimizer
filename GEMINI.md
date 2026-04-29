@@ -14,6 +14,7 @@ After any code modification, you MUST run `npx tsc --noEmit` and confirm zero er
 
 All work should be done in short-lived feature branches. WHen you have a plan, create a branch, commit the changes in atomic batches, and if you are not the repository owner,open a pull request when done.
 
+If NTS tools are available, use them entirely for reads, edits, searches -- but you MUST use absolute paths for all file references in tool calls.
 
 
 # Additional ACGME & Scheduling Constraints
