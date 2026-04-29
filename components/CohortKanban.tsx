@@ -17,6 +17,31 @@ export const CohortKanban: React.FC<Props> = ({
   cohortAssignments, 
   onAssignCohort 
 }) => {
+  const [dragOverCohort, setDragOverCohort] = React.useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, residentId: string) => {
+    e.dataTransfer.setData('residentId', residentId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, cohortIndex: number) => {
+    e.preventDefault();
+    setDragOverCohort(cohortIndex);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverCohort(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, cohortIndex: number) => {
+    e.preventDefault();
+    setDragOverCohort(null);
+    const residentId = e.dataTransfer.getData('residentId');
+    if (residentId) {
+      onAssignCohort(residentId, cohortIndex);
+    }
+  };
+
   const cohorts = useMemo(() => {
     const cohortsList = Array.from({ length: COHORT_COUNT }, (_, i) => ({
       index: i,
@@ -88,7 +113,12 @@ export const CohortKanban: React.FC<Props> = ({
               </Badge>
             </div>
 
-            <div className="flex-1 flex flex-col gap-3 p-3 bg-light-3/20 rounded-2xl border border-light-4/50 overflow-y-auto">
+            <div 
+              className={`flex-1 flex flex-col gap-3 p-3 bg-light-3/20 rounded-2xl border transition-all duration-200 overflow-y-auto ${dragOverCohort === cohort.index ? 'bg-blue/5 border-blue-500/50 shadow-inner' : 'border-light-4/50'}`}
+              onDragOver={(e) => handleDragOver(e, cohort.index)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, cohort.index)}
+            >
               {cohort.residents.map(resident => {
                 const level = activeYear - resident.startYear + 1;
                 const levelColors = level === 1 
@@ -100,7 +130,9 @@ export const CohortKanban: React.FC<Props> = ({
                 return (
                   <div 
                     key={resident.id} 
-                    className={`group bg-white border border-light-5 border-l-4 ${levelColors} rounded-xl p-3 shadow-sm hover:shadow-md transition-all cursor-default relative`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, resident.id)}
+                    className={`group bg-white border border-light-5 border-l-4 ${levelColors} rounded-xl p-3 shadow-sm hover:shadow-md active:scale-95 active:shadow-inner transition-all cursor-grab relative`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col">
@@ -110,17 +142,9 @@ export const CohortKanban: React.FC<Props> = ({
                         </span>
                       </div>
                       
-                      {/* Quick Move Trigger (Mock for now, can add a dropdown) */}
-                      <button 
-                        className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-light-2 rounded-lg text-muted transition-all"
-                        title="Move Cohort"
-                        onClick={() => {
-                          const nextIdx = (cohort.index + 1) % COHORT_COUNT;
-                          onAssignCohort(resident.id, nextIdx);
-                        }}
-                      >
-                        <ArrowRightLeft size={14} />
-                      </button>
+                      <div className="p-1.5 text-light-5 group-hover:text-muted transition-colors">
+                        <GripHorizontal size={14} />
+                      </div>
                     </div>
                   </div>
                 );

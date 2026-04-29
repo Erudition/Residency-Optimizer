@@ -1,0 +1,1 @@
+- [ ] Separate past years from candidates

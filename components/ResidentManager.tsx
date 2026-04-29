@@ -17,12 +17,12 @@ interface Props {
 export const ResidentManager: React.FC<Props> = ({ residents, setResidents, activeYear }) => {
   // New Resident State
   const [newResidentName, setNewResidentName] = useState('');
-  const [newResidentLevel, setNewResidentLevel] = useState<PgyLevel>(1);
+  const [newResidentStartYear, setNewResidentStartYear] = useState<number>(activeYear);
   
   // Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editLevel, setEditLevel] = useState<PgyLevel>(1);
+  const [editStartYear, setEditStartYear] = useState<number>(activeYear);
 
   // Delete Confirmation State
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -35,8 +35,8 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
     const newResident: Resident = {
       id: newId,
       name: newResidentName,
-      level: newResidentLevel,
-      startYear: activeYear - newResidentLevel + 1,
+      level: 1, // Placeholder, calculated on-the-fly in schedule views
+      startYear: newResidentStartYear,
       avoidResidentIds: [],
     };
     setResidents(prev => [...prev, newResident]);
@@ -69,13 +69,13 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
     setDeleteConfirmId(null);
     setEditingId(resident.id);
     setEditName(resident.name);
-    setEditLevel(resident.level);
+    setEditStartYear(resident.startYear);
   };
 
   const cancelEditing = () => {
     setEditingId(null);
     setEditName('');
-    setEditLevel(1);
+    setEditStartYear(activeYear);
   };
 
   const saveEditing = () => {
@@ -85,7 +85,7 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
           return {
             ...r,
             name: editName,
-            level: editLevel,
+            startYear: editStartYear,
           };
         }
         return r;
@@ -163,7 +163,7 @@ Robert Brown,3`;
         newResidents.push({
             id: `imported-${Date.now()}-${idCounter++}`,
             name: cleanName,
-            level,
+            level: 1, // Placeholder
             startYear: activeYear - level + 1,
             avoidResidentIds: []
         });
@@ -217,7 +217,7 @@ Robert Brown,3`;
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-navy/80 text-xs">
                     <ul className="list-disc list-inside space-y-1">
                         <li><strong>Column 1 (Name):</strong> Resident Full Name (Required).</li>
-                        <li><strong>Column 2 (Level):</strong> PGY Level (1, 2, or 3) (Required).</li>
+                        <li><strong>Column 2 (Level):</strong> PGY Level for current year (Required).</li>
                     </ul>
                     <ul className="list-disc list-inside space-y-1">
                         <li><strong>Column 3 (Cohort):</strong> 0-4 (Optional). 0=A, 1=B, etc.</li>
@@ -240,28 +240,13 @@ Robert Brown,3`;
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-primary mb-1">PGY Level</label>
-            <Select
-              value={newResidentLevel}
-              onChange={(e) => setNewResidentLevel(Number(e.target.value) as PgyLevel)}
-              className="w-24"
-            >
-              <option value={1}>1</option>
-              <option value={2}>2</option>
-              <option value={3}>3</option>
-            </Select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-primary mb-1">PGY Level</label>
-            <Select
-              value={newResidentLevel}
-              onChange={(e) => setNewResidentLevel(Number(e.target.value) as PgyLevel)}
-              className="w-24"
-            >
-              <option value={1}>1</option>
-              <option value={2}>2</option>
-              <option value={3}>3</option>
-            </Select>
+            <label className="block text-sm font-medium text-primary mb-1">Start Year</label>
+            <Input
+              type="number"
+              value={newResidentStartYear}
+              onChange={(e) => setNewResidentStartYear(Number(e.target.value))}
+              className="w-32"
+            />
           </div>
           <Button variant="primary" size="md" onClick={handleAdd} className="gap-2">
             <Plus size={16} /> Add
@@ -273,7 +258,7 @@ Robert Brown,3`;
       <Card className="mb-12">
         <div className="p-4 border-b border-light-5 bg-light-1 font-semibold text-primary grid grid-cols-12 gap-4">
             <div className="col-span-8">Name</div>
-            <div className="col-span-2 text-center">Level</div>
+            <div className="col-span-2 text-center">Start Year</div>
             <div className="col-span-2 text-center">Actions</div>
         </div>
         <div className="overflow-visible min-h-[100px]">
@@ -292,14 +277,12 @@ Robert Brown,3`;
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <Select
-                            value={editLevel}
-                            onChange={(e) => setEditLevel(Number(e.target.value) as PgyLevel)}
-                          >
-                            <option value={1}>PGY-1</option>
-                            <option value={2}>PGY-2</option>
-                            <option value={3}>PGY-3</option>
-                          </Select>
+                          <Input 
+                            type="number"
+                            value={editStartYear}
+                            onChange={(e) => setEditStartYear(Number(e.target.value))}
+                            className="w-full"
+                          />
                         </div>
                         <div className="col-span-2 text-center flex justify-center gap-2">
                            <Button variant="ghost" size="sm" onClick={saveEditing} className="text-green hover:text-green-dark hover:bg-lime-green/40" title="Save">
@@ -314,8 +297,8 @@ Robert Brown,3`;
                       <>
                         <div className="col-span-8 font-medium">{r.name}</div>
                         <div className="col-span-2 text-center">
-                            <Badge variant={r.level === 1 ? 'success' : r.level === 2 ? 'info' : 'purple'}>
-                                PGY-{r.level}
+                            <Badge variant="info">
+                                {r.startYear}
                             </Badge>
                         </div>
                         <div className="col-span-2 text-center flex justify-center gap-2 items-center">

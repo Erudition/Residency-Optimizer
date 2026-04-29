@@ -55,14 +55,9 @@ export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
 // Fallback baseline for tests
 export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
     const allResidents: Resident[] = [];
-    const classesToInclude = [2023, 2024, 2025, 2026, 2027, 2028];
+    const classesToInclude = [2023, 2024, 2025, 2026];
     
     classesToInclude.forEach(startYear => {
-        const size = 15; // Max potential size, or use getClassSize(startYear)
-        // We call GENERATE_RESIDENTS_FOR_YEAR but we need to prevent duplicates if we were to merge.
-        // Actually, let's just create a unique set of all residents for these years.
-        
-        // Simpler: Just generate the classes directly
         const CLASS_2023 = ["Wright, Andrew Hunter","Melo, Sebastian"];
         const CLASS_2024 = ["Baset, Nawsin","Cho, Kevin Wook Jin","De La Cruz, Aaron Daniel","Deen, Nafis M","Liu, Gongkai","Masud, Saad","Min, Shao-Ting","Mysore, Nishad Narain","Thanedar, Sarita","Yu, Tommy"];
         const CLASS_2025 = ["Alvarado, Ramona Davina","Dawood, Umar Asif","Delano, Victoria Remilekun","Echegaray, Sebastian Alexander","Hill, Brittany Marie","Jentz, Austin Lee","Letson, Mia Kang","Millan, Cassandra Marie","Nazeer, Usman Imran","Ndze, Lila Linda","Orden, Martin Basobas","Rendon, Arthur Isaac","Sanderson, Jacob Nakolo","Shah, Vidur Hemant"];
@@ -77,12 +72,12 @@ export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
         };
 
         const names = getNames(startYear);
-        const actualSize = names.length || 15;
+        const actualSize = names.length;
         
         for (let i = 0; i < actualSize; i++) {
             allResidents.push({
                 id: `c${startYear}-${i+1}`,
-                name: names[i] || `Intern ${startYear % 100}-${i + 1}`,
+                name: names[i],
                 level: 1, // Base level, will be shifted by activeYear
                 startYear,
                 avoidResidentIds: [],

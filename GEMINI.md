@@ -110,3 +110,12 @@ The system must ensure a guaranteed backup pool exists every week to handle call
 *   **Exclusion**: Interns (PGY-1s) and residents on Core rotations (Wards, ICU, NF, EM, Clinic) are EXCLUDED from the jeopardy pool.
 *   **Minimum Pool Size**: The engine should prioritize maintaining at least **one PGY-3 and one PGY-2** on a flexible block per week to serve as 1st and 2nd line jeopardy.
 *   **Auditing**: A "Jeopardy Gap" violation must be flagged if a week has zero senior residents available on flexible time.
+
+## 15. Start Year vs PGY Level Logic
+To maintain year-independent data integrity, the application treats **Start Year** as the primary source of truth for a resident's seniority.
+*   **Storage**: The `Resident` object persists `startYear` (the calendar year they started PGY-1).
+*   **Derivation**: PGY Level is calculated on-the-fly relative to the `activeYear` context (Formula: `activeYear - startYear + 1`).
+*   **UI Constraint**: Resident management interfaces must expose and allow editing of `startYear` rather than static PGY levels to ensure consistency when navigating historical or future academic years.
+
+## 16. Database Purity
+*   **No Placeholders**: Initial data generation and "Factory Reset" logic must not create placeholder resident records for future years. Only residents with explicitly defined names or manually added data should exist in the database.

@@ -321,13 +321,16 @@ const App: React.FC = () => {
 
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
+    const yearCohorts = activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year] || {};
+    
     return residents.filter(r => {
       const level = year - r.startYear + 1;
       return level >= 1 && level <= 3;
     }).map(r => {
       const level = (year - r.startYear + 1) as 1 | 2 | 3;
       const clinicType = level === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
-      return { ...r, level, clinicType };
+      const cohort = yearCohorts[r.id] ?? 0;
+      return { ...r, level, clinicType, cohort };
     }).sort((a, b) => {
       if (residentSortOrder === 'cohort') {
         if (a.cohort !== b.cohort) return a.cohort - b.cohort;
@@ -341,7 +344,7 @@ const App: React.FC = () => {
   };
 
   // Derive active residents for the selected year
-  const activeResidents = useMemo(() => getResidentsForYear(activeYear), [residents, activeYear, residentSortOrder]);
+  const activeResidents = useMemo(() => getResidentsForYear(activeYear), [residents, activeYear, residentSortOrder, activeSchedule, historicalCohortsByYear]);
 
   const currentGrid = useMemo(() => {
     if (activeScheduleId === 'all') return {};
