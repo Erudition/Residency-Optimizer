@@ -93,13 +93,13 @@ export const CohortKanban: React.FC<Props> = ({
           <span className="text-[10px] font-black text-muted uppercase tracking-tighter mr-1">Legend:</span>
           <div className="flex items-center gap-4 text-[10px] font-bold text-muted">
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-green-500" /> PGY-1
+              <div className="w-2 h-2 rounded-full bg-green" /> PGY-1
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-blue-500" /> PGY-2
+              <div className="w-2 h-2 rounded-full bg-blue" /> PGY-2
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-purple-500" /> PGY-3
+              <div className="w-2 h-2 rounded-full bg-purple" /> PGY-3
             </div>
           </div>
         </div>
@@ -125,10 +125,10 @@ export const CohortKanban: React.FC<Props> = ({
               {cohort.residents.map(resident => {
                 const level = activeYear - resident.startYear + 1;
                 const levelColors = level === 1 
-                  ? 'border-l-green-500' 
+                  ? 'border-l-green' 
                   : level === 2 
-                    ? 'border-l-blue-500' 
-                    : 'border-l-purple-500';
+                    ? 'border-l-blue' 
+                    : 'border-l-purple';
 
                 return (
                   <div 
