@@ -4,8 +4,8 @@ import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPE
 import { getRequirementCount, getCumulativeRequirementCount } from './generators/utils';
 import { GreedyGenerator } from './generators/greedy';
 import { StochasticGenerator } from './generators/stochastic';
-import { ExperimentalGenerator } from './generators/experimental';
-import { StrictGenerator } from './generators/strict';
+import { StaffingFirstGenerator } from './generators/staffingFirst';
+import { EducationFirstGenerator } from './generators/educationFirst';
 
 /**
  * Main Scheduling Engine - Competition Mode (Async)
@@ -29,14 +29,14 @@ export const generateSchedule = async (
 ): Promise<{ results: CompetitionResult[] }> => {
   const allGenerators = [
     { id: 'greedy', generator: GreedyGenerator, name: 'Greedy' },
-    { id: 'experimental', generator: ExperimentalGenerator, name: 'Staffing First' },
+    { id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' },
     { id: 'stochastic', generator: StochasticGenerator, name: 'Stochastic' },
-    { id: 'strict', generator: StrictGenerator, name: 'Education First' },
+    { id: 'strict', generator: EducationFirstGenerator, name: 'Education First' },
   ];
 
   const selectedGenerators = allGenerators.filter(g => params.algorithmIds.includes(g.id));
   if (selectedGenerators.length === 0) {
-    selectedGenerators.push({ id: 'experimental', generator: ExperimentalGenerator, name: 'Staffing First' });
+    selectedGenerators.push({ id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' });
   }
 
   const attempts: { generator: any; name: string }[] = [];

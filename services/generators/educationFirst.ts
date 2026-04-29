@@ -15,7 +15,7 @@ class SeededRNG {
     }
 }
 
-export const StrictGenerator: ScheduleGenerator = {
+export const EducationFirstGenerator: ScheduleGenerator = {
     name: "Strict (Education First)",
     generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);

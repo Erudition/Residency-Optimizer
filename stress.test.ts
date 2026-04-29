@@ -3,17 +3,18 @@ import { describe, it, expect } from 'vitest';
 import { getRequirementViolations } from './services/scheduler';
 import { GENERATE_INITIAL_RESIDENTS } from './constants';
 import { AssignmentType } from './types';
-import { StrictGenerator } from './services/generators/strict';
+import { EducationFirstGenerator } from './services/generators/educationFirst';
 import { StochasticGenerator } from './services/generators/stochastic';
-import { ExperimentalGenerator } from './services/generators/experimental';
+import { StaffingFirstGenerator } from './services/generators/staffingFirst';
 
 describe('Algorithm Consistency Tests', () => {
     const residents = GENERATE_INITIAL_RESIDENTS();
     const generators = [
-        { name: 'Strict', gen: StrictGenerator },
+        { name: 'Education First', gen: EducationFirstGenerator },
         { name: 'Stochastic', gen: StochasticGenerator },
-        { name: 'Experimental', gen: ExperimentalGenerator }
+        { name: 'Staffing First', gen: StaffingFirstGenerator }
     ];
+
 
     generators.forEach(({ name, gen }) => {
         it(`${name} generator consistency check (10 runs)`, { timeout: 300000 }, async () => {

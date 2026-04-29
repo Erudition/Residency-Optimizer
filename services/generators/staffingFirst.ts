@@ -14,7 +14,7 @@ class SeededRNG {
     }
 }
 
-export const ExperimentalGenerator: ScheduleGenerator = {
+export const StaffingFirstGenerator: ScheduleGenerator = {
     name: "Experimental (Staffing First)",
     generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
