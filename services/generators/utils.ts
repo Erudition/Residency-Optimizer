@@ -39,3 +39,21 @@ export const getCumulativeRequirementCount = (residentId: string, currentYearRow
     });
     return total;
 };
+export const isAligned = (w: number, cohort: number, dur: number): boolean => {
+    // COHORT_COUNT is 5
+    const COHORT_COUNT = 5;
+    if (dur !== 4 && dur !== 2) return true;
+    const offset = (w % COHORT_COUNT);
+    const startRelToClinic = (offset - cohort + COHORT_COUNT) % COHORT_COUNT;
+    if (dur === 4) return startRelToClinic === 1;
+    if (dur === 2) return startRelToClinic === 1 || startRelToClinic === 3;
+    return true;
+};
+
+export const getAssignedCount = (schedule: ScheduleGrid, residents: { id: string, level: number }[], week: number, type: AssignmentType, level?: number) => {
+    return residents.filter(r => {
+        if (level === 1) return r.level === 1 && schedule[r.id]?.[week]?.assignment === type;
+        if (level === 2) return r.level >= 2 && schedule[r.id]?.[week]?.assignment === type;
+        return schedule[r.id]?.[week]?.assignment === type;
+    }).length;
+};

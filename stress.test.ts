@@ -1,29 +1,56 @@
 
 import { describe, it, expect } from 'vitest';
-import { generateSchedule, getRequirementViolations } from './services/scheduler';
+import { getRequirementViolations } from './services/scheduler';
 import { GENERATE_INITIAL_RESIDENTS } from './constants';
 import { AssignmentType } from './types';
+import { StrictGenerator } from './services/generators/strict';
+import { StochasticGenerator } from './services/generators/stochastic';
+import { ExperimentalGenerator } from './services/generators/experimental';
 
-describe('Scheduler Stress Test', () => {
-    it('should consistently produce valid schedules (0 Req Violations) in 20 runs', async () => {
-        const residents = GENERATE_INITIAL_RESIDENTS();
-        let failures = 0;
+describe('Algorithm Consistency Tests', () => {
+    const residents = GENERATE_INITIAL_RESIDENTS();
+    const generators = [
+        { name: 'Strict', gen: StrictGenerator },
+        { name: 'Stochastic', gen: StochasticGenerator },
+        { name: 'Experimental', gen: ExperimentalGenerator }
+    ];
 
-        for (let i = 0; i < 20; i++) {
-            console.log(`Run ${i + 1}...`);
-            const result = await generateSchedule(residents, {});
-            const violations = getRequirementViolations(residents, result.results[0].schedule);
+    generators.forEach(({ name, gen }) => {
+        it(`${name} generator consistency check (10 runs)`, { timeout: 300000 }, async () => {
+            let totalViolations = 0;
+            let failures = 0;
 
-            // Focus on PGY1 Cards which is the main hardness check
-            const cardsViolations = violations.filter(v => v.type === AssignmentType.CARDS);
+            console.log(`\n--- Starting tests for ${name} ---`);
 
-            if (cardsViolations.length > 0) {
-                console.error(`Run ${i + 1} Failed: ${cardsViolations.length} Cards violations`);
-                failures++;
+            for (let i = 0; i < 10; i++) {
+                const emptySchedule = {};
+                const schedule = gen.generate(residents, emptySchedule, i, {}, {});
+                const violations = getRequirementViolations(residents, schedule);
+
+                if (violations.length > 0) {
+                    console.error(`  [${name}] Run ${i + 1} FAILED with ${violations.length} violations`);
+                    // Log specific violations by type
+                    const byType: Record<string, number> = {};
+                    violations.forEach(v => byType[v.type] = (byType[v.type] || 0) + 1);
+                    Object.entries(byType).forEach(([type, count]) => {
+                        console.error(`    - ${type}: ${count} residents failing`);
+                    });
+                    
+                    // Show one specific example if it's a CARDS violation (known hard one)
+                    const cardsExample = violations.find(v => v.type === AssignmentType.CARDS);
+                    if (cardsExample) {
+                        console.error(`    - Example: ${cardsExample.residentId} got ${cardsExample.actual} instead of ${cardsExample.target} for CARDS`);
+                    }
+
+                    failures++;
+                    totalViolations += violations.length;
+                } else {
+                    console.log(`  [${name}] Run ${i + 1} PASSED`);
+                }
             }
-        }
 
-        console.log(`Success Rate: ${(20 - failures)}/20`);
-        expect(failures).toBe(0);
+            console.log(`[${name}] Final Result: ${(10 - failures)}/10 Passed. Avg Violations per Failed Run: ${failures > 0 ? (totalViolations / failures).toFixed(1) : 0}`);
+            expect(failures).toBe(0);
+        });
     });
 });
