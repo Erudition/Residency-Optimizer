@@ -131,3 +131,6 @@ To maintain year-independent data integrity, the application treats **Start Year
 *   **Constraint**: The "Current" academic year label must be determined dynamically based on the current calendar date, using **July 1st** as the transition point.
 *   **Implementation**: `getYearLabel` in `App.tsx` calculates the offset relative to the current physical academic year rather than a hardcoded constant, ensuring UI accuracy without manual code updates each July.
 
+> [!IMPORTANT]
+> **Authoritative Source of Truth**
+> The MHS Curriculum Proposal.md serves as the absolute and final authority for all scheduling structures, rotation lengths, target PGY distributions, and curriculum logic. In the event of any disagreement or conflict between this document and other files (such as `constants.ts`, `Rotation_Reference.md`, or historical records), **this document supersedes them.** Schedule algorithms and programmatic definitions must be updated to match the rules established here.
