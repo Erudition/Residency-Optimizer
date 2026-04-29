@@ -7,14 +7,16 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "validate-history": "tsx scripts/validateHistory.ts"
   },
   "dependencies": {
+    "exceljs": "4.4.0",
+    "lucide-react": "0.460.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "lucide-react": "0.460.0",
     "recharts": "2.12.7",
-    "exceljs": "4.4.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -1,6 +1,27 @@
 import { ScheduleHistory, AssignmentType, Resident } from '../../types';
 import { ACTIVE_START_YEAR } from '../../constants';
 import historicalGridData from '../../specification/historical_schedules_grid_v2.json';
+import { z } from 'zod';
+
+// Zod schema for historical data validation
+const AssignmentTypeSchema = z.nativeEnum(AssignmentType).or(z.null()).or(z.string());
+
+const HistoricalYearSchema = z.record(z.string(), z.array(AssignmentTypeSchema));
+const HistoricalDataSchema = z.record(z.string(), HistoricalYearSchema);
+
+// Legacy mappings for historical data
+const LEGACY_MAPPING: Record<string, AssignmentType> = {
+    'CVICU': AssignmentType.AMCS_CONSULTS,
+    'CCIM': AssignmentType.CLINIC,
+    'HPC': AssignmentType.PALLIATIVE,
+    'Wards-R': AssignmentType.WARDS_RED,
+    'Wards-B': AssignmentType.WARDS_BLUE,
+    'Met Wards': AssignmentType.WARDS_METRO,
+    'MICU 1': AssignmentType.MICU,
+    'MICU Metro': AssignmentType.METRO_ICU,
+    'Add Med': AssignmentType.ADD_MED,
+    'Jr Hosp': AssignmentType.JR_HOSPITALIST,
+};
 
 const HISTORICAL_COHORTS: Record<number, Record<string, number>> = {
     2024: {
@@ -51,9 +72,37 @@ export interface PreloadedHistory {
     cohortAssignments: Record<number, Record<string, number>>;
 }
 
+/**
+ * Maps a raw string from historical data to a valid AssignmentType.
+ * Handles legacy names and null values safely.
+ */
+function mapAssignmentType(raw: string | null): AssignmentType {
+    if (raw === null) return AssignmentType.ELECTIVE;
+    
+    // Check if it's already a valid enum value
+    const validValues = Object.values(AssignmentType) as string[];
+    if (validValues.includes(raw)) {
+        return raw as AssignmentType;
+    }
+
+    // Check legacy mapping
+    if (LEGACY_MAPPING[raw]) {
+        return LEGACY_MAPPING[raw];
+    }
+
+    console.warn(`[HistoryPreloader] Unknown assignment type "${raw}", defaulting to ELECTIVE`);
+    return AssignmentType.ELECTIVE;
+}
+
 export const preloadHistoricalData = (residents: Resident[]): PreloadedHistory => {
     const history: ScheduleHistory = {};
     const cohortAssignments: Record<number, Record<string, number>> = {};
+
+    // Validate incoming JSON data
+    const validationResult = HistoricalDataSchema.safeParse(historicalGridData);
+    if (!validationResult.success) {
+        console.error('[HistoryPreloader] Historical data validation failed:', validationResult.error.format());
+    }
 
     const findId = (name: string) => residents.find(r => r.name === name)?.id;
 
@@ -69,10 +118,13 @@ export const preloadHistoricalData = (residents: Resident[]): PreloadedHistory =
 
         Object.entries(yearData).forEach(([name, assignments]) => {
             const id = findId(name);
-            if (!id) return;
+            if (!id) {
+                console.warn(`[HistoryPreloader] Resident "${name}" from historical data (Year ${year}) not found in master list. Skipping.`);
+                return;
+            }
 
             history[year][id] = (assignments as (string | null)[]).map(type => ({
-                assignment: type as AssignmentType,
+                assignment: mapAssignmentType(type),
                 locked: isFullyCompleted
             }));
 

@@ -358,12 +358,12 @@ const App: React.FC = () => {
   const activeResidents = useMemo(() => getResidentsForYear(activeYear), [residents, activeYear, residentSortOrder, activeSchedule, historicalCohortsByYear]);
 
   const currentGrid = useMemo(() => {
-    if (activeScheduleId === 'all') return {};
+    if (activeScheduleId === 'all' && !isHistoricalYear) return {};
     return activeSchedule?.data?.[activeYear] || historySchedules[activeYear] || {};
-  }, [activeSchedule, activeYear, historySchedules, activeScheduleId]);
+  }, [activeSchedule, activeYear, historySchedules, activeScheduleId, isHistoricalYear]);
 
   const { stats, violations, fairness } = useMemo(() => {
-    if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') {
+    if ((!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') && !isHistoricalYear) {
       return {
         stats: {} as any,
         violations: { reqs: [], constraints: [] },
