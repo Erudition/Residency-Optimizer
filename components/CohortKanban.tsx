@@ -18,7 +18,7 @@ export const CohortKanban: React.FC<Props> = ({
   onAssignCohort 
 }) => {
   const cohorts = useMemo(() => {
-    const list = Array.from({ length: COHORT_COUNT }, (_, i) => ({
+    const cohortsList = Array.from({ length: COHORT_COUNT }, (_, i) => ({
       index: i,
       name: `Cohort ${String.fromCharCode(65 + i)}`,
       residents: [] as Resident[],
@@ -33,13 +33,13 @@ export const CohortKanban: React.FC<Props> = ({
 
     residents.forEach(r => {
       const cohortIdx = (cohortAssignments?.[r.id]) ?? 0;
-      if (cohorts[cohortIdx]) {
-        cohorts[cohortIdx].residents.push(r);
+      if (cohortsList[cohortIdx]) {
+        cohortsList[cohortIdx].residents.push(r);
       }
     });
 
     // PGY Level sorting within cohorts (Interns first as per UI standards)
-    cohorts.forEach(c => {
+    cohortsList.forEach(c => {
       c.residents.sort((a, b) => {
         const levelA = activeYear - a.startYear + 1;
         const levelB = activeYear - b.startYear + 1;
@@ -48,7 +48,7 @@ export const CohortKanban: React.FC<Props> = ({
       });
     });
 
-    return cohorts;
+    return cohortsList;
   }, [residents, cohortAssignments, activeYear]);
 
   return (
