@@ -56,7 +56,7 @@ import {
   AlertCircle,
   Download,
   Loader2,
-  Settings as SettingsIcon,
+
   Trash2,
   RotateCcw,
   ChevronLeft,
@@ -558,7 +558,7 @@ const App: React.FC = () => {
           const newSessions: ScheduleSession[] = [0].map((_, idx) => {
             return {
               id: newIds[idx],
-              name: `S${nameOffset + idx + 1} (${finalWinnerName})`,
+              name: `S${nameOffset + idx + 1}${finalWinnerName ? ` (${finalWinnerName})` : ''}`,
               data: runningData,
               cohortAssignments: runningCohorts,
               createdAt: new Date()
@@ -817,17 +817,37 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: Settings Cog */}
-        <div
-          onClick={() => {
-            startTransition(() => {
-              setActiveScheduleId('settings');
-              setActiveTab('residents');
-            });
-          }}
-          className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer ${activeScheduleId === 'settings' ? 'bg-blue text-white' : 'text-muted hover:bg-light-2 hover:text-primary'}`}
-        >
-          <SettingsIcon size={18} />
+        {/* Right: Settings Icons */}
+        <div className="flex items-center gap-1">
+          {[
+            { tab: 'residents', icon: Users, title: 'Residents' },
+            { tab: 'backup', icon: Download, title: 'Backup' },
+            { tab: 'reset', icon: RotateCcw, title: 'Reset Data' },
+          ].map(({ tab, icon: Icon, title }) => {
+            const isActive = activeScheduleId === 'settings' && activeTab === tab;
+            return (
+              <div
+                key={tab}
+                title={title}
+                onClick={() => {
+                  startTransition(() => {
+                    if (isActive) {
+                      // Toggle off: go back to the first schedule or 'all'
+                      const firstSched = schedules.find(s => !s.isGenerating);
+                      setActiveScheduleId(firstSched?.id ?? 'all');
+                      setActiveTab('schedule');
+                    } else {
+                      setActiveScheduleId('settings');
+                      setActiveTab(tab);
+                    }
+                  });
+                }}
+                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer ${isActive ? 'bg-blue text-white' : 'text-muted hover:bg-light-2 hover:text-primary'}`}
+              >
+                <Icon size={16} />
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -844,14 +864,6 @@ const App: React.FC = () => {
           <NavButton id="export" label="Export" icon={FileSpreadsheet} />
         </div>
       ) : null}
-
-      {activeScheduleId === 'settings' && (
-        <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
-          <NavButton id="residents" label="Residents" icon={Users} />
-          <NavButton id="backup" label="Backup" icon={Download} />
-          <NavButton id="reset" label="Reset Data" icon={RotateCcw} />
-        </div>
-      )}
 
       <main className="flex-1 overflow-hidden relative bg-white min-h-0">
         <div className="absolute inset-0 flex flex-col">
