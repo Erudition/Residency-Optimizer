@@ -765,11 +765,17 @@ const App: React.FC = () => {
   );
 
   const getYearLabel = (y: number) => {
-    const diff = y - ACTIVE_START_YEAR;
-    if (diff === 0) return `AY ${y}-${(y+1).toString().slice(-2)} (Current)`;
-    if (diff < 0) return `AY ${y}-${(y+1).toString().slice(-2)} (${diff}y)`;
-    return `AY ${y}-${(y+1).toString().slice(-2)} (+${diff}y)`;
+    const now = new Date();
+    // Academic year starts July 1st (month index 6)
+    const currentAY = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    
+    if (y === currentAY) return `AY ${y}-${(y+1).toString().slice(-2)} (Current)`;
+    
+    const diff = y - currentAY;
+    const sign = diff > 0 ? '+' : '';
+    return `AY ${y}-${(y+1).toString().slice(-2)} (${sign}${diff}y)`;
   };
+
 
   return (
     <div className={`flex flex-col h-screen bg-light-1 bg-[url('https://res.cloudinary.com/dmukukwp6/image/upload/carpet_light_27d74f73b5.png')] bg-repeat text-black font-sans overflow-hidden ${activeSchedule?.isGenerating || isPending ? 'cursor-wait' : ''}`}>

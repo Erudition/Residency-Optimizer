@@ -126,3 +126,8 @@ To maintain year-independent data integrity, the application treats **Start Year
 
 ## 16. Database Purity
 *   **No Placeholders**: Initial data generation and "Factory Reset" logic must not create placeholder resident records for future years. Only residents with explicitly defined names or manually added data should exist in the database.
+
+## 17. Dynamic Academic Year Labeling
+*   **Constraint**: The "Current" academic year label must be determined dynamically based on the current calendar date, using **July 1st** as the transition point.
+*   **Implementation**: `getYearLabel` in `App.tsx` calculates the offset relative to the current physical academic year rather than a hardcoded constant, ensuring UI accuracy without manual code updates each July.
+
