@@ -461,44 +461,7 @@ const App: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (schedules.length === 0) {
-      const runInit = async () => {
-        // Preload historical data from JSON
-        const { history, cohortAssignments: histCohorts } = preloadHistoricalData(residents);
-        
-        // Generate current active year based on that history
-        // Assign default cohorts for active residents if not in history
-        const activeResForYear = getResidentsForYear(activeYear);
-        const cohortMap: Record<string, number> = {};
-        activeResForYear.forEach((r, idx) => {
-          cohortMap[r.id] = histCohorts[activeYear]?.[r.id] ?? (idx % 5);
-        });
 
-        const { results } = await runGenerationTask(activeResForYear, {}, compParams, undefined, history, cohortMap);
-        const sched = results[0];
-        
-        const initialSession: ScheduleSession = {
-          id: 'init-1',
-          name: `S1 (${sched.winnerName})`,
-          data: { ...history, [activeYear]: sched.schedule },
-          cohortAssignments: { ...histCohorts, [activeYear]: cohortMap },
-          createdAt: new Date(),
-          metrics: {
-            stats: calculateStats(activeResForYear, sched.schedule),
-            violations: {
-              reqs: getRequirementViolations(activeResForYear, sched.schedule, history),
-              constraints: getWeeklyViolations(activeResForYear, sched.schedule)
-            },
-            fairness: calculateFairnessMetrics(activeResForYear, sched.schedule),
-            score: sched.score
-          }
-        };
-        setSchedules([initialSession]);
-      };
-      runInit();
-    }
-  }, [schedules.length, residents, activeResidents, activeYear, compParams]);
 
   useEffect(() => { localStorage.setItem('rsp_residents_v3', JSON.stringify(residents)); }, [residents]);
   useEffect(() => { localStorage.setItem('rsp_schedules_v3', JSON.stringify(schedules)); }, [schedules]);
@@ -524,8 +487,8 @@ const App: React.FC = () => {
     (async () => {
       try {
         const yearsToGenerate = [ACTIVE_START_YEAR, ACTIVE_START_YEAR + 1, ACTIVE_START_YEAR + 2];
-        const runningData: ScheduleHistory = {};
-        const runningCohorts: Record<number, Record<string, number>> = {};
+        const runningData: ScheduleHistory = { ...historySchedules };
+        const runningCohorts: Record<number, Record<string, number>> = { ...historicalCohortsByYear };
         let finalWinnerName = "";
         let finalScore = 0;
 
