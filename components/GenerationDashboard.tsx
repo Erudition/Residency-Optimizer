@@ -3,63 +3,66 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { ConvergenceDataPoint } from '../types';
 
 interface Props {
-  data: ConvergenceDataPoint[];
+  data: number[][]; // Each element is an array of scores, one per algorithm
   onStop: () => void;
   onSelectWinners: () => void;
+  onCancelAlgorithm: (id: string) => void;
   algorithms: { id: string, name: string, color: string }[];
+  canceledIds: Set<string>;
 }
 
-export const GenerationDashboard: React.FC<Props> = ({ data, onStop, onSelectWinners, algorithms }) => {
+export const GenerationDashboard: React.FC<Props> = ({ data, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
   const chartData = useMemo(() => {
     const aggregated: any[] = [];
-    const latestScores: Record<string, number> = {};
-    let currentGlobalBest = -Infinity;
-
-    // Throttle data points for performance
-    const stride = Math.max(1, Math.floor(data.length / 300));
+    const stride = Math.max(1, Math.floor(data.length / 300)); // Fewer points for faster rendering
     
-    data.forEach((p, idx) => {
-      latestScores[p.algorithmId] = p.bestScoreSoFar;
-      currentGlobalBest = Math.max(currentGlobalBest, p.globalBestScore);
-      
+    data.forEach((scores, idx) => {
       if (idx % stride === 0 || idx === data.length - 1) {
-        aggregated.push({
-          round: p.attemptIndex,
-          ...latestScores,
-          globalBest: currentGlobalBest
+        const point: any = { round: idx };
+        algorithms.forEach((algo, i) => {
+          point[algo.id] = scores[i];
         });
+        aggregated.push(point);
       }
     });
     return aggregated;
+  }, [data, algorithms]);
+
+  const bestScore = useMemo(() => {
+    if (data.length === 0) return 0;
+    const lastRow = data[data.length - 1];
+    return Math.max(...lastRow);
   }, [data]);
 
   return (
-    <div className="bg-white rounded-3xl shadow-xl p-8 border border-light-5 flex flex-col gap-6 h-[500px] animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="bg-white rounded-3xl shadow-xl p-8 border border-light-5 flex flex-col gap-6 h-[550px] animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-2 h-2 rounded-full bg-green animate-pulse" />
+          <div className="w-2.5 h-2.5 rounded-full bg-green animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
           <div>
-            <h2 className="text-xl font-black text-primary tracking-tight">Evolutionary Progress</h2>
-            <p className="text-muted text-sm font-medium">Tracking score convergence across algorithms</p>
+            <h2 className="text-xl font-black text-primary tracking-tight">
+              Global Multi-Year Convergence
+            </h2>
+            <p className="text-muted text-sm font-medium">Holistic optimization across all academic years</p>
           </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <button 
             onClick={onStop} 
-            className="px-6 py-2.5 rounded-xl border-2 border-red/20 text-red font-bold hover:bg-red/5 transition-all active:scale-95"
+            className="px-6 py-2.5 rounded-xl border-2 border-red/10 text-red font-bold hover:bg-red/5 transition-all active:scale-95 text-sm"
           >
-            Cancel
+            Abort
           </button>
           <button 
             onClick={onSelectWinners} 
-            className="px-6 py-2.5 rounded-xl bg-green text-white font-bold shadow-lg shadow-green/20 hover:bg-green-dark transition-all active:scale-95"
+            className="px-6 py-2.5 rounded-xl bg-blue text-white font-bold shadow-lg shadow-blue/20 hover:bg-blue-dark transition-all active:scale-95 text-sm"
           >
-            Select Winners Now
+            Promote Best Now
           </button>
         </div>
       </div>
 
-      <div className="flex-1 w-full min-h-0 bg-light-1/30 rounded-2xl p-4">
+      <div className="flex-1 w-full min-h-0 bg-light-1/30 rounded-2xl p-4 border border-light-5">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -69,13 +72,11 @@ export const GenerationDashboard: React.FC<Props> = ({ data, onStop, onSelectWin
               domain={['auto', 'auto']} 
               tick={{fontSize: 10, fontWeight: 700, fill: '#64748b'}}
               stroke="#e2e8f0"
-              label={{ value: 'Attempts', position: 'insideBottomRight', offset: -5, fontSize: 10, fontWeight: 800 }}
             />
             <YAxis 
               tick={{fontSize: 10, fontWeight: 700, fill: '#64748b'}}
               stroke="#e2e8f0"
               domain={['auto', 'auto']}
-              label={{ value: 'Score', angle: -90, position: 'insideLeft', fontSize: 10, fontWeight: 800 }}
             />
             <Tooltip 
               contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px'}}
@@ -88,33 +89,58 @@ export const GenerationDashboard: React.FC<Props> = ({ data, onStop, onSelectWin
               formatter={(value) => <span className="text-xs font-bold text-primary">{value}</span>}
             />
             
-            {algorithms.map(algo => (
+            {algorithms.map(algo => !canceledIds.has(algo.id) && (
               <Line 
                 key={algo.id}
                 type="monotone" 
                 dataKey={algo.id} 
                 name={algo.name}
                 stroke={algo.color} 
-                strokeWidth={2}
+                strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 0 }}
                 isAnimationActive={false}
               />
             ))}
-            <Line 
-              type="monotone" 
-              dataKey="globalBest" 
-              name="Global Best"
-              stroke="#0f172a" 
-              strokeWidth={3}
-              strokeDasharray="5 5"
-              dot={false}
-              activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
-              isAnimationActive={false}
-            />
           </LineChart>
         </ResponsiveContainer>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {algorithms.map((algo, i) => {
+          const isCanceled = canceledIds.has(algo.id);
+          const currentBest = data.length > 0 ? data[data.length - 1][i] : -Infinity;
+          const isWinner = currentBest === bestScore && currentBest !== -Infinity;
+
+          return (
+            <div 
+              key={algo.id}
+              className={`p-3 rounded-2xl border transition-all relative ${isCanceled ? 'bg-light-1 opacity-50 border-transparent' : 'bg-white border-light-5 shadow-sm'} ${isWinner ? 'ring-2 ring-blue ring-offset-2' : ''}`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: algo.color }} />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted">{algo.name}</span>
+                </div>
+                {!isCanceled && (
+                  <button 
+                    onClick={() => onCancelAlgorithm(algo.id)}
+                    className="text-[10px] font-bold text-red/60 hover:text-red transition-colors"
+                  >
+                    Kill
+                  </button>
+                )}
+              </div>
+              <div className="text-xl font-black text-primary leading-none flex items-baseline gap-1">
+                {currentBest === -Infinity ? '---' : currentBest.toFixed(1)}
+                {isWinner && <span className="text-[8px] text-blue font-black uppercase">Best</span>}
+              </div>
+              <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">Attempt #{data.length}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 };
+

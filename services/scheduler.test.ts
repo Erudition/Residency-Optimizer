@@ -16,8 +16,17 @@ describe('Schedule Generator', () => {
     const mockCohortMap: Record<string, number> = residents.reduce((acc, r, idx) => ({ ...acc, [r.id]: idx % 5 }), {});
 
     beforeAll(async () => {
-        const result = await generateSchedule(residents, initialSchedule, { tries: 300, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['greedy', 'experimental', 'stochastic', 'strict'], topN: 1 }, undefined, undefined, mockCohortMap);
-        schedule = result.results[0].schedule;
+        const result = await generateSchedule(
+            2026, 
+            1, 
+            {}, 
+            { residents, existing: { 2026: initialSchedule }, cohortAssignments: { 2026: mockCohortMap } }, 
+            { tries: 300, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, 
+            ['greedy', 'experimental', 'stochastic', 'strict'], 
+            () => false, 
+            () => {}
+        );
+        schedule = result.results[0].schedule[2026];
     }, 180000); // Increase timeout for competition iterations
 
     it('should generate a schedule for every resident', () => {
@@ -127,11 +136,11 @@ describe('Schedule Generator', () => {
     });
 
     it('should produce non-deterministic (unique) schedules', { timeout: 300000 }, async () => {
-        const result1 = await generateSchedule(residents, initialSchedule, { tries: 2, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 });
-        const result2 = await generateSchedule(residents, initialSchedule, { tries: 2, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 });
+        const result1 = await generateSchedule(2026, 1, {}, { residents, existing: {}, cohortAssignments: {} }, { tries: 2, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['experimental', 'stochastic', 'strict'], () => false, () => {});
+        const result2 = await generateSchedule(2026, 1, {}, { residents, existing: {}, cohortAssignments: {} }, { tries: 2, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['experimental', 'stochastic', 'strict'], () => false, () => {});
 
-        const schedule1 = result1.results[0].schedule;
-        const schedule2 = result2.results[0].schedule;
+        const schedule1 = result1.results[0].schedule[2026];
+        const schedule2 = result2.results[0].schedule[2026];
 
         // Convert schedules to strings to compare them
         // We check if the entire grid is different. 

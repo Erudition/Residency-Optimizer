@@ -169,7 +169,9 @@ export interface CompetitionParams {
   priority: CompetitionPriority;
   algorithmIds: string[];
   topN: number;
+  multiYear: number;
 }
+
 
 export interface ConvergenceDataPoint {
   attemptIndex: number;

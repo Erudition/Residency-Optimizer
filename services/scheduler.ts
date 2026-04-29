@@ -20,15 +20,16 @@ export interface CompetitionResult {
 }
 
 export const generateSchedule = async (
-  residents: Resident[],
-  existing: ScheduleGrid,
-  params: CompetitionParams = { tries: 300, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 },
-  onProgress?: (progress: number, attemptsMade: number, convergenceData?: ConvergenceDataPoint) => void,
-  historicalSchedules?: ScheduleHistory,
-  cohortAssignments?: Record<string, number>,
-  baseSeed: number = Math.floor(Math.random() * 1000000),
-  signal?: AbortSignal
+  startYear: number,
+  totalYears: number,
+  historicalSchedules: ScheduleHistory,
+  constraints: { residents: Resident[], existing: Record<number, ScheduleGrid>, cohortAssignments: Record<number, Record<string, number>> },
+  params: CompetitionParams,
+  algorithmIds: string[],
+  isAlgorithmCanceled: (id: string) => boolean,
+  onProgress: (iteration: number, scores: number[], attempts: number) => void
 ): Promise<{ results: CompetitionResult[] }> => {
+  const { residents, existing, cohortAssignments } = constraints;
   const allGenerators = [
     { id: 'greedy', generator: WeekByWeekGenerator, name: 'Week By Week' },
     { id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' },
@@ -36,101 +37,114 @@ export const generateSchedule = async (
     { id: 'strict', generator: EducationFirstGenerator, name: 'Education First' },
   ];
 
-  const selectedGenerators = allGenerators.filter(g => params.algorithmIds.includes(g.id));
+  const selectedGenerators = allGenerators.filter(g => algorithmIds.includes(g.id));
   if (selectedGenerators.length === 0) {
     selectedGenerators.push({ id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' });
   }
 
   const results: CompetitionResult[] = [];
-  let bestScore = -Infinity;
   const algorithmBestScores: Record<string, number> = {};
+  selectedGenerators.forEach(g => algorithmBestScores[g.id] = -Infinity);
 
-  console.log(`Starting Algorithm Competition...`);
+  console.log(`Starting Unified Multi-Year Competition (${totalYears} years)...`);
 
   let i = 0;
-  while (true) {
-    if (signal?.aborted) {
-      console.log('Generation aborted by signal');
-      break;
-    }
+  const tries = params.tries || 300;
+
+  while (i < tries) {
+    const currentBestScores: number[] = [];
     
-    if (params.tries && i >= params.tries) {
-      break;
-    }
-
-    const g = selectedGenerators[i % selectedGenerators.length];
-    try {
-      const schedule = g.generator.generate(residents, existing, baseSeed + i, historicalSchedules, cohortAssignments);
-      const reqViolations = getRequirementViolations(residents, schedule, historicalSchedules);
-      const weekViolations = getWeeklyViolations(residents, schedule);
-      const totalViolations = reqViolations.length + weekViolations.length;
-      const currentUnderstaffing = weekViolations.filter(v => v.issue.includes('Min')).length;
-      const score = calculateScheduleScore(residents, schedule, historicalSchedules);
-
-      const result: CompetitionResult = {
-        schedule,
-        winnerName: g.name,
-        score,
-        totalViolations,
-        understaffing: currentUnderstaffing
-      };
-
-      // Update tracking
-      if (score > (algorithmBestScores[g.id] ?? -Infinity)) {
-        algorithmBestScores[g.id] = score;
-      }
-
-      if (score > bestScore) {
-        bestScore = score;
-      }
-
-      // Maintain topN results (sorted by priority)
-      results.push(result);
+    for (let idx = 0; idx < selectedGenerators.length; idx++) {
+      const g = selectedGenerators[idx];
       
-      // Sort using the established priority logic
-      results.sort((a, b) => {
-        if (params.priority === CompetitionPriority.LEAST_UNDERSTAFFING) {
-          if (a.understaffing !== b.understaffing) return a.understaffing - b.understaffing;
-          if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-          return b.score - a.score; // Higher score is better
-        } else {
-          if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-          return b.score - a.score;
+      if (isAlgorithmCanceled(g.id)) {
+        currentBestScores.push(algorithmBestScores[g.id]);
+        continue;
+      }
+
+      try {
+        let attemptTotalViolations = 0;
+        let attemptUnderstaffing = 0;
+        let attemptFullData: Record<number, ScheduleGrid> = {};
+        let runningHistory = { ...historicalSchedules };
+
+        // Generate each year in sequence for this attempt
+        for (let y = startYear; y < startYear + totalYears; y++) {
+          // Advance resident levels for this year
+          const yearResidents = residents.filter(r => {
+            const level = y - r.startYear + 1;
+            return level >= 1 && level <= 3;
+          }).map(r => ({
+            ...r,
+            level: (y - r.startYear + 1) as 1 | 2 | 3,
+            clinicType: (y - r.startYear + 1) === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC
+          }));
+
+          const yearExisting = existing[y] || {};
+          const yearSchedule = g.generator.generate(yearResidents, yearExisting, i + idx, runningHistory, cohortAssignments[y]);
+          
+          const reqViolations = getRequirementViolations(yearResidents, yearSchedule, runningHistory);
+          const weekViolations = getWeeklyViolations(yearResidents, yearSchedule);
+          
+          attemptTotalViolations += reqViolations.length + weekViolations.length;
+          attemptUnderstaffing += weekViolations.filter(v => v.issue.includes('Min')).length;
+          attemptFullData[y] = yearSchedule;
+          
+          // Update running history for the next year in the block
+          runningHistory[y] = yearSchedule;
         }
-      });
+        
+        // Holistic score: aggregate across all years
+        const score = 10000 - (attemptTotalViolations * 100) - (attemptUnderstaffing * 500);
 
-      if (results.length > (params.topN || 1)) {
-        results.pop();
-      }
+        // Check if this multi-year package qualifies for Top N
+        const currentWorstScore = results.length >= (params.topN || 1) ? results[results.length - 1].score : -Infinity;
+        
+        if (score >= currentWorstScore || results.length < (params.topN || 1)) {
+          const result: CompetitionResult = {
+            schedule: attemptFullData as any, // In multi-year mode, 'schedule' holds the full record
+            winnerName: g.name,
+            score,
+            totalViolations: attemptTotalViolations,
+            understaffing: attemptUnderstaffing
+          };
 
-      if (onProgress) {
-        const progressValue = params.tries ? Math.round(((i + 1) / params.tries) * 100) : 0;
-        onProgress(progressValue, i + 1, {
-          attemptIndex: i,
-          algorithmId: g.id,
-          score,
-          bestScoreSoFar: algorithmBestScores[g.id],
-          globalBestScore: bestScore,
-          timestamp: Date.now()
-        });
+          results.push(result);
+          results.sort((a, b) => {
+            if (params.priority === CompetitionPriority.LEAST_UNDERSTAFFING) {
+              if (a.understaffing !== b.understaffing) return a.understaffing - b.understaffing;
+              if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
+              return b.score - a.score;
+            } else {
+              if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
+              return b.score - a.score;
+            }
+          });
+
+          if (results.length > (params.topN || 1)) {
+            results.pop();
+          }
+        }
+
+        if (score > algorithmBestScores[g.id]) {
+          algorithmBestScores[g.id] = score;
+        }
+      } catch (e) {
+        console.error(`Generator ${g.name} failed attempt ${i}`, e);
       }
-    } catch (e) {
-      console.error(`Generator ${g.name} failed attempt ${i}`, e);
+      currentBestScores.push(algorithmBestScores[g.id] === -Infinity ? 0 : algorithmBestScores[g.id]);
     }
 
     i++;
+    onProgress(i, currentBestScores, i);
     
-    // Yield to main thread occasionally
-    if (i % 20 === 0) {
+    if (i % 10 === 0) {
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   }
 
-  if (onProgress && params.tries) onProgress(100, i);
-
   return { results };
 };
-
 
 // --- Analysis Helpers (Kept for UI/Analysis) ---
 

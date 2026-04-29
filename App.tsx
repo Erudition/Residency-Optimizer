@@ -264,6 +264,9 @@ const App: React.FC = () => {
   });
   
   const [convergenceData, setConvergenceData] = useState<ConvergenceDataPoint[]>([]);
+  const [canceledAlgoIds, setCanceledAlgoIds] = useState<Set<string>>(new Set());
+  const activeWorkersRef = useRef<Set<Worker>>(new Set());
+  const currentWorkerRef = useRef<Worker | null>(null);
   const generationControllerRef = useRef<AbortController | null>(null);
   const [isCanceled, setIsCanceled] = useState(false);
 
@@ -272,14 +275,17 @@ const App: React.FC = () => {
       tries: 100,
       priority: CompetitionPriority.BEST_SCORE,
       algorithmIds: ['stochastic', 'experimental', 'strict'],
-      topN: 1
+      topN: 10,
+      multiYear: 3
     });
 
     const validIds = ['stochastic', 'experimental', 'strict', 'greedy'];
     return {
       ...loaded,
-      topN: loaded.topN || 1,
-      algorithmIds: loaded.algorithmIds.filter(id => validIds.includes(id))
+      topN: loaded.topN || 10,
+      multiYear: loaded.multiYear || 3,
+      algorithmIds: loaded.algorithmIds.filter(id => (validIds as string[]).includes(id))
+
     };
   });
 
@@ -402,9 +408,6 @@ const App: React.FC = () => {
     localStorage.setItem('rsp_sort_order', JSON.stringify(residentSortOrder));
   }, [residentSortOrder]);
 
-  // Track active workers for cleanup
-  const activeWorkersRef = useRef<Set<Worker>>(new Set());
-
   // Cleanup workers on unmount (when tab closes)
   useEffect(() => {
     return () => {
@@ -415,22 +418,24 @@ const App: React.FC = () => {
 
   // Helper to spawn a web worker for background generation
   const runGenerationTask = (
+    startYear: number,
+    totalYears: number,
     residents: Resident[], 
     existing: ScheduleGrid, 
     params: CompetitionParams, 
-    onProgress: (p: number, a: number, c?: ConvergenceDataPoint) => void, 
-    historicalSchedules?: ScheduleHistory, 
-    cohortAssignments?: Record<string, number>,
+    onProgress: (iteration: number, attempts: number, scores: number[] | undefined, year: number, overallProgress: number) => void, 
+    historicalSchedules: ScheduleHistory, 
+    cohortAssignments: Record<number, Record<string, number>>,
+    algorithmIds: string[],
     signal?: AbortSignal
   ): Promise<{ results: any[] }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
       activeWorkersRef.current.add(worker);
+      currentWorkerRef.current = worker;
 
       const onAbort = () => {
         worker.postMessage({ type: 'cancel' });
-        // Don't terminate or reject immediately, let the worker finish its current round 
-        // and return the best results found so far.
       };
 
       if (signal) {
@@ -438,9 +443,9 @@ const App: React.FC = () => {
       }
 
       worker.onmessage = (e) => {
-        const { type, progress, attemptsMade, convergenceData, results, error } = e.data;
+        const { type, iteration, overallProgress, bestScore, attempts, year, results, error } = e.data;
         if (type === 'progress') {
-          onProgress(progress, attemptsMade, convergenceData);
+          onProgress(iteration, attempts, bestScore, year, overallProgress);
         } else if (type === 'success') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -452,7 +457,9 @@ const App: React.FC = () => {
           worker.terminate();
           reject(new Error(error));
         } else if (type === 'aborted') {
+          if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
+          if (currentWorkerRef.current === worker) currentWorkerRef.current = null;
           worker.terminate();
           reject(new DOMException('Aborted', 'AbortError'));
         }
@@ -461,11 +468,27 @@ const App: React.FC = () => {
       worker.onerror = (e) => {
         if (signal) signal.removeEventListener('abort', onAbort);
         activeWorkersRef.current.delete(worker);
+        if (currentWorkerRef.current === worker) currentWorkerRef.current = null;
         worker.terminate();
         reject(e);
       };
 
-      worker.postMessage({ type: 'generate', residents, existing, params, historicalSchedules, cohortAssignments });
+      // Clean up ref on completion
+      const originalResolve = resolve;
+      resolve = (val: any) => {
+        if (currentWorkerRef.current === worker) currentWorkerRef.current = null;
+        originalResolve(val);
+      };
+
+      worker.postMessage({ 
+        type: 'generate', 
+        year: startYear, 
+        totalYears, 
+        historicalSchedules, 
+        constraints: { residents, existing, cohortAssignments }, 
+        params, 
+        algorithmIds 
+      });
     });
   };
 
@@ -534,6 +557,7 @@ const App: React.FC = () => {
     setSchedules(prev => [...prev, newSession]);
     setActiveScheduleId(newId);
     setConvergenceData([]);
+    setCanceledAlgoIds(new Set());
     setIsCanceled(false);
     
     const controller = new AbortController();
@@ -541,70 +565,63 @@ const App: React.FC = () => {
 
     (async () => {
       try {
-        const yearsToGenerate = [ACTIVE_START_YEAR, ACTIVE_START_YEAR + 1, ACTIVE_START_YEAR + 2];
-        const runningData: ScheduleHistory = { ...historySchedules };
-        const runningCohorts: Record<number, Record<string, number>> = { ...historicalCohortsByYear };
-        let finalWinnerName = "";
-        let finalScore = 0;
-
-        for (let i = 0; i < yearsToGenerate.length; i++) {
-          const year = yearsToGenerate[i];
-          const activeResForYear = getResidentsForYear(year);
-          
-          const cohortMap: Record<string, number> = {};
-          activeResForYear.forEach((r, idx) => {
-            cohortMap[r.id] = historicalCohortsByYear[year]?.[r.id] ?? (idx % 5);
-          });
-          runningCohorts[year] = cohortMap;
-
-          setSchedules(prev => prev.map(s =>
-            s.id === newId ? { ...s, progressLabel: `Year ${i + 1} of 3 (${year})` } : s
-          ));
-
-          const { results } = await runGenerationTask(
-            activeResForYear, 
-            {}, 
-            compParams, 
-            (progress, attempts, conv) => {
-              const overallProgress = Math.round((i * 100 + progress) / yearsToGenerate.length);
-              setSchedules(prev => prev.map(s =>
-                s.id === newId ? { ...s, progress: overallProgress, attemptsMade: attempts } : s
-              ));
-              if (conv) {
-                setConvergenceData(prev => [...prev, conv]);
-              }
-            }, 
-            runningData,
-            cohortMap,
-            controller.signal
-          );
-
-          const best = results[0];
-          runningData[year] = best.schedule;
-          if (year === activeYear) {
-            finalWinnerName = best.winnerName;
-            finalScore = best.score;
-          }
-          
-          await new Promise(r => setTimeout(r, 100));
-        }
-
-        const newIds = [0].map((_, idx) => `sched-${Date.now()}-${idx}-${salt}`);
-        const firstId = newIds[0];
-
-        setSchedules(prev => {
-          const filtered = prev.filter(s => s.id !== newId);
-          const master: ScheduleSession = {
-            id: firstId,
-            name: `${finalWinnerName} (Multi-Year Optimal)`,
-            data: runningData,
-            cohortAssignments: runningCohorts,
-            createdAt: new Date(),
-            isGenerating: false,
-          };
-          return [...filtered, master];
+        const totalYears = compParams.multiYear || 1;
+        const yearsToGenerate = Array.from({ length: totalYears }, (_, i) => activeYear + i);
+        
+        // Use startTransition for the heavy lifting
+        startTransition(() => {
+          setSchedules(prev => [...prev, newSession]);
+          setActiveScheduleId(newId);
+          setConvergenceData([]);
         });
-        setActiveScheduleId(firstId);
+
+        const { results } = await runGenerationTask(
+          activeYear,
+          totalYears,
+          residents,
+          {}, // existing (can be expanded later)
+          compParams,
+          (iteration, attempts, scores, year, overallProgress) => {
+            // Update progress in a transition to keep UI responsive
+            startTransition(() => {
+              setSchedules(prev => prev.map(s =>
+                s.id === newId ? { 
+                  ...s, 
+                  progress: Math.round(overallProgress * 100), 
+                  attemptsMade: attempts,
+                  progressLabel: `Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`
+                } : s
+              ));
+              
+              if (scores) {
+                setConvergenceData(prev => [...prev, scores]);
+              }
+            });
+          },
+          historicalSchedules,
+          activeSchedule?.cohortAssignments || {}, // Pass existing cohorts if we have them
+          algorithms.map(a => a.id),
+          controller.signal
+        );
+
+        // Process results
+        const salt = Math.floor(Math.random() * 1000000);
+        const newIds = results.map((_: any, idx: number) => `sched-${Date.now()}-${idx}-${salt}`);
+        
+        startTransition(() => {
+          setSchedules(prev => {
+            const filtered = prev.filter(s => s.id !== newId);
+            const masters: ScheduleSession[] = results.map((res: any, idx: number) => ({
+              id: newIds[idx],
+              name: `${res.winnerName} (${idx === 0 ? 'Optimal' : `Rank ${idx + 1}`})`,
+              data: res.schedule, // res.schedule is already Record<number, ScheduleGrid> from unified generator
+              createdAt: new Date(),
+              isGenerating: false,
+            }));
+            return [...filtered, ...masters];
+          });
+          setActiveScheduleId(newIds[0]);
+        });
 
       } catch (err: any) {
         if (err.name === 'AbortError') {
@@ -823,16 +840,20 @@ const App: React.FC = () => {
     return `AY ${y}-${(y+1).toString().slice(-2)} (${sign}${diff}y)`;
   };
 
-
-
   return (
-    <div className={`flex flex-col h-screen bg-light-1 bg-[url('https://res.cloudinary.com/dmukukwp6/image/upload/carpet_light_27d74f73b5.png')] bg-repeat text-black font-sans overflow-hidden ${activeSchedule?.isGenerating || isPending ? 'cursor-wait' : ''}`}>
+    <div className={`min-h-screen bg-light-1 flex flex-col font-sans transition-all duration-300`}>
 
       {/* ─── Global Header Bar ─── */}
       <div className="h-11 bg-light-3 flex items-center shrink-0 z-30 px-4 border-b border-light-4">
         {/* Left: App Title */}
         <div className="flex items-center gap-2 mr-6">
           <span className="text-sm font-black text-primary tracking-tight">Residency Scheduler</span>
+          {schedules.some(s => s.isGenerating) && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue/10 rounded-full border border-blue/20 animate-pulse">
+              <Loader2 size={10} className="text-blue animate-spin" />
+              <span className="text-[9px] font-black text-blue uppercase tracking-tighter">Engine Busy</span>
+            </div>
+          )}
         </div>
 
         {/* Center: Academic Year Tabs */}
@@ -905,7 +926,7 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft' && !activeSchedule?.isGenerating) || isHistoricalYear ? (
+      {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
@@ -1041,7 +1062,7 @@ const App: React.FC = () => {
                 }));
               }}
               onCompete={handleGenerate}
-              onClearStats={() => setAlgoStats({})}
+              onClearStats={() => setAlgoStats([])}
             />
           ) : (activeScheduleId === 'all' && !isHistoricalYear) ? (
             <div className="flex-1 bg-white overflow-y-auto">
@@ -1070,15 +1091,34 @@ const App: React.FC = () => {
           ) : activeSchedule?.isGenerating ? (
             <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
               <div className="w-full max-w-4xl">
+            {/* Multiple charts for multi-year generation */}
+              {convergenceData.length > 0 ? (
                 <GenerationDashboard 
-                  data={convergenceData} 
+                  data={convergenceData}
                   onStop={stopGeneration}
-                  onSelectWinners={stopGeneration}
+                  onSelectWinners={() => {
+                    if (currentWorkerRef.current) {
+                      currentWorkerRef.current.postMessage({ type: 'cancel' });
+                    }
+                  }}
+                  onCancelAlgorithm={(algoId) => {
+                    setCanceledAlgoIds(prev => new Set(prev).add(algoId));
+                    if (currentWorkerRef.current) {
+                      currentWorkerRef.current.postMessage({ type: 'cancelAlgorithm', algoId });
+                    }
+                  }}
                   algorithms={compParams.algorithmIds.map(id => {
                     const algo = algoConfig.find(a => a.id === id);
                     return { id, name: algo?.name || id, color: algo?.color || '#000' };
                   })}
+                  canceledIds={canceledAlgoIds}
                 />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl shadow-xl border border-light-5">
+                  <div className="w-12 h-12 rounded-full border-4 border-light-5 border-t-blue animate-spin mb-4" />
+                  <p className="text-muted font-bold tracking-tight">Initializing algorithms...</p>
+                </div>
+              )}
                 
                 <div className="mt-8 flex flex-col items-center gap-2">
                   <div className="flex items-center gap-3">
@@ -1210,8 +1250,8 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* ─── Bottom Tab Bar (Spreadsheet-style, future years only) ─── */}
-      {isFutureYear && activeScheduleId !== 'settings' && (
+      {/* ─── Bottom Tab Bar (Spreadsheet-style, persistent) ─── */}
+      {activeScheduleId !== 'settings' && (
         <div className="h-9 bg-light-3 flex items-stretch shrink-0 z-30 px-2 border-t border-light-4 relative">
           {/* Left: Future Schedules label */}
           <div

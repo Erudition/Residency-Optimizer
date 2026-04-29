@@ -40,7 +40,21 @@ export const CompetitorStudio: React.FC<Props> = ({
 
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
+                        <label className="text-xs font-bold text-muted uppercase tracking-widest">Horizon</label>
+                        <Select
+                            value={params.multiYear || 1}
+                            onChange={(e) => onParamsChange({ ...params, multiYear: parseInt(e.target.value) || 1 })}
+                            className="bg-light-2 border border-light-5 rounded-lg px-3 py-2 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition-all cursor-pointer"
+                        >
+                            <option value={1}>1 Year</option>
+                            <option value={2}>2 Years</option>
+                            <option value={3}>3 Years</option>
+                        </Select>
+                    </div>
+
+                    <div className="flex items-center gap-3">
                         <label className="text-xs font-bold text-muted uppercase tracking-widest">Top</label>
+
                         <input
                             type="number"
                             min={1}

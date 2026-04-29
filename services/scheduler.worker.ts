@@ -1,54 +1,60 @@
 import { generateSchedule } from './scheduler';
-import { ConvergenceDataPoint } from '../types';
 
-let currentAbortController: AbortController | null = null;
+let cancelledAlgorithmIds = new Set<string>();
+let overallProgress = 0;
+
+// Throttled progress updates to avoid flooding the UI thread
+let lastUpdate = 0;
+let pendingProgress: any = null;
+
+const postProgress = (iteration: number, scores: number[], attempts: number) => {
+  const now = Date.now();
+  pendingProgress = { type: 'progress', iteration, overallProgress, bestScore: scores, attempts };
+  
+  if (now - lastUpdate > 150) { 
+    postMessage(pendingProgress);
+    pendingProgress = null;
+    lastUpdate = now;
+  }
+};
 
 onmessage = async (e: MessageEvent) => {
-    const { type, residents, existing, params, historicalSchedules, cohortAssignments } = e.data;
+  const { type, totalYears, historicalSchedules, constraints, params, algorithmIds } = e.data;
 
-    if (type === 'cancel') {
-        currentAbortController?.abort();
-        return;
-    }
-
-    // Support legacy message format for backwards compatibility if needed, 
-    // but prefer explicit 'generate' type
-    if (type === 'generate' || !type) {
-        currentAbortController?.abort();
-        currentAbortController = new AbortController();
-        const signal = currentAbortController.signal;
-
-        try {
-            let lastPost = 0;
-            const result = await generateSchedule(
-                residents, 
-                existing, 
-                params, 
-                (progress, attemptsMade, convergenceData) => {
-                    const now = Date.now();
-                    // Stream updates: every 500ms, or when progress hits 100%, 
-                    // or whenever we have new convergence data (graph needs real-time points)
-                    if (now - lastPost > 500 || progress === 100 || convergenceData) {
-                        lastPost = now;
-                        postMessage({ type: 'progress', progress, attemptsMade, convergenceData });
-                    }
-                }, 
-                historicalSchedules, 
-                cohortAssignments,
-                undefined, // baseSeed
-                signal
-            );
-            postMessage({ type: 'success', results: result.results });
-        } catch (error: any) {
-            if (signal.aborted || error?.name === 'AbortError') {
-                postMessage({ type: 'aborted' });
-            } else {
-                postMessage({ type: 'error', error: error instanceof Error ? error.message : String(error) });
-            }
-        } finally {
-            if (currentAbortController?.signal === signal) {
-                currentAbortController = null;
-            }
+  if (type === 'generate') {
+    cancelledAlgorithmIds.clear();
+    overallProgress = 0;
+    
+    try {
+      const result = await generateSchedule(
+        e.data.year,
+        totalYears,
+        historicalSchedules,
+        constraints,
+        params,
+        algorithmIds,
+        (id) => cancelledAlgorithmIds.has(id),
+        (iteration, scores, attempts) => {
+          overallProgress = iteration / (params.tries || 300);
+          postProgress(iteration, scores, attempts);
         }
+      );
+
+      // Flush any pending progress
+      if (pendingProgress) {
+        postMessage(pendingProgress);
+        pendingProgress = null;
+      }
+
+      // result.results already contains CompetitionResult[] where .schedule is the full multi-year Record
+      postMessage({ type: 'success', results: result.results });
+    } catch (error) {
+      postMessage({ type: 'error', error: error instanceof Error ? error.message : String(error) });
     }
+  } else if (type === 'cancelAlgorithm') {
+    cancelledAlgorithmIds.add(e.data.algoId);
+  } else if (type === 'cancel') {
+    // Abort is handled by the main thread terminating the worker, 
+    // but we can also use a flag if we wanted more graceful exit
+  }
 };
