@@ -6,7 +6,8 @@ import {
   ScheduleGrid,
   ScheduleHistory,
   AssignmentType,
-  ScheduleCell
+  ScheduleCell,
+  ConvergenceDataPoint
 } from './types';
 import {
   GENERATE_INITIAL_RESIDENTS,
@@ -30,6 +31,7 @@ import { ScheduleComparison } from './components/ScheduleComparison';
 import { ACGMEAudit } from './components/ACGMEAudit';
 import { CompetitorStudio } from './components/CompetitorStudio';
 import { CohortKanban } from './components/CohortKanban';
+import { GenerationDashboard } from './components/GenerationDashboard';
 import { Button } from './components/ui/Button';
 import { Input } from './components/ui/Input';
 import {
@@ -256,9 +258,14 @@ const App: React.FC = () => {
 
   ]);
 
-  const [algoStats, setAlgoStats] = useState<Record<string, AlgorithmStats>>(() =>
-    loadState('rsp_algo_stats_v1', {})
-  );
+  const [algoStats, setAlgoStats] = useState<AlgorithmStats[]>(() => {
+    const saved = localStorage.getItem('rsp_algo_stats_v1');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const [convergenceData, setConvergenceData] = useState<ConvergenceDataPoint[]>([]);
+  const generationControllerRef = useRef<AbortController | null>(null);
+  const [isCanceled, setIsCanceled] = useState(false);
 
   const [compParams, setCompParams] = useState<CompetitionParams>(() => {
     const loaded = loadState('rsp_comp_params_v1', {
@@ -407,33 +414,61 @@ const App: React.FC = () => {
   }, []);
 
   // Helper to spawn a web worker for background generation
-  const runGenerationTask = (residents: Resident[], existing: ScheduleGrid, params: CompetitionParams, onProgress: (p: number, a: number) => void, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): Promise<{ results: any[] }> => {
+  const runGenerationTask = (
+    residents: Resident[], 
+    existing: ScheduleGrid, 
+    params: CompetitionParams, 
+    onProgress: (p: number, a: number, c?: ConvergenceDataPoint) => void, 
+    historicalSchedules?: ScheduleHistory, 
+    cohortAssignments?: Record<string, number>,
+    signal?: AbortSignal
+  ): Promise<{ results: any[] }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
       activeWorkersRef.current.add(worker);
 
+      const onAbort = () => {
+        worker.postMessage({ type: 'cancel' });
+        // Don't terminate or reject immediately, let the worker finish its current round 
+        // and return the best results found so far.
+      };
+
+      if (signal) {
+        signal.addEventListener('abort', onAbort);
+      }
+
       worker.onmessage = (e) => {
-        const { type, progress, attemptsMade, results, error } = e.data;
+        const { type, progress, attemptsMade, convergenceData, results, error } = e.data;
         if (type === 'progress') {
-          onProgress(progress, attemptsMade);
+          onProgress(progress, attemptsMade, convergenceData);
         } else if (type === 'success') {
+          if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
           worker.terminate();
           resolve({ results });
         } else if (type === 'error') {
+          if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
           worker.terminate();
           reject(new Error(error));
+        } else if (type === 'aborted') {
+          activeWorkersRef.current.delete(worker);
+          worker.terminate();
+          reject(new DOMException('Aborted', 'AbortError'));
         }
       };
+      
       worker.onerror = (e) => {
+        if (signal) signal.removeEventListener('abort', onAbort);
         activeWorkersRef.current.delete(worker);
         worker.terminate();
         reject(e);
       };
-      worker.postMessage({ residents, existing, params, historicalSchedules, cohortAssignments });
+
+      worker.postMessage({ type: 'generate', residents, existing, params, historicalSchedules, cohortAssignments });
     });
   };
+
 
   const startTimeRef = useRef<number>(0);
   useEffect(() => {
@@ -498,6 +533,11 @@ const App: React.FC = () => {
 
     setSchedules(prev => [...prev, newSession]);
     setActiveScheduleId(newId);
+    setConvergenceData([]);
+    setIsCanceled(false);
+    
+    const controller = new AbortController();
+    generationControllerRef.current = controller;
 
     (async () => {
       try {
@@ -511,14 +551,12 @@ const App: React.FC = () => {
           const year = yearsToGenerate[i];
           const activeResForYear = getResidentsForYear(year);
           
-          // Use historical cohorts if available, otherwise default to idx % 5
           const cohortMap: Record<string, number> = {};
           activeResForYear.forEach((r, idx) => {
             cohortMap[r.id] = historicalCohortsByYear[year]?.[r.id] ?? (idx % 5);
           });
           runningCohorts[year] = cohortMap;
 
-          // Update progress label
           setSchedules(prev => prev.map(s =>
             s.id === newId ? { ...s, progressLabel: `Year ${i + 1} of 3 (${year})` } : s
           ));
@@ -527,15 +565,18 @@ const App: React.FC = () => {
             activeResForYear, 
             {}, 
             compParams, 
-            (progress, attempts) => {
-              // Adjust progress to be relative to the 3-year process
+            (progress, attempts, conv) => {
               const overallProgress = Math.round((i * 100 + progress) / yearsToGenerate.length);
               setSchedules(prev => prev.map(s =>
                 s.id === newId ? { ...s, progress: overallProgress, attemptsMade: attempts } : s
               ));
+              if (conv) {
+                setConvergenceData(prev => [...prev, conv]);
+              }
             }, 
             runningData,
-            cohortMap
+            cohortMap,
+            controller.signal
           );
 
           const best = results[0];
@@ -545,7 +586,6 @@ const App: React.FC = () => {
             finalScore = best.score;
           }
           
-          // Small delay to allow state updates and UI responsiveness
           await new Promise(r => setTimeout(r, 100));
         }
 
@@ -554,32 +594,36 @@ const App: React.FC = () => {
 
         setSchedules(prev => {
           const filtered = prev.filter(s => s.id !== newId);
-          const nameOffset = filtered.length;
-
-          const newSessions: ScheduleSession[] = [0].map((_, idx) => {
-            return {
-              id: newIds[idx],
-              name: `S${nameOffset + idx + 1}${finalWinnerName ? ` (${finalWinnerName})` : ''}`,
-              data: runningData,
-              cohortAssignments: runningCohorts,
-              createdAt: new Date()
-            };
-          });
-
-          return [...filtered, ...newSessions];
+          const master: ScheduleSession = {
+            id: firstId,
+            name: `${finalWinnerName} (Multi-Year Optimal)`,
+            data: runningData,
+            cohortAssignments: runningCohorts,
+            createdAt: new Date(),
+            isGenerating: false,
+          };
+          return [...filtered, master];
         });
+        setActiveScheduleId(firstId);
 
-        if (firstId) {
-          startTransition(() => {
-            setActiveScheduleId(firstId);
-          });
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          console.log('Generation aborted by user');
+        } else {
+          console.error("Generation failed:", err);
+          setSchedules(prev => prev.filter(s => s.id !== newId));
         }
-      } catch (e) {
-        console.error("3-Year Generation failed", e);
-        setSchedules(prev => prev.filter(s => s.id !== newId));
-        alert("Failed to generate 3-year schedule.");
+      } finally {
+        generationControllerRef.current = null;
       }
     })();
+  };
+
+  const stopGeneration = () => {
+    if (generationControllerRef.current) {
+      generationControllerRef.current.abort();
+      setIsCanceled(true);
+    }
   };
 
   const handleRename = (newName: string) => {
@@ -1024,48 +1068,28 @@ const App: React.FC = () => {
               />
             </div>
           ) : activeSchedule?.isGenerating ? (
-            <div className="flex-1 flex flex-col items-center justify-center bg-white p-12 text-center">
-              <div className="relative">
-                <div className="absolute inset-0 bg-light-blue rounded-full animate-ping opacity-25"></div>
-                <div className="relative bg-white p-6 rounded-full shadow-sm border mb-8">
-                  <Loader2 size={48} className="text-blue animate-spin" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-black text-black mb-2">Generating Candidate Schedules</h3>
-              <p className="text-muted font-medium max-w-sm mb-8">
-                Running {(compParams.tries * compParams.algorithmIds.length).toLocaleString()} permutations to {getPriorityText()}
-              </p>
-
-              <div className="w-80 space-y-4">
-                {compParams.algorithmIds.map(algoId => {
-                  const algo = algoConfig.find(a => a.id === algoId);
-                  if (!algo) return null;
-                  return (
-                    <div key={algoId} className="space-y-1">
-                      <div className="flex justify-between text-[10px] font-black text-muted uppercase tracking-widest">
-                        <span>{activeSchedule.progressLabel || algo.name}</span>
-                        <span>{activeSchedule.progress || 0}%</span>
-                      </div>
-                      <div className="w-full bg-light-2 rounded-full h-2 overflow-hidden border border-light-5">
-                        <div
-                          className="h-full transition-all duration-500 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]"
-                          style={{
-                            width: `${activeSchedule.progress || 0}%`,
-                            backgroundColor: algo.color
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <div className="flex justify-between items-center pt-2">
-                  <div className="text-[10px] font-bold text-muted uppercase tracking-widest">
-                    ETA: {getEta()}
+            <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
+              <div className="w-full max-w-4xl">
+                <GenerationDashboard 
+                  data={convergenceData} 
+                  onStop={stopGeneration}
+                  onSelectWinners={stopGeneration}
+                  algorithms={compParams.algorithmIds.map(id => {
+                    const algo = algoConfig.find(a => a.id === id);
+                    return { id, name: algo?.name || id, color: algo?.color || '#000' };
+                  })}
+                />
+                
+                <div className="mt-8 flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <Loader2 size={20} className="text-blue animate-spin" />
+                    <span className="text-lg font-black text-primary uppercase tracking-tight">
+                      {activeSchedule.progressLabel || 'Engine Initializing...'}
+                    </span>
                   </div>
-                  <div className="text-[10px] font-bold text-blue uppercase tracking-widest bg-light-blue/20 py-1 px-3 rounded-full inline-block">
-                    {activeSchedule.attemptsMade ? `${activeSchedule.attemptsMade.toLocaleString()} permutations checked` : 'Initializing engine...'}
-                  </div>
+                  <p className="text-muted font-medium text-sm">
+                    {activeSchedule.progress || 0}% through global optimization
+                  </p>
                 </div>
               </div>
             </div>

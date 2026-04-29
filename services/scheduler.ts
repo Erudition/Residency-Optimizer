@@ -1,5 +1,5 @@
 
-import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics } from '../types';
+import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint } from '../types';
 import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS } from '../constants';
 import { getRequirementCount, getCumulativeRequirementCount } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
@@ -23,10 +23,11 @@ export const generateSchedule = async (
   residents: Resident[],
   existing: ScheduleGrid,
   params: CompetitionParams = { tries: 300, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 },
-  onProgress?: (progress: number, attemptsMade: number) => void,
+  onProgress?: (progress: number, attemptsMade: number, convergenceData?: ConvergenceDataPoint) => void,
   historicalSchedules?: ScheduleHistory,
   cohortAssignments?: Record<string, number>,
-  baseSeed: number = Math.floor(Math.random() * 1000000)
+  baseSeed: number = Math.floor(Math.random() * 1000000),
+  signal?: AbortSignal
 ): Promise<{ results: CompetitionResult[] }> => {
   const allGenerators = [
     { id: 'greedy', generator: WeekByWeekGenerator, name: 'Week By Week' },
@@ -40,67 +41,96 @@ export const generateSchedule = async (
     selectedGenerators.push({ id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' });
   }
 
-  const attempts: { generator: any; name: string }[] = [];
-
-  selectedGenerators.forEach(g => {
-    for (let i = 0; i < params.tries; i++) {
-      attempts.push({ generator: g.generator, name: g.name });
-    }
-  });
-
   const results: CompetitionResult[] = [];
+  let bestScore = -Infinity;
+  const algorithmBestScores: Record<string, number> = {};
 
-  console.log(`Starting Algorithm Competition with ${params.tries} tries for ${selectedGenerators.map(g => g.name).join(', ')}...`);
+  console.log(`Starting Algorithm Competition...`);
 
-  for (let i = 0; i < attempts.length; i++) {
-    const att = attempts[i];
+  let i = 0;
+  while (true) {
+    if (signal?.aborted) {
+      console.log('Generation aborted by signal');
+      break;
+    }
+    
+    if (params.tries && i >= params.tries) {
+      break;
+    }
+
+    const g = selectedGenerators[i % selectedGenerators.length];
     try {
-      const schedule = att.generator.generate(residents, existing, baseSeed + i, historicalSchedules, cohortAssignments);
+      const schedule = g.generator.generate(residents, existing, baseSeed + i, historicalSchedules, cohortAssignments);
       const reqViolations = getRequirementViolations(residents, schedule, historicalSchedules);
       const weekViolations = getWeeklyViolations(residents, schedule);
       const totalViolations = reqViolations.length + weekViolations.length;
       const currentUnderstaffing = weekViolations.filter(v => v.issue.includes('Min')).length;
       const score = calculateScheduleScore(residents, schedule, historicalSchedules);
 
-      results.push({
+      const result: CompetitionResult = {
         schedule,
-        winnerName: att.name,
+        winnerName: g.name,
         score,
         totalViolations,
         understaffing: currentUnderstaffing
+      };
+
+      // Update tracking
+      if (score > (algorithmBestScores[g.id] ?? -Infinity)) {
+        algorithmBestScores[g.id] = score;
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+      }
+
+      // Maintain topN results (sorted by priority)
+      results.push(result);
+      
+      // Sort using the established priority logic
+      results.sort((a, b) => {
+        if (params.priority === CompetitionPriority.LEAST_UNDERSTAFFING) {
+          if (a.understaffing !== b.understaffing) return a.understaffing - b.understaffing;
+          if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
+          return b.score - a.score; // Higher score is better
+        } else {
+          if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
+          return b.score - a.score;
+        }
       });
 
-      if (onProgress && i % 10 === 0) {
-        onProgress(Math.round(((i + 1) / attempts.length) * 100), i + 1);
+      if (results.length > (params.topN || 1)) {
+        results.pop();
+      }
+
+      if (onProgress) {
+        const progressValue = params.tries ? Math.round(((i + 1) / params.tries) * 100) : 0;
+        onProgress(progressValue, i + 1, {
+          attemptIndex: i,
+          algorithmId: g.id,
+          score,
+          bestScoreSoFar: algorithmBestScores[g.id],
+          globalBestScore: bestScore,
+          timestamp: Date.now()
+        });
       }
     } catch (e) {
-      console.error(`Generator ${att.name} failed attempt ${i}`, e);
+      console.error(`Generator ${g.name} failed attempt ${i}`, e);
     }
 
-    if (i % 5 === 0) {
+    i++;
+    
+    // Yield to main thread occasionally
+    if (i % 20 === 0) {
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   }
 
-  // Final Ranking Logic based on Priority
-  results.sort((a, b) => {
-    if (params.priority === CompetitionPriority.LEAST_UNDERSTAFFING) {
-      if (a.understaffing !== b.understaffing) return a.understaffing - b.understaffing;
-      if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-      return a.score - b.score;
-    } else if (params.priority === CompetitionPriority.MOST_PGY_REQS) {
-      if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-      return a.score - b.score;
-    } else {
-      if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-      return a.score - b.score;
-    }
-  });
+  if (onProgress && params.tries) onProgress(100, i);
 
-  if (onProgress) onProgress(100, attempts.length);
-
-  return { results: results.slice(0, params.topN || 1) };
+  return { results };
 };
+
 
 // --- Analysis Helpers (Kept for UI/Analysis) ---
 

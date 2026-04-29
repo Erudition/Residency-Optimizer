@@ -60,17 +60,6 @@ export const CompetitorStudio: React.FC<Props> = ({
                         </Select>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <label className="text-xs font-bold text-muted uppercase tracking-widest">of</label>
-                        <input
-                            type="number"
-                            min={1}
-                            max={10000}
-                            value={params.tries}
-                            onChange={(e) => onParamsChange({ ...params, tries: parseInt(e.target.value) || 100 })}
-                            className="w-24 bg-light-2 border border-light-5 rounded-lg px-4 py-2.5 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition-all"
-                        />
-                    </div>
 
                     <Button variant="primary" size="md" 
                         onClick={onCompete}
@@ -78,7 +67,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                          className="flex items-center gap-2.5 hover:-2-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all group" 
                     >
                         <Play size={18} fill="currentColor" className="group-hover:translate-x-0.5 transition-transform" />
-                        <span>Compete</span>
+                        <span>Begin Evolution</span>
                     </Button>
                 </div>
             </div>

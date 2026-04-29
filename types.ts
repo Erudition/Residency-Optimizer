@@ -165,11 +165,21 @@ export interface AlgorithmConfig {
 }
 
 export interface CompetitionParams {
-  tries: number;
+  tries?: number; // Optional iteration limit (primarily for tests)
   priority: CompetitionPriority;
   algorithmIds: string[];
   topN: number;
 }
+
+export interface ConvergenceDataPoint {
+  attemptIndex: number;
+  algorithmId: string;
+  score: number;
+  bestScoreSoFar: number;
+  globalBestScore: number;
+  timestamp: number;
+}
+
 
 export interface ScheduleGenerator {
   name: string;

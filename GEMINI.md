@@ -135,3 +135,8 @@ To maintain year-independent data integrity, the application treats **Start Year
 *   **Hard Constraint**: The AI must NOT change staffing ratios (e.g., `maxSeniors`, `maxInterns`) or educational requirement targets (e.g., `minWeeks`) without explicit human permission.
 *   **Impossibility Reporting**: If the existing constraints create a mathematical impossibility (e.g., requirement > capacity), the AI must report this as a bottleneck (see `bottlenecks_discovered.md`) but must attempt to generate the most compliant schedule possible under the *original* constraints.
 
+
+## 19. Multi-Year Generation Architecture
+*   **Current approach (stepping stone)**: The generator runs sequentially — Year 1 first, its output feeds as `historicalSchedules` into Year 2, then Year 3. Each year is a separate worker invocation. This satisfies cumulative ACGME requirement tracking but does not globally optimize across years.
+*   **Future goal**: A unified multi-year generator that accepts a partially-locked Year 1 (e.g., after residents fill in vacation days) and regenerates the remaining schedule across all future years simultaneously, satisfying cumulative 3-year constraints holistically. The `locked` flag infrastructure and `historicalSchedules` passthrough already exist as foundations for this.
+*   **Key use case**: After residents specify their vacation weeks for the current year, the system should recalculate remaining requirements and regenerate Years 2-3 to satisfy them — without disturbing locked assignments.
