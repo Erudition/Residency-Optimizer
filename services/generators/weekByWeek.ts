@@ -1,7 +1,7 @@
-import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory, ScheduleGenerator } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
-import { ScheduleGenerator } from './types';
-import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount } from './utils';
+
+import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, canPlaceWithoutViolation } from './utils';
 
 class SeededRNG {
     private seed: number;
@@ -52,12 +52,15 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             AssignmentType.WARDS_METRO,
             AssignmentType.NIGHT_FLOAT, 
             AssignmentType.EM,
-            AssignmentType.JR_HOSPITALIST
+            AssignmentType.JR_HOSPITALIST,
+            AssignmentType.PULM,
+            AssignmentType.NEPH,
+            AssignmentType.ONC
         ];
 
         // 2. Sequential Staffing Pass (Foundation)
-        // We iterate week-by-week as requested, but we try to fill EACH type robustly
-        for (let w = 0; w < TOTAL_WEEKS; w++) {
+        // Start from -3 to handle residents who started a 4-week block before week 0
+        for (let w = -3; w < TOTAL_WEEKS; w++) {
             seededShuffle(coreStaffingTypes).forEach(type => {
                 const meta = ROTATION_METADATA[type];
                 if (!meta) return;
@@ -65,13 +68,13 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
                 // Interns
                 let safety = 0;
-                while (getAssignedCount(newSchedule, residents, w, type, 1) < meta.minInterns && safety < 20) {
+                while (getAssignedCount(newSchedule, residents, Math.max(0, w), type, 1) < meta.minInterns && safety < 20) {
                     const candidate = seededShuffle(residents.filter(r => {
                         const cohort = cohortAssignments?.[r.id] ?? 0;
                         return r.level === 1 && 
                                isAligned(w, cohort, duration) && 
                                canFitBlock(newSchedule, r.id, w, duration) &&
-                               getAssignedCount(newSchedule, residents, w, type, 1) < (meta.maxInterns || 99);
+                               canPlaceWithoutViolation(newSchedule, residents, w, duration, type, 1);
                     })).sort((a, b) => getCumulativeRequirementCount(a.id, newSchedule[a.id], type, historicalSchedules) - 
                                      getCumulativeRequirementCount(b.id, newSchedule[b.id], type, historicalSchedules));
 
@@ -83,13 +86,13 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
                 // Seniors
                 safety = 0;
-                while (getAssignedCount(newSchedule, residents, w, type, 2) < meta.minSeniors && safety < 20) {
+                while (getAssignedCount(newSchedule, residents, Math.max(0, w), type, 2) < meta.minSeniors && safety < 20) {
                     const candidate = seededShuffle(residents.filter(r => {
                         const cohort = cohortAssignments?.[r.id] ?? 0;
                         return r.level >= 2 && 
                                isAligned(w, cohort, duration) && 
                                canFitBlock(newSchedule, r.id, w, duration) &&
-                               getAssignedCount(newSchedule, residents, w, type, 2) < (meta.maxSeniors || 99);
+                               canPlaceWithoutViolation(newSchedule, residents, w, duration, type, 2);
                     })).sort((a, b) => getCumulativeRequirementCount(a.id, newSchedule[a.id], type, historicalSchedules) - 
                                      getCumulativeRequirementCount(b.id, newSchedule[b.id], type, historicalSchedules));
 
@@ -122,7 +125,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                             for (const type of compatibleTypes) {
                                 const meta = ROTATION_METADATA[type];
                                 const max = (res.level === 1) ? (meta?.maxInterns || 99) : (meta?.maxSeniors || 99);
-                                if (getAssignedCount(newSchedule, residents, w, type, res.level === 1 ? 1 : 2) < max) {
+                                if (canPlaceWithoutViolation(newSchedule, residents, w, dur, type, res.level === 1 ? 1 : 2)) {
                                     placeBlock(newSchedule, res.id, w, dur, type);
                                     found = true;
                                     break;

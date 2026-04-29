@@ -1,8 +1,8 @@
 
 import { describe, it } from 'vitest';
-import { generateSchedule, getRequirementViolations, getWeeklyViolations } from './services/scheduler';
-import { GENERATE_RESIDENTS_FOR_YEAR } from './constants';
-import { CompetitionPriority } from './types';
+import { generateSchedule, getRequirementViolations, getWeeklyViolations } from '../services/scheduler';
+import { GENERATE_RESIDENTS_FOR_YEAR } from '../constants';
+import { CompetitionPriority } from '../types';
 
 describe('Algorithm Diagnostic', () => {
     it('should profile violation patterns across algorithms', async () => {

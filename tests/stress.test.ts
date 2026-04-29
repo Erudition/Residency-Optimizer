@@ -1,11 +1,11 @@
 import { describe, test, expect } from 'vitest';
-import { getRequirementViolations, getWeeklyViolations } from './services/scheduler';
-import { GENERATE_RESIDENTS_FOR_YEAR, TOTAL_WEEKS } from './constants';
-import { ScheduleGrid } from './types';
-import { EducationFirstGenerator } from './services/generators/educationFirst';
-import { StaffingFirstGenerator } from './services/generators/staffingFirst';
-import { WeekByWeekGenerator } from './services/generators/weekByWeek';
-import { StochasticGenerator } from './services/generators/stochastic';
+import { getRequirementViolations, getWeeklyViolations } from '../services/scheduler';
+import { GENERATE_RESIDENTS_FOR_YEAR, TOTAL_WEEKS } from '../constants';
+import { ScheduleGrid } from '../types';
+import { EducationFirstGenerator } from '../services/generators/educationFirst';
+import { StaffingFirstGenerator } from '../services/generators/staffingFirst';
+import { WeekByWeekGenerator } from '../services/generators/weekByWeek';
+import { StochasticGenerator } from '../services/generators/stochastic';
 
 describe('Algorithm Stress Tests', () => {
     const runTest = (name: string, gen: any) => {

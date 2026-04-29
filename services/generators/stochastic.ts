@@ -1,6 +1,6 @@
-import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory, ScheduleGenerator } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
-import { ScheduleGenerator } from './types';
+
 import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount } from './utils';
 
 class SeededRNG {

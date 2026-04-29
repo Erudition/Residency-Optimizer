@@ -16,7 +16,7 @@ describe('Schedule Generator', () => {
     const mockCohortMap: Record<string, number> = residents.reduce((acc, r, idx) => ({ ...acc, [r.id]: idx % 5 }), {});
 
     beforeAll(async () => {
-        const result = await generateSchedule(residents, initialSchedule, { tries: 100, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 }, undefined, undefined, mockCohortMap);
+        const result = await generateSchedule(residents, initialSchedule, { tries: 300, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['greedy', 'experimental', 'stochastic', 'strict'], topN: 1 }, undefined, undefined, mockCohortMap);
         schedule = result.results[0].schedule;
     }, 180000); // Increase timeout for competition iterations
 
@@ -118,6 +118,9 @@ describe('Schedule Generator', () => {
             if (violations.length > 0) {
                 console.log("Weekly Violations Sample:", JSON.stringify(violations.slice(0, 10), null, 2));
                 console.log("Total Violations:", violations.length);
+                if (violations.length > 0) {
+                    console.log("First few violations:", JSON.stringify(violations.slice(0, 5), null, 2));
+                }
             }
             expect(violations.length).toBe(0);
         });

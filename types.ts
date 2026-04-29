@@ -170,3 +170,14 @@ export interface CompetitionParams {
   algorithmIds: string[];
   topN: number;
 }
+
+export interface ScheduleGenerator {
+  name: string;
+  generate: (
+    residents: Resident[],
+    existing: ScheduleGrid,
+    attemptIndex?: number,
+    historicalSchedules?: ScheduleHistory,
+    cohortAssignments?: Record<string, number>
+  ) => ScheduleGrid;
+}
