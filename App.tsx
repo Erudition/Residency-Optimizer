@@ -233,6 +233,17 @@ const App: React.FC = () => {
       .sort((a, b) => a - b),
   []);
 
+  // All academic years: historical + current + future
+  const allAcademicYears = useMemo(() => [
+    ...historicalYears,
+    ACTIVE_START_YEAR,
+    ACTIVE_START_YEAR + 1,
+    ACTIVE_START_YEAR + 2
+  ], [historicalYears]);
+
+  const isHistoricalYear = activeYear < ACTIVE_START_YEAR;
+  const isFutureYear = activeYear >= ACTIVE_START_YEAR;
+
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => preloadHistoricalData(residents), [residents]);
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
@@ -290,12 +301,11 @@ const App: React.FC = () => {
   };
 
   const activeSchedule = useMemo(() => {
-    if (activeScheduleId?.startsWith('history-')) {
-      const year = parseInt(activeScheduleId.replace('history-', ''));
-      const lockedUntil = getCurrentWeekForYear(year);
+    if (isHistoricalYear) {
+      const lockedUntil = getCurrentWeekForYear(activeYear);
       
       // Augment history with pre-locked flags
-      const baseHistory = historySchedules[year] || {};
+      const baseHistory = historySchedules[activeYear] || {};
       const augmentedData: ScheduleGrid = {};
       
       Object.keys(baseHistory).forEach(resId => {
@@ -306,18 +316,18 @@ const App: React.FC = () => {
       });
 
       return {
-        id: activeScheduleId,
-        name: `${year} - ${year + 1}`,
-        data: { [year]: augmentedData },
-        cohortAssignments: { [year]: historicalCohortsByYear[year] },
+        id: `history-${activeYear}`,
+        name: `${activeYear} - ${(activeYear + 1).toString().slice(-2)}`,
+        data: { [activeYear]: augmentedData },
+        cohortAssignments: { [activeYear]: historicalCohortsByYear[activeYear] },
         createdAt: new Date(),
         isHistory: true,
-        startYear: year,
+        startYear: activeYear,
         lockedUntilWeek: lockedUntil
       } as any;
     }
     return schedules.find(s => s.id === activeScheduleId);
-  }, [schedules, activeScheduleId, historySchedules]);
+  }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear]);
 
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
@@ -754,159 +764,74 @@ const App: React.FC = () => {
     </Button>
   );
 
+  const getYearLabel = (y: number) => {
+    const diff = y - ACTIVE_START_YEAR;
+    if (diff === 0) return `AY ${y}-${(y+1).toString().slice(-2)} (Current)`;
+    if (diff < 0) return `AY ${y}-${(y+1).toString().slice(-2)} (${diff}y)`;
+    return `AY ${y}-${(y+1).toString().slice(-2)} (+${diff}y)`;
+  };
+
   return (
     <div className={`flex flex-col h-screen bg-light-1 bg-[url('https://res.cloudinary.com/dmukukwp6/image/upload/carpet_light_27d74f73b5.png')] bg-repeat text-black font-sans overflow-hidden ${activeSchedule?.isGenerating || isPending ? 'cursor-wait' : ''}`}>
 
-      <div className="h-12 bg-light-3 flex items-stretch shrink-0 z-30 px-2 pt-2 gap-1 relative overflow-y-hidden">
-        {/* Bottom Seam Line - Layered at z-30 so it's above inactive (z-20) but below active (z-40) */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-light-4 z-30" />
-
-        {/* Settings Tab */}
-        <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'settings' ? 'z-40' : 'z-20'}`}>
-          <div
-            onClick={() => {
-              startTransition(() => {
-                setActiveScheduleId('settings');
-                setActiveTab('residents');
-              });
-            }}
-            className={`flex items-center justify-center w-12 h-10 rounded-t-lg border-t border-x transition-all relative cursor-pointer ${activeScheduleId === 'settings' ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
-          >
-            <SettingsIcon size={20} />
-            {activeScheduleId === 'settings' && (
-              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
-            )}
-          </div>
+      {/* ─── Global Header Bar ─── */}
+      <div className="h-11 bg-light-3 flex items-center shrink-0 z-30 px-4 border-b border-light-4">
+        {/* Left: App Title */}
+        <div className="flex items-center gap-2 mr-6">
+          <span className="text-sm font-black text-primary tracking-tight">Residency Scheduler</span>
         </div>
 
-        {/* Dynamic History Tabs */}
-        {historicalYears.map(year => {
-          const tabId = `history-${year}`;
-          const isActive = activeScheduleId === tabId;
-          return (
-            <div key={tabId} className={`flex-none flex items-end relative mr-1 ${isActive ? 'z-40' : 'z-20'}`}>
-              <div
-                onClick={() => {
-                  startTransition(() => {
-                    setActiveScheduleId(tabId);
-                    setActiveYear(year);
-                    if (['residents', 'backup', 'reset'].includes(activeTab)) {
-                      setActiveTab('schedule');
-                    }
-                  });
-                }}
-                className={`flex items-center gap-2 px-4 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-all relative cursor-pointer ${isActive ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
-              >
-                <History size={14} className={isActive ? 'text-white' : 'text-blue'} />
-                AY {year}-{year + 1} ({year - ACTIVE_START_YEAR}y)
-                {isActive && (
-                  <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
-                )}
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Sticky All Tab */}
-        <div className={`flex-none flex items-end relative mr-1 ${activeScheduleId === 'all' ? 'z-40' : 'z-20'}`}>
-          <div
-            onClick={() => {
-              startTransition(() => {
-                setActiveScheduleId('all');
-                if (['residents', 'backup', 'reset'].includes(activeTab)) {
-                  setActiveTab('schedule');
-                }
-              });
-            }}
-            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-all relative cursor-pointer ${activeScheduleId === 'all' ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
-          >
-            AY {ACTIVE_START_YEAR}-{ACTIVE_START_YEAR + 1} (Current)
-            {activeScheduleId === 'all' && (
-              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
-            )}
-          </div>
-        </div>
-
-        {/* Scrollable Schedules area */}
-        <div className="flex-1 relative flex items-end overflow-hidden">
-          {canScrollLeft && (
-            <div className="absolute left-0 top-0 bottom-0 z-40 w-12 flex items-center justify-start bg-gradient-to-r from-gray-200 to-transparent pointer-events-none">
-              <Button
-                onClick={() => scrollTabs('left')}
-                className="ml-1 p-1 rounded-full bg-white/80 hover:bg-white text-primary shadow-md pointer-events-auto transition-all transform hover:scale-110"
-              >
-                <ChevronLeft size={16} />
-              </Button>
-            </div>
-          )}
-
-          <div
-            ref={tabContainerRef}
-            onScroll={checkScroll}
-            className="flex-1 flex items-end gap-2 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth relative"
-          >
-            {schedules.map(sched => {
-              const isActive = activeScheduleId === sched.id;
+        {/* Center: Academic Year Tabs */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex bg-light-2 p-0.5 rounded-xl border border-light-5">
+            {allAcademicYears.map(y => {
+              const isActive = activeYear === y;
               return (
-                <div
-                  key={sched.id}
+                <Button
+                  variant="ghost"
+                  key={y}
                   onClick={() => {
                     startTransition(() => {
-                      setActiveScheduleId(sched.id);
-                      if (['residents', 'backup', 'reset'].includes(activeTab)) {
-                        setActiveTab('schedule');
+                      setActiveYear(y);
+                      if (activeScheduleId === 'settings') {
+                        // keep settings open
+                      } else if (y < ACTIVE_START_YEAR) {
+                        // For historical years, switch to schedule view but preserve candidate selection
+                        if (['residents', 'backup', 'reset'].includes(activeTab)) {
+                          setActiveTab('schedule');
+                        }
                       }
                     });
                   }}
-                  className={`group flex items-center gap-2 px-3 h-10 text-sm font-medium rounded-t-lg border-t border-x transition-all relative min-w-[160px] cursor-pointer ${isActive ? 'bg-blue text-white border-blue-2-dark z-40' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2 z-20'} ${isPending ? 'opacity-70' : ''}`}
+                  className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
+                    isActive
+                      ? 'bg-white text-blue shadow-sm border border-light-5'
+                      : 'text-muted hover:text-primary'
+                  }`}
                 >
-                  {sched.isGenerating && <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full flex-shrink-0"></div>}
-                  {!sched.isGenerating && <Identicon id={sched.id} />}
-                  {isPending && isActive && <div className="animate-pulse h-2 w-2 bg-blue-2 rounded-full mr-1"></div>}
-                  <div className="flex-1 min-w-0 font-bold text-xs truncate pr-6">{sched.name}</div>
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20 hover:bg-white/40 rounded-full">
-                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-1 rounded-full text-white/80 hover:text-white transition-colors"><X size={12} /></Button>
-                  </div>
-                  {isActive && (
-                    <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-50" />
-                  )}
-                </div>
+                  {y < ACTIVE_START_YEAR && <History size={11} className="inline mr-1 -mt-px" />}
+                  {getYearLabel(y)}
+                </Button>
               );
             })}
           </div>
-
-          {canScrollRight && (
-            <div className="absolute right-0 top-0 bottom-0 z-40 w-12 flex items-center justify-end bg-gradient-to-l from-gray-200 to-transparent pointer-events-none">
-              <Button
-                onClick={() => scrollTabs('right')}
-                className="mr-1 p-1 rounded-full bg-white/80 hover:bg-white text-primary shadow-md pointer-events-auto transition-all transform hover:scale-110"
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
-          )}
         </div>
 
-        {/* Sticky Generate Tab */}
-        <div className={`flex-none flex items-end relative px-2 ${activeScheduleId === 'draft' ? 'z-40' : 'z-20'}`}>
-          <div
-            onClick={() => {
-              startTransition(() => {
-                setActiveScheduleId('draft');
-              });
-            }}
-            className={`flex items-center gap-2 px-6 h-10 text-sm font-bold rounded-t-lg border-t border-x transition-all relative cursor-pointer ${activeScheduleId === 'draft' ? 'bg-blue border-blue-2-dark text-white z-50' : 'bg-light-3/50 border-transparent text-muted hover:bg-light-2'}`}
-          >
-            <Sparkles size={16} />
-            Generate
-            {activeScheduleId === 'draft' && (
-              <div className="absolute bottom-0 left-[-1px] right-[-1px] h-px bg-blue z-20" />
-            )}
-          </div>
+        {/* Right: Settings Cog */}
+        <div
+          onClick={() => {
+            startTransition(() => {
+              setActiveScheduleId('settings');
+              setActiveTab('residents');
+            });
+          }}
+          className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer ${activeScheduleId === 'settings' ? 'bg-blue text-white' : 'text-muted hover:bg-light-2 hover:text-primary'}`}
+        >
+          <SettingsIcon size={18} />
         </div>
       </div>
 
-      {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft' && !activeSchedule?.isGenerating) && (
+      {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft' && !activeSchedule?.isGenerating) || isHistoricalYear ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
@@ -918,7 +843,7 @@ const App: React.FC = () => {
           <NavButton id="fairness" label="Fairness" icon={Scale} />
           <NavButton id="export" label="Export" icon={FileSpreadsheet} />
         </div>
-      )}
+      ) : null}
 
       {activeScheduleId === 'settings' && (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
@@ -1035,7 +960,7 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
-          ) : activeScheduleId === 'draft' ? (
+          ) : activeScheduleId === 'draft' && !isHistoricalYear ? (
             <CompetitorStudio
               algorithms={algoConfig}
               stats={algoStats}
@@ -1052,7 +977,7 @@ const App: React.FC = () => {
               onCompete={handleGenerate}
               onClearStats={() => setAlgoStats({})}
             />
-          ) : activeScheduleId === 'all' ? (
+          ) : (activeScheduleId === 'all' && !isHistoricalYear) ? (
             <div className="flex-1 bg-white overflow-y-auto">
               <ScheduleComparison
                 residents={residents}
@@ -1126,10 +1051,10 @@ const App: React.FC = () => {
             <>
               {activeTab === 'schedule' && (
                 <div className="flex-1 overflow-hidden flex flex-col">
-                  {/* Year Tabs Overlay/Bar */}
-                  <div className="px-6 py-3 bg-white border-b grid grid-cols-3 items-center shrink-0">
+                  {/* Schedule Sub-header: Group By + Violations */}
+                  <div className="px-6 py-3 bg-white border-b flex items-center justify-between shrink-0">
                     {/* Left: Group By */}
-                    <div className="flex items-center gap-3 justify-self-start">
+                    <div className="flex items-center gap-3">
                       <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
                        <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
                          <Button
@@ -1151,35 +1076,8 @@ const App: React.FC = () => {
                        </div>
                     </div>
 
-                    {/* Center: Academic Year */}
-                    <div className="flex items-center gap-3 justify-self-center">
-                      <span className="text-[10px] font-black text-muted uppercase tracking-wider">Academic Year</span>
-                      <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
-                        {activeSchedule?.isHistory ? (
-                          <div className="px-6 py-1.5 bg-white text-blue shadow-sm rounded-lg text-xs font-bold transition-all">
-                            {activeYear} - {activeYear + 1}
-                          </div>
-                        ) : (
-                          [ACTIVE_START_YEAR, ACTIVE_START_YEAR + 1, ACTIVE_START_YEAR + 2].map(y => (
-                            <Button
-                              variant="ghost"
-                              key={y}
-                              onClick={() => {
-                                startTransition(() => {
-                                  setActiveYear(y);
-                                });
-                              }}
-                              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeYear === y ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                            >
-                              {y} - {y + 1}
-                            </Button>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
                     {/* Right: Violations */}
-                    <div className="justify-self-end">
+                    <div>
                       {hasViolations && (
                         <div className="flex items-center gap-2 px-3 py-1 bg-red/10 text-red rounded-full border border-red/20 animate-pulse">
                           <AlertCircle size={14} />
@@ -1265,6 +1163,97 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* ─── Bottom Tab Bar (Spreadsheet-style, future years only) ─── */}
+      {isFutureYear && activeScheduleId !== 'settings' && (
+        <div className="h-9 bg-light-3 flex items-stretch shrink-0 z-30 px-2 border-t border-light-4 relative">
+          {/* Left: Future Schedules label */}
+          <div
+            onClick={() => {
+              startTransition(() => {
+                setActiveScheduleId('all');
+                if (['residents', 'backup', 'reset'].includes(activeTab)) setActiveTab('schedule');
+              });
+            }}
+            className={`flex items-center px-4 text-[11px] font-bold cursor-pointer transition-all border-r border-light-4 ${
+              activeScheduleId === 'all'
+                ? 'bg-white text-blue'
+                : 'text-muted hover:text-primary hover:bg-light-2'
+            }`}
+          >
+            Future Schedules
+          </div>
+
+          {/* Center: Scrollable candidate tabs */}
+          <div className="flex-1 relative flex items-stretch overflow-hidden">
+            {canScrollLeft && (
+              <div className="absolute left-0 top-0 bottom-0 z-40 w-8 flex items-center justify-start bg-gradient-to-r from-light-3 to-transparent pointer-events-none">
+                <Button onClick={() => scrollTabs('left')} className="ml-0.5 p-0.5 rounded-full bg-white/80 hover:bg-white text-primary shadow-sm pointer-events-auto"><ChevronLeft size={12} /></Button>
+              </div>
+            )}
+
+            <div
+              ref={tabContainerRef}
+              onScroll={checkScroll}
+              className="flex-1 flex items-stretch gap-px overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth"
+            >
+              {schedules.length === 0 ? (
+                <div className="flex items-center justify-center flex-1 text-[11px] text-muted italic">
+                  No future schedule candidates generated yet
+                </div>
+              ) : schedules.map(sched => {
+                const isActive = activeScheduleId === sched.id;
+                return (
+                  <div
+                    key={sched.id}
+                    onClick={() => {
+                      startTransition(() => {
+                        setActiveScheduleId(sched.id);
+                        if (['residents', 'backup', 'reset'].includes(activeTab)) setActiveTab('schedule');
+                      });
+                    }}
+                    className={`group flex items-center gap-1.5 px-3 text-[11px] font-medium transition-all relative cursor-pointer whitespace-nowrap ${
+                      isActive
+                        ? 'bg-white text-blue border-t-2 border-t-blue'
+                        : 'text-muted hover:bg-light-2 hover:text-primary border-t-2 border-t-transparent'
+                    } ${isPending ? 'opacity-70' : ''}`}
+                  >
+                    {sched.isGenerating && <div className="animate-spin h-2.5 w-2.5 border-[1.5px] border-blue border-t-transparent rounded-full flex-shrink-0" />}
+                    {!sched.isGenerating && <Identicon id={sched.id} />}
+                    <span className="truncate max-w-[120px]">{sched.name}</span>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-0.5 rounded text-muted hover:text-red transition-colors"><X size={10} /></Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {canScrollRight && (
+              <div className="absolute right-0 top-0 bottom-0 z-40 w-8 flex items-center justify-end bg-gradient-to-l from-light-3 to-transparent pointer-events-none">
+                <Button onClick={() => scrollTabs('right')} className="mr-0.5 p-0.5 rounded-full bg-white/80 hover:bg-white text-primary shadow-sm pointer-events-auto"><ChevronRight size={12} /></Button>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Generate button */}
+          <div
+            onClick={() => {
+              startTransition(() => {
+                setActiveScheduleId('draft');
+              });
+            }}
+            className={`flex items-center gap-1.5 px-4 text-[11px] font-bold cursor-pointer transition-all border-l border-light-4 ${
+              activeScheduleId === 'draft'
+                ? 'bg-white text-blue'
+                : 'text-muted hover:text-primary hover:bg-light-2'
+            }`}
+          >
+            <Sparkles size={12} />
+            Generate
+          </div>
+        </div>
+      )}
 
       <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} />
       <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => setRenameModalOpen(false)} onSave={handleRename} />
