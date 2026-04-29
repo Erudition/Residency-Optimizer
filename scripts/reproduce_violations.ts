@@ -1,7 +1,7 @@
 
-import { GENERATE_RESIDENTS_FOR_YEAR } from './constants';
-import { generateSchedule, getWeeklyViolations } from './services/scheduler';
-import { CompetitionPriority, AssignmentType } from './types';
+import { GENERATE_RESIDENTS_FOR_YEAR } from '../constants';
+import { generateSchedule, getWeeklyViolations } from '../services/scheduler';
+import { CompetitionPriority, AssignmentType } from '../types';
 
 const test = async () => {
     const residents = GENERATE_RESIDENTS_FOR_YEAR(2026);
