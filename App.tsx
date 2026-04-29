@@ -252,7 +252,8 @@ const App: React.FC = () => {
     { id: 'stochastic', name: 'Stochastic', description: 'The tried-and-true generalist. Good at everything, master of none. Uses weighted randomness to explore valid slots.', enabled: true, color: '#3b82f6' },
     { id: 'experimental', name: 'Staffing First', description: 'Staffing-centric optimization. Prioritizes 1-week slots to guarantee hospital minimums are met at all costs.', enabled: true, color: '#8b5cf6' },
     { id: 'strict', name: 'Education First', description: 'Objective-centric optimization. Prioritizes PGY educational targets with a residual capacity guard to ensure hospital coverage.', enabled: true, color: '#10b981' },
-    { id: 'greedy', name: 'Greedy', description: 'The original fast generator. Takes the best immediate choice at every step. Ideal for quick reference drafts.', enabled: false, color: '#f59e0b' },
+    { id: 'greedy', name: 'Week By Week', description: 'Staffing-centric generator. Iterates through each week and fills hospital gaps using first-available residents.', enabled: true, color: '#f59e0b' },
+
   ]);
 
   const [algoStats, setAlgoStats] = useState<Record<string, AlgorithmStats>>(() =>

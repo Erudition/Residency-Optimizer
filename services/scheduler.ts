@@ -2,7 +2,7 @@
 import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics } from '../types';
 import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS } from '../constants';
 import { getRequirementCount, getCumulativeRequirementCount } from './generators/utils';
-import { GreedyGenerator } from './generators/greedy';
+import { WeekByWeekGenerator } from './generators/weekByWeek';
 import { StochasticGenerator } from './generators/stochastic';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
 import { EducationFirstGenerator } from './generators/educationFirst';
@@ -28,7 +28,7 @@ export const generateSchedule = async (
   cohortAssignments?: Record<string, number>
 ): Promise<{ results: CompetitionResult[] }> => {
   const allGenerators = [
-    { id: 'greedy', generator: GreedyGenerator, name: 'Greedy' },
+    { id: 'greedy', generator: WeekByWeekGenerator, name: 'Week By Week' },
     { id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' },
     { id: 'stochastic', generator: StochasticGenerator, name: 'Stochastic' },
     { id: 'strict', generator: EducationFirstGenerator, name: 'Education First' },
