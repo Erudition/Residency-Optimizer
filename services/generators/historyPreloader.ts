@@ -4,7 +4,6 @@ import historicalGridData from '../../specification/historical_schedules_grid_v2
 
 const HISTORICAL_COHORTS: Record<number, Record<string, number>> = {
     2024: {
-        "Patel, Neil": 1,
         "Baset, Nawsin": 5,
         "Cho, Kevin Wook Jin": 5,
         "De La Cruz, Aaron Daniel": 5,
