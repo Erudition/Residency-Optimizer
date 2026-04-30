@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useTransition } from 'reac
 import ExcelJS from 'exceljs';
 import {
   Resident,
+
   ScheduleGrid,
   ScheduleHistory,
   AssignmentType,
@@ -63,7 +64,8 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
-  History
+  History,
+  Lock
 } from 'lucide-react';
 
 export interface ScheduleSession {
@@ -90,14 +92,25 @@ export interface ScheduleSession {
   lockedUntilWeek?: number;
 }
 
+const APP_DATA_VERSION = 5;
+
 const loadState = <T,>(key: string, fallback: T): T => {
   try {
+    const storedVersion = localStorage.getItem('rsp_app_version');
+    if (storedVersion && parseInt(storedVersion) < APP_DATA_VERSION) {
+      console.warn("New version detected, clearing localStorage");
+      localStorage.clear();
+      localStorage.setItem('rsp_app_version', APP_DATA_VERSION.toString());
+      return fallback;
+    }
+    localStorage.setItem('rsp_app_version', APP_DATA_VERSION.toString());
+
     const item = localStorage.getItem(key);
     if (!item) return fallback;
     const parsed = JSON.parse(item);
 
     // Patch schedules to ensure Dates are actual Date objects
-    if (key === 'rsp_schedules_v3' && Array.isArray(parsed)) {
+    if (key === 'rsp_schedules_v4' && Array.isArray(parsed)) {
       return parsed.map((s: any) => ({
         ...s,
         createdAt: s.createdAt ? new Date(s.createdAt) : new Date()
@@ -110,6 +123,7 @@ const loadState = <T,>(key: string, fallback: T): T => {
     return fallback;
   }
 };
+
 
 const AssignmentModal = ({
   isOpen,
@@ -211,12 +225,13 @@ const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
 
 const App: React.FC = () => {
   const [residents, setResidents] = useState<Resident[]>(() =>
-    loadState('rsp_residents_v3', GENERATE_INITIAL_RESIDENTS())
+    loadState('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS())
   );
 
   const [schedules, setSchedules] = useState<ScheduleSession[]>(() =>
-    loadState('rsp_schedules_v3', [])
+    loadState('rsp_schedules_v4', [])
   );
+
 
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(() =>
     loadState('rsp_active_id', 'all')
@@ -263,12 +278,21 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  const [convergenceData, setConvergenceData] = useState<ConvergenceDataPoint[]>([]);
+  const [convergenceData, setConvergenceData] = useState<number[][]>([]);
+  const convergenceBufferRef = useRef<number[][]>([]);
+  const lastUpdateRef = useRef<number>(0);
   const [canceledAlgoIds, setCanceledAlgoIds] = useState<Set<string>>(new Set());
   const activeWorkersRef = useRef<Set<Worker>>(new Set());
   const currentWorkerRef = useRef<Worker | null>(null);
   const generationControllerRef = useRef<AbortController | null>(null);
   const [isCanceled, setIsCanceled] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [genProgress, setGenProgress] = useState(0);
+  const [genAttempts, setGenAttempts] = useState(0);
+  const [genStatus, setGenStatus] = useState('');
+  const isGeneratingRef = useRef(false);
+
+
 
   const [compParams, setCompParams] = useState<CompetitionParams>(() => {
     const loaded = loadState('rsp_comp_params_v1', {
@@ -342,6 +366,14 @@ const App: React.FC = () => {
     }
     return schedules.find(s => s.id === activeScheduleId);
   }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear]);
+
+  // Sync convergence data from buffer when switching back to dashboard
+  useEffect(() => {
+    if (activeTab === 'loading' && activeSchedule?.isGenerating && convergenceBufferRef.current.length > convergenceData.length) {
+      setConvergenceData([...convergenceBufferRef.current]);
+    }
+  }, [activeTab, activeSchedule?.isGenerating, convergenceData.length]);
+
 
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
@@ -436,7 +468,12 @@ const App: React.FC = () => {
 
       const onAbort = () => {
         worker.postMessage({ type: 'cancel' });
+        worker.terminate();
+        activeWorkersRef.current.delete(worker);
+        if (currentWorkerRef.current === worker) currentWorkerRef.current = null;
+        reject(new DOMException('Aborted', 'AbortError'));
       };
+
 
       if (signal) {
         signal.addEventListener('abort', onAbort);
@@ -536,26 +573,18 @@ const App: React.FC = () => {
 
 
 
-  useEffect(() => { localStorage.setItem('rsp_residents_v3', JSON.stringify(residents)); }, [residents]);
-  useEffect(() => { localStorage.setItem('rsp_schedules_v3', JSON.stringify(schedules)); }, [schedules]);
+  useEffect(() => { localStorage.setItem('rsp_residents_v4', JSON.stringify(residents)); }, [residents]);
+  useEffect(() => { localStorage.setItem('rsp_schedules_v4', JSON.stringify(schedules)); }, [schedules]);
   useEffect(() => { if (activeScheduleId) localStorage.setItem('rsp_active_id', JSON.stringify(activeScheduleId)); }, [activeScheduleId]);
-  useEffect(() => { localStorage.setItem('rsp_algo_stats_v1', JSON.stringify(algoStats)); }, [algoStats]);
-  useEffect(() => { localStorage.setItem('rsp_comp_params_v1', JSON.stringify(compParams)); }, [compParams]);
+  const handleGenerate = async () => {
+    if (isGeneratingRef.current) return;
 
-  const handleGenerate = () => {
-    const salt = Math.floor(Math.random() * 1000000);
-    const newId = `sched-master-${Date.now()}-${salt}`;
-    const newSession: ScheduleSession = {
-      id: newId,
-      name: `Generating...`,
-      data: {},
-      createdAt: new Date(),
-      isGenerating: true,
-      progress: 0,
-    };
+    isGeneratingRef.current = true;
+    setIsGenerating(true);
+    setGenProgress(0);
+    setGenAttempts(0);
+    setGenStatus('Initializing...');
 
-    setSchedules(prev => [...prev, newSession]);
-    setActiveScheduleId(newId);
     setConvergenceData([]);
     setCanceledAlgoIds(new Set());
     setIsCanceled(false);
@@ -563,78 +592,85 @@ const App: React.FC = () => {
     const controller = new AbortController();
     generationControllerRef.current = controller;
 
-    (async () => {
-      try {
-        const totalYears = compParams.multiYear || 1;
-        const yearsToGenerate = Array.from({ length: totalYears }, (_, i) => activeYear + i);
-        
-        // Use startTransition for the heavy lifting
-        startTransition(() => {
-          setSchedules(prev => [...prev, newSession]);
-          setActiveScheduleId(newId);
-          setConvergenceData([]);
+    try {
+      const totalYears = compParams.multiYear || 1;
+
+      startTransition(() => {
+        setConvergenceData([]);
+        convergenceBufferRef.current = [];
+        lastUpdateRef.current = Date.now();
+      });
+
+      const { results } = await runGenerationTask(
+        activeYear,
+        totalYears,
+        residents,
+        {},
+        compParams,
+        (iteration, attempts, scores, year, overallProgress) => {
+          const now = Date.now();
+          // Still throttle updates, but now we update localized state
+          if (now - lastUpdateRef.current > 1000) {
+            setGenProgress(Math.round(overallProgress * 100));
+            setGenAttempts(attempts);
+            setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
+
+            // Only update convergence data if the user is looking at it
+            if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
+              convergenceBufferRef.current.push(scores);
+              setConvergenceData([...convergenceBufferRef.current]);
+            }
+            lastUpdateRef.current = now;
+          } else if (scores) {
+            convergenceBufferRef.current.push(scores);
+          }
+        },
+        historySchedules,
+        activeSchedule?.cohortAssignments || {},
+        compParams.algorithmIds || [],
+        controller.signal
+      );
+
+      // Process results
+      const resultSalt = Math.floor(Math.random() * 1000000);
+      const newIds = results.map((_: any, idx: number) => `sched-${Date.now()}-${idx}-${resultSalt}`);
+
+      setConvergenceData([...convergenceBufferRef.current]);
+
+      startTransition(() => {
+        setSchedules(prev => {
+          const finalResults = results.map((res: any, idx: number) => ({
+            id: newIds[idx],
+            name: `${res.winnerName} (${idx === 0 ? 'Optimal' : `Rank ${idx + 1}`})`,
+            data: res.schedule,
+            metrics: {
+              score: res.score,
+              violations: { reqs: [], constraints: [] }, // Will be recalced on demand
+              fairness: [], // Will be recalced on demand
+              stats: {} // Will be recalced on demand
+            },
+            createdAt: new Date(),
+            isGenerating: false,
+          }));
+          return [...prev, ...finalResults];
         });
-
-        const { results } = await runGenerationTask(
-          activeYear,
-          totalYears,
-          residents,
-          {}, // existing (can be expanded later)
-          compParams,
-          (iteration, attempts, scores, year, overallProgress) => {
-            // Update progress in a transition to keep UI responsive
-            startTransition(() => {
-              setSchedules(prev => prev.map(s =>
-                s.id === newId ? { 
-                  ...s, 
-                  progress: Math.round(overallProgress * 100), 
-                  attemptsMade: attempts,
-                  progressLabel: `Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`
-                } : s
-              ));
-              
-              if (scores) {
-                setConvergenceData(prev => [...prev, scores]);
-              }
-            });
-          },
-          historicalSchedules,
-          activeSchedule?.cohortAssignments || {}, // Pass existing cohorts if we have them
-          algorithms.map(a => a.id),
-          controller.signal
-        );
-
-        // Process results
-        const salt = Math.floor(Math.random() * 1000000);
-        const newIds = results.map((_: any, idx: number) => `sched-${Date.now()}-${idx}-${salt}`);
-        
-        startTransition(() => {
-          setSchedules(prev => {
-            const filtered = prev.filter(s => s.id !== newId);
-            const masters: ScheduleSession[] = results.map((res: any, idx: number) => ({
-              id: newIds[idx],
-              name: `${res.winnerName} (${idx === 0 ? 'Optimal' : `Rank ${idx + 1}`})`,
-              data: res.schedule, // res.schedule is already Record<number, ScheduleGrid> from unified generator
-              createdAt: new Date(),
-              isGenerating: false,
-            }));
-            return [...filtered, ...masters];
-          });
-          setActiveScheduleId(newIds[0]);
-        });
-
-      } catch (err: any) {
-        if (err.name === 'AbortError') {
-          console.log('Generation aborted by user');
-        } else {
-          console.error("Generation failed:", err);
-          setSchedules(prev => prev.filter(s => s.id !== newId));
-        }
-      } finally {
-        generationControllerRef.current = null;
+        setActiveScheduleId(newIds[0]);
+      });
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('Generation canceled');
+      } else {
+        console.error('Generation failed:', err);
       }
-    })();
+    } finally {
+      isGeneratingRef.current = false;
+      setIsGenerating(false);
+      generationControllerRef.current = null;
+    }
   };
+
+
+
 
   const stopGeneration = () => {
     if (generationControllerRef.current) {
@@ -826,6 +862,55 @@ const App: React.FC = () => {
     </Button>
   );
 
+  const renderGenerationDashboard = () => {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
+        <div className="w-full max-w-4xl">
+          {convergenceData.length > 0 ? (
+            <GenerationDashboard
+              data={convergenceData}
+              maxTries={compParams.tries}
+              onStop={stopGeneration}
+              onSelectWinners={() => {
+                if (currentWorkerRef.current) {
+                  currentWorkerRef.current.postMessage({ type: 'cancel' });
+                }
+              }}
+              onCancelAlgorithm={(algoId) => {
+                setCanceledAlgoIds(prev => new Set(prev).add(algoId));
+                if (currentWorkerRef.current) {
+                  currentWorkerRef.current.postMessage({ type: 'cancelAlgorithm', algoId });
+                }
+              }}
+              algorithms={compParams.algorithmIds.map(id => {
+                const algo = algoConfig.find(a => a.id === id);
+                return { id, name: algo?.name || id, color: algo?.color || '#000' };
+              })}
+              canceledIds={canceledAlgoIds}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl shadow-xl border border-light-5">
+              <div className="w-12 h-12 rounded-full border-4 border-light-5 border-t-blue animate-spin mb-4" />
+              <p className="text-muted font-bold tracking-tight">Initializing algorithms...</p>
+            </div>
+          )}
+
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3">
+              <Loader2 size={20} className="text-blue animate-spin" />
+              <span className="text-lg font-black text-primary uppercase tracking-tight">
+                {genStatus || 'Engine Initializing...'}
+              </span>
+            </div>
+            <p className="text-muted font-medium text-sm">
+              {genProgress || 0}% through global optimization
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const getYearLabel = (y: number) => {
     const now = new Date();
     // Academic year starts July 1st (month index 6)
@@ -841,20 +926,16 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-light-1 flex flex-col font-sans transition-all duration-300`}>
-
+    <div className={`min-h-screen bg-light-1 flex flex-col font-sans transition-all duration-300 ${isGenerating ? 'engine-busy' : ''}`}>
       {/* ─── Global Header Bar ─── */}
       <div className="h-11 bg-light-3 flex items-center shrink-0 z-30 px-4 border-b border-light-4">
+
+        {/* Left: App Title */}
         {/* Left: App Title */}
         <div className="flex items-center gap-2 mr-6">
           <span className="text-sm font-black text-primary tracking-tight">Residency Scheduler</span>
-          {schedules.some(s => s.isGenerating) && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue/10 rounded-full border border-blue/20 animate-pulse">
-              <Loader2 size={10} className="text-blue animate-spin" />
-              <span className="text-[9px] font-black text-blue uppercase tracking-tighter">Engine Busy</span>
-            </div>
-          )}
         </div>
+
 
         {/* Center: Academic Year Tabs */}
         <div className="flex-1 flex items-center justify-center">
@@ -930,11 +1011,11 @@ const App: React.FC = () => {
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
-          <NavButton id="assignments" label="Assignments" icon={Table} badgeCount={violations.constraints.length} />
+          <NavButton id="assignments" label="Coverage" icon={Table} badgeCount={violations.constraints.length} />
           <NavButton id="requirements" label="Requirements" icon={ClipboardList} badgeCount={violations.reqs.length} />
           <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} />
           <NavButton id="cohorts" label="Cohorts" icon={Users} />
-          <NavButton id="relationships" label="Relationships" icon={Network} />
+          <NavButton id="relationships" label="Coworking" icon={Network} />
           <NavButton id="fairness" label="Fairness" icon={Scale} />
           <NavButton id="export" label="Export" icon={FileSpreadsheet} />
         </div>
@@ -998,23 +1079,7 @@ const App: React.FC = () => {
 
                           <Button
                             onClick={() => { if (confirm("This will delete ALL data. Are you sure?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); setSchedules([]); setActiveScheduleId('all'); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-red/40 rounded-lg text-red hover:bg-red hover:text-white transition-all group font-bold"
-                          >
-                            <span className="flex items-center gap-3"><Trash2 size={18} /> Clear All Records</span>
-                            <span className="text-[10px] uppercase opacity-50 group-hover:opacity-100">Factory Reset</span>
-                          </Button>
-
-                          <Button
-                            onClick={() => { if (confirm("Reset all residents to defaults?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red transition-all group font-bold"
-                          >
-                            <span className="flex items-center gap-3"><Users size={18} /> Reset Residents</span>
-                            <span className="text-[10px] uppercase opacity-50">Set to Default</span>
-                          </Button>
-
-                          <Button
-                            onClick={() => { if (confirm("Delete all schedule versions?")) { setSchedules([]); setActiveScheduleId('all'); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red transition-all group font-bold"
+                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red/40 hover:text-red transition-all group font-bold"
                           >
                             <span className="flex items-center gap-3"><Database size={18} /> Delete All Schedules</span>
                             <span className="text-[10px] uppercase opacity-50">Clear Versions</span>
@@ -1037,8 +1102,8 @@ const App: React.FC = () => {
                             }}
                             className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-blue-400 hover:text-blue transition-all group font-bold"
                           >
-                            <span className="flex items-center gap-3"><LayoutGrid size={18} /> Unpin All Weeks</span>
-                            <span className="text-[10px] uppercase opacity-50">Unlock All</span>
+                            <span className="flex items-center gap-3"><Lock size={18} /> Unlock All Assignments</span>
+                            <span className="text-[10px] uppercase opacity-50">Reset Pins</span>
                           </Button>
                         </div>
                       </div>
@@ -1048,91 +1113,39 @@ const App: React.FC = () => {
               )}
             </div>
           ) : activeScheduleId === 'draft' && !isHistoricalYear ? (
-            <CompetitorStudio
-              algorithms={algoConfig}
-              stats={algoStats}
-              params={compParams}
-              onParamsChange={setCompParams}
-              onToggleAlgorithm={(id) => {
-                setCompParams(prev => ({
-                  ...prev,
-                  algorithmIds: prev.algorithmIds.includes(id)
-                    ? prev.algorithmIds.filter(a => a !== id)
-                    : [...prev.algorithmIds, id]
-                }));
-              }}
-              onCompete={handleGenerate}
-              onClearStats={() => setAlgoStats([])}
-            />
-          ) : (activeScheduleId === 'all' && !isHistoricalYear) ? (
-            <div className="flex-1 bg-white overflow-y-auto">
-              <ScheduleComparison
-                residents={residents}
-                schedules={schedules}
-                activeScheduleId={activeScheduleId}
-                activeYear={activeYear}
-                onSelect={(id) => {
-                  startTransition(() => {
-                    setActiveScheduleId(id);
-                    if (['residents', 'backup', 'reset', 'export'].includes(activeTab)) {
-                      setActiveTab('schedule');
-                    }
-                  });
+            isGenerating ? renderGenerationDashboard() : (
+              <CompetitorStudio
+                algorithms={algoConfig}
+                stats={algoStats}
+                params={compParams}
+                onParamsChange={setCompParams}
+                onToggleAlgorithm={(id) => {
+                  setCompParams(prev => ({
+                    ...prev,
+                    algorithmIds: prev.algorithmIds.includes(id)
+                      ? prev.algorithmIds.filter(a => a !== id)
+                      : [...prev.algorithmIds, id]
+                  }));
                 }}
-                onRename={(id) => {
-                  const sched = schedules.find(s => s.id === id);
-                  if (sched) {
-                    setScheduleToRename(sched);
-                    setRenameModalOpen(true);
-                  }
+                onCompete={handleGenerate}
+                onClearStats={() => setAlgoStats([])}
+              />
+            )
+          ) : (activeScheduleId === 'all' && !isHistoricalYear) ? (
+            <div className="flex-1 overflow-hidden">
+              <ScheduleComparison
+                schedules={schedules}
+                residents={residents}
+                activeYear={activeYear}
+                onSelectSchedule={(id) => setActiveScheduleId(id)}
+                onRenameSchedule={(s) => {
+                  setScheduleToRename(s);
+                  setRenameModalOpen(true);
                 }}
               />
             </div>
           ) : activeSchedule?.isGenerating ? (
-            <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
-              <div className="w-full max-w-4xl">
-            {/* Multiple charts for multi-year generation */}
-              {convergenceData.length > 0 ? (
-                <GenerationDashboard 
-                  data={convergenceData}
-                  onStop={stopGeneration}
-                  onSelectWinners={() => {
-                    if (currentWorkerRef.current) {
-                      currentWorkerRef.current.postMessage({ type: 'cancel' });
-                    }
-                  }}
-                  onCancelAlgorithm={(algoId) => {
-                    setCanceledAlgoIds(prev => new Set(prev).add(algoId));
-                    if (currentWorkerRef.current) {
-                      currentWorkerRef.current.postMessage({ type: 'cancelAlgorithm', algoId });
-                    }
-                  }}
-                  algorithms={compParams.algorithmIds.map(id => {
-                    const algo = algoConfig.find(a => a.id === id);
-                    return { id, name: algo?.name || id, color: algo?.color || '#000' };
-                  })}
-                  canceledIds={canceledAlgoIds}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl shadow-xl border border-light-5">
-                  <div className="w-12 h-12 rounded-full border-4 border-light-5 border-t-blue animate-spin mb-4" />
-                  <p className="text-muted font-bold tracking-tight">Initializing algorithms...</p>
-                </div>
-              )}
-                
-                <div className="mt-8 flex flex-col items-center gap-2">
-                  <div className="flex items-center gap-3">
-                    <Loader2 size={20} className="text-blue animate-spin" />
-                    <span className="text-lg font-black text-primary uppercase tracking-tight">
-                      {activeSchedule.progressLabel || 'Engine Initializing...'}
-                    </span>
-                  </div>
-                  <p className="text-muted font-medium text-sm">
-                    {activeSchedule.progress || 0}% through global optimization
-                  </p>
-                </div>
-              </div>
-            </div>
+            renderGenerationDashboard()
           ) : (
             <>
               {activeTab === 'schedule' && (
@@ -1163,14 +1176,6 @@ const App: React.FC = () => {
                     </div>
 
                     {/* Right: Violations */}
-                    <div>
-                      {hasViolations && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-red/10 text-red rounded-full border border-red/20 animate-pulse">
-                          <AlertCircle size={14} />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Staffing Violations</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
                   <div className="flex-1 overflow-hidden p-6">
                     <ScheduleTable
@@ -1283,11 +1288,34 @@ const App: React.FC = () => {
               onScroll={checkScroll}
               className="flex-1 flex items-stretch gap-px overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth"
             >
-              {schedules.length === 0 ? (
+              {isGenerating && (
+                <div
+                  onClick={() => {
+                    startTransition(() => {
+                      setActiveScheduleId('draft');
+                    });
+                  }}
+                  className={`flex items-center gap-1.5 px-3 text-[11px] font-medium transition-all relative cursor-pointer whitespace-nowrap ${
+                    activeScheduleId === 'draft'
+                      ? 'bg-white text-blue border-t-2 border-t-blue'
+                      : 'text-muted hover:bg-light-2 hover:text-primary border-t-2 border-t-transparent'
+                  }`}
+                >
+                  <div className="animate-spin h-2.5 w-2.5 border-[1.5px] border-blue border-t-transparent rounded-full flex-shrink-0" />
+                  <span className="truncate max-w-[120px]">Generating... ({genProgress}%)</span>
+                  <Button variant="ghost" size="sm" onClick={(e) => {
+                    e.stopPropagation();
+                    stopGeneration();
+                  }} className="p-0.5 rounded text-muted hover:text-red transition-colors ml-1">
+                    <X size={10} />
+                  </Button>
+                </div>
+              )}
+              {schedules.length === 0 && !isGenerating ? (
                 <div className="flex items-center justify-center flex-1 text-[11px] text-muted italic">
                   No future schedule candidates generated yet
                 </div>
-              ) : schedules.map(sched => {
+              ) : schedules.filter(s => !s.isGenerating).map(sched => {
                 const isActive = activeScheduleId === sched.id;
                 return (
                   <div
@@ -1304,15 +1332,21 @@ const App: React.FC = () => {
                         : 'text-muted hover:bg-light-2 hover:text-primary border-t-2 border-t-transparent'
                     } ${isPending ? 'opacity-70' : ''}`}
                   >
-                    {sched.isGenerating && <div className="animate-spin h-2.5 w-2.5 border-[1.5px] border-blue border-t-transparent rounded-full flex-shrink-0" />}
-                    {!sched.isGenerating && <Identicon id={sched.id} />}
+                    <Identicon id={sched.id} />
                     <span className="truncate max-w-[120px]">{sched.name}</span>
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSchedules(s => s.filter(x => x.id !== sched.id)); activeScheduleId === sched.id && setActiveScheduleId('all'); }} className="p-0.5 rounded text-muted hover:text-red transition-colors"><X size={10} /></Button>
+                      <Button variant="ghost" size="sm" onClick={(e) => {
+                        e.stopPropagation();
+                        setSchedules(s => s.filter(x => x.id !== sched.id));
+                        if (activeScheduleId === sched.id) setActiveScheduleId('all');
+                      }} className="p-0.5 rounded text-muted hover:text-red transition-colors">
+                        <X size={10} />
+                      </Button>
                     </div>
                   </div>
                 );
               })}
+
             </div>
 
             {canScrollRight && (

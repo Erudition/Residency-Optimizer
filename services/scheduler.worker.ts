@@ -1,6 +1,7 @@
 import { generateSchedule } from './scheduler';
 
 let cancelledAlgorithmIds = new Set<string>();
+let isPromoteTriggered = false;
 let overallProgress = 0;
 
 // Throttled progress updates to avoid flooding the UI thread
@@ -11,7 +12,7 @@ const postProgress = (iteration: number, scores: number[], attempts: number) => 
   const now = Date.now();
   pendingProgress = { type: 'progress', iteration, overallProgress, bestScore: scores, attempts };
   
-  if (now - lastUpdate > 150) { 
+  if (now - lastUpdate > 200) { // Throttled to 200ms
     postMessage(pendingProgress);
     pendingProgress = null;
     lastUpdate = now;
@@ -23,6 +24,7 @@ onmessage = async (e: MessageEvent) => {
 
   if (type === 'generate') {
     cancelledAlgorithmIds.clear();
+    isPromoteTriggered = false;
     overallProgress = 0;
     
     try {
@@ -37,8 +39,10 @@ onmessage = async (e: MessageEvent) => {
         (iteration, scores, attempts) => {
           overallProgress = iteration / (params.tries || 300);
           postProgress(iteration, scores, attempts);
-        }
+        },
+        () => isPromoteTriggered
       );
+
 
       // Flush any pending progress
       if (pendingProgress) {
@@ -51,10 +55,13 @@ onmessage = async (e: MessageEvent) => {
     } catch (error) {
       postMessage({ type: 'error', error: error instanceof Error ? error.message : String(error) });
     }
+  } else if (type === 'promote') {
+    isPromoteTriggered = true;
   } else if (type === 'cancelAlgorithm') {
     cancelledAlgorithmIds.add(e.data.algoId);
   } else if (type === 'cancel') {
     // Abort is handled by the main thread terminating the worker, 
     // but we can also use a flag if we wanted more graceful exit
   }
+
 };
