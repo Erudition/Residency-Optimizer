@@ -271,7 +271,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
         requiredWeeks: req,
         vacationWeeks: vac,
         nightFloatWeeks: nf,
-        totalIntensityScore: intensity,
+        totalIntensityRegret: intensity,
         maxIntensityStreak: maxStreak,
         streakSummary
       };
@@ -279,7 +279,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
 
     const coreVals = resMetrics.map(m => m.coreWeeks);
     const elecVals = resMetrics.map(m => m.electiveWeeks);
-    const intensityVals = resMetrics.map(m => m.totalIntensityScore);
+    const intensityVals = resMetrics.map(m => m.totalIntensityRegret);
 
     const meanCore = coreVals.reduce((a, b) => a + b, 0) / (coreVals.length || 1);
     const meanElective = elecVals.reduce((a, b) => a + b, 0) / (elecVals.length || 1);
@@ -292,7 +292,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
     const cvCore = sdCore / (meanCore || 1);
     const cvIntensity = sdIntensity / (meanIntensity || 1);
     const penalty = (cvCore * 50) + (cvIntensity * 50);
-    const fairnessScore = Math.max(0, Math.min(100, Math.round(100 - penalty)));
+    const fairnessRegret = Math.max(0, Math.min(100, Math.round(penalty)));
 
     return {
       level,
@@ -303,7 +303,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
       sdElective,
       meanIntensity,
       sdIntensity,
-      fairnessScore
+      fairnessRegret
     };
   });
 };
@@ -356,8 +356,8 @@ export const calculateScheduleRegret = (residents: Resident[], schedule: Schedul
   // 2. Fairness (PGY-3 Only)
   // Cost = (100 - fairnessScore) * Weight
   const pgy3 = fairness.find(f => f.level === 3);
-  const pgy3Fairness = pgy3 ? pgy3.fairnessScore : 0;
-  const fairnessCost = (100 - pgy3Fairness) * 100;
+  const pgy3Regret = pgy3 ? pgy3.fairnessRegret : 100;
+  const fairnessCost = pgy3Regret * 100;
 
   // 3. Streak Equity
   // Penalize if some residents have much harder streaks than others

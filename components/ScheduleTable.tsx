@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
 import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS } from '../constants';
@@ -137,8 +136,8 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                 <th
                   key={w}
                   onDoubleClick={() => onLockWeek(idx)}
-                  className={`border-b border-light-5 p-1 min-w-[80px] text-center bg-light-1 cursor-pointer hover:bg-light-blue/20 transition-colors ${isPastWeek(w, startYear) ? 'opacity-40 grayscale-[0.5]' : ''}`}
-                  title="Double-click to toggle lock for this week"
+                  className={`border-b border-r border-light-5 p-1 min-w-[80px] text-center bg-light-1 cursor-pointer hover:bg-light-blue/20 transition-colors ${isPastWeek(w, startYear) ? 'opacity-40 grayscale-[0.5]' : ''}`}
+                  title="Double-click to toggle lock for this entire week"
                 >
                   <div className="flex flex-col items-center">
                     <span>W{w}</span>
@@ -148,6 +147,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   </div>
                 </th>
               ))}
+
             </tr>
           </thead>
           <tbody className="text-sm">
@@ -182,18 +182,18 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     return (
                       <td
                         key={`${resident.id}-${w}`}
-                        className={`border-b border-light-3 border-r p-1 text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-light-2'} ${isPast ? 'bg-light-1/50' : ''}`}
+                        className={`border-b border-light-3 border-r text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-light-2'} ${isPast ? 'bg-light-1/50 p-0' : 'p-1'}`}
                         onClick={() => onCellClick(resident.id, idx)}
                         onDoubleClick={() => onToggleLock(resident.id, idx)}
                         onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
                         onMouseLeave={handleMouseLeave}
-                        title="Click to edit, Double-click to toggle lock"
+                        title={isPast ? "Historical assignment (locked)" : "Click to edit, Double-click to toggle lock"}
                       >
                         <div className={`
-                            w-full h-10 flex items-center justify-center rounded text-xs font-medium px-1 transition-all
+                            w-full flex items-center justify-center text-xs font-medium transition-all
                             ${colorClass}
+                            ${isPast ? 'h-full opacity-30 grayscale-[0.8] border-none' : 'h-10 rounded px-1'}
                             ${cell?.locked && !isPast ? 'ring-2 ring-gray-600' : ''}
-                            ${isPast ? 'opacity-40 grayscale-[0.8] !ring-0' : ''}
                          `}>
                           {assign ? (
                             <>

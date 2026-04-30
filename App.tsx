@@ -34,6 +34,7 @@ import { ACGMEAudit } from './components/ACGMEAudit';
 import { CompetitorStudio } from './components/CompetitorStudio';
 import { CohortKanban } from './components/CohortKanban';
 import { GenerationDashboard } from './components/GenerationDashboard';
+import { SettingsOverlay } from './components/SettingsOverlay';
 import { Button } from './components/ui/Button';
 import { Input } from './components/ui/Input';
 import {
@@ -242,6 +243,8 @@ const App: React.FC = () => {
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => preloadHistoricalData(residents), [residents]);
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'residents' | 'backup' | 'reset'>('residents');
   
   const [algoConfig, setAlgoConfig] = useState<AlgorithmConfig[]>([
     { id: 'stochastic', name: 'Stochastic', description: 'The tried-and-true generalist. Good at everything, master of none. Uses weighted randomness to explore valid slots.', enabled: true, color: '#3b82f6' },
@@ -434,7 +437,7 @@ const App: React.FC = () => {
     residents: Resident[], 
     existing: ScheduleGrid, 
     params: CompetitionParams, 
-    onProgress: (iteration: number, attempts: number, scores: number[] | undefined, year: number, overallProgress: number) => void, 
+    onProgress: (iteration: number, attempts: number, regrets: number[] | undefined, year: number, overallProgress: number) => void, 
     historicalSchedules: ScheduleHistory, 
     cohortAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
@@ -459,9 +462,9 @@ const App: React.FC = () => {
       }
 
       worker.onmessage = (e) => {
-        const { type, iteration, overallProgress, bestScore, attempts, year, results, error } = e.data;
+        const { type, iteration, overallProgress, bestRegret, attempts, year, results, error } = e.data;
         if (type === 'progress') {
-          onProgress(iteration, attempts, bestScore, year, overallProgress);
+          onProgress(iteration, attempts, bestRegret, year, overallProgress);
         } else if (type === 'success') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -595,12 +598,17 @@ const App: React.FC = () => {
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
             
             // Only update convergence data if the user is looking at it
-            if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
-              convergenceBufferRef.current.push(scores);
-              setConvergenceData([...convergenceBufferRef.current]);
-            }
+          if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
+            if (convergenceBufferRef.current.length > 50) convergenceBufferRef.current.shift();
+            convergenceBufferRef.current.push(scores);
+            setConvergenceData([...convergenceBufferRef.current]);
+          } else if (scores) {
+            if (convergenceBufferRef.current.length > 50) convergenceBufferRef.current.shift();
+            convergenceBufferRef.current.push(scores);
+          }
             lastUpdateRef.current = now;
           } else if (scores) {
+            if (convergenceBufferRef.current.length > 50) convergenceBufferRef.current.shift();
             convergenceBufferRef.current.push(scores);
           }
         },
@@ -816,6 +824,60 @@ const App: React.FC = () => {
     }
   };
 
+  const handleToggleLock = (residentId: string, weekIdx: number) => {
+    if (!activeScheduleId) return;
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const updatedData = { ...s.data };
+      const grid = { ...(updatedData[activeYear] || {}) };
+      const weeks = [...(grid[residentId] || [])];
+      if (weeks[weekIdx]) {
+        weeks[weekIdx] = { ...weeks[weekIdx], locked: !weeks[weekIdx].locked };
+      }
+      grid[residentId] = weeks;
+      updatedData[activeYear] = grid;
+      return { ...s, data: updatedData };
+    }));
+  };
+
+  const handleLockWeek = (weekIdx: number) => {
+    if (!activeScheduleId) return;
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const updatedData = { ...s.data };
+      const grid = { ...(updatedData[activeYear] || {}) };
+      
+      // Determine if we should lock or unlock based on the first resident's state
+      const firstRid = Object.keys(grid)[0];
+      const shouldLock = firstRid ? !grid[firstRid][weekIdx]?.locked : true;
+
+      Object.keys(grid).forEach(rid => {
+        const weeks = [...(grid[rid] || [])];
+        if (weeks[weekIdx]) {
+          weeks[weekIdx] = { ...weeks[weekIdx], locked: shouldLock };
+        }
+        grid[rid] = weeks;
+      });
+      updatedData[activeYear] = grid;
+      return { ...s, data: updatedData };
+    }));
+  };
+
+  const handleLockResident = (residentId: string) => {
+    if (!activeScheduleId) return;
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const updatedData = { ...s.data };
+      const grid = { ...(updatedData[activeYear] || {}) };
+      const weeks = [...(grid[residentId] || [])];
+      const shouldLock = !weeks.some(w => w.locked);
+      grid[residentId] = weeks.map(w => ({ ...w, locked: shouldLock }));
+      updatedData[activeYear] = grid;
+      return { ...s, data: updatedData };
+    }));
+  };
+
+
   const NavButton = ({ id, label, icon: Icon, badgeCount }: any) => (
     <Button
       variant="ghost"
@@ -951,46 +1013,49 @@ const App: React.FC = () => {
             })}
           </div>
         </div>
-
         {/* Right: Settings Icons */}
         <div className="flex items-center gap-1">
-          {[
-            { tab: 'residents', icon: Users, title: 'Residents' },
-            { tab: 'backup', icon: Download, title: 'Backup' },
-            { tab: 'reset', icon: RotateCcw, title: 'Reset Data' },
-          ].map(({ tab, icon: Icon, title }) => {
-            const isActive = activeScheduleId === 'settings' && activeTab === tab;
-            return (
-              <div
-                key={tab}
-                title={title}
-                onClick={() => {
-                  startTransition(() => {
-                    if (isActive) {
-                      // Toggle off: go back to the first schedule or 'all'
-                      const firstSched = schedules.find(s => !s.isGenerating);
-                      setActiveScheduleId(firstSched?.id ?? 'all');
-                      setActiveTab('schedule');
-                    } else {
-                      setActiveScheduleId('settings');
-                      setActiveTab(tab);
-                    }
-                  });
-                }}
-                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer ${isActive ? 'bg-blue text-white' : 'text-muted hover:bg-light-2 hover:text-primary'}`}
-              >
-                <Icon size={16} />
-              </div>
-            );
-          })}
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setActiveSettingsTab('residents');
+              setIsSettingsOpen(true);
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
+          >
+            <Users size={14} />
+            Residents
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setActiveSettingsTab('backup');
+              setIsSettingsOpen(true);
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
+          >
+            <Download size={14} />
+            Backup
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setActiveSettingsTab('reset');
+              setIsSettingsOpen(true);
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
+          >
+            <RotateCcw size={14} />
+            Reset
+          </Button>
         </div>
-      </div>
+     </div>
 
       {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
-          <NavButton id="assignments" label="Assignments" icon={Table} badgeCount={violations.constraints.length} />
+          <NavButton id="coverage" label="Coverage" icon={Table} badgeCount={violations.constraints.length} />
           <NavButton id="requirements" label="Requirements" icon={ClipboardList} badgeCount={violations.reqs.length} />
           <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} badgeCount={violations.audit} />
           <NavButton id="cohorts" label="Cohorts" icon={Users} />
@@ -1002,112 +1067,7 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-hidden relative bg-white min-h-0">
         <div className="absolute inset-0 flex flex-col">
-          {activeScheduleId === 'settings' ? (
-            <div className="flex-1 overflow-hidden flex flex-col bg-white">
-              {activeTab === 'residents' && <div className="flex-1 overflow-y-auto"><ResidentManager residents={residents} setResidents={setResidents} activeYear={activeYear} /></div>}
-              {activeTab === 'backup' && (
-                <div className="flex-1 overflow-y-auto p-12 bg-light-1">
-                  <div className="max-w-xl mx-auto space-y-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-light-5">
-                      <h2 className="text-2xl font-black text-black flex items-center gap-3 mb-2">
-                        <Download className="text-blue" />
-                        System Backup
-                      </h2>
-                      <p className="text-muted font-medium">Export your data for safekeeping or import an existing backup file.</p>
-
-                      <div className="mt-8 grid grid-cols-1 gap-4">
-                        <div className="p-6 bg-light-blue/20 border border-light-blue/40 rounded-xl space-y-4">
-                          <h3 className="text-xs font-black text-blue uppercase tracking-widest">Export Data</h3>
-                          <p className="text-sm text-muted">Download all residents and schedule versions into a single JSON file.</p>
-                          <Button variant="primary" size="md" 
-                            onClick={handleExportJSON}
-                             className="w-full flex items-center justify-center gap-3 p-4 hover:-2-dark transition-all group" 
-                          >
-                            <Download size={18} className="group-hover:-translate-y-1 transition-transform" />
-                            Download Backup (.json)
-                          </Button>
-                        </div>
-
-                        <div className="p-6 bg-white border border-light-5 rounded-xl space-y-4">
-                          <h3 className="text-xs font-black text-secondary uppercase tracking-widest">Import Data</h3>
-                          <p className="text-sm text-muted">Upload a previously exported JSON file. <span className="text-red font-bold">Warning: This will overwrite your current data.</span></p>
-                          <label className="w-full flex items-center justify-center gap-3 p-4 bg-light-2 text-primary rounded-lg font-bold hover:bg-light-3 transition-all cursor-pointer border border-dashed border-light-6">
-                            <Plus size={18} />
-                            Select Backup File
-                            <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {activeTab === 'reset' && (
-                <div className="flex-1 overflow-y-auto p-12 bg-light-1">
-                  <div className="max-w-xl mx-auto space-y-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-light-5">
-                      <h2 className="text-2xl font-black text-black flex items-center gap-3 mb-2">
-                        <RotateCcw className="text-blue" />
-                        System Reset
-                      </h2>
-                      <p className="text-muted font-medium">Clear specific parts of the system or perform a full factory reset.</p>
-
-                      <div className="mt-8 space-y-4">
-                        <div className="p-4 border border-red/20 bg-red/10/30 rounded-xl space-y-4">
-                          <h3 className="text-xs font-black text-red uppercase tracking-widest">Danger Zone</h3>
-
-                          <Button
-                            onClick={() => { if (confirm("This will delete ALL data. Are you sure?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); setSchedules([]); setActiveScheduleId('all'); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-red/40 rounded-lg text-red hover:bg-red hover:text-white transition-all group font-bold"
-                          >
-                            <span className="flex items-center gap-3"><Trash2 size={18} /> Clear All Records</span>
-                            <span className="text-[10px] uppercase opacity-50 group-hover:opacity-100">Factory Reset</span>
-                          </Button>
-
-                          <Button
-                            onClick={() => { if (confirm("Reset all residents to defaults?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red transition-all group font-bold"
-                          >
-                            <span className="flex items-center gap-3"><Users size={18} /> Reset Residents</span>
-                            <span className="text-[10px] uppercase opacity-50">Set to Default</span>
-                          </Button>
-
-                          <Button
-                            onClick={() => { if (confirm("Delete all schedule versions?")) { setSchedules([]); setActiveScheduleId('all'); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red transition-all group font-bold"
-                          >
-                            <span className="flex items-center gap-3"><Database size={18} /> Delete All Schedules</span>
-                            <span className="text-[10px] uppercase opacity-50">Clear Versions</span>
-                          </Button>
-
-                          <Button
-                            onClick={() => {
-                                if (confirm("Unpin all assignments across all schedules?")) {
-                                  setSchedules(prev => prev.map(s => ({
-                                    ...s,
-                                    data: Object.fromEntries(Object.entries(s.data).map(([year, grid]) => [
-                                      year,
-                                      Object.fromEntries(Object.entries(grid as ScheduleGrid).map(([rid, weeks]) => [
-                                        rid,
-                                        weeks.map(w => ({ ...w, locked: false }))
-                                      ]))
-                                    ]))
-                                  })));
-                                }
-                            }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-blue-400 hover:text-blue transition-all group font-bold"
-                          >
-                            <span className="flex items-center gap-3"><LayoutGrid size={18} /> Unpin All Weeks</span>
-                            <span className="text-[10px] uppercase opacity-50">Unlock All</span>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : activeScheduleId === 'draft' && !isHistoricalYear ? (
+          {activeScheduleId === 'draft' && !isHistoricalYear ? (
             <CompetitorStudio
               algorithms={algoConfig}
               stats={algoStats}
@@ -1224,32 +1184,23 @@ const App: React.FC = () => {
                        </div>
                     </div>
 
-                    {/* Right: Violations */}
-                    <div>
-                      {hasViolations && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-red/10 text-red rounded-full border border-red/20 animate-pulse">
-                          <AlertCircle size={14} />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Staffing Violations</span>
-                        </div>
-                      )}
-                    </div>
+                    <div />
                   </div>
-                  <div className="flex-1 overflow-hidden p-6">
-                    <ScheduleTable
-                      residents={activeResidents}
-                      schedule={currentGrid}
-                      startYear={activeSchedule?.isHistory ? activeSchedule.startYear : activeYear}
-                      cohortAssignments={activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {}}
-                      onCellClick={handleCellClick}
-                      onLockWeek={() => { }}
-                      onLockResident={() => { }}
-                      onToggleLock={() => { }}
-                    />
-                  </div>
+                  
+                  <ScheduleTable
+                    residents={activeResidents}
+                    schedule={currentGrid}
+                    startYear={activeSchedule?.isHistory ? activeSchedule.startYear : activeYear}
+                    cohortAssignments={activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {}}
+                    onCellClick={handleCellClick}
+                    onLockWeek={handleLockWeek}
+                    onLockResident={handleLockResident}
+                    onToggleLock={handleToggleLock}
+                  />
                 </div>
               )}
               {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
-              {activeTab === 'assignments' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'coverage' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
               {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={activeResidents} schedule={currentGrid} precalculatedViolations={violations.reqs} /></div>}
               {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={activeSchedule?.data || {}} activeYear={activeYear} /></div>}
               {activeTab === 'cohorts' && (
@@ -1312,7 +1263,22 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* ─── Bottom Tab Bar (Spreadsheet-style, persistent) ─── */}
+      <SettingsOverlay
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        activeTab={activeSettingsTab}
+        setActiveTab={setActiveSettingsTab}
+        residents={residents}
+        setResidents={setResidents}
+        activeYear={activeYear}
+        handleExportJSON={handleExportJSON}
+        handleImportJSON={handleImportJSON}
+        handleFactoryReset={handleFactoryReset}
+        onDeleteAllSchedules={handleDeleteAllSchedules}
+        onUnpinAllWeeks={handleUnpinAllWeeks}
+        onResetResidents={handleResetResidents}
+      />
+
       {activeScheduleId !== 'settings' && (
         <div className="h-9 bg-light-3 flex items-stretch shrink-0 z-30 px-2 border-t border-light-4 relative">
           {/* Left: Future Schedules label */}

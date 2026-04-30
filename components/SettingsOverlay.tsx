@@ -15,6 +15,9 @@ interface Props {
   handleExportJSON: () => void;
   handleImportJSON: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleFactoryReset: () => void;
+  onDeleteAllSchedules: () => void;
+  onUnpinAllWeeks: () => void;
+  onResetResidents: () => void;
 }
 
 export const SettingsOverlay: React.FC<Props> = ({
@@ -27,7 +30,10 @@ export const SettingsOverlay: React.FC<Props> = ({
   activeYear,
   handleExportJSON,
   handleImportJSON,
-  handleFactoryReset
+  handleFactoryReset,
+  onDeleteAllSchedules,
+  onUnpinAllWeeks,
+  onResetResidents
 }) => {
   if (!isOpen) return null;
 
@@ -35,7 +41,7 @@ export const SettingsOverlay: React.FC<Props> = ({
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity" 
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" 
         onClick={onClose}
       />
       
@@ -125,15 +131,39 @@ export const SettingsOverlay: React.FC<Props> = ({
                 <p className="text-muted font-medium">Clear specific parts of the system or perform a full factory reset.</p>
 
                 <div className="mt-8 space-y-4">
-                  <div className="p-4 border border-red/20 bg-red/10/30 rounded-xl space-y-4">
+                  <div className="p-4 border border-red/20 bg-red/10 rounded-xl space-y-4">
                     <h3 className="text-xs font-black text-red uppercase tracking-widest">Danger Zone</h3>
 
                     <Button
                       onClick={handleFactoryReset}
+                      className="w-full flex items-center justify-between p-4 bg-white border border-red/40 rounded-lg text-red hover:bg-red hover:text-white transition-all group font-bold"
+                    >
+                      <span className="flex items-center gap-3"><RotateCcw size={18} /> Full Factory Reset</span>
+                      <span className="text-[10px] uppercase opacity-50 group-hover:opacity-100">Wipe All</span>
+                    </Button>
+
+                    <Button
+                      onClick={onResetResidents}
                       className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red/40 hover:text-red transition-all group font-bold"
                     >
-                      <span className="flex items-center gap-3"><Database size={18} /> Factory Reset</span>
-                      <span className="text-[10px] uppercase opacity-50">Wipe All Data</span>
+                      <span className="flex items-center gap-3"><Users size={18} /> Reset Residents</span>
+                      <span className="text-[10px] uppercase opacity-50">Set to Default</span>
+                    </Button>
+
+                    <Button
+                      onClick={onDeleteAllSchedules}
+                      className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red/40 hover:text-red transition-all group font-bold"
+                    >
+                      <span className="flex items-center gap-3"><Database size={18} /> Delete All Schedules</span>
+                      <span className="text-[10px] uppercase opacity-50">Clear Versions</span>
+                    </Button>
+
+                    <Button
+                      onClick={onUnpinAllWeeks}
+                      className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-blue/40 hover:text-blue transition-all group font-bold"
+                    >
+                      <span className="flex items-center gap-3"><Plus size={18} /> Unpin All Weeks</span>
+                      <span className="text-[10px] uppercase opacity-50">Unlock All</span>
                     </Button>
                   </div>
                 </div>

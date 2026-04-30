@@ -105,7 +105,7 @@ export interface ResidentFairnessMetrics {
   requiredWeeks: number;
   vacationWeeks: number;
   nightFloatWeeks: number;
-  totalIntensityScore: number;
+  totalIntensityRegret: number;
   maxIntensityStreak: number;
   streakSummary: string[];
 }
@@ -119,7 +119,7 @@ export interface CohortFairnessMetrics {
   sdElective: number;
   meanIntensity: number;
   sdIntensity: number;
-  fairnessScore: number;
+  fairnessRegret: number;
 }
 
 export interface RequirementViolation {

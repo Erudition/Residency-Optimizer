@@ -57,7 +57,6 @@ interface ScheduleMetrics {
 export const ScheduleComparison: React.FC<Props> = ({
   residents,
   schedules,
-  activeScheduleId,
   onSelect,
   onRename,
   activeYear,
