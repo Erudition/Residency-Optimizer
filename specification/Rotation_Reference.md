@@ -9,7 +9,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Wards Red
 *   **Setting:** Inpatient
-*   **Duration:** 4 weeks
+*   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 5
@@ -17,27 +17,27 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Wards Blue
 *   **Setting:** Inpatient
-*   **Duration:** 4 weeks
+*   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 5
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
 *   **ACGME Targets:** Contributes to the core inpatient wards minimums.
 
 ### Met Wards (Metro Wards)
 *   **Setting:** Inpatient
-*   **Duration:** 4 weeks
+*   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
-*   **Staffing Requirements:** 3 Interns, 0-2 Seniors (+ up to 1 Medical Student)
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 5
+*   **Staffing Requirements:** 3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
 *   **ACGME Targets:** Contributes to the core inpatient wards minimums.
 
 ### ICU (Main)
 *   **Setting:** Critical Care
-*   **Duration:** 4 weeks
+*   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 5/5
 *   **Staffing Requirements:** 4 Interns (Strict), 2 Seniors (Strict) (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 6
-*   **ACGME Targets:** 4 weeks required for Interns, 4 weeks required for Seniors.
+*   **ACGME Targets:** 8 weeks required for Interns, 4 weeks required for Seniors.
 
 ### Outpatient (CCIM & NIMA Continuity Clinics)
 *   **Setting:** Outpatient
@@ -49,26 +49,26 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Pulmonology / Procedural Service
 *   **Setting:** Inpatient
-*   **Duration:** 2 weeks (PGY-1)
+*   **Duration:** 2 weeks consecutive (PGY-1)
 *   **Intensity Rating:** 1/5
-*   **Staffing Requirements:** 0-2 Interns, 1 Seniors
+*   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
-*   **ACGME Targets:** Required 2 weeks for Interns. Functions as a core procedural training service.
+*   **ACGME Targets:** Required 2 weeks for Interns. Two weeks of supervision for seniors. Functions as a core procedural training service.
 
 ### Emergency Medicine
 *   **Setting:** Inpatient (Emergency)
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 1-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 4 weeks total. Restricted to PGY-2/PGY-3 residents under the new curriculum rules.
+*   **ACGME Targets:** 4 weeks total. Restricted to PGY-2/PGY-3 residents.
 
 ### Night Float
 *   **Setting:** Inpatient
-*   **Duration:** 4 weeks (Cap limit is 2 weeks consecutive, max 6 weeks per residency)
+*   **Duration:** 2 weeks consecutive (Cap limit is 2 weeks consecutive, max 6 weeks per residency)
 *   **Intensity Rating:** 4/5
-*   **Staffing Requirements:** 1-2 Interns, 1-3 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 5
+*   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
 *   **ACGME Targets:** Strict ACGME limits apply to night float frequency and consecutive duration.
 
 ---
@@ -78,55 +78,55 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Cardiology
 *   **Setting:** Inpatient/Outpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 2/5
-*   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
+*   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
-*   **ACGME Targets:** 2 weeks required for Interns; two weeks required for seniors.
+*   **ACGME Targets:** 2 weeks required for Interns; two weeks during PGY3.
 
 ### Infectious Disease (ID)
 *   **Setting:** Inpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
-*   **Staffing Requirements:** 0-4 Interns, 0 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
+*   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
 *   **ACGME Targets:** 2 weeks required for Interns.
 
 ### Nephrology
 *   **Setting:** Inpatient
-*   **Duration:** 2 weeks
-*   **Intensity Rating:** 1/5
-*   **Staffing Requirements:** 0-4 Interns, 0 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
+*   **Duration:** 2 weeks consecutive
+*   **Intensity Rating:** 2/5
+*   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
 *   **ACGME Targets:** 2 weeks required for Interns.
 
 ### Heme/Onc
 *   **Setting:** Inpatient/Outpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 2 weeks required in PGY-3.
+*   **ACGME Targets:** 2 weeks required in PGY-3. 
 
 ### Neurology
 *   **Setting:** Inpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 1
 *   **ACGME Targets:** 2 weeks required in PGY-2.
 
 ### Rheumatology
 *   **Setting:** Outpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 1
 *   **ACGME Targets:** 2 weeks required in PGY-2.
 
 ### Gastroenterology (GI)
 *   **Setting:** Outpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
@@ -134,7 +134,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Addiction Medicine
 *   **Setting:** Inpatient
-*   **Duration:** 4 weeks
+*   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
@@ -142,7 +142,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Endocrinology
 *   **Setting:** Outpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
@@ -150,7 +150,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Geriatrics
 *   **Setting:** Outpatient
-*   **Duration:** 4 weeks
+*   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
@@ -158,7 +158,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Palliative Care (HPC)
 *   **Setting:** Inpatient
-*   **Duration:** 4 weeks
+*   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
@@ -169,7 +169,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 ## 3. ELECTIVES & ADDITIONAL EXPERIENCES
 These are highly individualized rotation experiences that residents can select to fulfill their "Individualized Educational Experiences" time. 
 
-### Pure Elective
+## **3.1 Pure Elective
 *   **Setting:** Inpatient / Outpatient (Varies)
 *   **Duration:** 2-4 weeks
 *   **Intensity Rating:** 1/5
@@ -184,40 +184,70 @@ These are highly individualized rotation experiences that residents can select t
 *   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 20
 
-### Cardiac ICU (CC-ICU) / AMCS Consults
-*   **Setting:** Critical Care
+### Research
+*   **Setting:** Non-Clinical
 *   **Duration:** 2 weeks
+*   **Intensity Rating:** 1/5
+*   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 20
+
+### Junior Hospitalist
+*   **Setting:** Inpatient
+*   **Duration:** 4 weeks consecutive
+*   **Intensity Rating:** 3/5
+*   **Staffing Requirements:** 0-2 seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+
+### Admitting
+*   **Setting:** Inpatient
+*   **Duration:** 4 weeks consecutive
+*   **Intensity Rating:** 4/5
+*   **Staffing Requirements:** 0-2 seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+
+### Primary Care
+*   **Setting:** Outpatient
+*   **Duration:** 4 weeks consecutive
+*   **Intensity Rating:** 3/5
+*   **Staffing Requirements:** 0-2 seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+
+
+### Advanced Mechanical Circulatory Support / Cardiac ICU (CC-ICU)
+*   **Setting** Inpatient
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-2 Interns, 0-2 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
 
 ### Metro ICU
 *   **Setting:** Critical Care
-*   **Duration:** 4 weeks
+*   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 5/5
 *   **Staffing Requirements:** 0-3 Interns, 0-3 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 6
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 3
+*   **ACGME Targets:** An optional four weeks may be used to meet critical care requirements for seniors. It is recommended that seniors complete this rotation as long as doing so does not affect ICU staffing at Main ICU.
 
 ### Otolaryngology (ENT)
 *   **Setting:** Outpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-1 Intern, 0-1 Senior
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 1
 
 ### Heart Failure (HF)
 *   **Setting:** Inpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-2 Interns, 0-2 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
 
-### CCMA
+### Anaesthesia
 *   **Setting:** Inpatient
-*   **Duration:** 2 weeks
+*   **Duration:** 2 weeks 
 *   **Intensity Rating:** 3/5
-*   **Staffing Requirements:** 0-2 Interns, 0-2 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
+*   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 1
 
 ---
 
