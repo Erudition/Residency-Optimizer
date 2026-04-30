@@ -11,7 +11,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Setting:** Inpatient
 *   **Duration:** 4 weeks
 *   **Intensity Rating:** 4/5
-*   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors
+*   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 5
 *   **ACGME Targets:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors.
 
@@ -19,7 +19,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Setting:** Inpatient
 *   **Duration:** 4 weeks
 *   **Intensity Rating:** 3/5
-*   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors
+*   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 5
 *   **ACGME Targets:** Contributes to the core inpatient wards minimums.
 
@@ -27,7 +27,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Setting:** Inpatient
 *   **Duration:** 4 weeks
 *   **Intensity Rating:** 3/5
-*   **Staffing Requirements:** 3 Interns, 0-2 Seniors
+*   **Staffing Requirements:** 3 Interns, 0-2 Seniors (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 5
 *   **ACGME Targets:** Contributes to the core inpatient wards minimums.
 
@@ -35,7 +35,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Setting:** Critical Care
 *   **Duration:** 4 weeks
 *   **Intensity Rating:** 5/5
-*   **Staffing Requirements:** 4 Interns (Strict), 2 Seniors (Strict)
+*   **Staffing Requirements:** 4 Interns (Strict), 2 Seniors (Strict) (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 6
 *   **ACGME Targets:** 4 weeks required for Interns, 4 weeks required for Seniors.
 
