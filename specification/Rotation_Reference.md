@@ -47,9 +47,29 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 6
 *   **ACGME Targets:** 8 weeks required for Interns, 4 weeks required for Seniors.
 
-### Outpatient (CCIM & NIMA Continuity Clinics)
+## Outpatient (CCIM & NIMA Continuity Clinics)
 *   **Setting:** Outpatient
 *   **Site:** Ambulatory Clinics
+*   **Percent Outpatient:** 100%
+*   **Duration:** 1 week (+1 Block)
+*   **Intensity Rating:** 2/5
+*   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 20
+*   **ACGME Targets:** Fulfills the 130-half-day longitudinal ambulatory continuity clinic ACGME mandate.
+
+### Continuity Clinic
+*   **Setting:** Outpatient
+*   **Site:** Methodist Plaza
+*   **Percent Outpatient:** 100%
+*   **Duration:** 1 week (+1 Block)
+*   **Intensity Rating:** 2/5
+*   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 20
+*   **ACGME Targets:** Fulfills the 130-half-day longitudinal ambulatory continuity clinic ACGME mandate.
+
+### NIMA Clinic
+*   **Setting:** Outpatient
+*   **Site:** NIMA
 *   **Percent Outpatient:** 100%
 *   **Duration:** 1 week (+1 Block)
 *   **Intensity Rating:** 2/5
@@ -81,11 +101,11 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Setting:** Inpatient
 *   **Site:** Main
 *   **Percent Outpatient:** 0%
-*   **Duration:** 2 weeks consecutive (Cap limit is 2 weeks consecutive, max 6 weeks per residency)
+*   **Duration:** 2 weeks consecutive 
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** Strict ACGME limits apply to night float frequency and consecutive duration.
+*   **ACGME Targets:** Strict ACGME limits apply to night float frequency and consecutive duration. Cap limit is 2 weeks consecutive, max 6 weeks per residency
 
 ---
 
