@@ -329,6 +329,16 @@ These are highly individualized rotation experiences that residents can select t
 *   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
 
+### PMNR
+*   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
+*   **Duration:** 2 weeks 
+*   **Intensity Rating:** 2/5
+*   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+
+
 ---
 
 ## 4. NON-CLINICAL BLOCKS
