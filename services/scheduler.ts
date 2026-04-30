@@ -104,12 +104,13 @@ export const generateSchedule = async (
         
         if (score <= currentWorstScore || results.length < (params.topN || 1)) {
           const result: CompetitionResult = {
-            schedule: attemptFullData, 
+            schedule: attemptFullData,
             winnerName: g.name,
             score,
             totalViolations: attemptTotalViolations,
             understaffing: attemptUnderstaffing
           };
+
 
           results.push(result);
           results.sort((a, b) => a.score - b.score); // ASC sort (lower cost first)

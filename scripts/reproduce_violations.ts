@@ -10,11 +10,12 @@ const test = async () => {
     let failures = 0;
     for (let i = 0; i < 20; i++) {
         const result = await generateSchedule(
-            2026, 1, {}, 
+            2026, 1, {},
             { residents, existing: {}, cohortAssignments: { 2026: mockCohortMap } },
             { tries: 1, priority: CompetitionPriority.BEST_SCORE, topN: 1 },
             ['experimental'], () => false, () => {}
         );
+
         
         const schedule = result.results[0].schedule[2026];
         const violations = getWeeklyViolations(residents, schedule);

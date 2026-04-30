@@ -33,7 +33,9 @@ import { ACGMEAudit } from './components/ACGMEAudit';
 import { CompetitorStudio } from './components/CompetitorStudio';
 import { CohortKanban } from './components/CohortKanban';
 import { GenerationDashboard } from './components/GenerationDashboard';
+import { SettingsOverlay } from './components/SettingsOverlay';
 import { Button } from './components/ui/Button';
+
 import { Input } from './components/ui/Input';
 import {
   CompetitionParams,
@@ -315,6 +317,8 @@ const App: React.FC = () => {
 
   const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'residents' | 'backup' | 'reset'>('residents');
 
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
@@ -367,6 +371,14 @@ const App: React.FC = () => {
     return schedules.find(s => s.id === activeScheduleId);
   }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear]);
   
+  // Sync convergence data from buffer when switching back to dashboard
+  useEffect(() => {
+    if (activeTab === 'loading' && activeSchedule?.isGenerating && convergenceBufferRef.current.length > convergenceData.length) {
+      setConvergenceData([...convergenceBufferRef.current]);
+    }
+  }, [activeTab, activeSchedule?.isGenerating, convergenceData.length]);
+
+
   // Sync convergence data from buffer when switching back to dashboard
   useEffect(() => {
     if (activeTab === 'loading' && activeSchedule?.isGenerating && convergenceBufferRef.current.length > convergenceData.length) {
@@ -578,7 +590,7 @@ const App: React.FC = () => {
   useEffect(() => { if (activeScheduleId) localStorage.setItem('rsp_active_id', JSON.stringify(activeScheduleId)); }, [activeScheduleId]);
   const handleGenerate = async () => {
     if (isGeneratingRef.current) return;
-    
+
     isGeneratingRef.current = true;
     setIsGenerating(true);
     setGenProgress(0);
@@ -592,10 +604,12 @@ const App: React.FC = () => {
     const controller = new AbortController();
     generationControllerRef.current = controller;
 
+
     try {
       const totalYears = compParams.multiYear || 1;
-      
+
       startTransition(() => {
+
         setConvergenceData([]);
         convergenceBufferRef.current = [];
         lastUpdateRef.current = Date.now();
@@ -614,8 +628,9 @@ const App: React.FC = () => {
             setGenProgress(Math.round(overallProgress * 100));
             setGenAttempts(attempts);
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
-            
+
             // Only update convergence data if the user is looking at it
+
             if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
               convergenceBufferRef.current.push(scores);
               setConvergenceData([...convergenceBufferRef.current]);
@@ -634,8 +649,9 @@ const App: React.FC = () => {
       // Process results
       const resultSalt = Math.floor(Math.random() * 1000000);
       const newIds = results.map((_: any, idx: number) => `sched-${Date.now()}-${idx}-${resultSalt}`);
-      
+
       setConvergenceData([...convergenceBufferRef.current]);
+
 
       startTransition(() => {
         setSchedules(prev => {
@@ -867,7 +883,8 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
         <div className="w-full max-w-4xl">
           {convergenceData.length > 0 ? (
-            <GenerationDashboard 
+            <GenerationDashboard
+
               data={convergenceData}
               maxTries={compParams.tries}
               onStop={stopGeneration}
@@ -894,7 +911,8 @@ const App: React.FC = () => {
               <p className="text-muted font-bold tracking-tight">Initializing algorithms...</p>
             </div>
           )}
-          
+
+
           <div className="mt-8 flex flex-col items-center gap-2">
             <div className="flex items-center gap-3">
               <Loader2 size={20} className="text-blue animate-spin" />
@@ -931,7 +949,6 @@ const App: React.FC = () => {
       <div className="h-11 bg-light-3 flex items-center shrink-0 z-30 px-4 border-b border-light-4">
 
         {/* Left: App Title */}
-        {/* Left: App Title */}
         <div className="flex items-center gap-2 mr-6">
           <span className="text-sm font-black text-primary tracking-tight">Residency Scheduler</span>
         </div>
@@ -949,14 +966,6 @@ const App: React.FC = () => {
                   onClick={() => {
                     startTransition(() => {
                       setActiveYear(y);
-                      if (activeScheduleId === 'settings') {
-                        // keep settings open
-                      } else if (y < ACTIVE_START_YEAR) {
-                        // For historical years, switch to schedule view but preserve candidate selection
-                        if (['residents', 'backup', 'reset'].includes(activeTab)) {
-                          setActiveTab('schedule');
-                        }
-                      }
                     });
                   }}
                   className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
@@ -980,25 +989,15 @@ const App: React.FC = () => {
             { tab: 'backup', icon: Download, title: 'Backup' },
             { tab: 'reset', icon: RotateCcw, title: 'Reset Data' },
           ].map(({ tab, icon: Icon, title }) => {
-            const isActive = activeScheduleId === 'settings' && activeTab === tab;
             return (
               <div
                 key={tab}
                 title={title}
                 onClick={() => {
-                  startTransition(() => {
-                    if (isActive) {
-                      // Toggle off: go back to the first schedule or 'all'
-                      const firstSched = schedules.find(s => !s.isGenerating);
-                      setActiveScheduleId(firstSched?.id ?? 'all');
-                      setActiveTab('schedule');
-                    } else {
-                      setActiveScheduleId('settings');
-                      setActiveTab(tab);
-                    }
-                  });
+                  setSettingsActiveTab(tab as any);
+                  setIsSettingsOpen(true);
                 }}
-                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer ${isActive ? 'bg-blue text-white' : 'text-muted hover:bg-light-2 hover:text-primary'}`}
+                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer text-muted hover:bg-light-2 hover:text-primary`}
               >
                 <Icon size={16} />
               </div>
@@ -1007,7 +1006,8 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
+  
+      {(activeScheduleId !== 'all' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
@@ -1022,97 +1022,7 @@ const App: React.FC = () => {
       ) : null}
 
       <main className="flex-1 overflow-hidden relative bg-white min-h-0">
-        <div className="absolute inset-0 flex flex-col">
-          {activeScheduleId === 'settings' ? (
-            <div className="flex-1 overflow-hidden flex flex-col bg-white">
-              {activeTab === 'residents' && <div className="flex-1 overflow-y-auto"><ResidentManager residents={residents} setResidents={setResidents} activeYear={activeYear} /></div>}
-              {activeTab === 'backup' && (
-                <div className="flex-1 overflow-y-auto p-12 bg-light-1">
-                  <div className="max-w-xl mx-auto space-y-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-light-5">
-                      <h2 className="text-2xl font-black text-black flex items-center gap-3 mb-2">
-                        <Download className="text-blue" />
-                        System Backup
-                      </h2>
-                      <p className="text-muted font-medium">Export your data for safekeeping or import an existing backup file.</p>
-
-                      <div className="mt-8 grid grid-cols-1 gap-4">
-                        <div className="p-6 bg-light-blue/20 border border-light-blue/40 rounded-xl space-y-4">
-                          <h3 className="text-xs font-black text-blue uppercase tracking-widest">Export Data</h3>
-                          <p className="text-sm text-muted">Download all residents and schedule versions into a single JSON file.</p>
-                          <Button variant="primary" size="md" 
-                            onClick={handleExportJSON}
-                             className="w-full flex items-center justify-center gap-3 p-4 hover:-2-dark transition-all group" 
-                          >
-                            <Download size={18} className="group-hover:-translate-y-1 transition-transform" />
-                            Download Backup (.json)
-                          </Button>
-                        </div>
-
-                        <div className="p-6 bg-white border border-light-5 rounded-xl space-y-4">
-                          <h3 className="text-xs font-black text-secondary uppercase tracking-widest">Import Data</h3>
-                          <p className="text-sm text-muted">Upload a previously exported JSON file. <span className="text-red font-bold">Warning: This will overwrite your current data.</span></p>
-                          <label className="w-full flex items-center justify-center gap-3 p-4 bg-light-2 text-primary rounded-lg font-bold hover:bg-light-3 transition-all cursor-pointer border border-dashed border-light-6">
-                            <Plus size={18} />
-                            Select Backup File
-                            <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {activeTab === 'reset' && (
-                <div className="flex-1 overflow-y-auto p-12 bg-light-1">
-                  <div className="max-w-xl mx-auto space-y-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-light-5">
-                      <h2 className="text-2xl font-black text-black flex items-center gap-3 mb-2">
-                        <RotateCcw className="text-blue" />
-                        System Reset
-                      </h2>
-                      <p className="text-muted font-medium">Clear specific parts of the system or perform a full factory reset.</p>
-
-                      <div className="mt-8 space-y-4">
-                        <div className="p-4 border border-red/20 bg-red/10/30 rounded-xl space-y-4">
-                          <h3 className="text-xs font-black text-red uppercase tracking-widest">Danger Zone</h3>
-
-                          <Button
-                            onClick={() => { if (confirm("This will delete ALL data. Are you sure?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); setSchedules([]); setActiveScheduleId('all'); } }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red/40 hover:text-red transition-all group font-bold"
-                          >
-                            <span className="flex items-center gap-3"><Database size={18} /> Delete All Schedules</span>
-                            <span className="text-[10px] uppercase opacity-50">Clear Versions</span>
-                          </Button>
-
-                          <Button
-                            onClick={() => {
-                                if (confirm("Unpin all assignments across all schedules?")) {
-                                  setSchedules(prev => prev.map(s => ({
-                                    ...s,
-                                    data: Object.fromEntries(Object.entries(s.data).map(([year, grid]) => [
-                                      year,
-                                      Object.fromEntries(Object.entries(grid as ScheduleGrid).map(([rid, weeks]) => [
-                                        rid,
-                                        weeks.map(w => ({ ...w, locked: false }))
-                                      ]))
-                                    ]))
-                                  })));
-                                }
-                            }}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-blue-400 hover:text-blue transition-all group font-bold"
-                          >
-                            <span className="flex items-center gap-3"><Lock size={18} /> Unlock All Assignments</span>
-                            <span className="text-[10px] uppercase opacity-50">Reset Pins</span>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : activeScheduleId === 'draft' && !isHistoricalYear ? (
+        {activeScheduleId === 'draft' && !isHistoricalYear ? (
             isGenerating ? renderGenerationDashboard() : (
               <CompetitorStudio
                 algorithms={algoConfig}
@@ -1252,7 +1162,6 @@ const App: React.FC = () => {
               )}
             </>
           )}
-        </div>
       </main>
 
       {/* ─── Bottom Tab Bar (Spreadsheet-style, persistent) ─── */}
@@ -1303,8 +1212,9 @@ const App: React.FC = () => {
                 >
                   <div className="animate-spin h-2.5 w-2.5 border-[1.5px] border-blue border-t-transparent rounded-full flex-shrink-0" />
                   <span className="truncate max-w-[120px]">Generating... ({genProgress}%)</span>
-                  <Button variant="ghost" size="sm" onClick={(e) => { 
-                    e.stopPropagation(); 
+                  <Button variant="ghost" size="sm" onClick={(e) => {
+                    e.stopPropagation();
+
                     stopGeneration();
                   }} className="p-0.5 rounded text-muted hover:text-red transition-colors ml-1">
                     <X size={10} />
@@ -1335,10 +1245,11 @@ const App: React.FC = () => {
                     <Identicon id={sched.id} />
                     <span className="truncate max-w-[120px]">{sched.name}</span>
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="sm" onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setSchedules(s => s.filter(x => x.id !== sched.id)); 
-                        if (activeScheduleId === sched.id) setActiveScheduleId('all'); 
+                      <Button variant="ghost" size="sm" onClick={(e) => {
+                        e.stopPropagation();
+                        setSchedules(s => s.filter(x => x.id !== sched.id));
+                        if (activeScheduleId === sched.id) setActiveScheduleId('all');
+
                       }} className="p-0.5 rounded text-muted hover:text-red transition-colors">
                         <X size={10} />
                       </Button>
@@ -1377,8 +1288,27 @@ const App: React.FC = () => {
 
       <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} />
       <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => setRenameModalOpen(false)} onSave={handleRename} />
+
+      <SettingsOverlay
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        activeTab={settingsActiveTab}
+        setActiveTab={setSettingsActiveTab}
+        residents={residents}
+        setResidents={setResidents}
+        activeYear={activeYear}
+        handleExportJSON={handleExportJSON}
+        handleImportJSON={handleImportJSON}
+        handleFactoryReset={() => {
+          if (confirm("Are you sure? This will reset the system to its initial state.")) {
+            localStorage.clear();
+            window.location.reload();
+          }
+        }}
+      />
     </div>
   );
 };
+
 
 export default App;

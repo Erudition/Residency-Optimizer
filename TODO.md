@@ -15,4 +15,4 @@
 - [ ] Assignment staffing: Move to weight-based system where some PGY-1/PGY-3 staffing levels within the min-max are preferred over others, to prioritize schedules that don't frequently staff rotations lightly or heavily
 - [x] UI: Get rid of the pulsing "! STAFFING VIOLATIONS" pill, it's redundant with the pulsing alert badge on the Assignments tab
 - [x] UI: Rename "Assignments" tab to "Coverage"
-- [] UI: Make Settings pages into side panels that enter from the right and overlay until dismissed, rather than taking over the main view
+- [x] UI: Make Settings pages into side panels that enter from the right and overlay until dismissed, rather than taking over the main view

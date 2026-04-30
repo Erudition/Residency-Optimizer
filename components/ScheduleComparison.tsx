@@ -284,9 +284,10 @@ export const ScheduleComparison: React.FC<Props> = ({
                 {sortedMetrics.map(m => {
                   const isActive = m.id === activeScheduleId;
                   return (
-                    <tr 
-                      key={m.id} 
+                    <tr
+                      key={m.id}
                       className={`border-b border-light-3 transition-colors hover:bg-light-1 ${isActive ? 'bg-light-blue/20/40' : ''}`}
+
                     >
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">

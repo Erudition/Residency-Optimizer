@@ -14,16 +14,18 @@ interface Props {
 
 export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
   const startTimeRef = React.useRef<number>(Date.now());
-  
+
   const eta = useMemo(() => {
+
     if (data.length < 5) return 'Calculating...';
     const elapsed = Date.now() - startTimeRef.current;
     const progress = data.length / maxTries;
     if (progress >= 1) return 'Done';
-    
+
     const remainingTime = (elapsed / progress) - elapsed;
     const seconds = Math.ceil(remainingTime / 1000);
-    
+
+
     if (seconds > 60) {
       return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
     }
@@ -122,7 +124,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 0 }}
-                isAnimationActive={false}
+                isAnimationActive={true}
               />
             ))}
           </LineChart>
