@@ -9,6 +9,8 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Wards Red
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
@@ -17,6 +19,8 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Wards Blue
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
@@ -25,6 +29,8 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Met Wards (Metro Wards)
 *   **Setting:** Inpatient
+*   **Site:** Metro
+*   **Percent Outpatient:** 0%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
@@ -33,6 +39,8 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### ICU (Main)
 *   **Setting:** Critical Care
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 5/5
 *   **Staffing Requirements:** 4 Interns (Strict), 2 Seniors (Strict) (+ up to 1 Medical Student)
@@ -41,6 +49,8 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Outpatient (CCIM & NIMA Continuity Clinics)
 *   **Setting:** Outpatient
+*   **Site:** Ambulatory Clinics
+*   **Percent Outpatient:** 100%
 *   **Duration:** 1 week (+1 Block)
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
@@ -49,6 +59,8 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Pulmonology / Procedural Service
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
@@ -57,6 +69,8 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Emergency Medicine
 *   **Setting:** Inpatient (Emergency)
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 1-2 Seniors
@@ -65,6 +79,8 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Night Float
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks consecutive (Cap limit is 2 weeks consecutive, max 6 weeks per residency)
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
@@ -78,6 +94,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Cardiology
 *   **Setting:** Inpatient/Outpatient
+*   **Site:** Main
+*   **Percent Outpatient:** Varies (Inpatient/Outpatient mix)
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
@@ -86,6 +104,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Infectious Disease (ID)
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
@@ -94,6 +114,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Nephrology
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
@@ -102,6 +124,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Heme/Onc
 *   **Setting:** Inpatient/Outpatient
+*   **Site:** Main
+*   **Percent Outpatient:** Varies (Inpatient/Outpatient mix)
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -110,6 +134,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Neurology
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -118,6 +144,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Rheumatology
 *   **Setting:** Outpatient
+*   **Site:** Ambulatory Clinics
+*   **Percent Outpatient:** 100%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -126,6 +154,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Gastroenterology (GI)
 *   **Setting:** Outpatient
+*   **Site:** Ambulatory Clinics
+*   **Percent Outpatient:** 100%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -134,6 +164,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Addiction Medicine
 *   **Setting:** Outpatient 
+*   **Site:** Ambulatory Clinics
+*   **Percent Outpatient:** 100%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -142,6 +174,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Endocrinology
 *   **Setting:** Outpatient
+*   **Site:** Ambulatory Clinics
+*   **Percent Outpatient:** 100%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -150,6 +184,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Geriatrics
 *   **Setting:** Outpatient
+*   **Site:** Ambulatory Clinics
+*   **Percent Outpatient:** 100%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -158,6 +194,8 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Palliative Care (HPC)
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -171,6 +209,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ## **3.1 Pure Elective
 *   **Setting:** Inpatient / Outpatient (Varies)
+*   **Site:** Main
+*   **Percent Outpatient:** Varies (Inpatient/Outpatient mix)
 *   **Duration:** 2-4 weeks
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-20 Interns, 0-20 Seniors
@@ -179,6 +219,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Research
 *   **Setting:** Non-Clinical
+*   **Site:** Main
+*   **Percent Outpatient:** N/A
 *   **Duration:** 2 weeks
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
@@ -186,6 +228,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Research
 *   **Setting:** Non-Clinical
+*   **Site:** Main
+*   **Percent Outpatient:** N/A
 *   **Duration:** 2 weeks
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
@@ -193,6 +237,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Junior Hospitalist
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-2 seniors
@@ -200,6 +246,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Admitting
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 0-2 seniors
@@ -207,6 +255,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Primary Care
 *   **Setting:** Outpatient
+*   **Site:** Ambulatory Clinics
+*   **Percent Outpatient:** 100%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-2 seniors
@@ -215,6 +265,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Advanced Mechanical Circulatory Support / Cardiac ICU (CC-ICU)
 *   **Setting** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-2 Interns, 0-2 Seniors
@@ -222,6 +274,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Metro ICU
 *   **Setting:** Critical Care
+*   **Site:** Metro
+*   **Percent Outpatient:** 0%
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 5/5
 *   **Staffing Requirements:** 0-3 Interns, 0-3 Seniors
@@ -230,6 +284,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Otolaryngology (ENT)
 *   **Setting:** Outpatient
+*   **Site:** Ambulatory Clinics
+*   **Percent Outpatient:** 100%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-1 Intern, 0-1 Senior
@@ -237,6 +293,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Heart Failure (HF)
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-2 Interns, 0-2 Seniors
@@ -244,6 +302,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Anaesthesia
 *   **Setting:** Inpatient
+*   **Site:** Main
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks 
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
@@ -255,6 +315,8 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Vacation
 *   **Setting:** Non-Clinical
+*   **Site:** N/A
+*   **Percent Outpatient:** N/A
 *   **Duration:** 1-2 weeks
 *   **Intensity Rating:** 0/5
 *   **Staffing Requirements:** 0-20 Interns, 0-20 Seniors
