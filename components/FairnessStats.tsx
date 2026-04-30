@@ -59,7 +59,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
     };
 
     return (
-        <div className="h-full overflow-y-auto bg-light-1 p-6 pb-64 relative">
+        <div className="h-full overflow-y-auto bg-light-1 p-6 relative">
             <div className="max-w-6xl mx-auto space-y-8">
 
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-light-5">

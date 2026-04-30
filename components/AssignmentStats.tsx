@@ -168,7 +168,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
         <p className="text-sm text-muted">View staffing levels vs. constraints. Hover over row headers for rule details.</p>
       </div>
 
-      <div className="flex-1 overflow-auto spreadsheet-container pb-64">
+      <div className="flex-1 overflow-auto spreadsheet-container">
         <table className="border-separate border-spacing-0 w-max">
           <thead className="sticky top-0 z-30 bg-light-1 text-xs text-muted font-semibold h-10 shadow-sm">
             <tr>

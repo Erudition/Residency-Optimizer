@@ -8,9 +8,9 @@ let overallProgress = 0;
 let lastUpdate = 0;
 let pendingProgress: any = null;
 
-const postProgress = (iteration: number, scores: number[], attempts: number) => {
+const postProgress = (iteration: number, regrets: number[], attempts: number) => {
   const now = Date.now();
-  pendingProgress = { type: 'progress', iteration, overallProgress, bestScore: scores, attempts };
+  pendingProgress = { type: 'progress', iteration, overallProgress, bestRegret: regrets, attempts };
   
   if (now - lastUpdate > 200) { // Throttled to 200ms
     postMessage(pendingProgress);
@@ -36,9 +36,9 @@ onmessage = async (e: MessageEvent) => {
         params,
         algorithmIds,
         (id) => cancelledAlgorithmIds.has(id),
-        (iteration, scores, attempts) => {
+        (iteration, regrets, attempts) => {
           overallProgress = iteration / (params.tries || 300);
-          postProgress(iteration, scores, attempts);
+          postProgress(iteration, regrets, attempts);
         },
         () => isPromoteTriggered
       );

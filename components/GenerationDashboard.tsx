@@ -14,18 +14,16 @@ interface Props {
 
 export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
   const startTimeRef = React.useRef<number>(Date.now());
-
+  
   const eta = useMemo(() => {
-
     if (data.length < 5) return 'Calculating...';
     const elapsed = Date.now() - startTimeRef.current;
     const progress = data.length / maxTries;
     if (progress >= 1) return 'Done';
-
+    
     const remainingTime = (elapsed / progress) - elapsed;
     const seconds = Math.ceil(remainingTime / 1000);
-
-
+    
     if (seconds > 60) {
       return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
     }
@@ -48,11 +46,10 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
   }, [data, algorithms]);
 
   const bestScore = useMemo(() => {
-    if (data.length === 0) return Infinity;
+    if (data.length === 0) return 0;
     const lastRow = data[data.length - 1];
-    return Math.min(...lastRow.filter(s => s !== 1000000)); // Filter out uninitialized costs
+    return Math.max(...lastRow);
   }, [data]);
-
 
   return (
     <div className="bg-white rounded-3xl shadow-xl p-8 border border-light-5 flex flex-col gap-6 h-[550px]">
@@ -124,18 +121,18 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 0 }}
-                isAnimationActive={true}
+                isAnimationActive={false}
               />
             ))}
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {algorithms.map((algo, i) => {
           const isCanceled = canceledIds.has(algo.id);
-          const currentBest = data.length > 0 ? data[data.length - 1][i] : Infinity;
-          const isWinner = currentBest === bestScore && currentBest !== Infinity;
+          const currentBest = data.length > 0 ? data[data.length - 1][i] : -Infinity;
+          const isWinner = currentBest === bestScore && currentBest !== -Infinity;
 
           return (
             <div 
@@ -157,7 +154,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
                 )}
               </div>
               <div className="text-xl font-black text-primary leading-none flex items-baseline gap-1">
-                {currentBest === Infinity || currentBest === 1000000 ? '---' : currentBest.toFixed(0)}
+                {currentBest === -Infinity ? '---' : currentBest.toFixed(1)}
                 {isWinner && <span className="text-[8px] text-blue font-black uppercase">Best</span>}
               </div>
               <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">Attempt #{data.length}</div>

@@ -144,14 +144,14 @@ export interface AdaptationParams {
 }
 
 export enum CompetitionPriority {
-  BEST_SCORE = 'Best Score',
+  BEST_REGRET = 'Best Regret',
   LEAST_UNDERSTAFFING = 'Least Understaffing',
   MOST_PGY_REQS = 'Most PGY Requirements Met'
 }
 
 export interface AlgorithmStats {
-  bestScore: number;
-  worstScore: number;
+  bestRegret: number;
+  worstRegret: number;
   bestViolations: number;
   worstViolations: number;
 }
@@ -159,7 +159,7 @@ export interface AlgorithmStats {
 export interface CompetitionResult {
   schedule: ScheduleHistory;
   winnerName: string;
-  score: number;
+  regret: number;
   totalViolations: number;
   understaffing: number;
 }
@@ -184,9 +184,9 @@ export interface CompetitionParams {
 export interface ConvergenceDataPoint {
   attemptIndex: number;
   algorithmId: string;
-  score: number;
-  bestScoreSoFar: number;
-  globalBestScore: number;
+  regret: number;
+  bestRegretSoFar: number;
+  globalBestRegret: number;
   timestamp: number;
 }
 
@@ -200,4 +200,27 @@ export interface ScheduleGenerator {
     historicalSchedules?: ScheduleHistory,
     cohortAssignments?: Record<string, number>
   ) => ScheduleGrid;
+}
+export interface ScheduleSession {
+  id: string;
+  name: string;
+  data: ScheduleHistory;
+  createdAt: Date;
+  isGenerating?: boolean;
+  progress?: number;
+  progressLabel?: string;
+  attemptsMade?: number;
+  metrics?: {
+    stats: any;
+    violations: {
+      reqs: any[];
+      constraints: any[];
+    };
+    fairness: any[];
+    regret: number;
+  };
+  cohortAssignments?: Record<number, Record<string, number>>;
+  isHistory?: boolean;
+  startYear?: number;
+  lockedUntilWeek?: number;
 }

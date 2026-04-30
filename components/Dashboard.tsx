@@ -117,7 +117,7 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
   );
 
   return (
-    <div className="p-6 bg-light-1 min-h-full pb-64">
+    <div className="p-6 bg-light-1 min-h-full">
       <ChartSection title="PGY 1 (Interns)" dataSet={pgy1Data} />
       <ChartSection title="PGY 2" dataSet={pgy2Data} />
       <ChartSection title="PGY 3" dataSet={pgy3Data} />

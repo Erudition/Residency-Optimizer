@@ -1,10 +1,10 @@
 
-import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult } from '../types';
+import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting } from '../types';
 import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS } from '../constants';
 import { getRequirementCount, getCumulativeRequirementCount } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
-import { StochasticGenerator } from './generators/stochastic';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
+import { StochasticGenerator } from './generators/stochastic';
 import { EducationFirstGenerator } from './generators/educationFirst';
 
 /**
@@ -37,9 +37,9 @@ export const generateSchedule = async (
   }
 
   const results: CompetitionResult[] = [];
-  const algorithmBestScores: Record<string, number> = {};
+  const algorithmBestRegrets: Record<string, number> = {};
   // Standardizing on Cost: Lower is Better. Initial best is Infinity.
-  selectedGenerators.forEach(g => algorithmBestScores[g.id] = Infinity);
+  selectedGenerators.forEach(g => algorithmBestRegrets[g.id] = Infinity);
 
   console.log(`Starting Unified Multi-Year Competition (${totalYears} years)...`);
 
@@ -58,7 +58,7 @@ export const generateSchedule = async (
       const g = selectedGenerators[idx];
       
       if (isAlgorithmCanceled(g.id)) {
-        currentBestScores.push(algorithmBestScores[g.id]);
+        currentBestScores.push(algorithmBestRegrets[g.id]);
         continue;
       }
 
@@ -84,7 +84,7 @@ export const generateSchedule = async (
           const yearExisting = existing[y] || {};
           const yearSchedule = g.generator.generate(yearResidents, yearExisting, i + idx, runningHistory, cohortAssignments[y]);
           
-          const yearCost = calculateScheduleScore(yearResidents, yearSchedule, runningHistory);
+          const yearCost = calculateScheduleRegret(yearResidents, yearSchedule, runningHistory);
           const reqViolations = getRequirementViolations(yearResidents, yearSchedule, runningHistory);
           const weekViolations = getWeeklyViolations(yearResidents, yearSchedule);
           
@@ -97,37 +97,39 @@ export const generateSchedule = async (
           runningHistory[y] = yearSchedule;
         }
         
-        const score = totalCost;
+        const regret = totalCost;
 
         // Check if this multi-year package qualifies for Top N (Lower is Better)
-        const currentWorstScore = results.length >= (params.topN || 1) ? results[results.length - 1].score : Infinity;
+        const currentWorstRegret = results.length >= (params.topN || 1) ? results[results.length - 1].regret : Infinity;
         
-        if (score <= currentWorstScore || results.length < (params.topN || 1)) {
+        if (regret <= currentWorstRegret || results.length < (params.topN || 1)) {
           const result: CompetitionResult = {
             schedule: attemptFullData,
             winnerName: g.name,
-            score,
+            regret,
             totalViolations: attemptTotalViolations,
             understaffing: attemptUnderstaffing
           };
 
 
           results.push(result);
-          results.sort((a, b) => a.score - b.score); // ASC sort (lower cost first)
+          results.sort((a, b) => a.regret - b.regret); // ASC sort (lower cost first)
 
           if (results.length > (params.topN || 1)) {
             results.pop();
           }
         }
 
-        if (score < algorithmBestScores[g.id]) {
-          algorithmBestScores[g.id] = score;
+        if (regret < algorithmBestRegrets[g.id]) {
+          algorithmBestRegrets[g.id] = regret;
         }
       } catch (e) {
         console.error(`Generator ${g.name} failed attempt ${i}`, e);
       }
-      currentBestScores.push(algorithmBestScores[g.id] === Infinity ? 1000000 : algorithmBestScores[g.id]);
+      currentBestScores.push(algorithmBestRegrets[g.id] === Infinity ? 1000000 : algorithmBestRegrets[g.id]);
     }
+
+    onProgress(i, currentBestScores, i);
 
     if (i % 10 === 0) {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -167,41 +169,49 @@ export const getRequirementViolations = (residents: Resident[], schedule: Schedu
 
 export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid): WeeklyViolation[] => {
   const violations: WeeklyViolation[] = [];
-  if (!schedule) return violations;
-
-  for (let w = 0; w < TOTAL_WEEKS; w++) {
-    Object.values(AssignmentType).forEach(type => {
-      const meta = ROTATION_METADATA[type];
-      if (!meta || type === AssignmentType.ELECTIVE || type === AssignmentType.CLINIC || type === AssignmentType.VACATION) return;
-
-      const assigned = residents.filter(r => schedule[r.id]?.[w]?.assignment === type);
-      const interns = assigned.filter(r => r.level === 1).length;
-      const seniors = assigned.filter(r => r.level > 1).length;
-
-      if (interns < meta.minInterns) violations.push({ week: w + 1, type, issue: `Min Interns Unmet: ${interns}/${meta.minInterns}` });
-      if (seniors < meta.minSeniors) violations.push({ week: w + 1, type, issue: `Min Seniors Unmet: ${seniors}/${meta.minSeniors}` });
-
-      if (interns > meta.maxInterns) violations.push({ week: w + 1, type, issue: `Max Interns Exceeded: ${interns}/${meta.maxInterns}` });
-      if (seniors > meta.maxSeniors) violations.push({ week: w + 1, type, issue: `Max Seniors Exceeded: ${seniors}/${meta.maxSeniors}` });
-    });
-
-    // --- Jeopardy Pool Check ---
-    const flexibleSeniors = residents.filter(r => {
-      const assignment = schedule[r.id]?.[w]?.assignment;
-      return r.level > 1 && (ELECTIVE_TYPES.includes(assignment) || REQUIRED_TYPES.includes(assignment));
-    });
-
-    const pgy2Pool = flexibleSeniors.filter(r => r.level === 2).length;
-    const pgy3Pool = flexibleSeniors.filter(r => r.level === 3).length;
-
-    if (pgy3Pool === 0) {
-      violations.push({ week: w + 1, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: No PGY-3 available for 1st-line backup` });
-    }
-    if (pgy2Pool === 0) {
-      violations.push({ week: w + 1, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: No PGY-2 available for 2nd-line backup` });
+  const safeGrid = schedule || {};
+  
+  for (let week = 0; week < 52; week++) {
+    const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
+    const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC).length;
+    if (clinicCount === 0) {
+      violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}` });
     }
   }
+
   return violations;
+};
+
+export const getAuditViolations = (residents: Resident[], history: ScheduleHistory): number => {
+    let violationCount = 0;
+
+    residents.forEach(r => {
+        let outpatient = 0;
+        let criticalCareCore = 0;
+        let nightFloat = 0;
+
+        Object.entries(history).forEach(([_, grid]) => {
+            const weeks = grid[r.id] || [];
+            weeks.forEach(c => {
+                if (!c || !c.assignment) return;
+                const meta = ROTATION_METADATA[c.assignment];
+                if (!meta) return;
+
+                if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
+                if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
+                    if (c.assignment !== AssignmentType.AMCS_CONSULTS) {
+                        criticalCareCore++;
+                    }
+                }
+                if (c.assignment === AssignmentType.NIGHT_FLOAT) nightFloat++;
+            });
+        });
+
+        if (criticalCareCore > 18) violationCount++;
+        if (nightFloat > 12) violationCount++;
+    });
+
+    return violationCount;
 };
 
 
@@ -211,6 +221,7 @@ const calculateSD = (values: number[], mean: number): number => {
   const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / values.length;
   return Math.sqrt(avgSquareDiff);
 };
+
 
 export const calculateFairnessMetrics = (residents: Resident[], schedule: ScheduleGrid): CohortFairnessMetrics[] => {
   const safeGrid = schedule || {};
@@ -332,7 +343,7 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
   return diversity;
 };
 
-export const calculateScheduleScore = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): number => {
+export const calculateScheduleRegret = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): number => {
   const weeklyViolations = getWeeklyViolations(residents, schedule);
   const reqViolations = getRequirementViolations(residents, schedule, historicalSchedules);
   const fairness = calculateFairnessMetrics(residents, schedule);

@@ -14,7 +14,7 @@ describe('Algorithm Diagnostic', () => {
             const result = await generateSchedule(
                 2026, 1, {}, 
                 { residents, existing: {}, cohortAssignments: { 2026: cohortMap } },
-                { tries: 50, priority: CompetitionPriority.BEST_SCORE, topN: 1 },
+                { tries: 50, priority: CompetitionPriority.BEST_REGRET, topN: 1 },
                 [algoId], () => false, () => {}
             );
             const best = result.results[0];
@@ -23,7 +23,7 @@ describe('Algorithm Diagnostic', () => {
             const weekV = getWeeklyViolations(residents, bestSchedule);
 
             console.log(`\n=== ${algoId.toUpperCase()} (${best.winnerName}) ===`);
-            console.log(`Score: ${best.score} | Req Violations: ${reqV.length} | Weekly Violations: ${weekV.length}`);
+            console.log(`Score: ${best.regret} | Req Violations: ${reqV.length} | Weekly Violations: ${weekV.length}`);
 
             // Group req violations by type
             const byType: Record<string, number> = {};

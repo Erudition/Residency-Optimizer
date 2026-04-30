@@ -12,7 +12,7 @@ const test = async () => {
         const result = await generateSchedule(
             2026, 1, {},
             { residents, existing: {}, cohortAssignments: { 2026: mockCohortMap } },
-            { tries: 1, priority: CompetitionPriority.BEST_SCORE, topN: 1 },
+            { tries: 1, priority: CompetitionPriority.BEST_REGRET, topN: 1 },
             ['experimental'], () => false, () => {}
         );
 

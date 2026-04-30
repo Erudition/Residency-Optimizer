@@ -8,7 +8,8 @@ import {
   ScheduleHistory,
   AssignmentType,
   ScheduleCell,
-  ConvergenceDataPoint
+  ConvergenceDataPoint,
+  ScheduleSession
 } from './types';
 import {
   GENERATE_INITIAL_RESIDENTS,
@@ -19,7 +20,7 @@ import {
   TOTAL_WEEKS
 } from './constants';
 import historicalGridData from './specification/historical_schedules_grid_v2.json';
-import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations } from './services/scheduler';
+import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleRegret, getRequirementViolations, getWeeklyViolations, getAuditViolations } from './services/scheduler';
 import { preloadHistoricalData } from './services/generators/historyPreloader';
 import { ScheduleTable } from './components/ScheduleTable';
 import { Dashboard } from './components/Dashboard';
@@ -33,9 +34,7 @@ import { ACGMEAudit } from './components/ACGMEAudit';
 import { CompetitorStudio } from './components/CompetitorStudio';
 import { CohortKanban } from './components/CohortKanban';
 import { GenerationDashboard } from './components/GenerationDashboard';
-import { SettingsOverlay } from './components/SettingsOverlay';
 import { Button } from './components/ui/Button';
-
 import { Input } from './components/ui/Input';
 import {
   CompetitionParams,
@@ -66,35 +65,12 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
-  History,
-  Lock
+  History
 } from 'lucide-react';
 
-export interface ScheduleSession {
-  id: string;
-  name: string;
-  data: ScheduleHistory; // Represents multiple active years (e.g. { 2026: ..., 2027: ... })
-  createdAt: Date;
-  isGenerating?: boolean;
-  progress?: number;
-  progressLabel?: string;
-  attemptsMade?: number;
-  metrics?: {
-    stats: any;
-    violations: {
-      reqs: any[];
-      constraints: any[];
-    };
-    fairness: any[];
-    score: number;
-  };
-  cohortAssignments?: Record<number, Record<string, number>>; // year-specific mappings
-  isHistory?: boolean;
-  startYear?: number;
-  lockedUntilWeek?: number;
-}
 
-const APP_DATA_VERSION = 5;
+
+const APP_DATA_VERSION = 4;
 
 const loadState = <T,>(key: string, fallback: T): T => {
   try {
@@ -299,7 +275,7 @@ const App: React.FC = () => {
   const [compParams, setCompParams] = useState<CompetitionParams>(() => {
     const loaded = loadState('rsp_comp_params_v1', {
       tries: 100,
-      priority: CompetitionPriority.BEST_SCORE,
+      priority: CompetitionPriority.BEST_REGRET,
       algorithmIds: ['stochastic', 'experimental', 'strict'],
       topN: 10,
       multiYear: 3
@@ -317,8 +293,6 @@ const App: React.FC = () => {
 
   const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsActiveTab, setSettingsActiveTab] = useState<'residents' | 'backup' | 'reset'>('residents');
 
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
@@ -379,14 +353,6 @@ const App: React.FC = () => {
   }, [activeTab, activeSchedule?.isGenerating, convergenceData.length]);
 
 
-  // Sync convergence data from buffer when switching back to dashboard
-  useEffect(() => {
-    if (activeTab === 'loading' && activeSchedule?.isGenerating && convergenceBufferRef.current.length > convergenceData.length) {
-      setConvergenceData([...convergenceBufferRef.current]);
-    }
-  }, [activeTab, activeSchedule?.isGenerating, convergenceData.length]);
-
-
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
     const yearCohorts = activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year] || {};
@@ -423,7 +389,7 @@ const App: React.FC = () => {
     if ((!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') && !isHistoricalYear) {
       return {
         stats: {} as any,
-        violations: { reqs: [], constraints: [] },
+        violations: { reqs: [], constraints: [], audit: 0 },
         fairness: []
       };
     }
@@ -435,7 +401,8 @@ const App: React.FC = () => {
       stats: calculateStats(activeResidents, currentGrid),
       violations: {
         reqs: getRequirementViolations(activeResidents, currentGrid, fullHistory),
-        constraints: getWeeklyViolations(activeResidents, currentGrid)
+        constraints: getWeeklyViolations(activeResidents, currentGrid),
+        audit: getAuditViolations(activeResidents, fullHistory)
       },
       fairness: calculateFairnessMetrics(activeResidents, currentGrid)
     };
@@ -590,7 +557,7 @@ const App: React.FC = () => {
   useEffect(() => { if (activeScheduleId) localStorage.setItem('rsp_active_id', JSON.stringify(activeScheduleId)); }, [activeScheduleId]);
   const handleGenerate = async () => {
     if (isGeneratingRef.current) return;
-
+    
     isGeneratingRef.current = true;
     setIsGenerating(true);
     setGenProgress(0);
@@ -604,12 +571,10 @@ const App: React.FC = () => {
     const controller = new AbortController();
     generationControllerRef.current = controller;
 
-
     try {
       const totalYears = compParams.multiYear || 1;
-
+      
       startTransition(() => {
-
         setConvergenceData([]);
         convergenceBufferRef.current = [];
         lastUpdateRef.current = Date.now();
@@ -628,9 +593,8 @@ const App: React.FC = () => {
             setGenProgress(Math.round(overallProgress * 100));
             setGenAttempts(attempts);
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
-
+            
             // Only update convergence data if the user is looking at it
-
             if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
               convergenceBufferRef.current.push(scores);
               setConvergenceData([...convergenceBufferRef.current]);
@@ -649,9 +613,8 @@ const App: React.FC = () => {
       // Process results
       const resultSalt = Math.floor(Math.random() * 1000000);
       const newIds = results.map((_: any, idx: number) => `sched-${Date.now()}-${idx}-${resultSalt}`);
-
+      
       setConvergenceData([...convergenceBufferRef.current]);
-
 
       startTransition(() => {
         setSchedules(prev => {
@@ -659,12 +622,7 @@ const App: React.FC = () => {
             id: newIds[idx],
             name: `${res.winnerName} (${idx === 0 ? 'Optimal' : `Rank ${idx + 1}`})`,
             data: res.schedule,
-            metrics: {
-              score: res.score,
-              violations: { reqs: [], constraints: [] }, // Will be recalced on demand
-              fairness: [], // Will be recalced on demand
-              stats: {} // Will be recalced on demand
-            },
+            metrics: res.metrics,
             createdAt: new Date(),
             isGenerating: false,
           }));
@@ -729,7 +687,7 @@ const App: React.FC = () => {
               constraints: getWeeklyViolations(residents, copy)
             },
             fairness: calculateFairnessMetrics(residents, copy),
-            score: calculateScheduleScore(residents, copy)
+            regret: calculateScheduleRegret(residents, copy, historySchedules)
           }
         };
       }));
@@ -883,8 +841,7 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
         <div className="w-full max-w-4xl">
           {convergenceData.length > 0 ? (
-            <GenerationDashboard
-
+            <GenerationDashboard 
               data={convergenceData}
               maxTries={compParams.tries}
               onStop={stopGeneration}
@@ -911,8 +868,7 @@ const App: React.FC = () => {
               <p className="text-muted font-bold tracking-tight">Initializing algorithms...</p>
             </div>
           )}
-
-
+          
           <div className="mt-8 flex flex-col items-center gap-2">
             <div className="flex items-center gap-3">
               <Loader2 size={20} className="text-blue animate-spin" />
@@ -928,6 +884,7 @@ const App: React.FC = () => {
       </div>
     );
   };
+
 
   const getYearLabel = (y: number) => {
     const now = new Date();
@@ -951,8 +908,13 @@ const App: React.FC = () => {
         {/* Left: App Title */}
         <div className="flex items-center gap-2 mr-6">
           <span className="text-sm font-black text-primary tracking-tight">Residency Scheduler</span>
+          {isGenerating && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue/10 rounded-full border border-blue/20 animate-pulse">
+              <Loader2 size={10} className="text-blue animate-spin" />
+              <span className="text-[9px] font-black text-blue uppercase tracking-tighter">Engine Busy</span>
+            </div>
+          )}
         </div>
-
 
         {/* Center: Academic Year Tabs */}
         <div className="flex-1 flex items-center justify-center">
@@ -966,6 +928,14 @@ const App: React.FC = () => {
                   onClick={() => {
                     startTransition(() => {
                       setActiveYear(y);
+                      if (activeScheduleId === 'settings') {
+                        // keep settings open
+                      } else if (y < ACTIVE_START_YEAR) {
+                        // For historical years, switch to schedule view but preserve candidate selection
+                        if (['residents', 'backup', 'reset'].includes(activeTab)) {
+                          setActiveTab('schedule');
+                        }
+                      }
                     });
                   }}
                   className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
@@ -989,15 +959,25 @@ const App: React.FC = () => {
             { tab: 'backup', icon: Download, title: 'Backup' },
             { tab: 'reset', icon: RotateCcw, title: 'Reset Data' },
           ].map(({ tab, icon: Icon, title }) => {
+            const isActive = activeScheduleId === 'settings' && activeTab === tab;
             return (
               <div
                 key={tab}
                 title={title}
                 onClick={() => {
-                  setSettingsActiveTab(tab as any);
-                  setIsSettingsOpen(true);
+                  startTransition(() => {
+                    if (isActive) {
+                      // Toggle off: go back to the first schedule or 'all'
+                      const firstSched = schedules.find(s => !s.isGenerating);
+                      setActiveScheduleId(firstSched?.id ?? 'all');
+                      setActiveTab('schedule');
+                    } else {
+                      setActiveScheduleId('settings');
+                      setActiveTab(tab);
+                    }
+                  });
                 }}
-                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer text-muted hover:bg-light-2 hover:text-primary`}
+                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer ${isActive ? 'bg-blue text-white' : 'text-muted hover:bg-light-2 hover:text-primary'}`}
               >
                 <Icon size={16} />
               </div>
@@ -1006,56 +986,215 @@ const App: React.FC = () => {
         </div>
       </div>
 
-  
-      {(activeScheduleId !== 'all' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
+      {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
-          <NavButton id="assignments" label="Coverage" icon={Table} badgeCount={violations.constraints.length} />
+          <NavButton id="assignments" label="Assignments" icon={Table} badgeCount={violations.constraints.length} />
           <NavButton id="requirements" label="Requirements" icon={ClipboardList} badgeCount={violations.reqs.length} />
-          <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} />
+          <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} badgeCount={violations.audit} />
           <NavButton id="cohorts" label="Cohorts" icon={Users} />
-          <NavButton id="relationships" label="Coworking" icon={Network} />
+          <NavButton id="relationships" label="Relationships" icon={Network} />
           <NavButton id="fairness" label="Fairness" icon={Scale} />
           <NavButton id="export" label="Export" icon={FileSpreadsheet} />
         </div>
       ) : null}
 
       <main className="flex-1 overflow-hidden relative bg-white min-h-0">
-        {activeScheduleId === 'draft' && !isHistoricalYear ? (
-            isGenerating ? renderGenerationDashboard() : (
-              <CompetitorStudio
-                algorithms={algoConfig}
-                stats={algoStats}
-                params={compParams}
-                onParamsChange={setCompParams}
-                onToggleAlgorithm={(id) => {
-                  setCompParams(prev => ({
-                    ...prev,
-                    algorithmIds: prev.algorithmIds.includes(id)
-                      ? prev.algorithmIds.filter(a => a !== id)
-                      : [...prev.algorithmIds, id]
-                  }));
-                }}
-                onCompete={handleGenerate}
-                onClearStats={() => setAlgoStats([])}
-              />
-            )
+        <div className="absolute inset-0 flex flex-col">
+          {activeScheduleId === 'settings' ? (
+            <div className="flex-1 overflow-hidden flex flex-col bg-white">
+              {activeTab === 'residents' && <div className="flex-1 overflow-y-auto"><ResidentManager residents={residents} setResidents={setResidents} activeYear={activeYear} /></div>}
+              {activeTab === 'backup' && (
+                <div className="flex-1 overflow-y-auto p-12 bg-light-1">
+                  <div className="max-w-xl mx-auto space-y-8">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-light-5">
+                      <h2 className="text-2xl font-black text-black flex items-center gap-3 mb-2">
+                        <Download className="text-blue" />
+                        System Backup
+                      </h2>
+                      <p className="text-muted font-medium">Export your data for safekeeping or import an existing backup file.</p>
+
+                      <div className="mt-8 grid grid-cols-1 gap-4">
+                        <div className="p-6 bg-light-blue/20 border border-light-blue/40 rounded-xl space-y-4">
+                          <h3 className="text-xs font-black text-blue uppercase tracking-widest">Export Data</h3>
+                          <p className="text-sm text-muted">Download all residents and schedule versions into a single JSON file.</p>
+                          <Button variant="primary" size="md" 
+                            onClick={handleExportJSON}
+                             className="w-full flex items-center justify-center gap-3 p-4 hover:-2-dark transition-all group" 
+                          >
+                            <Download size={18} className="group-hover:-translate-y-1 transition-transform" />
+                            Download Backup (.json)
+                          </Button>
+                        </div>
+
+                        <div className="p-6 bg-white border border-light-5 rounded-xl space-y-4">
+                          <h3 className="text-xs font-black text-secondary uppercase tracking-widest">Import Data</h3>
+                          <p className="text-sm text-muted">Upload a previously exported JSON file. <span className="text-red font-bold">Warning: This will overwrite your current data.</span></p>
+                          <label className="w-full flex items-center justify-center gap-3 p-4 bg-light-2 text-primary rounded-lg font-bold hover:bg-light-3 transition-all cursor-pointer border border-dashed border-light-6">
+                            <Plus size={18} />
+                            Select Backup File
+                            <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'reset' && (
+                <div className="flex-1 overflow-y-auto p-12 bg-light-1">
+                  <div className="max-w-xl mx-auto space-y-8">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-light-5">
+                      <h2 className="text-2xl font-black text-black flex items-center gap-3 mb-2">
+                        <RotateCcw className="text-blue" />
+                        System Reset
+                      </h2>
+                      <p className="text-muted font-medium">Clear specific parts of the system or perform a full factory reset.</p>
+
+                      <div className="mt-8 space-y-4">
+                        <div className="p-4 border border-red/20 bg-red/10/30 rounded-xl space-y-4">
+                          <h3 className="text-xs font-black text-red uppercase tracking-widest">Danger Zone</h3>
+
+                          <Button
+                            onClick={() => { if (confirm("This will delete ALL data. Are you sure?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); setSchedules([]); setActiveScheduleId('all'); } }}
+                            className="w-full flex items-center justify-between p-4 bg-white border border-red/40 rounded-lg text-red hover:bg-red hover:text-white transition-all group font-bold"
+                          >
+                            <span className="flex items-center gap-3"><Trash2 size={18} /> Clear All Records</span>
+                            <span className="text-[10px] uppercase opacity-50 group-hover:opacity-100">Factory Reset</span>
+                          </Button>
+
+                          <Button
+                            onClick={() => { if (confirm("Reset all residents to defaults?")) { setResidents(GENERATE_INITIAL_RESIDENTS()); } }}
+                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red transition-all group font-bold"
+                          >
+                            <span className="flex items-center gap-3"><Users size={18} /> Reset Residents</span>
+                            <span className="text-[10px] uppercase opacity-50">Set to Default</span>
+                          </Button>
+
+                          <Button
+                            onClick={() => { if (confirm("Delete all schedule versions?")) { setSchedules([]); setActiveScheduleId('all'); } }}
+                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-red-400 hover:text-red transition-all group font-bold"
+                          >
+                            <span className="flex items-center gap-3"><Database size={18} /> Delete All Schedules</span>
+                            <span className="text-[10px] uppercase opacity-50">Clear Versions</span>
+                          </Button>
+
+                          <Button
+                            onClick={() => {
+                                if (confirm("Unpin all assignments across all schedules?")) {
+                                  setSchedules(prev => prev.map(s => ({
+                                    ...s,
+                                    data: Object.fromEntries(Object.entries(s.data).map(([year, grid]) => [
+                                      year,
+                                      Object.fromEntries(Object.entries(grid as ScheduleGrid).map(([rid, weeks]) => [
+                                        rid,
+                                        weeks.map(w => ({ ...w, locked: false }))
+                                      ]))
+                                    ]))
+                                  })));
+                                }
+                            }}
+                            className="w-full flex items-center justify-between p-4 bg-white border border-light-5 rounded-lg text-primary hover:border-blue-400 hover:text-blue transition-all group font-bold"
+                          >
+                            <span className="flex items-center gap-3"><LayoutGrid size={18} /> Unpin All Weeks</span>
+                            <span className="text-[10px] uppercase opacity-50">Unlock All</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : activeScheduleId === 'draft' && !isHistoricalYear ? (
+            <CompetitorStudio
+              algorithms={algoConfig}
+              stats={algoStats}
+              params={compParams}
+              onParamsChange={setCompParams}
+              onToggleAlgorithm={(id) => {
+                setCompParams(prev => ({
+                  ...prev,
+                  algorithmIds: prev.algorithmIds.includes(id)
+                    ? prev.algorithmIds.filter(a => a !== id)
+                    : [...prev.algorithmIds, id]
+                }));
+              }}
+              onCompete={handleGenerate}
+              onClearStats={() => setAlgoStats([])}
+            />
           ) : (activeScheduleId === 'all' && !isHistoricalYear) ? (
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 bg-white overflow-y-auto">
               <ScheduleComparison
-                schedules={schedules}
                 residents={residents}
+                schedules={schedules}
+                activeScheduleId={activeScheduleId}
                 activeYear={activeYear}
-                onSelectSchedule={(id) => setActiveScheduleId(id)}
-                onRenameSchedule={(s) => {
-                  setScheduleToRename(s);
-                  setRenameModalOpen(true);
+                history={historySchedules}
+                onSelect={(id) => {
+                  startTransition(() => {
+                    setActiveScheduleId(id);
+                    if (['residents', 'backup', 'reset', 'export'].includes(activeTab)) {
+                      setActiveTab('schedule');
+                    }
+                  });
+                }}
+                onRename={(id) => {
+                  const sched = schedules.find(s => s.id === id);
+                  if (sched) {
+                    setScheduleToRename(sched);
+                    setRenameModalOpen(true);
+                  }
                 }}
               />
             </div>
           ) : activeSchedule?.isGenerating ? (
-            renderGenerationDashboard()
+            <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
+              <div className="w-full max-w-4xl">
+            {/* Multiple charts for multi-year generation */}
+              {convergenceData.length > 0 ? (
+                <GenerationDashboard 
+                  data={convergenceData}
+                  maxTries={compParams.tries}
+                  onStop={stopGeneration}
+                  onSelectWinners={() => {
+                    if (currentWorkerRef.current) {
+                      currentWorkerRef.current.postMessage({ type: 'cancel' });
+                    }
+                  }}
+                  onCancelAlgorithm={(algoId) => {
+                    setCanceledAlgoIds(prev => new Set(prev).add(algoId));
+                    if (currentWorkerRef.current) {
+                      currentWorkerRef.current.postMessage({ type: 'cancelAlgorithm', algoId });
+                    }
+                  }}
+                  algorithms={compParams.algorithmIds.map(id => {
+                    const algo = algoConfig.find(a => a.id === id);
+                    return { id, name: algo?.name || id, color: algo?.color || '#000' };
+                  })}
+                  canceledIds={canceledAlgoIds}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl shadow-xl border border-light-5">
+                  <div className="w-12 h-12 rounded-full border-4 border-light-5 border-t-blue animate-spin mb-4" />
+                  <p className="text-muted font-bold tracking-tight">Initializing algorithms...</p>
+                </div>
+              )}
+                
+                <div className="mt-8 flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <Loader2 size={20} className="text-blue animate-spin" />
+                    <span className="text-lg font-black text-primary uppercase tracking-tight">
+                      {activeSchedule.progressLabel || 'Engine Initializing...'}
+                    </span>
+                  </div>
+                  <p className="text-muted font-medium text-sm">
+                    {activeSchedule.progress || 0}% through global optimization
+                  </p>
+                </div>
+              </div>
+            </div>
           ) : (
             <>
               {activeTab === 'schedule' && (
@@ -1086,6 +1225,14 @@ const App: React.FC = () => {
                     </div>
 
                     {/* Right: Violations */}
+                    <div>
+                      {hasViolations && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-red/10 text-red rounded-full border border-red/20 animate-pulse">
+                          <AlertCircle size={14} />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Staffing Violations</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex-1 overflow-hidden p-6">
                     <ScheduleTable
@@ -1162,6 +1309,7 @@ const App: React.FC = () => {
               )}
             </>
           )}
+        </div>
       </main>
 
       {/* ─── Bottom Tab Bar (Spreadsheet-style, persistent) ─── */}
@@ -1212,9 +1360,8 @@ const App: React.FC = () => {
                 >
                   <div className="animate-spin h-2.5 w-2.5 border-[1.5px] border-blue border-t-transparent rounded-full flex-shrink-0" />
                   <span className="truncate max-w-[120px]">Generating... ({genProgress}%)</span>
-                  <Button variant="ghost" size="sm" onClick={(e) => {
-                    e.stopPropagation();
-
+                  <Button variant="ghost" size="sm" onClick={(e) => { 
+                    e.stopPropagation(); 
                     stopGeneration();
                   }} className="p-0.5 rounded text-muted hover:text-red transition-colors ml-1">
                     <X size={10} />
@@ -1225,7 +1372,7 @@ const App: React.FC = () => {
                 <div className="flex items-center justify-center flex-1 text-[11px] text-muted italic">
                   No future schedule candidates generated yet
                 </div>
-              ) : schedules.filter(s => !s.isGenerating).map(sched => {
+              ) : schedules.map(sched => {
                 const isActive = activeScheduleId === sched.id;
                 return (
                   <div
@@ -1245,11 +1392,10 @@ const App: React.FC = () => {
                     <Identicon id={sched.id} />
                     <span className="truncate max-w-[120px]">{sched.name}</span>
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="sm" onClick={(e) => {
-                        e.stopPropagation();
-                        setSchedules(s => s.filter(x => x.id !== sched.id));
-                        if (activeScheduleId === sched.id) setActiveScheduleId('all');
-
+                      <Button variant="ghost" size="sm" onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setSchedules(s => s.filter(x => x.id !== sched.id)); 
+                        if (activeScheduleId === sched.id) setActiveScheduleId('all'); 
                       }} className="p-0.5 rounded text-muted hover:text-red transition-colors">
                         <X size={10} />
                       </Button>
@@ -1288,27 +1434,8 @@ const App: React.FC = () => {
 
       <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} />
       <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => setRenameModalOpen(false)} onSave={handleRename} />
-
-      <SettingsOverlay
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        activeTab={settingsActiveTab}
-        setActiveTab={setSettingsActiveTab}
-        residents={residents}
-        setResidents={setResidents}
-        activeYear={activeYear}
-        handleExportJSON={handleExportJSON}
-        handleImportJSON={handleImportJSON}
-        handleFactoryReset={() => {
-          if (confirm("Are you sure? This will reset the system to its initial state.")) {
-            localStorage.clear();
-            window.location.reload();
-          }
-        }}
-      />
     </div>
   );
 };
-
 
 export default App;

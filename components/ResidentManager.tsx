@@ -180,7 +180,7 @@ Robert Brown,3`;
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto pb-64">
+    <div className="p-6 max-w-4xl mx-auto">
       <input 
         type="file" 
         ref={fileInputRef} 

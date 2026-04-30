@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { Resident, AssignmentType } from '../types';
-import { ScheduleSession } from '../App';
+import { ScheduleSession } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import {
