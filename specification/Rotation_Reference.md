@@ -12,7 +12,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 5
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
 *   **ACGME Targets:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors.
 
 ### Wards Blue
@@ -49,7 +49,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Pulmonology / Procedural Service
 *   **Setting:** Inpatient
-*   **Duration:** 2 weeks consecutive (PGY-1)
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
@@ -133,7 +133,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **ACGME Targets:** 2 weeks required in PGY-2.
 
 ### Addiction Medicine
-*   **Setting:** Inpatient
+*   **Setting:** Outpatient 
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
