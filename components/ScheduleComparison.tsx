@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScheduleGrid, ScheduleHistory, Resident, AssignmentType, ScheduleCell, ScheduleSession } from '../types';
-import { calculateFairnessMetrics, calculateScheduleRegret } from '../services/scheduler';
+import { calculateFairnessMetrics, calculateScheduleScore } from '../services/scheduler';
 import { Sparkles, Loader2, Info, Download, Users, Plus, ChevronUp, ChevronDown, ArrowUpDown, Pencil } from 'lucide-react';
 import { Button } from './ui/Button';
 
@@ -55,7 +55,7 @@ interface ScheduleMetrics {
 }
 
 export const ScheduleComparison: React.FC<Props> = ({
-  residents,
+  residents, activeScheduleId,
   schedules,
   onSelect,
   onRename,
@@ -114,7 +114,7 @@ export const ScheduleComparison: React.FC<Props> = ({
 
       // Legacy fallback
       const groups = calculateFairnessMetrics(residents, s.data);
-      const regret = calculateScheduleRegret(residents, s.data, history);
+      const regret = calculateScheduleScore(residents, s.data, history);
 
       const f1 = groups.find(g => g.level === 1)?.fairnessScore || 0;
       const f2 = groups.find(g => g.level === 2)?.fairnessScore || 0;
@@ -152,7 +152,7 @@ export const ScheduleComparison: React.FC<Props> = ({
         maxStreak,
       };
     });
-  }, [schedules, residents, history, activeYear]);
+  }, [schedules, residents, activeScheduleId, history, activeYear]);
   const sortedMetrics = useMemo(() => {
     return [...metrics].sort((a, b) => {
       const aVal = a[sortConfig.key];

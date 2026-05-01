@@ -66,7 +66,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
     residents: Resident[], 
     existing: any, 
     params: CompetitionParams, 
-    onProgress: (iteration: number, attempts: number, regrets: number[] | undefined, year: number, overallProgress: number) => void, 
+    onProgress: (iteration: number, attempts: number, scores: number[] | undefined, year: number, overallProgress: number) => void,
     historicalSchedules: ScheduleHistory, 
     cohortAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
@@ -88,9 +88,9 @@ export const GlobalOptimizer: React.FC<Props> = ({
       }
 
       worker.onmessage = (e) => {
-        const { type, iteration, overallProgress, bestRegret, attempts, year, results, error } = e.data;
+        const { type, iteration, overallProgress, bestScore, attempts, year, results, error } = e.data;
         if (type === 'progress') {
-          onProgress(iteration, attempts, bestRegret, year, overallProgress);
+          onProgress(iteration, attempts, bestScore, year, overallProgress);
         } else if (type === 'success') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -154,20 +154,20 @@ export const GlobalOptimizer: React.FC<Props> = ({
         residents,
         {},
         compParams,
-        (iteration, attempts, regrets, year, overallProgress) => {
+        (iteration, attempts, scores, year, overallProgress) => {
           const now = Date.now();
           if (now - lastUpdateRef.current > 1000) {
             setGenProgress(Math.round(overallProgress * 100));
             setGenAttempts(attempts);
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
 
-            if (regrets) {
-              convergenceBufferRef.current.push(regrets);
+            if (scores) {
+              convergenceBufferRef.current.push(scores);
               setConvergenceData([...convergenceBufferRef.current]);
             }
             lastUpdateRef.current = now;
-          } else if (regrets) {
-            convergenceBufferRef.current.push(regrets);
+          } else if (scores) {
+            convergenceBufferRef.current.push(scores);
           }
         },
         historySchedules,

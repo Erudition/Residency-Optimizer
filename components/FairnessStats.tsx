@@ -26,7 +26,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
         return calculateFairnessMetrics(residents, schedule);
     }, [residents, schedule, precalculated]);
 
-    const getRegretColor = (regret: number) => {
+    const getScoreColor = (regret: number) => {
         if (regret <= 10) return 'text-green bg-lime-green/20 border-lime-green';
         if (regret <= 25) return 'text-orange bg-creamsicle/30 border-creamsicle';
         return 'text-red bg-red/10 border-red/40';
@@ -70,7 +70,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                     <p className="mt-2 text-secondary">
                         This report analyzes workload distribution across three main categories: <strong>Core</strong> (High Intensity), <strong>Required</strong> (Specialty reqs), and <strong>Electives</strong> (Flexible time).
                         <br />
-                        It also tracks an overall <strong>Intensity Regret</strong> to prevent burnout.
+                        It also tracks an overall <strong>Intensity Score</strong> to prevent burnout.
                     </p>
                 </div>
 
@@ -78,9 +78,9 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                     <div key={group.level} className="bg-white rounded-lg shadow-sm border border-light-5 overflow-hidden">
                         <div className="px-6 py-4 border-b border-light-3 flex justify-between items-center bg-light-1/50">
                             <h3 className="text-lg font-bold text-primary">PGY-{group.level} Cohort</h3>
-                            <div className={`px-4 py-1.5 rounded-full border font-bold text-sm flex items-center gap-2 ${getRegretColor(group.fairnessRegret)}`}>
-                                {group.fairnessRegret <= 10 ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                                Fairness Regret: {group.fairnessRegret}%
+                            <div className={`px-4 py-1.5 rounded-full border font-bold text-sm flex items-center gap-2 ${getScoreColor(group.fairnessScore)}`}>
+                                {group.fairnessScore <= 10 ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                                Fairness Score: {group.fairnessScore}%
                             </div>
                         </div>
 
@@ -95,7 +95,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                     <div className="text-2xl font-bold text-primary">{group.meanElective.toFixed(1)} <span className="text-sm font-normal text-muted">± {group.sdElective.toFixed(2)}</span></div>
                                 </div>
                                 <div className="bg-light-purple/30 p-4 rounded-lg border border-purple-100">
-                                    <div className="text-xs font-bold text-purple uppercase tracking-wider mb-1">Intensity Regret (Avg)</div>
+                                    <div className="text-xs font-bold text-purple uppercase tracking-wider mb-1">Intensity Score (Avg)</div>
                                     <div className="text-2xl font-bold text-primary">{group.meanIntensity.toFixed(0)} <span className="text-sm font-normal text-muted">± {group.sdIntensity.toFixed(1)}</span></div>
                                 </div>
                             </div>
@@ -142,7 +142,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
 
                                             <th
                                                 className="text-right py-3 px-2 font-medium relative whitespace-nowrap cursor-help group"
-                                                onMouseEnter={(e) => handleHeaderEnter(e, 'Intensity Regret', 'Sum of (Weeks × Intensity Rating). Higher means harder year.')}
+                                                onMouseEnter={(e) => handleHeaderEnter(e, 'Intensity Score', 'Sum of (Weeks × Intensity Rating). Higher means harder year.')}
                                                 onMouseLeave={handleMouseLeave}
                                             >
                                                 <div className="flex items-center justify-end gap-1">
@@ -195,7 +195,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                                                     </td>
 
                                                     <td className="py-3 px-2 text-right font-mono text-primary">
-                                                        {r.totalIntensityRegret}
+                                                        {r.totalIntensityScore}
                                                     </td>
 
                                                     <td

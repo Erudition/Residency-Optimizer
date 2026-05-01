@@ -105,7 +105,7 @@ export interface ResidentFairnessMetrics {
   requiredWeeks: number;
   vacationWeeks: number;
   nightFloatWeeks: number;
-  totalIntensityRegret: number;
+  totalIntensityScore: number;
   maxIntensityStreak: number;
   streakSummary: string[];
 }
@@ -119,7 +119,7 @@ export interface CohortFairnessMetrics {
   sdElective: number;
   meanIntensity: number;
   sdIntensity: number;
-  fairnessRegret: number;
+  fairnessScore: number;
 }
 
 export interface RequirementViolation {
@@ -144,14 +144,14 @@ export interface AdaptationParams {
 }
 
 export enum CompetitionPriority {
-  BEST_REGRET = 'Best Regret',
+  BEST_SCORE = 'Best Score',
   LEAST_UNDERSTAFFING = 'Least Understaffing',
   MOST_PGY_REQS = 'Most PGY Requirements Met'
 }
 
 export interface AlgorithmStats {
-  bestRegret: number;
-  worstRegret: number;
+  bestScore: number;
+  worstScore: number;
   bestViolations: number;
   worstViolations: number;
 }
@@ -159,7 +159,7 @@ export interface AlgorithmStats {
 export interface CompetitionResult {
   schedule: ScheduleHistory;
   winnerName: string;
-  regret: number;
+  score: number;
   totalViolations: number;
   understaffing: number;
 }
@@ -184,9 +184,9 @@ export interface CompetitionParams {
 export interface ConvergenceDataPoint {
   attemptIndex: number;
   algorithmId: string;
-  regret: number;
-  bestRegretSoFar: number;
-  globalBestRegret: number;
+  score: number;
+  bestScoreSoFar: number;
+  globalBestScore: number;
   timestamp: number;
 }
 
@@ -217,7 +217,7 @@ export interface ScheduleSession {
       constraints: any[];
     };
     fairness: any[];
-    regret: number;
+    score: number;
   };
   cohortAssignments?: Record<number, Record<string, number>>;
   isHistory?: boolean;
