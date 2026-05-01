@@ -14,6 +14,7 @@ After any code modification, you MUST run `npx tsc --noEmit` and confirm zero er
 
 All work should be done in short-lived feature branches. WHen you have a plan, create a branch, commit the changes in atomic batches, and if you are not the repository owner,open a pull request when done.
 
+If NTS tools are available, use them entirely for reads, edits, searches -- but you MUST use absolute paths for all file references in tool calls.
 
 
 # Additional ACGME & Scheduling Constraints
@@ -138,3 +139,8 @@ To maintain year-independent data integrity, the application treats **Start Year
 > [!IMPORTANT]
 > **Authoritative Source of Truth**
 > The MHS Curriculum Proposal.md serves as the absolute and final authority for all scheduling structures, rotation lengths, target PGY distributions, and curriculum logic. In the event of any disagreement or conflict between this document and other files (such as `constants.ts`, `Rotation_Reference.md`, or historical records), **this document supersedes them.** Schedule algorithms and programmatic definitions must be updated to match the rules established here.
+
+## 19. Multi-Year Generation Architecture
+*   **Current approach (stepping stone)**: The generator runs sequentially — Year 1 first, its output feeds as `historicalSchedules` into Year 2, then Year 3. Each year is a separate worker invocation. This satisfies cumulative ACGME requirement tracking but does not globally optimize across years.
+*   **Future goal**: A unified multi-year generator that accepts a partially-locked Year 1 (e.g., after residents fill in vacation days) and regenerates the remaining schedule across all future years simultaneously, satisfying cumulative 3-year constraints holistically. The `locked` flag infrastructure and `historicalSchedules` passthrough already exist as foundations for this.
+*   **Key use case**: After residents specify their vacation weeks for the current year, the system should recalculate remaining requirements and regenerate Years 2-3 to satisfy them — without disturbing locked assignments.

@@ -10,31 +10,60 @@ interface Props {
     activeYear: number;
 }
 
-const ProgressBar = ({ value, target, colorClass, min, max }: { value: number, target: number, colorClass: string, min?: number, max?: number }) => {
-    const percentage = Math.min(100, (value / target) * 100);
-    const isOverMax = max !== undefined && value > max;
-    const isUnderMin = min !== undefined && value < min;
-    const isViolation = isOverMax || isUnderMin;
+const StackedProgressBar = ({ 
+    yearData, 
+    target, 
+    colorClass,
+    totalValue,
+    isCap = false
+}: { 
+    yearData: Record<number, number>, 
+    target: number, 
+    colorClass: string,
+    totalValue: number,
+    isCap?: boolean
+}) => {
+    // Violation if under target for minimums, or over target for caps
+    const isViolation = isCap ? totalValue > target : totalValue < target * 0.8; // Simple heuristic for "on track"
 
     return (
-        <div className="w-full">
-            <div className="flex justify-between text-[10px] font-bold mb-1 uppercase tracking-tight">
-                <span className={isViolation ? 'text-red' : 'text-muted'}>
-                    {value} weeks {isViolation && '(VIOLATION)'}
+        <div className="w-full flex flex-col gap-1">
+            <div className="flex justify-between text-[10px] font-bold tracking-tight">
+                <span className="text-muted flex items-center gap-1">
+                    <span className={`${isViolation ? 'text-red-600 font-black' : 'text-primary font-bold'} text-xs`}>{totalValue}</span>
+                    <span className="text-muted">/ {target}w</span>
                 </span>
-                <span className="text-muted">Target: {target}w</span>
+                {isCap && totalValue > target && <span className="text-red font-black text-[9px] animate-pulse">! OVER CAP</span>}
             </div>
-            <div className="h-2 w-full bg-light-2 rounded-full overflow-hidden border border-light-5">
+            
+            {/* The 3-stacked yearly bars */}
+            <div className="flex flex-col gap-0.5">
+                {[1, 2, 3].map(pgy => {
+                    const value = yearData[pgy] || 0;
+                    // Yearly target is roughly 1/3 of total
+                    const yearlyTarget = target / 3;
+                    const width = Math.min(100, (value / yearlyTarget) * 100);
+                    const opacity = pgy === 1 ? 'opacity-40' : pgy === 2 ? 'opacity-70' : 'opacity-100';
+                    
+                    return (
+                        <div key={pgy} className="h-1 w-full bg-light-3 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full transition-all duration-500 ${colorClass} ${opacity}`}
+                                style={{ width: `${width}%` }}
+                                title={`PGY-${pgy}: ${value}w / ${yearlyTarget.toFixed(1)}w`}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* The single cumulative bar */}
+            <div className="h-2 w-full bg-light-2 rounded-full overflow-hidden border border-light-5 mt-1">
                 <div
-                    className={`h-full transition-all duration-500 ${isViolation ? 'bg-red-2' : colorClass}`}
-                    style={{ width: `${percentage}%` }}
+                    className={`h-full transition-all duration-500 ${colorClass}`}
+                    style={{ width: `${Math.min(100, (totalValue / target) * 100)}%` }}
                 />
             </div>
-            {(min !== undefined || max !== undefined) && (
-                <div className="text-[9px] text-muted mt-0.5">
-                    Requirement: {min || 0}-{max || '∞'} weeks total
-                </div>
-            )}
         </div>
     );
 };
@@ -43,48 +72,60 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
 
     const auditData = useMemo(() => {
         return residents.map(r => {
-            let outpatient = 0;
-            let inpatient = 0;
-            let criticalCare = 0;
-            let criticalCareCore = 0;
-            let nightFloat = 0;
+            const pgyData: Record<number, { outpatient: number, inpatient: number, criticalCare: number, nightFloat: number }> = {
+                1: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
+                2: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
+                3: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 }
+            };
 
-            // Compute cumulative totals across all years
-            Object.values(history).forEach(grid => {
+            let totalOutpatient = 0;
+            let totalInpatient = 0;
+            let totalCriticalCare = 0;
+            let totalCriticalCareCore = 0;
+            let totalNightFloat = 0;
+
+            Object.entries(history).forEach(([yearStr, grid]) => {
+                const year = parseInt(yearStr);
+                const pgy = year - r.startYear + 1;
+                if (pgy < 1 || pgy > 3) return;
+
                 const weeks = grid[r.id] || [];
                 weeks.forEach(c => {
                     if (!c || !c.assignment) return;
                     const meta = ROTATION_METADATA[c.assignment];
                     if (!meta) return;
 
-                    if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
-                    if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
+                    if (meta.setting === ClinicalSetting.OUTPATIENT) {
+                        pgyData[pgy].outpatient++;
+                        totalOutpatient++;
+                    }
+                    if (meta.setting === ClinicalSetting.INPATIENT) {
+                        pgyData[pgy].inpatient++;
+                        totalInpatient++;
+                    }
                     if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
-                        criticalCare++;
+                        pgyData[pgy].criticalCare++;
+                        totalCriticalCare++;
                         if (c.assignment !== AssignmentType.AMCS_CONSULTS) {
-                            criticalCareCore++;
+                            totalCriticalCareCore++;
                         }
                     }
-                    if (c.assignment === AssignmentType.NIGHT_FLOAT) nightFloat++;
+                    if (c.assignment === AssignmentType.NIGHT_FLOAT) {
+                        pgyData[pgy].nightFloat++;
+                        totalNightFloat++;
+                    }
                 });
             });
 
-            // Graduation targets (3 years total)
-            const outpatientTarget = 30; // 10 months foundational
-            const inpatientTarget = 30;  // 10 months total IP/CC
-            const critCareMax = 18;     // 6 months max
-            const critCareMin = 6;      // 2 months min
-
             return {
                 ...r,
-                outpatient,
-                inpatient,
-                criticalCare,
-                nightFloat,
-                outpatientProgress: (outpatient / outpatientTarget) * 100,
-                inpatientProgress: ((inpatient + criticalCare) / inpatientTarget) * 100,
-                critCareViolation: criticalCareCore > critCareMax,
-                nfViolation: nightFloat > 12 // ACGME doesn't have a hard NF limit like ICU but let's keep it
+                pgyData,
+                outpatient: totalOutpatient,
+                inpatient: totalInpatient,
+                criticalCare: totalCriticalCare,
+                nightFloat: totalNightFloat,
+                critCareViolation: totalCriticalCareCore > 18,
+                nfViolation: totalNightFloat > 12
             };
         });
     }, [residents, history]);
@@ -101,7 +142,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
     }, [auditData]);
 
     return (
-        <div className="p-6 h-full overflow-y-auto bg-light-1 pb-64">
+        <div className="p-6 h-full overflow-y-auto bg-light-1">
             <div className="max-w-7xl mx-auto space-y-6">
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -166,19 +207,38 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 w-1/4">
-                                        <ProgressBar value={d.outpatient} target={13} colorClass="bg-blue" />
+                                        <StackedProgressBar 
+                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).outpatient]))} 
+                                            target={30} 
+                                            colorClass="bg-blue"
+                                            totalValue={d.outpatient}
+                                        />
                                     </td>
                                     <td className="px-6 py-4 w-1/4">
-                                        <ProgressBar value={d.inpatient + d.criticalCare} target={13} colorClass="bg-green-2" />
+                                        <StackedProgressBar 
+                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).inpatient + (data as any).criticalCare]))} 
+                                            target={30} 
+                                            colorClass="bg-green-2"
+                                            totalValue={d.inpatient + d.criticalCare}
+                                        />
                                     </td>
                                     <td className="px-6 py-4 w-1/4">
-                                        <ProgressBar value={d.criticalCare} target={2.6} colorClass="bg-purple" max={8} />
+                                        <StackedProgressBar 
+                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).criticalCare]))} 
+                                            target={18} 
+                                            colorClass="bg-purple"
+                                            totalValue={d.criticalCare}
+                                            isCap={true}
+                                        />
                                     </td>
-                                    <td className="px-6 py-4 w-40 text-center">
-                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${d.nfViolation ? 'bg-red/10 text-red-2-dark border-red/40' : 'bg-lime-green/20 text-green-dark border-lime-green'}`}>
-                                            {d.nfViolation ? <ShieldAlert size={12} /> : <ShieldCheck size={12} />}
-                                            {d.nightFloat} weeks
-                                        </div>
+                                    <td className="px-6 py-4 w-1/4">
+                                        <StackedProgressBar 
+                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).nightFloat]))} 
+                                            target={12} 
+                                            colorClass="bg-orange"
+                                            totalValue={d.nightFloat}
+                                            isCap={true}
+                                        />
                                     </td>
                                 </tr>
                             ))}

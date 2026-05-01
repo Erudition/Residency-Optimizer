@@ -40,7 +40,21 @@ export const CompetitorStudio: React.FC<Props> = ({
 
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
+                        <label className="text-xs font-bold text-muted uppercase tracking-widest">Horizon</label>
+                        <Select
+                            value={params.multiYear || 1}
+                            onChange={(e) => onParamsChange({ ...params, multiYear: parseInt(e.target.value) || 1 })}
+                            className="bg-light-2 border border-light-5 rounded-lg px-3 py-2 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition-all cursor-pointer"
+                        >
+                            <option value={1}>1 Year</option>
+                            <option value={2}>2 Years</option>
+                            <option value={3}>3 Years</option>
+                        </Select>
+                    </div>
+
+                    <div className="flex items-center gap-3">
                         <label className="text-xs font-bold text-muted uppercase tracking-widest">Top</label>
+
                         <input
                             type="number"
                             min={1}
@@ -60,17 +74,6 @@ export const CompetitorStudio: React.FC<Props> = ({
                         </Select>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <label className="text-xs font-bold text-muted uppercase tracking-widest">of</label>
-                        <input
-                            type="number"
-                            min={1}
-                            max={10000}
-                            value={params.tries}
-                            onChange={(e) => onParamsChange({ ...params, tries: parseInt(e.target.value) || 100 })}
-                            className="w-24 bg-light-2 border border-light-5 rounded-lg px-4 py-2.5 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition-all"
-                        />
-                    </div>
 
                     <Button variant="primary" size="md" 
                         onClick={onCompete}
@@ -78,7 +81,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                          className="flex items-center gap-2.5 hover:-2-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all group" 
                     >
                         <Play size={18} fill="currentColor" className="group-hover:translate-x-0.5 transition-transform" />
-                        <span>Compete</span>
+                        <span>Begin Evolution</span>
                     </Button>
                 </div>
             </div>
@@ -135,7 +138,7 @@ export const CompetitorStudio: React.FC<Props> = ({
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
-                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Best Cost</div>
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Best Score</div>
                                                     <div className="text-sm font-black text-primary">
                                                         {algoStats.bestScore === Infinity ? '—' : Math.round(algoStats.bestScore).toLocaleString()}
                                                     </div>
@@ -147,7 +150,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                                                     </div>
                                                 </div>
                                                 <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
-                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Worst Cost</div>
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Worst Score</div>
                                                     <div className="text-sm font-black text-primary">
                                                         {algoStats.worstScore === -Infinity ? '—' : Math.round(algoStats.worstScore).toLocaleString()}
                                                     </div>

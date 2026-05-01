@@ -105,7 +105,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     };
 
     return (
-        <div className="h-full overflow-y-auto bg-light-1 p-6 pb-64">
+        <div className="h-full overflow-y-auto bg-light-1 p-6">
             <div className="max-w-6xl mx-auto">
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-light-5 mb-8">
                     <h2 className="text-xl font-bold text-primary flex items-center gap-2">

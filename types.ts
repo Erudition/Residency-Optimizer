@@ -156,6 +156,14 @@ export interface AlgorithmStats {
   worstViolations: number;
 }
 
+export interface CompetitionResult {
+  schedule: ScheduleHistory;
+  winnerName: string;
+  score: number;
+  totalViolations: number;
+  understaffing: number;
+}
+
 export interface AlgorithmConfig {
   id: string;
   name: string;
@@ -167,9 +175,21 @@ export interface AlgorithmConfig {
 export interface CompetitionParams {
   tries: number;
   priority: CompetitionPriority;
-  algorithmIds: string[];
+  algorithmIds?: string[];
   topN: number;
+  multiYear?: boolean;
 }
+
+
+export interface ConvergenceDataPoint {
+  attemptIndex: number;
+  algorithmId: string;
+  score: number;
+  bestScoreSoFar: number;
+  globalBestScore: number;
+  timestamp: number;
+}
+
 
 export interface ScheduleGenerator {
   name: string;
@@ -180,4 +200,27 @@ export interface ScheduleGenerator {
     historicalSchedules?: ScheduleHistory,
     cohortAssignments?: Record<string, number>
   ) => ScheduleGrid;
+}
+export interface ScheduleSession {
+  id: string;
+  name: string;
+  data: ScheduleHistory;
+  createdAt: Date;
+  isGenerating?: boolean;
+  progress?: number;
+  progressLabel?: string;
+  attemptsMade?: number;
+  metrics?: {
+    stats: any;
+    violations: {
+      reqs: any[];
+      constraints: any[];
+    };
+    fairness: any[];
+    score: number;
+  };
+  cohortAssignments?: Record<number, Record<string, number>>;
+  isHistory?: boolean;
+  startYear?: number;
+  lockedUntilWeek?: number;
 }

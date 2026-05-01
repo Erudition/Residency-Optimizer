@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
 import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS } from '../constants';
@@ -23,6 +22,12 @@ const getDateForWeek = (weekNum: number, startYear: number) => {
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
   return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
+};
+
+const isPastWeek = (weekNum: number, startYear: number) => {
+  const weekStart = new Date(startYear, 6, 1);
+  weekStart.setDate(weekStart.getDate() + weekNum * 7); // End of the week (roughly)
+  return weekStart < new Date();
 };
 
 interface TooltipData {
@@ -109,7 +114,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
 
   return (
     <div className="flex flex-col h-full bg-white border rounded-lg shadow-sm overflow-hidden relative">
-      <div className="overflow-auto spreadsheet-container relative flex-1 pb-64">
+      <div className="overflow-auto spreadsheet-container relative flex-1">
         <table className="border-separate border-spacing-0 w-max">
           <thead className="sticky top-0 z-30 bg-light-1 text-xs uppercase text-muted font-semibold shadow-sm h-12">
             <tr>
@@ -130,12 +135,9 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               {WEEKS.map((w, idx) => (
                 <th
                   key={w}
-                  className="border-b border-light-5 p-1 min-w-[80px] text-center bg-light-1 cursor-context-menu hover:bg-light-blue/20 transition-colors"
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    onLockWeek(idx);
-                  }}
-                  title="Right-click to toggle lock for this week"
+                  onDoubleClick={() => onLockWeek(idx)}
+                  className={`border-b border-r border-light-5 p-1 min-w-[80px] text-center bg-light-1 cursor-pointer hover:bg-light-blue/20 transition-colors ${isPastWeek(w, startYear) ? 'opacity-40 grayscale-[0.5]' : ''}`}
+                  title="Double-click to toggle lock for this entire week"
                 >
                   <div className="flex flex-col items-center">
                     <span>W{w}</span>
@@ -145,6 +147,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   </div>
                 </th>
               ))}
+
             </tr>
           </thead>
           <tbody className="text-sm">
@@ -154,13 +157,10 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               return (
                 <tr key={resident.id} className="hover:bg-light-1 transition-colors">
                   <td
-                    className="sticky left-0 z-20 border-b border-r border-light-5 p-2 font-medium text-black group bg-white/80 backdrop-blur-md cursor-context-menu hover:bg-light-blue/20 transition-colors"
+                    className="sticky left-0 z-20 border-b border-r border-light-5 p-2 font-medium text-black group bg-white/80 backdrop-blur-md cursor-pointer hover:bg-light-blue/20 transition-colors"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      onLockResident(resident.id);
-                    }}
-                    title={`Right-click to toggle lock for ${resident.name}`}
+                    onDoubleClick={() => onLockResident(resident.id)}
+                    title={`Double-click to toggle lock for ${resident.name}`}
                   >
                     <div className="flex flex-col truncate">
                       <span className="flex items-center gap-2 truncate" title={resident.name}>
@@ -177,36 +177,35 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     const colorClass = assign
                       ? ASSIGNMENT_COLORS[assign]
                       : 'bg-white';
+                    const isPast = isPastWeek(w, startYear);
 
                     return (
                       <td
                         key={`${resident.id}-${w}`}
-                        className={`border-b border-light-3 border-r p-1 text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-light-2'}`}
+                        className={`border-b border-light-3 border-r text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-light-2'} ${isPast ? 'bg-light-1/50 p-0' : 'p-1'}`}
                         onClick={() => onCellClick(resident.id, idx)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          onToggleLock(resident.id, idx);
-                        }}
+                        onDoubleClick={() => onToggleLock(resident.id, idx)}
                         onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
                         onMouseLeave={handleMouseLeave}
-                        title="Left click to edit, Right click to toggle lock"
+                        title={isPast ? "Historical assignment (locked)" : "Click to edit, Double-click to toggle lock"}
                       >
                         <div className={`
-                            w-full h-10 flex items-center justify-center rounded text-xs font-medium px-1 transition-all
+                            w-full flex items-center justify-center text-xs font-medium transition-all
                             ${colorClass}
-                            ${cell?.locked ? 'ring-2 ring-gray-600' : ''}
+                            ${isPast ? 'h-full opacity-30 grayscale-[0.8] border-none' : 'h-10 rounded px-1'}
+                            ${cell?.locked && !isPast ? 'ring-2 ring-gray-600' : ''}
                          `}>
                           {assign ? (
                             <>
                               <span className="truncate w-full block">
                                 {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
                               </span>
-                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-70 text-primary" />}
+                              {cell?.locked && !isPast && <Lock size={10} className="absolute top-1 right-1 opacity-70 text-primary" />}
                             </>
                           ) : (
                             <>
                               <span className="text-light-5">-</span>
-                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-40 text-muted" />}
+                              {cell?.locked && !isPast && <Lock size={10} className="absolute top-1 right-1 opacity-40 text-muted" />}
                             </>
                           )}
                         </div>

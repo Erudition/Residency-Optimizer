@@ -1,24 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { ScheduleGrid, ScheduleHistory, Resident, AssignmentType, ScheduleCell } from '../types';
+import { ScheduleGrid, ScheduleHistory, Resident, AssignmentType, ScheduleCell, ScheduleSession } from '../types';
 import { calculateFairnessMetrics, calculateScheduleScore } from '../services/scheduler';
 import { Sparkles, Loader2, Info, Download, Users, Plus, ChevronUp, ChevronDown, ArrowUpDown, Pencil } from 'lucide-react';
 import { Button } from './ui/Button';
 
-interface ScheduleSession {
-  id: string;
-  name: string;
-  data: ScheduleHistory;
-  isGenerating?: boolean;
-  metrics?: {
-    stats: any;
-    violations: {
-      reqs: any[];
-      constraints: any[];
-    };
-    fairness: any[];
-    score: number;
-  };
-}
+
 
 const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
   const colors = [
@@ -52,12 +38,13 @@ interface Props {
   onSelect: (id: string) => void;
   onRename: (id: string) => void;
   activeYear: number;
+  history: ScheduleHistory;
 }
 
 interface ScheduleMetrics {
   id: string;
   name: string;
-  score: number;
+  regret: number;
   avgFairness: number;
   pgy1Fairness: number;
   pgy2Fairness: number;
@@ -68,15 +55,15 @@ interface ScheduleMetrics {
 }
 
 export const ScheduleComparison: React.FC<Props> = ({
-  residents,
+  residents, activeScheduleId,
   schedules,
-  activeScheduleId,
   onSelect,
   onRename,
-  activeYear
+  activeYear,
+  history
 }) => {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduleMetrics, direction: 'asc' | 'desc' }>({ key: 'score', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduleMetrics, direction: 'asc' | 'desc' }>({ key: 'regret', direction: 'asc' });
 
   const handleSort = (key: keyof ScheduleMetrics) => {
     setSortConfig(prev => ({
@@ -94,7 +81,7 @@ export const ScheduleComparison: React.FC<Props> = ({
     return schedules.filter(s => !s.isGenerating).map(s => {
       // Use pre-calculated metrics for speed
       if (s.metrics) {
-        const { score, fairness } = s.metrics;
+        const { regret, fairness } = s.metrics;
         const f1 = fairness.find(g => g.level === 1)?.fairnessScore || 0;
         const f2 = fairness.find(g => g.level === 2)?.fairnessScore || 0;
         const f3 = fairness.find(g => g.level === 3)?.fairnessScore || 0;
@@ -114,7 +101,7 @@ export const ScheduleComparison: React.FC<Props> = ({
         return {
           id: s.id,
           name: s.name,
-          score,
+          regret,
           avgFairness: (f1 + f2 + f3) / 3,
           pgy1Fairness: f1,
           pgy2Fairness: f2,
@@ -127,7 +114,7 @@ export const ScheduleComparison: React.FC<Props> = ({
 
       // Legacy fallback
       const groups = calculateFairnessMetrics(residents, s.data);
-      const score = calculateScheduleScore(residents, s.data);
+      const regret = calculateScheduleScore(residents, s.data, history);
 
       const f1 = groups.find(g => g.level === 1)?.fairnessScore || 0;
       const f2 = groups.find(g => g.level === 2)?.fairnessScore || 0;
@@ -155,7 +142,7 @@ export const ScheduleComparison: React.FC<Props> = ({
       return {
         id: s.id,
         name: s.name,
-        score,
+        regret,
         avgFairness,
         pgy1Fairness: f1,
         pgy2Fairness: f2,
@@ -165,8 +152,7 @@ export const ScheduleComparison: React.FC<Props> = ({
         maxStreak,
       };
     });
-  }, [schedules, residents]);
-
+  }, [schedules, residents, activeScheduleId, history, activeYear]);
   const sortedMetrics = useMemo(() => {
     return [...metrics].sort((a, b) => {
       const aVal = a[sortConfig.key];
@@ -179,7 +165,7 @@ export const ScheduleComparison: React.FC<Props> = ({
 
   const ranges = useMemo(() => {
     const r = {
-      score: { min: 0, max: 100000 },
+      regret: { min: 0, max: 100000 },
       fairness: { min: 100, max: 0 },
       pgyFairness: { min: 100, max: 0 },
       totalNF: { min: 10000, max: 0 },
@@ -189,12 +175,12 @@ export const ScheduleComparison: React.FC<Props> = ({
 
     if (metrics.length === 0) return r;
 
-    r.score.min = metrics[0].score;
-    r.score.max = metrics[0].score;
+    r.regret.min = metrics[0].regret;
+    r.regret.max = metrics[0].regret;
 
     metrics.forEach(m => {
-      r.score.min = Math.min(r.score.min, m.score);
-      r.score.max = Math.max(r.score.max, m.score);
+      r.regret.min = Math.min(r.regret.min, m.regret);
+      r.regret.max = Math.max(r.regret.max, m.regret);
       r.fairness.min = Math.min(r.fairness.min, m.avgFairness);
       r.fairness.max = Math.max(r.fairness.max, m.avgFairness);
 
@@ -255,8 +241,8 @@ export const ScheduleComparison: React.FC<Props> = ({
                   <th className="py-4 px-6 text-left cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('name')}>
                     <div className="flex items-center">Schedule Name <SortIcon column="name" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('score')}>
-                    <div className="flex items-center justify-center">Score (Lower Better) <SortIcon column="score" /></div>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('regret')}>
+                    <div className="flex items-center justify-center">Regret (Lower Better) <SortIcon column="regret" /></div>
                   </th>
                   <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('avgFairness')}>
                     <div className="flex items-center justify-center">AVG Fairness <SortIcon column="avgFairness" /></div>
@@ -318,8 +304,8 @@ export const ScheduleComparison: React.FC<Props> = ({
                         </div>
                       </td>
 
-                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.score, ranges.score.min, ranges.score.max, false)}`}>
-                        {Math.round(m.score)}
+                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.regret, ranges.regret.min, ranges.regret.max, false)}`}>
+                        {Math.round(m.regret)}
                       </td>
 
                       <td className={`py-4 px-6 text-center font-mono ${getColor(m.avgFairness, ranges.fairness.min, ranges.fairness.max, true)}`}>

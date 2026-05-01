@@ -1,33 +1,29 @@
 
-import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics } from '../types';
+import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting } from '../types';
 import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS } from '../constants';
 import { getRequirementCount, getCumulativeRequirementCount } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
-import { StochasticGenerator } from './generators/stochastic';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
+import { StochasticGenerator } from './generators/stochastic';
 import { EducationFirstGenerator } from './generators/educationFirst';
 
 /**
  * Main Scheduling Engine - Competition Mode (Async)
  * Returns both the schedule and the name of the winning algorithm.
  */
-export interface CompetitionResult {
-  schedule: ScheduleGrid;
-  winnerName: string;
-  score: number;
-  totalViolations: number;
-  understaffing: number;
-}
 
 export const generateSchedule = async (
-  residents: Resident[],
-  existing: ScheduleGrid,
-  params: CompetitionParams = { tries: 300, priority: CompetitionPriority.BEST_SCORE, algorithmIds: ['experimental', 'stochastic', 'strict'], topN: 1 },
-  onProgress?: (progress: number, attemptsMade: number) => void,
-  historicalSchedules?: ScheduleHistory,
-  cohortAssignments?: Record<string, number>,
-  baseSeed: number = Math.floor(Math.random() * 1000000)
+  startYear: number,
+  totalYears: number,
+  historicalSchedules: ScheduleHistory,
+  constraints: { residents: Resident[], existing: Record<number, ScheduleGrid>, cohortAssignments: Record<number, Record<string, number>> },
+  params: CompetitionParams,
+  algorithmIds: string[],
+  isAlgorithmCanceled: (id: string) => boolean,
+  onProgress: (iteration: number, scores: number[], attempts: number) => void,
+  isPromoted: () => boolean = () => false
 ): Promise<{ results: CompetitionResult[] }> => {
+  const { residents, existing, cohortAssignments } = constraints;
   const allGenerators = [
     { id: 'greedy', generator: WeekByWeekGenerator, name: 'Week By Week' },
     { id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' },
@@ -35,71 +31,112 @@ export const generateSchedule = async (
     { id: 'strict', generator: EducationFirstGenerator, name: 'Education First' },
   ];
 
-  const selectedGenerators = allGenerators.filter(g => params.algorithmIds.includes(g.id));
+  const selectedGenerators = allGenerators.filter(g => algorithmIds.includes(g.id));
   if (selectedGenerators.length === 0) {
     selectedGenerators.push({ id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' });
   }
 
-  const attempts: { generator: any; name: string }[] = [];
-
-  selectedGenerators.forEach(g => {
-    for (let i = 0; i < params.tries; i++) {
-      attempts.push({ generator: g.generator, name: g.name });
-    }
-  });
-
   const results: CompetitionResult[] = [];
+  const algorithmBestScores: Record<string, number> = {};
+  // Standardizing on Score: Higher is Better. Initial best is -Infinity.
+  selectedGenerators.forEach(g => algorithmBestScores[g.id] = -Infinity);
 
-  console.log(`Starting Algorithm Competition with ${params.tries} tries for ${selectedGenerators.map(g => g.name).join(', ')}...`);
+  console.log(`Starting Unified Multi-Year Competition (${totalYears} years)...`);
 
-  for (let i = 0; i < attempts.length; i++) {
-    const att = attempts[i];
-    try {
-      const schedule = att.generator.generate(residents, existing, baseSeed + i, historicalSchedules, cohortAssignments);
-      const reqViolations = getRequirementViolations(residents, schedule, historicalSchedules);
-      const weekViolations = getWeeklyViolations(residents, schedule);
-      const totalViolations = reqViolations.length + weekViolations.length;
-      const currentUnderstaffing = weekViolations.filter(v => v.issue.includes('Min')).length;
-      const score = calculateScheduleScore(residents, schedule, historicalSchedules);
+  let i = 0;
+  const tries = params.tries || 300;
 
-      results.push({
-        schedule,
-        winnerName: att.name,
-        score,
-        totalViolations,
-        understaffing: currentUnderstaffing
-      });
-
-      if (onProgress && i % 10 === 0) {
-        onProgress(Math.round(((i + 1) / attempts.length) * 100), i + 1);
-      }
-    } catch (e) {
-      console.error(`Generator ${att.name} failed attempt ${i}`, e);
+  while (i < tries) {
+    if (isPromoted()) {
+      console.log("Promotion triggered - ending generation early with best results found so far.");
+      break;
     }
 
-    if (i % 5 === 0) {
+    const currentBestScores: number[] = [];
+    
+    for (let idx = 0; idx < selectedGenerators.length; idx++) {
+      const g = selectedGenerators[idx];
+      
+      if (isAlgorithmCanceled(g.id)) {
+        currentBestScores.push(algorithmBestScores[g.id]);
+        continue;
+      }
+
+      try {
+        let attemptTotalViolations = 0;
+        let attemptUnderstaffing = 0;
+        let attemptFullData: Record<number, ScheduleGrid> = {};
+        let runningHistory = { ...historicalSchedules };
+        let totalScore = 0;
+
+        // Generate each year in sequence for this attempt
+        for (let y = startYear; y < startYear + totalYears; y++) {
+          // Advance resident levels for this year
+          const yearResidents = residents.filter(r => {
+            const level = y - r.startYear + 1;
+            return level >= 1 && level <= 3;
+          }).map(r => ({
+            ...r,
+            level: (y - r.startYear + 1) as 1 | 2 | 3,
+            clinicType: (y - r.startYear + 1) === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC
+          }));
+
+          const yearExisting = existing[y] || {};
+          const yearSchedule = g.generator.generate(yearResidents, yearExisting, i + idx, runningHistory, cohortAssignments[y]);
+          
+          const yearScore = calculateScheduleScore(yearResidents, yearSchedule, runningHistory);
+          const reqViolations = getRequirementViolations(yearResidents, yearSchedule, runningHistory);
+          const weekViolations = getWeeklyViolations(yearResidents, yearSchedule);
+          
+          attemptTotalViolations += reqViolations.length + weekViolations.length;
+          attemptUnderstaffing += weekViolations.filter(v => v.issue.includes('Min')).length;
+          attemptFullData[y] = yearSchedule;
+          totalScore += yearScore;
+          
+          // Update running history for the next year in the block
+          runningHistory[y] = yearSchedule;
+        }
+        
+        const score = totalScore;
+
+        // Check if this multi-year package qualifies for Top N (Higher is Better)
+        const currentWorstScore = results.length >= (params.topN || 1) ? results[results.length - 1].score : -Infinity;
+        
+        if (score >= currentWorstScore || results.length < (params.topN || 1)) {
+          const result: CompetitionResult = {
+            schedule: attemptFullData,
+            winnerName: g.name,
+            score,
+            totalViolations: attemptTotalViolations,
+            understaffing: attemptUnderstaffing
+          };
+
+
+          results.push(result);
+          results.sort((a, b) => b.score - a.score); // DESC sort (higher score first)
+
+          if (results.length > (params.topN || 1)) {
+            results.pop();
+          }
+        }
+
+        if (score > algorithmBestScores[g.id]) {
+          algorithmBestScores[g.id] = score;
+        }
+      } catch (e) {
+        console.error(`Generator ${g.name} failed attempt ${i}`, e);
+      }
+      currentBestScores.push(algorithmBestScores[g.id] === -Infinity ? -1000000 : algorithmBestScores[g.id]);
+    }
+
+    onProgress(i, currentBestScores, i);
+
+    if (i % 10 === 0) {
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   }
 
-  // Final Ranking Logic based on Priority
-  results.sort((a, b) => {
-    if (params.priority === CompetitionPriority.LEAST_UNDERSTAFFING) {
-      if (a.understaffing !== b.understaffing) return a.understaffing - b.understaffing;
-      if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-      return a.score - b.score;
-    } else if (params.priority === CompetitionPriority.MOST_PGY_REQS) {
-      if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-      return a.score - b.score;
-    } else {
-      if (a.totalViolations !== b.totalViolations) return a.totalViolations - b.totalViolations;
-      return a.score - b.score;
-    }
-  });
-
-  if (onProgress) onProgress(100, attempts.length);
-
-  return { results: results.slice(0, params.topN || 1) };
+  return { results };
 };
 
 // --- Analysis Helpers (Kept for UI/Analysis) ---
@@ -132,41 +169,49 @@ export const getRequirementViolations = (residents: Resident[], schedule: Schedu
 
 export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid): WeeklyViolation[] => {
   const violations: WeeklyViolation[] = [];
-  if (!schedule) return violations;
-
-  for (let w = 0; w < TOTAL_WEEKS; w++) {
-    Object.values(AssignmentType).forEach(type => {
-      const meta = ROTATION_METADATA[type];
-      if (!meta || type === AssignmentType.ELECTIVE || type === AssignmentType.CLINIC || type === AssignmentType.VACATION) return;
-
-      const assigned = residents.filter(r => schedule[r.id]?.[w]?.assignment === type);
-      const interns = assigned.filter(r => r.level === 1).length;
-      const seniors = assigned.filter(r => r.level > 1).length;
-
-      if (interns < meta.minInterns) violations.push({ week: w + 1, type, issue: `Min Interns Unmet: ${interns}/${meta.minInterns}` });
-      if (seniors < meta.minSeniors) violations.push({ week: w + 1, type, issue: `Min Seniors Unmet: ${seniors}/${meta.minSeniors}` });
-
-      if (interns > meta.maxInterns) violations.push({ week: w + 1, type, issue: `Max Interns Exceeded: ${interns}/${meta.maxInterns}` });
-      if (seniors > meta.maxSeniors) violations.push({ week: w + 1, type, issue: `Max Seniors Exceeded: ${seniors}/${meta.maxSeniors}` });
-    });
-
-    // --- Jeopardy Pool Check ---
-    const flexibleSeniors = residents.filter(r => {
-      const assignment = schedule[r.id]?.[w]?.assignment;
-      return r.level > 1 && (ELECTIVE_TYPES.includes(assignment) || REQUIRED_TYPES.includes(assignment));
-    });
-
-    const pgy2Pool = flexibleSeniors.filter(r => r.level === 2).length;
-    const pgy3Pool = flexibleSeniors.filter(r => r.level === 3).length;
-
-    if (pgy3Pool === 0) {
-      violations.push({ week: w + 1, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: No PGY-3 available for 1st-line backup` });
-    }
-    if (pgy2Pool === 0) {
-      violations.push({ week: w + 1, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: No PGY-2 available for 2nd-line backup` });
+  const safeGrid = schedule || {};
+  
+  for (let week = 0; week < 52; week++) {
+    const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
+    const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC).length;
+    if (clinicCount === 0) {
+      violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}` });
     }
   }
+
   return violations;
+};
+
+export const getAuditViolations = (residents: Resident[], history: ScheduleHistory): number => {
+    let violationCount = 0;
+
+    residents.forEach(r => {
+        let outpatient = 0;
+        let criticalCareCore = 0;
+        let nightFloat = 0;
+
+        Object.entries(history).forEach(([_, grid]) => {
+            const weeks = grid[r.id] || [];
+            weeks.forEach(c => {
+                if (!c || !c.assignment) return;
+                const meta = ROTATION_METADATA[c.assignment];
+                if (!meta) return;
+
+                if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
+                if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
+                    if (c.assignment !== AssignmentType.AMCS_CONSULTS) {
+                        criticalCareCore++;
+                    }
+                }
+                if (c.assignment === AssignmentType.NIGHT_FLOAT) nightFloat++;
+            });
+        });
+
+        if (criticalCareCore > 18) violationCount++;
+        if (nightFloat > 12) violationCount++;
+    });
+
+    return violationCount;
 };
 
 
@@ -176,6 +221,7 @@ const calculateSD = (values: number[], mean: number): number => {
   const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / values.length;
   return Math.sqrt(avgSquareDiff);
 };
+
 
 export const calculateFairnessMetrics = (residents: Resident[], schedule: ScheduleGrid): CohortFairnessMetrics[] => {
   const safeGrid = schedule || {};
@@ -246,7 +292,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
     const cvCore = sdCore / (meanCore || 1);
     const cvIntensity = sdIntensity / (meanIntensity || 1);
     const penalty = (cvCore * 50) + (cvIntensity * 50);
-    const fairnessScore = Math.max(0, Math.min(100, Math.round(100 - penalty)));
+    const fairnessScore = Math.max(0, Math.min(100, 100 - Math.round(penalty)));
 
     return {
       level,
@@ -302,27 +348,24 @@ export const calculateScheduleScore = (residents: Resident[], schedule: Schedule
   const reqViolations = getRequirementViolations(residents, schedule, historicalSchedules);
   const fairness = calculateFairnessMetrics(residents, schedule);
 
-  // New Cost Function (Lower is Better)
+  // New Score Function (Higher is Better)
 
-  // 1. Violations (Dominant Factor - "Must not happen")
-  const violationPenalty = (weeklyViolations.length + reqViolations.length) * 10000;
+  // 1. Violations (Dominant Factor - negative impact)
+  const violationPenalty = (weeklyViolations.length + reqViolations.length) * -10000;
 
   // 2. Fairness (PGY-3 Only)
-  // Cost = (100 - fairnessScore) * Weight
   const pgy3 = fairness.find(f => f.level === 3);
-  const pgy3Fairness = pgy3 ? pgy3.fairnessScore : 0;
-  const fairnessCost = (100 - pgy3Fairness) * 100;
+  const pgy3FairnessScore = pgy3 ? pgy3.fairnessScore : 0;
+  const fairnessBonus = pgy3FairnessScore * 100;
 
-  // 3. Streak Equity
-  // Penalize if some residents have much harder streaks than others
-  // We use the Standard Deviation of max streaks across ALL residents
+  // 3. Streak Equity (negative impact for higher standard deviation)
   const allStreaks: number[] = [];
   fairness.forEach(g => g.residents.forEach(r => allStreaks.push(r.maxIntensityStreak)));
   const meanStreak = allStreaks.reduce((a, b) => a + b, 0) / (allStreaks.length || 1);
   const streakSD = Math.sqrt(allStreaks.reduce((s, n) => s + Math.pow(n - meanStreak, 2), 0) / (allStreaks.length || 1));
 
-  const streakCost = streakSD * 1000;
+  const streakPenalty = streakSD * -1000;
 
-  // Total Cost
-  return violationPenalty + fairnessCost + streakCost;
+  // Total Score
+  return violationPenalty + fairnessBonus + streakPenalty;
 };

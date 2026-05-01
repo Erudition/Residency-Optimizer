@@ -126,7 +126,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
   };
 
   return (
-    <div className="p-6 h-full overflow-y-auto bg-light-1 pb-64">
+    <div className="p-6 h-full overflow-y-auto bg-light-1">
       <div className="max-w-6xl mx-auto space-y-6">
 
         {/* Explanation Cards */}

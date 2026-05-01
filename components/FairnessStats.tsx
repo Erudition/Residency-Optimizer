@@ -26,9 +26,9 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
         return calculateFairnessMetrics(residents, schedule);
     }, [residents, schedule, precalculated]);
 
-    const getScoreColor = (score: number) => {
-        if (score >= 90) return 'text-green bg-lime-green/20 border-lime-green';
-        if (score >= 75) return 'text-orange bg-creamsicle/30 border-creamsicle';
+    const getScoreColor = (regret: number) => {
+        if (regret <= 10) return 'text-green bg-lime-green/20 border-lime-green';
+        if (regret <= 25) return 'text-orange bg-creamsicle/30 border-creamsicle';
         return 'text-red bg-red/10 border-red/40';
     };
 
@@ -59,7 +59,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
     };
 
     return (
-        <div className="h-full overflow-y-auto bg-light-1 p-6 pb-64 relative">
+        <div className="h-full overflow-y-auto bg-light-1 p-6 relative">
             <div className="max-w-6xl mx-auto space-y-8">
 
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-light-5">
@@ -79,7 +79,7 @@ export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule,
                         <div className="px-6 py-4 border-b border-light-3 flex justify-between items-center bg-light-1/50">
                             <h3 className="text-lg font-bold text-primary">PGY-{group.level} Cohort</h3>
                             <div className={`px-4 py-1.5 rounded-full border font-bold text-sm flex items-center gap-2 ${getScoreColor(group.fairnessScore)}`}>
-                                {group.fairnessScore >= 90 ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                                {group.fairnessScore <= 10 ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                                 Fairness Score: {group.fairnessScore}%
                             </div>
                         </div>
