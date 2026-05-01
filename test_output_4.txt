@@ -1,0 +1,34 @@
+
+> residency-scheduler-pro-v-2@0.0.0 test
+> vitest scheduler.test.ts --reporter=verbose
+
+
+ DEV  v3.2.4 /home/adroit/Projects/residency-optimizer
+
+stdout | services/scheduler.test.ts > Schedule Generator
+Starting Algorithm Competition with 100 tries for Staffing First, Stochastic, Education First...
+
+stdout | services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules
+Starting Algorithm Competition with 2 tries for Staffing First, Stochastic, Education First...
+
+ ✓ services/scheduler.test.ts > Schedule Generator > should generate a schedule for every resident 4ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should enforce 4+1 Clinic weeks (Cohort rule) 8ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should not leave any week unassigned 21ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY1 required electives 1ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY2 required rotations 1ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY3 required electives 1ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign correct block lengths for rotations 0ms
+ ✓ services/scheduler.test.ts > Schedule Generator > Weekly Staffing Requirements > should have at least 1 intern on Night Float per week 1ms
+ ✓ services/scheduler.test.ts > Schedule Generator > Weekly Staffing Requirements > should have 0 weekly staffing violations 2ms
+stdout | services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules
+Starting Algorithm Competition with 2 tries for Staffing First, Stochastic, Education First...
+
+ ✓ services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules 391ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  17:50:53
+   Duration  46.91s (transform 160ms, setup 0ms, collect 172ms, tests 46.26s, environment 0ms, prepare 131ms)
+
+ PASS  Waiting for file changes...
+       press h to show help, press q to quit

@@ -37,9 +37,9 @@ export const generateSchedule = async (
   }
 
   const results: CompetitionResult[] = [];
-  const algorithmBestRegrets: Record<string, number> = {};
-  // Standardizing on Cost: Lower is Better. Initial best is Infinity.
-  selectedGenerators.forEach(g => algorithmBestRegrets[g.id] = Infinity);
+  const algorithmBestScores: Record<string, number> = {};
+  // Standardizing on Score: Higher is Better. Initial best is -Infinity.
+  selectedGenerators.forEach(g => algorithmBestScores[g.id] = -Infinity);
 
   console.log(`Starting Unified Multi-Year Competition (${totalYears} years)...`);
 
@@ -58,7 +58,7 @@ export const generateSchedule = async (
       const g = selectedGenerators[idx];
       
       if (isAlgorithmCanceled(g.id)) {
-        currentBestScores.push(algorithmBestRegrets[g.id]);
+        currentBestScores.push(algorithmBestScores[g.id]);
         continue;
       }
 
@@ -67,7 +67,7 @@ export const generateSchedule = async (
         let attemptUnderstaffing = 0;
         let attemptFullData: Record<number, ScheduleGrid> = {};
         let runningHistory = { ...historicalSchedules };
-        let totalCost = 0;
+        let totalScore = 0;
 
         // Generate each year in sequence for this attempt
         for (let y = startYear; y < startYear + totalYears; y++) {
@@ -84,49 +84,49 @@ export const generateSchedule = async (
           const yearExisting = existing[y] || {};
           const yearSchedule = g.generator.generate(yearResidents, yearExisting, i + idx, runningHistory, cohortAssignments[y]);
           
-          const yearCost = calculateScheduleRegret(yearResidents, yearSchedule, runningHistory);
+          const yearScore = calculateScheduleScore(yearResidents, yearSchedule, runningHistory);
           const reqViolations = getRequirementViolations(yearResidents, yearSchedule, runningHistory);
           const weekViolations = getWeeklyViolations(yearResidents, yearSchedule);
           
           attemptTotalViolations += reqViolations.length + weekViolations.length;
           attemptUnderstaffing += weekViolations.filter(v => v.issue.includes('Min')).length;
           attemptFullData[y] = yearSchedule;
-          totalCost += yearCost;
+          totalScore += yearScore;
           
           // Update running history for the next year in the block
           runningHistory[y] = yearSchedule;
         }
         
-        const regret = totalCost;
+        const score = totalScore;
 
-        // Check if this multi-year package qualifies for Top N (Lower is Better)
-        const currentWorstRegret = results.length >= (params.topN || 1) ? results[results.length - 1].regret : Infinity;
+        // Check if this multi-year package qualifies for Top N (Higher is Better)
+        const currentWorstScore = results.length >= (params.topN || 1) ? results[results.length - 1].score : -Infinity;
         
-        if (regret <= currentWorstRegret || results.length < (params.topN || 1)) {
+        if (score >= currentWorstScore || results.length < (params.topN || 1)) {
           const result: CompetitionResult = {
             schedule: attemptFullData,
             winnerName: g.name,
-            regret,
+            score,
             totalViolations: attemptTotalViolations,
             understaffing: attemptUnderstaffing
           };
 
 
           results.push(result);
-          results.sort((a, b) => a.regret - b.regret); // ASC sort (lower cost first)
+          results.sort((a, b) => b.score - a.score); // DESC sort (higher score first)
 
           if (results.length > (params.topN || 1)) {
             results.pop();
           }
         }
 
-        if (regret < algorithmBestRegrets[g.id]) {
-          algorithmBestRegrets[g.id] = regret;
+        if (score > algorithmBestScores[g.id]) {
+          algorithmBestScores[g.id] = score;
         }
       } catch (e) {
         console.error(`Generator ${g.name} failed attempt ${i}`, e);
       }
-      currentBestScores.push(algorithmBestRegrets[g.id] === Infinity ? 1000000 : algorithmBestRegrets[g.id]);
+      currentBestScores.push(algorithmBestScores[g.id] === -Infinity ? -1000000 : algorithmBestScores[g.id]);
     }
 
     onProgress(i, currentBestScores, i);
@@ -271,7 +271,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
         requiredWeeks: req,
         vacationWeeks: vac,
         nightFloatWeeks: nf,
-        totalIntensityRegret: intensity,
+        totalIntensityScore: intensity,
         maxIntensityStreak: maxStreak,
         streakSummary
       };
@@ -279,7 +279,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
 
     const coreVals = resMetrics.map(m => m.coreWeeks);
     const elecVals = resMetrics.map(m => m.electiveWeeks);
-    const intensityVals = resMetrics.map(m => m.totalIntensityRegret);
+    const intensityVals = resMetrics.map(m => m.totalIntensityScore);
 
     const meanCore = coreVals.reduce((a, b) => a + b, 0) / (coreVals.length || 1);
     const meanElective = elecVals.reduce((a, b) => a + b, 0) / (elecVals.length || 1);
@@ -292,7 +292,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
     const cvCore = sdCore / (meanCore || 1);
     const cvIntensity = sdIntensity / (meanIntensity || 1);
     const penalty = (cvCore * 50) + (cvIntensity * 50);
-    const fairnessRegret = Math.max(0, Math.min(100, Math.round(penalty)));
+    const fairnessScore = Math.max(0, Math.min(100, 100 - Math.round(penalty)));
 
     return {
       level,
@@ -303,7 +303,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
       sdElective,
       meanIntensity,
       sdIntensity,
-      fairnessRegret
+      fairnessScore
     };
   });
 };
@@ -343,32 +343,29 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
   return diversity;
 };
 
-export const calculateScheduleRegret = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): number => {
+export const calculateScheduleScore = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): number => {
   const weeklyViolations = getWeeklyViolations(residents, schedule);
   const reqViolations = getRequirementViolations(residents, schedule, historicalSchedules);
   const fairness = calculateFairnessMetrics(residents, schedule);
 
-  // New Cost Function (Lower is Better)
+  // New Score Function (Higher is Better)
 
-  // 1. Violations (Dominant Factor - "Must not happen")
-  const violationPenalty = (weeklyViolations.length + reqViolations.length) * 10000;
+  // 1. Violations (Dominant Factor - negative impact)
+  const violationPenalty = (weeklyViolations.length + reqViolations.length) * -10000;
 
   // 2. Fairness (PGY-3 Only)
-  // Cost = (100 - fairnessScore) * Weight
   const pgy3 = fairness.find(f => f.level === 3);
-  const pgy3Regret = pgy3 ? pgy3.fairnessRegret : 100;
-  const fairnessCost = pgy3Regret * 100;
+  const pgy3FairnessScore = pgy3 ? pgy3.fairnessScore : 0;
+  const fairnessBonus = pgy3FairnessScore * 100;
 
-  // 3. Streak Equity
-  // Penalize if some residents have much harder streaks than others
-  // We use the Standard Deviation of max streaks across ALL residents
+  // 3. Streak Equity (negative impact for higher standard deviation)
   const allStreaks: number[] = [];
   fairness.forEach(g => g.residents.forEach(r => allStreaks.push(r.maxIntensityStreak)));
   const meanStreak = allStreaks.reduce((a, b) => a + b, 0) / (allStreaks.length || 1);
   const streakSD = Math.sqrt(allStreaks.reduce((s, n) => s + Math.pow(n - meanStreak, 2), 0) / (allStreaks.length || 1));
 
-  const streakCost = streakSD * 1000;
+  const streakPenalty = streakSD * -1000;
 
-  // Total Cost
-  return violationPenalty + fairnessCost + streakCost;
+  // Total Score
+  return violationPenalty + fairnessBonus + streakPenalty;
 };

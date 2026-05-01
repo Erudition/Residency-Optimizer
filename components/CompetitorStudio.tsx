@@ -138,7 +138,7 @@ export const CompetitorStudio: React.FC<Props> = ({
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
-                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Best Cost</div>
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Best Score</div>
                                                     <div className="text-sm font-black text-primary">
                                                         {algoStats.bestScore === Infinity ? '—' : Math.round(algoStats.bestScore).toLocaleString()}
                                                     </div>
@@ -150,7 +150,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                                                     </div>
                                                 </div>
                                                 <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
-                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Worst Cost</div>
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Worst Score</div>
                                                     <div className="text-sm font-black text-primary">
                                                         {algoStats.worstScore === -Infinity ? '—' : Math.round(algoStats.worstScore).toLocaleString()}
                                                     </div>

@@ -1,0 +1,2389 @@
+ACGME Program Requirements
+for Graduate Medical Education in
+Internal Medicine
+Revision Information
+ACGME-approved interim revision September 3, 2025; effective September 3, 2025
+ACGME-approved interim revision February 9, 2026; effective immediately. Pending the outcome
+of the major revision of the Common Program Requirements, enforcement of Common Program
+Requirements 1.3.a., 2.2.a., 2.8.c., 4.2.a., 4.2.e., 5.5.f., 5.5.h., 6.24., and 6.24.a. has been
+suspended. See explanatory text under 1.2. for modifications to this and related specialty-specific
+requirements.
+ACGME-approved interim revision September 29, 2025; effective July 1, 2026
+Definitions
+For more information, see the ACGME Glossary of Terms.
+Core Requirements: Statements that define structure, resource, or process elements essential to
+every graduate medical educational program.
+Detail Requirements: Statements that describe a specific structure, resource, or process,
+for achieving compliance with a Core Requirement. Programs and sponsoring institutions in
+substantial compliance with the Outcome Requirements may utilize alternative or innovative
+approaches to meet Core Requirements.
+Outcome Requirements: Statements that specify expected measurable or observable attributes
+(knowledge, abilities, skills, or attitudes) of residents or fellows at key stages of their graduate
+medical education.
+Osteopathic Recognition
+
+For programs with or applying for Osteopathic Recognition, the Osteopathic Recognition
+Requirements also apply (www.acgme.org/OsteopathicRecognition).
+Table of Contents
+Introduction ..............................................................................................................................  4
+Definition of Graduate Medical Education ...............................................................................  4
+Definition of Specialty .............................................................................................................  4
+Section 1: Oversight ................................................................................................................  5
+Sponsoring Institution .............................................................................................................  5
+Participating Sites ...................................................................................................................  6
+Resources ...............................................................................................................................  7
+Other Learners and Health Care Personnel ...........................................................................  9
+Section 2: Personnel ................................................................................................................  9
+Program Director .....................................................................................................................  9
+Faculty ..................................................................................................................................  16
+Program Coordinator ............................................................................................................  23
+Other Program Personnel .....................................................................................................  26
+Section 3: Resident Appointments .......................................................................................  26
+Eligibility Requirements .........................................................................................................  27
+Resident Complement ..........................................................................................................  27
+Resident Transfers ................................................................................................................  28
+Section 4: Educational Program ...........................................................................................  28
+Length of Program ................................................................................................................  29
+Educational Components ......................................................................................................  29
+ACGME Competencies .........................................................................................................  30
+Curriculum Organization and Resident Experiences ............................................................  35
+Scholarship ...........................................................................................................................  41
+Program Responsibilities ......................................................................................................  42
+Faculty Scholarly Activity ......................................................................................................  42
+Resident Scholarly Activity ....................................................................................................  43
+Section 5: Evaluation .............................................................................................................  43
+Clinical Competency Committee ...........................................................................................  46
+Faculty Evaluation .................................................................................................................  46
+Program Evaluation and Improvement .................................................................................  47
+Board Certification ................................................................................................................  49
+Section 6: The Learning and Working Environment ...........................................................  50
+Culture of Safety ...................................................................................................................  51
+Quality Metrics ......................................................................................................................  51
+Supervision and Accountability .............................................................................................  51
+Professionalism .....................................................................................................................  53
+Well-Being .............................................................................................................................  55
+Fatigue Mitigation ..................................................................................................................  57
+Clinical Responsibilities ........................................................................................................  58
+Teamwork ..............................................................................................................................  58
+Transitions of Care ................................................................................................................  59
+Clinical Experience and Education .......................................................................................  59
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 3 of 64
+ACGME Program Requirements for Graduate Medical Education
+in Internal Medicine
+Common Program Requirements (Residency) are in BOLD
+Where applicable, italicized text is used to provide definitions or describe the underlying
+philosophy of the requirements in that section. These statements are not program requirements
+and are therefore not citable.
+Introduction
+Definition of Graduate Medical Education
+Graduate medical education is the crucial step of professional development between
+medical school and autonomous clinical practice. It is in this vital phase of the continuum
+of medical education that residents learn to provide optimal patient care under the
+supervision of faculty members who not only instruct, but serve as role models of
+excellence, compassion, cultural sensitivity, professionalism, and scholarship.
+Graduate medical education transforms medical students into physician scholars who
+care for the patient, patient’s family, and a heterogeneous community; create and integrate
+new knowledge into practice; and educate future generations of physicians to serve the
+public. Practice patterns established during graduate medical education persist many
+years later.
+Graduate medical education has as a core tenet the graded authority and responsibility
+for patient care. The care of patients is undertaken with appropriate faculty supervision
+and conditional independence, allowing residents to attain the knowledge, skills, attitudes,
+judgment, and empathy required for autonomous practice. Graduate medical education
+develops physicians who focus on excellence in delivery of safe, accessible, affordable,
+high-quality care for all, to improve the health of the populations they serve.
+Graduate medical education occurs in clinical settings that establish the foundation for
+practice-based and lifelong learning. The professional development of the physician,
+begun in medical school, continues through faculty modeling of the effacement of self-
+interest in a humanistic environment that emphasizes joy in curiosity, problem-solving,
+academic rigor, and discovery. This transformation is often physically, emotionally,
+and intellectually demanding and occurs in a variety of clinical learning environments
+committed to graduate medical education and the well-being of patients, residents,
+fellows, faculty members, students, and all members of the health care team.
+Definition of Specialty
+Internists are specialists who care for adult patients through comprehensive, clinical problem
+solving. They integrate the history, physical examination, and all available data to deliver,
+direct, and coordinate care across varied clinical settings, both in person and remotely through
+telemedicine. Internists are diagnosticians who manage the care of patients who present with
+undifferentiated, complex illnesses, and comorbidities; promote community health; collaborate
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 4 of 64
+with colleagues; and lead, mentor, and serve multidisciplinary teams. Internists integrate care
+across organ systems and disease processes throughout the adult lifespan. They are expert
+communicators, creative and adaptable to the changing needs of patients and the health care
+environment. They advocate for their patients within the health care system to achieve the
+patient’s and family’s care goals. Internists embrace lifelong learning and the privilege and
+responsibility of educating patients, populations, and other health professionals. The discipline
+is characterized by a compassionate, cognitive, scholarly, relationship-oriented approach to
+comprehensive patient care.
+The successful, fulfilled internist maintains this core function and these core values. Internists
+find meaning and purpose in caring for individual patients with increased efficiency through well-
+functioning teams, and are equipped and trained to manage change effectively and lead those
+teams. They understand and manage the business of medicine to optimize cost-conscious care
+for their patients. They apply data management science to population and patient applications
+and help solve the clinical problems of their patients and their community. Internists communicate
+fluently and are able to educate and clearly explain complex data and concepts to all audiences,
+especially patients. They collaborate with patients to implement health care ethics in all aspects
+of their care. Internists display emotional intelligence in their relationships with colleagues,
+team members, and patients, maximizing both their own and their teams’ well-being. They are
+dedicated professionals who have the knowledge, skills, and attitudes to effectively use all
+available resources, and bring intellectual curiosity and human warmth to their patients and
+community.
+Specialty-Specific Background and Intent: The Review Committee developed this definition
+to clearly articulate the core functions and values of internal medicine and describe what is
+needed to move the specialty forward through program requirements. They express what the
+Review Committee aspires to see in the graduates of internal medicine residency programs,
+faculty members, and the broader internal medicine community.
+Section 1: Oversight
+Sponsoring Institution
+The Sponsoring Institution is the organization or entity that assumes the ultimate financial
+and academic responsibility for a program of graduate medical education, consistent with
+the ACGME Institutional Requirements.
+When the Sponsoring Institution is not a rotation site for the program, the most commonly
+utilized site of clinical activity for the program is the primary clinical site.
+Background and Intent: Participating sites will reflect the health care needs of the
+community and the educational needs of the residents. A wide variety of organizations
+may provide a robust educational experience and, thus, Sponsoring Institutions and
+participating sites may encompass inpatient and outpatient settings including, but
+not limited to a university, a medical school, a teaching hospital, a nursing home, a
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 5 of 64
+school of public health, a health department, a public health agency, an organized
+health care delivery system, a medical examiner’s office, an educational consortium, a
+teaching health center, a physician group practice, federally qualified health center, or
+an educational foundation.
+1.1. The program must be sponsored by one ACGME-accredited Sponsoring
+Institution. (Core)
+Participating Sites
+A participating site is an organization providing educational experiences or educational
+assignments/rotations for residents.
+1.2. The program, with approval of its Sponsoring Institution, must designate a
+primary clinical site. (Core)
+[Pending the outcome of the major revision of the Common Program
+Requirements, effective February 9, 2026, a program will not be cited for the
+absence of an ACGME-accredited program in another specialty that is specified
+in the specialty specific program requirements, if there is a clinical service in that
+specialty]
+[Note this does not apply to requirements regarding the need for an ACGME-
+accredited specialty program for a related dependent subspecialty program,
+and an ACGME-accredited subspecialty program for a related dependent sub-
+subspecialty program]
+1.2.a. The program, in partnership with its Sponsoring Institution, must ensure that there
+is a reporting relationship between the internal medicine subspecialty programs and
+the residency program director. (Core)
+1.3. There must be a program letter of agreement (PLA) between the program and
+each participating site that governs the relationship between the program and the
+participating site providing a required assignment. (Core)
+1.3.a. The PLA must be renewed at least every 10 years. (Core)
+[Pending the outcome of the major revision of the Common Program
+Requirements, enforcement of Common Program Requirement 1.3.a has been
+suspended]
+1.3.b. The PLA must be approved by the designated institutional official (DIO). (Core)
+Background and Intent: While all residency programs must be sponsored by a single
+ACGME-accredited Sponsoring Institution, many programs will utilize other clinical
+settings to provide required or elective training experiences. At times it is appropriate
+to utilize community sites that are not owned by or affiliated with the Sponsoring
+Institution. Some of these sites may be remote for geographic, transportation, or
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 6 of 64
+communication issues. When utilizing such sites, the program must ensure the quality
+of the educational experience.
+Suggested elements to be considered in PLAs will be found in the Guide to the Common
+Program Requirements. These include:
+• Identifying the faculty members who will assume educational and supervisory
+responsibility for residents
+• Specifying the responsibilities for teaching, supervision, and formal evaluation of
+residents
+• Specifying the duration and content of the educational experience
+• Stating the policies and procedures that will govern resident education during the
+assignment
+1.4. The program must monitor the clinical learning and working environment at all
+participating sites. (Core)
+1.5. At each participating site there must be one faculty member, designated by the
+program director as the site director, who is accountable for resident education at
+that site, in collaboration with the program director. (Core)
+1.6. The program director must submit any additions or deletions of participating sites
+routinely providing an educational experience, required for all residents, of one
+month full time equivalent (FTE) or more through the ACGME’s Accreditation Data
+System (ADS). (Core)
+1.7. Resources
+The program, in partnership with its Sponsoring Institution, must ensure the
+availability of adequate resources for resident education. (Core)
+1.7.a. The program, in partnership with its Sponsoring institution, must:
+1.7.a.1. provide the broad range of facilities and clinical support services necessary to
+provide comprehensive and timely care of adult patients. (Core)
+1.7.a.2. ensure that the program has adequate space available, including meeting
+rooms, classrooms, examination rooms, computers, visual and other
+educational aids, and office space. (Core)
+1.7.a.3. ensure that appropriate in-person or remote/virtual consultations, including
+those done using telecommunication technology, are available in settings in
+which residents work. (Core)
+1.7.a.4. provide access to an electronic health record. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 7 of 64
+Specialty-Specific Background and Intent: An electronic health record (EHR) can include
+electronic notes, orders, and lab reporting. Such a system also facilitates data reporting
+regarding the care provided to a patient or a panel of patients. It may also include systems
+for enhancing the quality and safety of patient care. An EHR does not have to be present at all
+participating sites and does not have to include every element of patient care information.
+However, a system that simply reports laboratory or imaging results does not meet the
+definition of an EHR.
+1.7.b. The program, in partnership with its Sponsoring institution, must provide residents
+with access to training using simulation to support resident education and patient
+safety. (Core)
+Specialty-Specific Background and Intent: The Review Committee does not expect each
+program to own a simulator or to have a simulation center. “Simulation” is used broadly to
+mean learning about patient care in settings that do not include actual patients. This could
+include objective structured clinical examinations (OSCEs), standardized patients, patient
+simulators, or electronic simulation of resuscitation, procedures, and other clinical scenarios.
+1.7.c. The program must provide residents with a patient population representative of
+both the broad spectrum of clinical disorders and medical conditions managed by
+internists, and of the community being served. (Core)
+1.8. The program, in partnership with its Sponsoring Institution, must ensure healthy
+and safe learning and working environments that promote resident well-being and
+provide for:
+1.8.a. access to food while on duty; (Core)
+1.8.b. safe, quiet, clean, and private sleep/rest facilities available and accessible for
+residents with proximity appropriate for safe patient care; (Core)
+Background and Intent: Care of patients within a hospital or health system occurs
+continually through the day and night. Such care requires that residents function at
+their peak abilities, which requires the work environment to provide them with the ability
+to meet their basic needs within proximity of their clinical responsibilities. Access to
+food and rest are examples of these basic needs, which must be met while residents are
+working. Residents should have access to refrigeration where food may be stored. Food
+should be available when residents are required to be in the hospital overnight. Rest
+facilities are necessary, even when overnight call is not required, to accommodate the
+fatigued resident.
+1.8.c. clean and private facilities for lactation that have refrigeration capabilities,
+with proximity appropriate for safe patient care; (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 8 of 64
+Background and Intent: Sites must provide private and clean locations where residents
+may lactate and store the milk within a refrigerator. These locations should be in close
+proximity to clinical responsibilities. It would be helpful to have additional support
+within these locations that may assist the resident with the continued care of patients,
+such as a computer and a phone. While space is important, the time required for
+lactation is also critical for the well-being of the resident and the resident's family, as
+outlined in 6.13.c.1.
+1.8.d. security and safety measures appropriate to the participating site; and, (Core)
+1.8.e. accommodations for residents with disabilities consistent with the
+Sponsoring Institution’s policy. (Core)
+1.9. Residents must have ready access to specialty-specific and other appropriate
+reference material in print or electronic format. This must include access to
+electronic medical literature databases with full text capabilities. (Core)
+1.10. Other Learners and Health Care Personnel
+The presence of other learners and other health care personnel, including, but
+not limited to residents from other programs, subspecialty fellows, and advanced
+practice providers, must not negatively impact the appointed residents’ education.
+(Core)
+Background and Intent: The clinical learning environment has become increasingly
+complex and often includes care providers, students, and post-graduate residents
+and fellows from multiple disciplines. The presence of these practitioners and their
+learners enriches the learning environment. Programs have a responsibility to monitor
+the learning environment to ensure that residents’ education is not compromised by the
+presence of other providers and learners.
+Section 2: Personnel
+2.1. Program Director
+There must be one faculty member appointed as program director with authority
+and accountability for the overall program, including compliance with all
+applicable program requirements. (Core)
+2.2. The Sponsoring Institution’s GMEC must approve a change in program director
+and must verify the program director’s licensure and clinical appointment. (Core)
+Background and Intent: While the ACGME recognizes the value of input from numerous
+individuals in the management of a residency, a single individual must be designated
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 9 of 64
+as program director and have overall responsibility for the program. The program
+director’s nomination is reviewed and approved by the GMEC.
+2.3. The program must demonstrate retention of the program director for a length of
+time adequate to maintain continuity of leadership and program stability. (Core)
+Background and Intent: The success of residency programs is generally enhanced by
+continuity in the program director position. The professional activities required of a
+program director are unique and complex and take time to master. All programs are
+encouraged to undertake succession planning to facilitate program stability when there
+is necessary turnover in the program director position.
+2.4. The program director and, as applicable, the program’s leadership team, must be
+provided with support adequate for administration of the program based upon its
+size and configuration. (Core)
+2.4.a. At a minimum, the program director must be provided with the dedicated time and
+support specified below for administration of the program: (Core)
+Number of Approved Resident Positions Minimum Support
+Required (FTE)
+<7 0.2
+7-10 0.4
+>10 0.5
+2.4.b. Programs with more than 15 residents must appoint an associate program
+director(s). The associate program director(s) must be provided with support equal
+to a dedicated minimum time for administration of the program as follows: (Core)
+Number of Approved Resident Positions Minimum Support
+Required (FTE)
+<15 0
+16-20 0.1
+21-25 0.2
+26-30 0.3
+31-35 0.4
+36-40 0.5
+41-45 0.6
+46-50 0.7
+51-55 0.8
+56-60 0.9
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 10 of 64
+Number of Approved Resident Positions Minimum Support
+Required (FTE)
+61-65 1.0
+66-70 1.1
+71-75 1.2
+76-80 1.3
+81-85 1.4
+86-90 1.5
+91-95 1.6
+96-100 1.7
+101-105 1.8
+106-110 1.9
+111-115 2.0
+116-120 2.1
+121-125 2.2
+126-130 2.3
+131-135 2.4
+136-140 2.5
+141-145 2.6
+146-150 2.7
+151-155 2.8
+156-160 2.9
+161-165 3.0
+166-170 3.1
+171-175 3.2
+176-180 3.3
+181-185 3.4
+186-190 3.5
+191-195 3.6
+196-200 3.7
+201-205 3.8
+206-210 3.9
+211-215 4.0
+216-220 4.1
+221-225 4.2
+226-230 4.3
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 11 of 64
+Background and Intent: To achieve successful graduate medical education, individuals
+serving as education and administrative leaders of residency programs, as well as
+those significantly engaged in the education, supervision, evaluation, and mentoring of
+residents, must have sufficient dedicated professional time to perform the vital activities
+required to sustain an accredited program.
+The ultimate outcome of graduate medical education is excellence in resident education
+and patient care.
+The program director and, as applicable, the program leadership team, devote a portion
+of their professional effort to the oversight and management of the residency program,
+as defined in 2.6. – 2.6.l. Both provision of support for the time required for the
+leadership effort and flexibility regarding how this support is provided are important.
+Programs, in partnership with their Sponsoring Institutions, may provide support for
+this time in a variety of ways. Examples of support may include, but are not limited to,
+salary support, supplemental compensation, educational value units, or relief of time
+from other professional duties.
+Program directors and, as applicable, members of the program leadership team, who
+are new to the role may need to devote additional time to program oversight and
+management initially as they learn and become proficient in administering the program.
+It is suggested that during this initial period the support described above be increased
+as needed.
+In addition, it is important to remember that the dedicated time and support requirement
+for ACGME activities is a minimum, recognizing that, depending on the unique needs
+of the program, additional support may be warranted. The need to ensure adequate
+resources, including adequate support and dedicated time for the program director, is
+also addressed in Institutional Requirement 2.2.a. The amount of support and dedicated
+time needed for individual programs will vary based on a number of factors and may
+exceed the minimum specified in the applicable specialty/subspecialty-specific Program
+Requirements. It is expected that the Sponsoring Institution, in partnership with its
+accredited programs, will ensure support for program directors to fulfill their program
+responsibilities effectively.
+Specialty-Specific Background and Intent: For instance, a program with an approved
+complement of 36 residents is required to have 50% FTE support for the program director and
+50 percent FTE support for the associate program director(s). The Review Committee decided
+not to specify how the support should be distributed among associate program directors to
+allow programs, in partnership with their sponsoring institution, to allocate the support as
+they see fit. Further, the program could redistribute the FTE back to the program director;
+for example, in this instance, the associate program director(s) could receive 25 percent FTE
+support and the program director could receive 75 percent FTE support (50 percent plus the
+remaining 25 percent from the associate program director FTE support).
+2.5. Qualifications of the Program Director
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 12 of 64
+The program director must possess specialty expertise and at least three years
+of documented educational and/or administrative experience, or qualifications
+acceptable to the Review Committee. (Core)
+Background and Intent: Leading a program requires knowledge and skills that are
+established during residency and subsequently further developed. The time period
+from completion of residency until assuming the role of program director allows the
+individual to cultivate leadership abilities while becoming professionally established.
+The three-year period is intended for the individual's professional maturation.
+The broad allowance for educational and/or administrative experience recognizes that
+strong leaders arise through a variety of pathways. These areas of expertise are
+important when identifying and appointing a program director. The choice of a program
+director should be informed by the mission of the program and the needs of the
+community.
+In certain circumstances, the program and Sponsoring Institution may propose and the
+Review Committee may accept a candidate for program director who fulfills these goals
+but does not meet the three-year minimum.
+2.5.a. The program director must possess current certification in the specialty
+for which they are the program director by the American Board of Internal
+Medicine (ABIM) or by the American Osteopathic Board of Internal Medicine
+(AOBIM), or specialty qualifications that are acceptable to the Review
+Committee. (Core)
+2.5.a.1. The Review Committee only accepts current certification in internal medicine
+from the ABIM or AOBIM. (Core)
+2.5.b. The program director must demonstrate ongoing clinical activity. (Core)
+Background and Intent: A program director is a role model for faculty members and
+residents. The program director must participate in clinical activity consistent with
+the specialty. This activity will allow the program director to role model the Core
+Competencies for the faculty members and residents.
+2.5.c. The program director must have experience working as part of an interdisciplinary,
+inter-professional team to create an educational environment that promotes high-
+quality care, patient safety, and resident well-being. (Core)
+2.6. Program Director Responsibilities
+The program director must have responsibility, authority, and accountability
+for: administration and operations; teaching and scholarly activity; resident
+recruitment and selection, evaluation, and promotion of residents, and
+disciplinary action; supervision of residents; and resident education in the
+context of patient care. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 13 of 64
+2.6.a. The program director must be a role model of professionalism. (Core)
+Background and Intent: The program director, as the leader of the program, must serve
+as a role model to residents in addition to fulfilling the technical aspects of the role.
+As residents are expected to demonstrate compassion, integrity, and respect for others,
+they must be able to look to the program director as an exemplar. It is of utmost
+importance, therefore, that the program director model outstanding professionalism,
+high quality patient care, educational excellence, and a scholarly approach to work. The
+program director creates an environment where respectful discussion is welcome, with
+the goal of continued improvement of the educational experience.
+2.6.b. The program director must design and conduct the program in a fashion
+consistent with the needs of the community, the mission(s) of the Sponsoring
+Institution, and the mission(s) of the program. (Core)
+Background and Intent: The mission of institutions participating in graduate medical
+education is to improve the health of the public. Each community has health needs
+that vary based upon location and demographics. Programs must understand the social
+determinants of health of the populations they serve and incorporate them in the design
+and implementation of the program curriculum, with the ultimate goal of addressing
+these needs and eliminating health disparities.
+2.6.c. The program director must administer and maintain a learning environment
+conducive to educating the residents in each of the ACGME Competency
+domains. (Core)
+Background and Intent: The program director may establish a leadership team to assist
+in the accomplishment of program goals. Residency programs can be highly complex.
+In a complex organization, the leader typically has the ability to delegate authority
+to others, yet remains accountable. The leadership team may include physician and
+non-physician personnel with varying levels of education, training, and experience.
+2.6.d. The program director must have the authority to approve or remove
+physicians and non-physicians as faculty members at all participating sites,
+including the designation of core faculty members, and must develop and
+oversee a process to evaluate candidates prior to approval. (Core)
+Background and Intent: The provision of optimal and safe patient care requires a
+team approach. The education of residents by non-physician educators may enable
+the resident to better manage patient care and provides valuable advancement of
+the residents’ knowledge. Furthermore, other individuals contribute to the education
+of residents in the basic science of the specialty or in research methodology. If the
+program director determines that the contribution of a non-physician individual is
+significant to the education of the residents, the program director may designate the
+individual as a program faculty member or a program core faculty member.
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 14 of 64
+2.6.e. The program director must have the authority to remove residents from
+supervising interactions and/or learning environments that do not meet the
+standards of the program. (Core)
+Background and Intent: The program director has the responsibility to ensure that all
+who educate residents effectively role model the Core Competencies. Working with a
+resident is a privilege that is earned through effective teaching and professional role
+modeling. This privilege may be removed by the program director when the standards of
+the clinical learning environment are not met.
+There may be faculty in a department who are not part of the educational program, and
+the program director controls who is teaching the residents.
+2.6.f. The program director must submit accurate and complete information
+required and requested by the DIO, GMEC, and ACGME. (Core)
+Background and Intent: This includes providing information in the form and format
+requested by the ACGME and obtaining requisite sign-off by the DIO.
+2.6.g. The program director must provide a learning and working environment in
+which residents have the opportunity to raise concerns, report mistreatment,
+and provide feedback in a confidential manner as appropriate, without fear of
+intimidation or retaliation. (Core)
+2.6.h. The program director must ensure the program’s compliance with the
+Sponsoring Institution’s policies and procedures related to grievances and
+due process, including when action is taken to suspend or dismiss, or not to
+promote or renew the appointment of a resident. (Core)
+Background and Intent: A program does not operate independently of its Sponsoring
+Institution. It is expected that the program director will be aware of the Sponsoring
+Institution’s policies and procedures, and will ensure they are followed by the program’s
+leadership, faculty members, support personnel, and residents.
+2.6.i. The program director must ensure the program’s compliance with the
+Sponsoring Institution’s policies and procedures on employment and non-
+discrimination. (Core)
+2.6.j. The program director must document verification of education for all
+residents within 30 days of completion of or departure from the program. (Core)
+2.6.k. The program director must provide verification of an individual resident’s
+education upon the resident’s request, within 30 days. (Core)
+Background and Intent: Primary verification of graduate medical education is important
+to credentialing of physicians for further training and practice. Such verification must be
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 15 of 64
+accurate and timely. Sponsoring Institution and program policies for record retention
+are important to facilitate timely documentation of residents who have previously
+completed the program. Residents who leave the program prior to completion also
+require timely documentation of their summative evaluation.
+2.6.l. The program director must provide applicants who are offered an interview
+with information related to the applicant’s eligibility for the relevant specialty
+board examination(s). (Core)
+Faculty
+Faculty members are a foundational element of graduate medical education – faculty
+members teach residents how to care for patients. Faculty members provide an important
+bridge allowing residents to grow and become practice-ready, ensuring that patients
+receive the highest quality of care. They are role models for future generations of
+physicians by demonstrating compassion, commitment to excellence in teaching and
+patient care, professionalism, and a dedication to lifelong learning. Faculty members
+experience the pride and joy of fostering the growth and development of future colleagues.
+The care they provide is enhanced by the opportunity to teach and model exemplary
+behavior. By employing a scholarly approach to patient care, faculty members, through
+the graduate medical education system, improve the health of the individual and the
+population.
+Faculty members ensure that patients receive the level of care expected from a specialist
+in the field. They recognize and respond to the needs of the patients, residents,
+community, and institution. Faculty members provide appropriate levels of supervision
+to promote patient safety. Faculty members create an effective learning environment by
+acting in a professional manner and attending to the well-being of the residents and
+themselves.
+Background and Intent: “Faculty” refers to the entire teaching force responsible for
+educating residents. The term “faculty,” including “core faculty,” does not imply or
+require an academic appointment.
+2.7. There must be a sufficient number of faculty members with competence to
+instruct and supervise all residents. (Core)
+2.7.a. Faculty members with credentials appropriate to the care setting must supervise all
+clinical experiences. (Core)
+2.7.b. There must be internal medicine physicians to teach and supervise internal
+medicine residents while they are on internal medicine inpatient and outpatient
+rotations. (Core)
+Specialty-Specific Background and Intent: The Review Committee believes the best role
+models for internal medicine residents are internal medicine physicians. Providing such faculty
+members ensures specialty-specific educators with significant experience managing and
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 16 of 64
+providing comprehensive patient care to complex patients. However, the Review Committee
+recognizes there are circumstances and clinical settings in which a non-internist who has been
+approved by the program director would be an appropriate supervisor. Examples include but
+are not limited to the following:
+• On inpatient medicine ward rotations, it is appropriate for a family medicine physician with
+extensive experience in caring for inpatient adults to teach and supervise internal medicine
+residents, provided they are approved by the site director and the program director. Working
+as an adult hospitalist for at least three years would be one way to demonstrate such
+extensive experience.
+• On inpatient medicine rotations in the critical care setting, it would be appropriate for a
+noninternist who has been approved by the program director and the medical intensive
+care unit director to teach and supervise internal medicine residents. For example, it
+would be appropriate for emergency medicine physicians in internal medicine-critical care
+medicine to supervise internal medicine residents on critical care medicine rotations. It is
+also appropriate for critical care physicians from other disciplines to teach and supervise in
+limited circumstances, such as evening or weekend cross-coverage.
+• On outpatient medicine rotations/experiences, it is appropriate for a non-internist with
+documented expertise (e.g., a family medicine physician with extensive outpatient/
+ambulatory experience or procedural proficiency) to teach and supervise internal medicine
+residents provided the non-internist is approved by the site director and the program
+director.
+2.7.c. Relevant internal medicine subspecialty physicians must be available to teach
+and supervise internal medicine residents while they are on internal medicine
+subspecialty rotations. (Core)
+2.7.d. Relevant subspecialty physicians should be available to teach and supervise
+internal medicine residents while they are on multidisciplinary subspecialty rotations.
+(Core)
+Specialty-Specific Background and Intent: For example, it would be appropriate for a geriatric
+medicine physician faculty member to teach and supervise internal medicine residents on
+geriatric medicine rotations.
+2.7.e. Relevant specialty physicians should be available to teach and supervise internal
+medicine residents while they are having non-internal medicine experiences. (Core)
+Specialty-Specific Background and Intent: For example, it would be appropriate for a faculty
+member who is a neurologist to teach and supervise internal medicine residents on neurology
+rotations.
+2.8. Faculty Responsibilities
+Faculty members must be role models of professionalism. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 17 of 64
+2.8.a. Faculty members must demonstrate commitment to the delivery of safe, high-
+quality, cost-effective, patient-centered care. (Core)
+Background and Intent: Patients have the right to expect quality, cost-effective care
+with patient safety at its core. The foundation for meeting this expectation is formed
+during residency and fellowship. Faculty members model these goals and continually
+strive for improvement in care and cost, embracing a commitment to the patient and the
+community they serve.
+2.8.b. Faculty members must demonstrate a strong interest in the education of
+residents, including devoting sufficient time to the educational program to
+fulfill their supervisory and teaching responsibilities. (Core)
+2.8.c. Faculty members must administer and maintain an educational environment
+conducive to educating residents. (Core)
+[Pending the outcome of the major revision of the Common Program
+Requirements, enforcement of Common Program Requirement 2.8.c. has been
+suspended]
+2.8.d. Faculty members must regularly participate in organized clinical discussions,
+rounds, journal clubs, and conferences. (Core)
+2.8.e. Faculty members must pursue faculty development designed to enhance their
+skills at least annually: (Core)
+Background and Intent: Faculty development is intended to describe structured
+programming developed for the purpose of enhancing transference of knowledge,
+skill, and behavior from the educator to the learner. Faculty development may occur
+in a variety of configurations (lecture, workshop, etc.) using internal and/or external
+resources. Programming is typically needs-based (individual or group) and may be
+specific to the institution or the program. Faculty development programming is to be
+reported for the residency program faculty in the aggregate.
+2.8.e.1. as educators and evaluators; (Detail)
+2.8.e.2. in quality improvement, eliminating health care disparities, and patient
+safety; (Detail)
+2.8.e.3. in fostering their own and their residents’ well-being; and, (Detail)
+2.8.e.4. in patient care based on their practice-based learning and improvement
+efforts. (Detail)
+Background and Intent: Practice-based learning serves as the foundation for the
+practice of medicine. Through a systematic analysis of one’s practice and review of
+the literature, one is able to make adjustments that improve patient outcomes and care.
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 18 of 64
+Thoughtful consideration to practice-based analysis improves quality of care, as well
+as patient safety. This allows faculty members to serve as role models for residents in
+practice-based learning.
+2.8.f. There must be a subspecialty education coordinator (SEC) in each of the
+subspecialties of internal medicine and in the multidisciplinary subspecialty of
+geriatric medicine. (Core)
+Specialty-Specific Background and Intent: An SEC is necessary in each of the
+following subspecialties of internal medicine: cardiovascular disease; critical care medicine;
+endocrinology, diabetes, and metabolism; gastroenterology; hematology; infectious disease;
+nephrology; medical oncology; pulmonary disease; and rheumatology.
+SECs are responsible for developing the educational content and curriculum for the
+subspecialty area. An associate program director or core faculty member can also function as
+an SEC with adequate additional administrative resources. The Review Committee encourages
+programs that cannot identify an SEC for a particular subspecialty area to consider the option
+of sharing one with a program that does have one. The SEC can be remotely located and
+associated with multiple residency programs.
+2.8.f.1. Each SEC must be accountable to the program director for coordination of all
+educational experiences in the subspecialty area. (Core)
+2.8.g. There must be faculty members with expertise in the analysis and interpretation of
+practice data, data management science and clinical decision support systems, and
+managing emerging health issues. (Core)
+Specialty-Specific Background and Intent: Advances in technology are likely to significantly
+impact and redefine patient care, and this requirement is intended to ensure that residents are
+provided with access to faculty members with knowledge, skills, or experience in the analysis
+and interpretation of practice data, and who are able to analyze and evaluate the validity of
+decisions from advanced data management and clinical decision support systems. Faculty
+members with expertise in this area can be physicians or non-physicians, core or non-core
+faculty members. Institutions may already have such experts assisting programs in meeting the
+Common Program Requirement to systematically analyze practice data to improve patient care
+[4.7.d.]. The Review Committee encourages programs that cannot identify an existing internal
+candidate with expertise in this area to consider the option of sharing one with a program that
+does. The faculty member can be remotely located and associated with multiple residency
+programs.
+2.8.h. Faculty members must have experience working in interdisciplinary,
+interprofessional team-based health care delivery models. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 19 of 64
+Specialty-Specific Background and Intent: The Review Committee believes that
+interdisciplinary, interprofessional, team-based care is the foundation of care delivery.
+Individuals working within such teams are essential to resident education.
+2.9. Faculty Qualifications
+Faculty members must have appropriate qualifications in their field and hold
+appropriate institutional appointments. (Core)
+2.10. Physician Faculty Members
+Physician faculty members must have current certification in the specialty by the
+American Board of Internal Medicine or the American Osteopathic Board of Internal
+Medicine, or possess qualifications judged acceptable to the Review Committee.
+(Core)
+2.10.a. Any other specialty or subspecialty physician faculty members must have
+current certification in their specialty by the appropriate American Board
+of Medical Specialties (ABMS) member board or American Osteopathic
+Association (AOA) certifying board, or possess qualifications judged
+acceptable to the Review Committee. (Core)
+2.11. Core Faculty
+Core faculty members must have a significant role in the education and
+supervision of residents and must devote a significant portion of their entire effort
+to resident education and/or administration, and must, as a component of their
+activities, teach, evaluate, and provide formative feedback to residents. (Core)
+Background and Intent: Core faculty members are critical to the success of resident
+education. They support the program leadership in developing, implementing, and
+assessing curriculum, mentoring residents, and assessing residents’ progress toward
+achievement of competence in and the autonomous practice of the specialty. Core
+faculty members should be selected for their broad knowledge of and involvement in
+the program, permitting them to effectively evaluate the program. Core faculty members
+may also be selected for their specific expertise and unique contribution to the program.
+Core faculty members are engaged in a broad range of activities, which may vary
+across programs and specialties. Core faculty members provide clinical teaching and
+supervision of residents, and also participate in non-clinical activities related to resident
+education and program administration. Examples of these non-clinical activities include,
+but are not limited to, interviewing and selecting resident applicants, providing didactic
+instruction, mentoring residents, simulation exercises, completing the annual ACGME
+Faculty Survey, and participating on the program’s Clinical Competency Committee,
+Program Evaluation Committee, and other GME committees.
+2.11.a. Core faculty members must complete the annual ACGME Faculty Survey. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 20 of 64
+2.11.b. In addition to the program director and associate program director(s), programs
+must have the minimum number of core faculty members based on the number of
+approved resident positions, as follows. (Core)
+Number of
+Approved Resident Positions
+Minimum Number of
+Core Faculty Members
+<30 3
+30-39 4
+40-49 5
+50-59 6
+60-69 7
+70-79 8
+80-89 9
+90-99 10
+100-109 11
+110-119 12
+120-129 13
+130-139 14
+140-149 15
+150-159 16
+160-169 17
+170-179 18
+180-189 19
+190-199 20
+200-209 21
+2.11.c. At a minimum, the required core faculty members, in aggregate and excluding
+program leadership, must be provided with support equal to an average dedicated
+minimum of 0.1 FTE for educational and administrative responsibilities that do not
+involve direct patient care. (Core)
+Specialty-Specific Background and Intent: The Review Committee specified the minimum
+required number of internal medicine physician core faculty members, but did not specify how
+the aggregate FTE support should be distributed to allow programs, in partnership with their
+sponsoring institution, to allocate the support as they see fit. For instance, a program with an
+approved complement of 36 residents is required to have a minimum of four internal medicine
+physician core faculty members and a minimum aggregate FTE of 40 percent. The program
+could choose to operationalize this as four internal medicine physician faculty members each
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 21 of 64
+with 10 percent FTE support, but it could also have eight members each with five percent FTE
+support, or one member with twenty percent FTE and four members with five percent each.
+The duties of the program director, associate program director(s), and internal medicine core
+faculty members are separate and distinct. As such, the minimum required internal medicine
+core faculty members are in addition to the program director and the associate program
+director(s). One individual cannot “count” as both an associate program director and internal
+medicine core faculty member.
+The requirement related to support for core internal medicine faculty members is intended to
+ensure these faculty members have sufficient protected time to meet the following educational
+responsibilities:
+• Membership on the Clinical Competency Committee
+• Participation in the annual program review as Chair or member of the Program Evaluation
+Committee
+• Implementation and analysis of the outcome of action plans developed by the Program
+Evaluation Committee
+• Significant participation in recruitment and selection
+• Advising, mentoring, and coaching residents (co-creating, implementing, and monitoring
+individualized learning plans)
+• Designing and overseeing remediation plans
+• Supporting/overseeing residents in the development/assessment of quality improvement/
+patient safety projects
+• Supporting/overseeing residents in the conduct of their scholarly work, including the
+dissemination of such work through presentations, posters/abstracts, and peer-reviewed
+publications
+• Significant participation in educational activities (didactics, lab, or simulation)
+• Overseeing faculty development for the program’s faculty members
+• Designing and implementing simulation and/or standardized patients for teaching and
+assessment
+• Developing, implementing, and assessing one or more of the major components of the
+curriculum, such as patient safety, quality, health disparities, or core didactics
+• Designing and implementing the program’s assessment strategies, making certain there are
+robust methods used to assess each competency, and ensuring they provide meaningful
+information by which the Clinical Competency Committee can judge resident performance
+on the Milestones
+• Leading the program’s efforts related to resident and faculty member well-being
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 22 of 64
+Each core faculty member does not need to participate in every listed educational
+responsibility.
+Background and Intent: Provision of support for the time required for the core faculty
+members’ responsibilities related to resident education and/or administration of the
+program, as well as flexibility regarding how this support is provided, are important.
+Programs, in partnership with their Sponsoring Institutions, may provide support for
+this time in a variety of ways. Examples of support may include, but are not limited to,
+salary support, supplemental compensation, educational value units, or relief of time
+from other professional duties.
+It is important to remember that the dedicated time and support requirement is a
+minimum, recognizing that, depending on the unique needs of the program, additional
+support may be warranted. The need to ensure adequate resources, including adequate
+support and dedicated time for the core faculty members, is also addressed in
+Institutional Requirement 2.2.b. The amount of support and dedicated time needed
+for individual programs will vary based on a number of factors and may exceed
+the minimum specified in the applicable specialty-/ subspecialty-specific Program
+Requirements.
+2.11.d. Associate Program Directors
+Associate program directors assist the program director in the administrative and
+clinical oversight of the educational program.
+2.11.e. Associate program directors must:
+2.11.e.1. report directly to the program director; (Core)
+2.11.e.2. participate in academic societies and in educational programs designed to
+enhance their educational and administrative skills; and, (Core)
+2.11.e.3. take an active role in curriculum development, resident teaching and
+evaluation, continuous program improvement, and faculty development. (Core)
+2.12. Program Coordinator
+There must be a program coordinator. (Core)
+2.12.a. The program coordinator must be provided with dedicated time and support
+adequate for administration of the program based upon its size and
+configuration. (Core)
+2.12.b. At a minimum, the program coordinator must be provided with the dedicated
+time and support specified below for administration of the program. Additional
+administrative support must be provided based on the program size as follows: (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 23 of 64
+Number of
+Approved
+Resident Positions
+Minimum FTE Required
+for Coordinator Support
+Additional Aggregate
+FTE Required
+for Administration
+of the Program
+<7 0.5 0
+7-10 0.5 0.2
+10-15 0.5 0.3
+16-20 0.5 0.4
+21-25 0.5 0.5
+26-30 0.5 0.6
+31-35 0.5 0.7
+36-40 0.5 0.8
+41-45 0.5 0.9
+46-50 0.5 1.0
+51-55 0.5 1.1
+56-60 0.5 1.2
+61-65 0.5 1.3
+66-70 0.5 1.4
+71-75 0.5 1.5
+76-80 0.5 1.6
+81-85 0.5 1.7
+86-90 0.5 1.8
+91-95 0.5 1.9
+96-100 0.5 2.0
+101-105 0.5 2.1
+106-110 0.5 2.2
+111-115 0.5 2.3
+116-120 0.5 2.4
+121-125 0.5 2.5
+126-130 0.5 2.6
+131-135 0.5 2.7
+136-140 0.5 2.8
+141-145 0.5 2.9
+146-150 0.5 3.0
+151-155 0.5 3.1
+156-160 0.5 3.2
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 24 of 64
+Number of
+Approved
+Resident Positions
+Minimum FTE Required
+for Coordinator Support
+Additional Aggregate
+FTE Required
+for Administration
+of the Program
+161-165 0.5 3.3
+166-170 0.5 3.4
+171-175 0.5 3.5
+176-180 0.5 3.6
+181-185 0.5 3.7
+186-190 0.5 3.8
+191-195 0.5 3.9
+196-200 0.5 4.0
+201-205 0.5 4.1
+206-210 0.5 4.2
+211-215 0.5 4.3
+216-220 0.5 4.4
+221-225 0.5 4.5
+226-230 0.5 4.6
+Background and Intent: The requirement does not address the source of funding
+required to provide the specified salary support.
+Each program requires a lead administrative person, frequently referred to as a program
+coordinator, administrator, or as otherwise titled by the institution. This person will
+frequently manage the day-to-day operations of the program and serve as an important
+liaison and facilitator between the learners, faculty and other staff members, and the
+ACGME. Individuals serving in this role are recognized as program coordinators by the
+ACGME.
+The program coordinator is a key member of the leadership team and is critical to
+the success of the program. As such, the program coordinator must possess skills in
+leadership and personnel management appropriate to the complexity of the program.
+Program coordinators are expected to develop in-depth knowledge of the ACGME and
+Program Requirements, including policies and procedures. Program coordinators assist
+the program director in meeting accreditation requirements, educational programming,
+and support of residents.
+Programs, in partnership with their Sponsoring Institutions, should encourage the
+professional development of their program coordinators and avail them of opportunities
+for both professional and personal growth. Programs with fewer residents may not
+require a full-time coordinator; one coordinator may support more than one program.
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 25 of 64
+The minimum required dedicated time and support specified in 2.12.b. includes
+activities directly related to administration of the accredited program. It is understood
+that coordinators often have additional responsibilities, beyond those directly related
+to program administration, including, but not limited to, departmental administrative
+responsibilities, medical school clerkships, planning lectures that are not solely
+intended for the accredited program, and mandatory reporting for entities other than
+the ACGME. Assignment of these other responsibilities will necessitate consideration
+of allocation of additional support so as not to preclude the coordinator from devoting
+the time specified above solely to administrative activities that support the accredited
+program.
+In addition, it is important to remember that the dedicated time and support requirement
+for ACGME activities is a minimum, recognizing that, depending on the unique needs
+of the program, additional support may be warranted. The need to ensure adequate
+resources, including adequate support and dedicated time for the program coordinator,
+is also addressed in Institutional Requirement 2.2.d. The amount of support and
+dedicated time needed for individual programs will vary based on a number of factors
+and may exceed the minimum specified in the applicable specialty/subspecialty-specific
+Program Requirements. It is expected that the Sponsoring Institution, in partnership
+with its accredited programs, will ensure support for program coordinators to fulfill their
+program responsibilities effectively.
+Specialty-Specific Background and Intent: For instance, a program with an approved
+complement of 36 residents is required to have 130 percent FTE for coordinator support.
+The Review Committee decided not to specify how the support should be distributed to allow
+programs, in partnership with their Sponsoring Institution, to allocate the support as they see
+fit.
+2.13. Other Program Personnel
+The program, in partnership with its Sponsoring Institution , must jointly ensure
+the availability of necessary personnel for the effective administration of the
+program. (Core)
+Background and Intent: Multiple personnel may be required to effectively administer
+a program. These may include staff members with clerical skills, project managers,
+education experts, and staff members to maintain electronic communication for the
+program. These personnel may support more than one program in more than one
+discipline.
+Section 3: Resident Appointments
+3.1. Residents must not be required to sign a non-competition guarantee or restrictive
+covenant. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 26 of 64
+3.2. Eligibility Requirements
+An applicant must meet one of the following qualifications to be eligible for
+appointment to an ACGME-accredited program: (Core)
+3.2.a. graduation from a medical school in the United States, accredited by the
+Liaison Committee on Medical Education (LCME) or graduation from a college
+of osteopathic medicine in the United States, accredited by the American
+Osteopathic Association Commission on Osteopathic College Accreditation
+(AOACOCA); or, (Core)
+3.2.b. graduation from a medical school outside of the United States, and meeting
+one of the following additional qualifications: (Core)
+• holding a currently valid certificate from the Educational Commission for
+Foreign Medical Graduates (ECFMG) prior to appointment; or, (Core)
+• holding a full and unrestricted license to practice medicine in the United
+States licensing jurisdiction in which the ACGME-accredited program is
+located. (Core)
+3.3. All prerequisite post-graduate clinical education required for initial entry or
+transfer into ACGME-accredited residency programs must be completed in
+ACGME-accredited residency programs, AOA-approved residency programs,
+Royal College of Physicians and Surgeons of Canada (RCPSC)-accredited or
+College of Family Physicians of Canada (CFPC)-accredited residency programs
+located in Canada, or in residency programs with ACGME International (ACGME-I)
+Advanced Specialty Accreditation. (Core)
+3.3.a. Residency programs must receive verification of each resident’s level of
+competency in the required clinical field using ACGME, CanMEDS, or ACGME-
+I Milestones evaluations from the prior training program upon matriculation.
+(Core)
+Background and Intent: Programs with ACGME-I Foundational Accreditation or from
+institutions with ACGME-I accreditation do not qualify unless the program has also
+achieved ACGME-I Advanced Specialty Accreditation. To ensure entrants into ACGME-
+accredited programs from ACGME-I programs have attained the prerequisite milestones
+for this training, they must be from programs that have ACGME-I Advanced Specialty
+Accreditation.
+3.4. Resident Complement
+The program director must not appoint more residents than approved by the
+Review Committee. (Core)
+Background and Intent: Programs are required to request approval of all complement
+changes, whether temporary or permanent, by the Review Committee through ADS.
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 27 of 64
+Permanent increases require prior approval from the Review Committee and temporary
+increases may also require approval. Specialty-specific instructions for requesting
+a complement increase are found in the “Documents and Resources” page of the
+applicable specialty section of the ACGME website.
+3.4.a. There must be a sufficient number of residents to allow peer-to-peer interaction and
+learning. (Core)
+3.4.b. The program should offer a minimum of nine positions. (Detail)
+Specialty-Specific Background and Intent: The Review Committee believes that peer-to-peer
+interactions and learning are extremely important components of residency education and has
+set the minimum number of residents to nine. While three residents per educational year
+is suggested, it is not required as long as there is relative balance per level. To ensure
+that resident education is not compromised by having too few residents, the number of
+residents in a program will be monitored at each review, particularly for those programs with
+significant decreases in complement. However, this requirement is categorized as a “detail”
+as there may be programs that have specific circumstances that allow them to function with
+a smaller resident complement. This categorization allows the establishment of residency
+education programs in rural and medically underserved areas and populations when the
+Review Committee determines that the program has sufficient resources to ensure substantial
+compliance with accreditation requirements.
+3.5. Resident Transfers
+The program must obtain verification of previous educational experiences and a
+summative competency-based performance evaluation prior to acceptance of a
+transferring resident. (Core)
+3.6. Prior to accepting a transfer resident, the program must obtain from the resident,
+and retain written confirmation that the resident understands the impact of the
+transfer on their eligibility for their intended specialty board's initial certification.
+(Core)
+Section 4: Educational Program
+The ACGME accreditation system is designed to encourage excellence and innovation in
+graduate medical education regardless of the organizational affiliation, size, or location of
+the program.
+The educational program must support the development of knowledgeable, skillful
+physicians who provide compassionate care.
+It is recognized that programs may place different emphasis on research, leadership,
+public health, etc. It is expected that the program aims will reflect the nuanced program-
+specific goals for it and its graduates; for example, it is expected that a program aiming
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 28 of 64
+to prepare physician-scientists will have a different curriculum from one focusing on
+community health.
+4.1. Length of Program
+An accredited residency program in internal medicine must provide 36 months of
+supervised graduate medical education. (Core)
+Specialty-Specific Background and Intent: While internal medicine residency must be
+completed within a 36-month supervised educational framework (barring remediation and
+extended leaves), the requirements were written to be flexible and allow program directors
+the opportunity to create more individualized educational experiences for residents who have
+achieved, or are on a trajectory to achieve, competence in the foundational areas of internal
+medicine. This was a guiding principle for the revision process. The requirements for the
+foundational areas of internal medicine and individualized educational experiences are located
+in Section 4.11.: Curriculum Organization and Resident Experiences.
+4.2. Educational Components
+The curriculum must contain the following educational components:
+4.2.a. a set of program aims consistent with the Sponsoring Institution’s mission,
+the needs of the community it serves, and the desired distinctive capabilities
+of its graduates, which must be made available to program applicants,
+residents, and faculty members; (Core)
+[Pending the outcome of the major revision of the Common Program
+Requirements, enforcement of Common Program Requirement 4.2.a. has been
+suspended]
+4.2.b. competency-based goals and objectives for each educational experience
+designed to promote progress on a trajectory to autonomous practice.
+These must be distributed, reviewed, and available to residents and faculty
+members; (Core)
+Background and Intent: The trajectory to autonomous practice is documented by
+Milestones evaluations. Milestones are considered formative and should be used to
+identify learning needs. Milestones data may lead to focused or general curricular
+revision in any given program or to individualized learning plans for any specific
+resident.
+4.2.c. delineation of resident responsibilities for patient care, progressive
+responsibility for patient management, and graded supervision; (Core)
+Background and Intent: These responsibilities may generally be described by PGY level
+and specifically by Milestones progress as determined by the Clinical Competency
+Committee. This approach encourages the transition to competency-based education.
+An advanced learner may be granted more responsibility independent of PGY level and
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 29 of 64
+a learner needing more time to accomplish a certain task may do so in a focused rather
+than global manner.
+4.2.d. a broad range of structured didactic activities; and, (Core)
+Background and Intent: It is intended that residents will participate in structured
+didactic activities. It is recognized that there may be circumstances in which this is not
+possible. Programs should define core didactic activities for which time is protected
+and the circumstances in which residents may be excused from these didactic
+activities. Didactic activities may include, but are not limited to, lectures, conferences,
+courses, labs, asynchronous learning, simulations, drills, case discussions, grand
+rounds, didactic teaching, and education in critical appraisal of medical evidence.
+4.2.e. formal educational activities that promote patient safety-related goals, tools,
+and techniques. (Core)
+[Pending the outcome of the major revision of the Common Program
+Requirements, enforcement of Common Program Requirement 4.2.e. has been
+suspended]
+ACGME Competencies
+The Competencies provide a conceptual framework describing the required domains for
+a trusted physician to enter autonomous practice. These Competencies are core to the
+practice of all physicians, although the specifics are further defined by each specialty.
+The developmental trajectories in each of the Competencies are articulated through the
+Milestones for each specialty.
+The program must integrate all ACGME Competencies into the curriculum.
+4.3. ACGME Competencies – Professionalism
+Residents must demonstrate a commitment to professionalism and an adherence
+to ethical principles. (Core)
+Residents must demonstrate competence in:
+4.3.a. compassion, integrity, and respect for others; (Core)
+4.3.b. responsiveness to patient needs that supersedes self-interest; (Core)
+4.3.c. cultural awareness; (Core)
+4.3.d. respect for patient privacy and autonomy; (Core)
+4.3.e. accountability to patients, society, and the profession; (Core)
+4.3.f. respect and responsiveness to heterogeneous patient populations, including
+but not limited to gender, age, culture, race, religion, disabilities, national
+origin, socioeconomic status, and sexual orientation; (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 30 of 64
+4.3.g. ability to recognize and develop a plan for one’s own personal and
+professional well-being; and, (Core)
+4.3.h. appropriately disclosing and addressing conflict or duality of interest. (Core)
+Background and Intent: This includes the recognition that under certain circumstances,
+the interests of the patient may be best served by transitioning care to another
+practitioner. Examples include fatigue, conflict or duality of interest, not connecting well
+with a patient, or when another physician would be better for the situation based on skill
+set or knowledge base.
+4.4. ACGME Competencies – Patient Care and Procedural Skills (Part A)
+Residents must be able to provide patient care that is patient- and family-
+centered, compassionate, appropriate, and effective for the treatment of health
+problems and the promotion of health. (Core)
+Background and Intent: Quality patient care is safe, effective, timely, efficient, patient-
+centered, fair, and designed to improve population health, while reducing per capita
+costs. In addition, there should be a focus on improving the clinician’s well-being as
+a means to improve patient care and reduce burnout among residents, fellows, and
+practicing physicians.
+4.4.a. Residents must demonstrate the ability to manage the care of patients:
+4.4.a.1. using clinical skills of interviewing and physical examination; (Core)
+4.4.a.2. in a variety of roles within a health system with progressive responsibility,
+including serving as the direct provider, a member, or leader of an
+interprofessional team of providers; as a consultant to other physicians; and
+as a teacher to the patient, the patient’s family, and other health care workers;
+(Core)
+4.4.a.3. including the prevention, counseling, detection, diagnosis, and treatment of
+adult diseases; (Core)
+4.4.a.4. in a variety of health care settings, including the inpatient ward, critical care
+units, and various ambulatory settings; (Core)
+Specialty-Specific Background and Intent: Emerging models of care and needs of populations
+served by programs will result in residents having educational experiences in novel or non-
+traditional settings. Examples of non-traditional educational settings include rotations on mobile
+buses that travel to areas of increased need, and “pop-up” health clinics within community
+centers.
+4.4.a.5. for whom they have limited or no physical contact, through the use of
+telemedicine; (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 31 of 64
+4.4.a.6. in the subspecialties of internal medicine; (Core)
+4.4.a.7. using population-based data; (Core)
+Specialty-Specific Background and Intent: Understanding population health within the context
+of prevention is an important competency for the physician practicing medicine in the future.
+Residents need experience using, understanding, and analyzing population health data so that
+they can develop health care plans to improve health outcomes for their patients. For instance,
+residents may be provided experience in analyzing and interpreting data from health registries,
+and understanding the local impact of infectious and non-infectious epidemics (e.g., obesity
+or opioid) and pandemics, and the important role social determinants of health have when
+developing and applying health care and preventive care decisions.
+4.4.a.8. using critical thinking and evidence-based tools. (Core)
+4.5. ACGME Competencies – Patient Care and Procedural Skills (Part B)
+Residents must be able to perform all medical, diagnostic, and surgical
+procedures considered essential for the area of practice. (Core)
+4.5.a. Residents must demonstrate the ability to:
+4.5.a.1. use and/or perform point-of-care laboratory, diagnostic, and/or imaging studies
+relevant to the care of the patient; (Core)
+Specialty-Specific Background and Intent: The Review Committee intentionally did not identify
+specific laboratory, diagnostic, and/or imaging studies that residents must perform because
+it believes that scientific advances will be constant and ongoing, and whatever is codified
+in the requirements quickly becomes outdated. Additionally, the decision to not specifically
+denote studies in the requirements aligns with the Committee’s overall position that residents
+should perform and develop expertise with those procedures appropriate to their future practice
+needs, as noted in the requirement below. However, the Committee acknowledges that offering
+point-of-care ultrasonography to residents who believe this will be relevant for their future
+career practice may be one way to meet the above-mentioned requirement.
+4.5.a.2. perform diagnostic and therapeutic procedures relevant to their specific career
+paths; and (Core)
+4.5.a.3. treat their patients’ conditions with practices that are patient-centered, safe,
+scientifically based, effective, timely, and cost-effective. (Core)
+4.6. ACGME Competencies – Medical Knowledge
+Residents must demonstrate knowledge of established and evolving biomedical,
+clinical, epidemiological, and social-behavioral sciences, including scientific
+inquiry, as well as the application of this knowledge to patient care. (Core)
+4.6.a. Residents must demonstrate a level of expertise in the knowledge of the broad
+spectrum of clinical disorders seen by an internist, including: (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 32 of 64
+4.6.a.1. the core content of general internal medicine, which includes the internal
+medicine subspecialties, the multidisciplinary subspecialties of geriatric
+medicine, hospice and palliative medicine and addiction medicine, and
+neurology. (Core)
+4.6.b. Residents must demonstrate sufficient knowledge in the following areas:
+4.6.b.1. evaluation of patients with an undiagnosed and undifferentiated presentation;
+(Core)
+4.6.b.2. pharmacotherapeutic and non-pharmacotherapeutic treatment of the broad
+spectrum of medical conditions and clinical disorders managed by internists;
+(Core)
+4.6.b.3. provision of preventive care; (Core)
+4.6.b.4. interpretation of clinical tests and images; (Core)
+4.6.b.5. recognition and initial management of urgent medical problems; and, (Core)
+4.6.b.6. application of technology appropriate for the clinical context, including evolving
+techniques. (Core)
+Specialty-Specific Background and Intent: Advances in technology will likely continue to make
+substantive changes in patient diagnosis and management. This requirement ensures that
+residents will be able to gain experience and become familiar with emerging technologies, such
+as intensive care units managed remotely or the use of personalized or precision medicine.
+4.7. ACGME Competencies – Practice-Based Learning and Improvement
+Residents must demonstrate the ability to investigate and evaluate their care
+of patients, to appraise and assimilate scientific evidence, and to continuously
+improve patient care based on constant self-evaluation and lifelong learning. (Core)
+4.7.a. Residents must demonstrate competence in identifying strengths,
+deficiencies, and limits in one’s knowledge and expertise. (Core)
+4.7.b. Residents must demonstrate competence in setting learning and improvement
+goals. (Core)
+4.7.c. Residents must demonstrate competence in identifying and performing
+appropriate learning activities. (Core)
+4.7.d. Residents must demonstrate competence in systematically analyzing practice
+using quality improvement methods, including activities aimed at reducing
+health care disparities, and implementing changes with the goal of practice
+improvement. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 33 of 64
+4.7.e. Residents must demonstrate competence in incorporating feedback and
+formative evaluation into daily practice. (Core)
+4.7.f. Residents must demonstrate competence in locating, appraising, and
+assimilating evidence from scientific studies related to their patients’ health
+problems. (Core)
+4.8. ACGME Competencies – Interpersonal and Communication Skills
+Residents must demonstrate interpersonal and communication skills that result
+in the effective exchange of information and collaboration with patients, their
+families, and health professionals. (Core)
+4.8.a. Residents must demonstrate competence in communicating effectively with
+patients and patients’ families, as appropriate, across a broad range
+of socioeconomic circumstances, cultural backgrounds, and language
+capabilities, learning to engage interpretive services as required to provide
+appropriate care to each patient. (Core)
+4.8.b. Residents must demonstrate competence in communicating effectively with
+physicians, other health professionals, and health-related agencies. (Core)
+4.8.c. Residents must demonstrate competence in working effectively as a member
+or leader of a health care team or other professional group. (Core)
+4.8.d. Residents must demonstrate competence in educating patients, patients’
+families, students, other residents, and other health professionals. (Core)
+4.8.e. Residents must demonstrate competence in acting in a consultative role to
+other physicians and health professionals. (Core)
+4.8.f. Residents must demonstrate competence in maintaining comprehensive,
+timely, and legible health care records, if applicable. (Core)
+4.8.g. Residents must learn to communicate with patients and patients’ families to
+partner with them to assess their care goals, including, when appropriate,
+end-of-life goals. (Core)
+4.9. ACGME Competencies – Systems-Based Practice
+Residents must demonstrate an awareness of and responsiveness to the larger
+context and system of health care, including the social determinants of health, as
+well as the ability to call effectively on other resources to provide optimal health
+care. (Core)
+Background and Intent: Medical practice occurs in the context of an increasingly
+complex clinical care environment where optimal patient care requires attention to
+compliance with external and internal administrative and regulatory requirements.
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 34 of 64
+4.9.a. Residents must demonstrate competence in working effectively in various
+health care delivery settings and systems relevant to their clinical specialty.
+(Core)
+4.9.b. Residents must demonstrate competence in coordinating patient care across
+the health care continuum and beyond as relevant to their clinical specialty.
+(Core)
+Background and Intent: Every patient deserves to be treated as a whole person.
+Therefore it is recognized that any one component of the health care system does
+not meet the totality of the patient's needs. An appropriate transition plan requires
+coordination and forethought by an interdisciplinary team. The patient benefits from
+proper care and the system benefits from proper use of resources.
+4.9.c. Residents must demonstrate competence in advocating for quality patient
+care and optimal patient care systems. (Core)
+4.9.d. Residents must demonstrate competence in participating in identifying
+system errors and implementing potential systems solutions. (Core)
+4.9.e. Residents must demonstrate competence in incorporating considerations of
+value, cost awareness, delivery and payment, and risk-benefit analysis in
+patient and/or population-based care as appropriate. (Core)
+4.9.f. Residents must demonstrate competence in understanding health care
+finances and its impact on individual patients’ health decisions. (Core)
+4.9.g. Residents must demonstrate competence in using tools and techniques
+that promote patient safety and disclosure of patient safety events (real or
+simulated). (Detail)
+4.9.h. Residents must learn to advocate for patients within the health care system
+to achieve the patient's and patient’s family's care goals, including, when
+appropriate, end-of-life goals. (Core)
+Curriculum Organization and Resident Experiences
+4.10. Curriculum Structure
+The curriculum must be structured to optimize resident educational experiences,
+the length of the experiences, and the supervisory continuity. These
+educational experiences include an appropriate blend of supervised patient care
+responsibilities, clinical teaching, and didactic educational events. (Core)
+Background and Intent: In some specialties, frequent rotational transitions, inadequate
+continuity of faculty member supervision, and dispersed patient locations within the
+hospital have adversely affected optimal resident education and effective team-based
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 35 of 64
+care. The need for patient care continuity varies from specialty to specialty and by
+clinical situation, and may be addressed by the individual Review Committee.
+4.10.a. Rotations must be of sufficient length to provide longitudinal relationships with
+faculty members to allow for meaningful assessment and feedback. (Core)
+4.10.b. Rotations must be structured to allow residents to function as part of effective
+interprofessional teams that work together towards the shared goals of patient
+safety and quality improvement. (Core)
+4.10.c. Rotations must be structured to minimize conflicting inpatient and outpatient
+responsibilities. (Core)
+Specialty-Specific Background and Intent: The Review Committee encourages programs to
+think of ways to balance the inherent conflicts between inpatient and outpatient responsibilities,
+including using an effective hand-off process. For example, programs may want to consider
+schedules that allow members of the interprofessional health care team to provide coverage
+for the inpatient service when residents are in continuity clinics. Alternatively, programs may
+consider creating schedules that either provide more continuity clinic experiences or an
+exclusive continuity clinic experience when residents are not on inpatient rotations to allow
+them to have less or no clinic during inpatient rotations.
+4.11. Didactic and Clinical Experiences
+Residents must be provided with protected time to participate in core didactic
+activities. (Core)
+4.11.a. The educational program for all residents must include at least 30 months of clinical
+experiences. (Core)
+4.11.b. The educational program for all residents must include a longitudinal team-based
+continuity experience for the duration of the program. (Core)
+4.11.c. The educational program for all residents must include foundational experience in
+internal medicine, including:
+4.11.c.1. at least 10 months of clinical experiences in the outpatient setting; (Core)
+Specialty-Specific Background and Intent: Clinical experiences in the following settings may be
+used to fulfill this requirement: general internal medicine continuity clinics; internal medicine
+subspecialty clinics (e.g., HIV clinic); non-medicine clinics (e.g., dermatology or physical
+medicine and rehabilitation clinic); walk-in clinics; neighborhood health clinics; home care visit
+programs; urgent care clinics; and ambulatory block rotations.
+Time devoted to the longitudinal continuity experience can count towards the minimum
+required 10 months of foundational experiences in the outpatient setting. For the purposes
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 36 of 64
+of this calculation, a month is equivalent to four weeks, 20 days, or 40 half-days. For example,
+40 half-day continuity clinic sessions would equal one month of outpatient experience.
+4.11.c.2. at least 10 months of clinical experiences in the inpatient and critical care
+settings; (Core)
+4.11.c.2.a. Critical care experiences must be a minimum of two months and a
+maximum of six months and must not occur solely in the PGY-1. (Core)
+4.11.c.3. clinical experiences in each of the internal medicine subspecialties; and, (Core)
+Specialty-Specific Background and Intent: Clinical experiences in the each of the
+subspecialties can be used to fulfill either the minimum required number of months in the
+inpatient or outpatient setting, depending on the setting the experience is provided. For
+instance, a month rotation on a hematology-oncology service would count towards meeting
+the inpatient minimums whereas a month in an oncology clinic would count towards outpatient.
+4.11.c.4. clinical experiences in geriatric medicine, hospice and palliative medicine,
+addiction medicine, emergency medicine, and neurology. (Core)
+4.11.d. The educational program for all residents must include at least six months of
+individualized educational experiences to participate in opportunities relevant to their
+future practice or to further skill/competency development in the foundational areas.
+(Core)
+Specialty-Specific Background and Intent: The Review Committee views these four
+components of internal medicine residency (at least 30 months of clinical experience,
+longitudinal continuity experience, foundational internal medicine experience, and at least six
+months of individualized experience) as distinct but overlapping. For example, the longitudinal
+continuity experience could be obtained through discrete blocks or interspersed among other
+clinical experiences. Time in an outpatient clinic may be part of the continuity experience or
+may be part of a subspecialty experience, or both, and it would count towards the minimum for
+both foundational outpatient experience and the 30 months of clinical experience. Additional
+time in that clinic may be part of a resident’s individualized learning experiences, which
+would also count towards the 30-month minimum. The six months of individualized learning
+experiences may be all clinical experiences that would count towards the 30-month minimum,
+or they may include non-clinical experiences.
+The requirements acknowledge that in addition to providing residents with broad foundational
+educational experiences in ambulatory and hospital-based internal medicine, programs must
+ensure residents have educational experiences that take into account their future plans and
+the different paces and trajectories at and on which residents will learn and demonstrate
+competence in the foundational areas.
+Individualized educational experiences will be determined by the program director and take
+into account demonstrated competence in the foundational areas noted above, resources,
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 37 of 64
+program aims, and the residents’ future practice plans. Although six months can be devoted to
+individualized experiences, some residents may require more time to achieve competence in
+the foundational educational areas, which may result in less time for individualized educational
+experiences. Some residents may need to devote the entirety of residency to achieve
+competence in the foundational areas. The converse may be possible. Programs may have
+the opportunity to allocate more than six months of individualized educational opportunities
+for residents who have achieved or are on target to achieve competence in the foundational
+areas. These opportunities may include more ambulatory/outpatient experiences for residents
+interested in practicing in an outpatient setting after residency, more inpatient experiences for
+those interested in hospitalist medicine careers, or more experiences in a subspecialty for
+those interested in subspecializing. Individualized educational experiences may be integrated
+throughout the 36 months of the educational program and do not need to be consecutive.
+The Review Committee is interested in programs pursuing innovations in internal medicine
+training. Additional information on the development of the Program Requirements and the
+Review Committee’s interest in exploring innovative proposals that will guide future versions
+of the Program Requirements can be found on the Internal Medicine section of the ACGME
+website.
+4.11.e. While on inpatient rotations:
+4.11.e.1. residents' responsibilities must be limited to patients for whom the teaching
+team has diagnostic and therapeutic responsibility; (Core)
+4.11.e.2. programs must monitor and limit the number of resident-attending relationships
+to ensure that communication and education is not compromised; (Core)
+4.11.e.3. non-physician faculty members must not supervise internal medicine residents
+on inpatient rotations; (Core)
+Specialty-Specific Background and Intent: While it is important for residents to acquire
+experience in leading and participating in interprofessional, interdisciplinary health care
+teams, the overall supervision of all clinical care provided by residents is the responsibility
+of the members of the physician faculty. A physician faculty member may delegate an
+appropriately qualified non-physician to assist a resident in discrete activities, such as
+performing procedures.
+4.11.e.4. residents from other specialties must not supervise internal medicine residents
+on any internal medicine inpatient rotation; (Core)
+4.11.e.5. the resident team and each attending physician must have the responsibility
+to make management rounds on their patients and communicate effectively
+with each other at a frequency appropriate to the changing care needs of the
+patients; (Core)
+4.11.e.6. residents must write all orders for patients under their care, with appropriate
+supervision by the attending physician; (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 38 of 64
+4.11.e.6.a. In those circumstances when another attending physician or consultant
+writes an order on a resident's patient, the attending or consultant must
+communicate the action to the resident in a timely manner. (Core)
+4.11.e.7. PGY-1 residents must not be assigned more than five new patients per
+admitting day; (Core)
+4.11.e.7.a. an additional two patients may be assigned if they are in-house transfers
+from the medical services. (Core)
+4.11.e.8. PGY-1 residents must not be assigned more than eight new patients in a
+48-hour period; (Core)
+4.11.e.9. PGY-1 residents must not be responsible for the ongoing care of more than 10
+patients; (Core)
+4.11.e.10. when supervising more than one PGY-1 resident, the PGY-2 or PGY-3
+supervising resident must not be responsible for the supervision or admission
+of more than 10 new patients and four transfer patients per admitting day or
+more than 16 new patients in a 48-hour period; (Core)
+4.11.e.11. when supervising one PGY-1 resident, the PGY-2 or PGY-3 supervising
+resident must not be responsible for the ongoing care of more than 14 patients;
+and, (Core)
+4.11.e.12. when supervising more than one PGY-1 resident, the PGY-2 or PGY-3
+supervising resident must not be responsible for the ongoing care of more than
+20 patients. (Core)
+Specialty-Specific Background and Intent: The Review Committee cannot prescriptively and
+explicitly assign patient census limits for every possible educational scenario or circumstance
+given the variability in these settings and the complexity and acuity of the patients. Instead,
+the committee asks program and institutional leadership teams to proactively and regularly
+monitor the census, complexity, and acuity of patients assigned to resident-comprised health
+care teams, and the structure and composition of the team, particularly the knowledge, skills,
+and abilities of the team members, to determine the appropriate patient team size for the
+situation. Although the Review Committee limits the number of new patients PGY-2 and PGY-3
+residents can be assigned per admitting day (Program Requirements 4.11.e.10-12., programs
+can exercise flexibility and deviate from these limits for PGY-3 residents who have significant
+experience in the inpatient setting and are interested in hospitalist medicine careers in the
+future. The leadership team will need to carefully review institutional patient safety outcome
+data when determining patient census team limits in such scenarios. The census limits noted
+above apply to all inpatient experiences during the 36 months of supervised graduate medical
+education regardless of whether an inpatient rotation is part of the foundational educational
+experiences in internal medicine or part of the individualized experiences.
+4.11.f. While on outpatient rotations:
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 39 of 64
+4.11.f.1. residents must have clinical experiences in chronic disease management,
+preventive health, patient counseling, and common acute ambulatory
+problems; and, (Core)
+4.11.f.2. residents must have a longitudinal, team-based, continuity experience for the
+duration of the educational program through which they develop a long-term
+therapeutic relationship with a panel of patients. (Core)
+Specialty-Specific Background and Intent: The Review Committee believes that residents can
+only achieve a long-term therapeutic relationship with a panel of patients if the continuity clinic
+experience takes place for the entirety of the educational program. This will allow patients to
+understand that the resident is “their” primary care doctor, and residents to see the continuity
+clinic patients as “their” patients. While new patients will be added to the panel (and others will
+leave) throughout the course of the program, the Review Committee suggests that residents
+will remain in the same clinic throughout the 36 months to maintain continuity of care for their
+patient panel.
+The committee believes this requirement can be best met through assigning residents to
+a general internal medicine clinic. However, to allow for residents to pursue post-residency
+interests during residency, programs may assign residents to subspecialty or specialized
+continuity clinics (e.g., an HIV clinic) if these assignments achieve the desired outcome noted
+in the requirement: that residents develop a long-term therapeutic relationship with a panel of
+patients.
+4.11.f.2.a. Residents must serve as the primary physician for a panel of patients,
+with responsibility for chronic disease management, management of acute
+health problems, and preventive health care for their patients. (Core)
+4.11.f.2.b. Residents must participate in the coordination of care of patients across
+health care settings and between outpatient visits. (Core)
+4.11.f.2.c. Residents must be supervised and taught by faculty members with whom
+they have developed a longitudinal relationship. (Core)
+4.11.f.2.d. Faculty members must maintain a ratio of residents or other learners to
+faculty preceptors not to exceed four to one; (Detail)
+4.11.f.2.d.1. Faculty members must not have other patient care responsibilities while
+supervising more than two residents or other learners. (Detail)
+4.11.g. Required Didactic Experiences
+The educational program must include didactic instruction based upon the core
+knowledge content of internal medicine. (Core)
+4.11.g.1. Residents must participate in a variety of teaching conferences or didactic
+sessions, including those dedicated to quality improvement. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 40 of 64
+4.11.g.2. The program must ensure that residents have the opportunity to review all
+knowledge content from conferences they could not attend. (Core)
+Specialty-Specific Background and Intent: Core knowledge content presented during
+conferences will need to be made available for residents who missed the conference due
+to clinical responsibilities. This can include repeating the conference, recording and making
+it available electronically, or making the content provided during the conference available
+electronically.
+4.11.g.3. Residents’ educational experience must include didactic sessions in which
+residents interact with other residents and faculty members. (Core)
+4.11.g.3.a. The frequency of these sessions must be sufficient for peer-to-peer and
+peer-to-faculty member interaction. (Core)
+4.11.g.4. Residents must be provided a patient or case-based approach to clinical
+teaching:
+4.11.g.4.a. on all inpatient, outpatient, telemedicine, and consultative services; (Core)
+4.11.g.4.b. with a frequency and duration sufficient to ensure a meaningful and
+continuous teaching relationship between the assigned teaching faculty
+member and the resident; and, (Core)
+4.11.g.4.c. that includes interactions between resident and the teaching faculty
+member, bedside teaching, discussion of pathophysiology, and the
+application of current evidence in diagnostic and therapeutic decisions.
+(Core)
+4.12. Pain Management
+The program must provide instruction and experience in pain management if
+applicable for the specialty, including recognition of the signs of substance use
+disorder. (Core)
+Scholarship
+Medicine is both an art and a science. The physician is a humanistic scientist who
+cares for patients. This requires the ability to think critically, evaluate the literature,
+appropriately assimilate new knowledge, and practice lifelong learning. The program and
+faculty must create an environment that fosters the acquisition of such skills through
+resident participation in scholarly activities. Scholarly activities may include discovery,
+integration, application, and teaching.
+The ACGME recognizes the variety of residencies and anticipates that programs prepare
+physicians for a variety of roles, including clinicians, scientists, and educators. It is
+expected that the program’s scholarship will reflect its mission(s) and aims, and the
+needs of the community it serves. For example, some programs may concentrate their
+scholarly activity on quality improvement, population health, and/or teaching, while other
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 41 of 64
+programs might choose to utilize more classic forms of biomedical research as the focus
+for scholarship.
+4.13. Program Responsibilities
+The program must demonstrate evidence of scholarly activities consistent with its
+mission(s) and aims. (Core)
+4.13.a. The program, in partnership with its Sponsoring Institution, must allocate
+adequate resources to facilitate resident and faculty involvement in scholarly
+activities. (Core)
+4.13.b. The program must advance residents’ knowledge and practice of the scholarly
+approach to evidence-based patient care. (Core)
+4.14. Faculty Scholarly Activity
+Among their scholarly activity, programs must demonstrate accomplishments in
+at least three of the following domains: (Core)
+• Research in basic science, education, translational science, patient care, or
+population health
+• Peer-reviewed grants
+• Quality improvement and/or patient safety initiatives
+• Systematic reviews, meta-analyses, review articles, chapters in medical
+textbooks, or case reports
+• Creation of curricula, evaluation tools, didactic educational activities, or
+electronic educational materials
+• Contribution to professional committees, educational organizations, or
+editorial boards
+• Innovations in education
+4.14.a. The program must demonstrate dissemination of scholarly activity within and
+external to the program by the following methods:
+• faculty participation in grand rounds, posters, workshops, quality
+improvement presentations, podium presentations, grant leadership, non-
+peer-reviewed print/electronic resources, articles or publications, book
+chapters, textbooks, webinars, service on professional committees, or
+serving as a journal reviewer, journal editorial board member, or editor.
+(Outcome)
+Background and Intent: For the purposes of education, metrics of scholarly activity
+represent one of the surrogates for the program’s effectiveness in the creation of an
+environment of inquiry that advances the residents’ scholarly approach to patient care.
+The Review Committee will evaluate the dissemination of scholarship for the program
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 42 of 64
+as a whole, not for individual faculty members, for a five-year interval, for both core
+and non-core faculty members, with the goal of assessing the effectiveness of the
+creation of such an environment. The ACGME recognizes that there may be differences
+in scholarship requirements between different specialties and between residencies and
+fellowships in the same specialty.
+4.15. Resident Scholarly Activity
+Residents must participate in scholarship. (Core)
+4.15.a. A program’s graduates must demonstrate dissemination of scholarship within or
+external to the program by any of the following methods: (Core)
+4.15.a.1. presenting in grand rounds, poster sessions, leading conference presentations
+(journal club, morbidity and mortality, case conferences); workshops; quality
+improvement presentations; podium presentations; grant leadership; non-peer-
+reviewed print/electronic resources; articles or publications; book chapters;
+textbooks; webinars; service on professional committees; or serving as a
+journal reviewer, journal editorial board member, or editor. (Core)
+Section 5: Evaluation
+5.1. Resident Evaluation: Feedback and Evaluation
+Faculty members must directly observe, evaluate, and frequently provide
+feedback on resident performance during each rotation or similar educational
+assignment. (Core)
+Background and Intent: Feedback is ongoing information provided regarding aspects
+of one’s performance, knowledge, or understanding. The faculty empower residents
+to provide much of that feedback themselves in a spirit of continuous learning and
+self-reflection. Feedback from faculty members in the context of routine clinical care
+should be frequent, and need not always be formally documented.
+Formative and summative evaluation have distinct definitions. Formative evaluation
+is monitoring resident learning and providing ongoing feedback that can be used by
+residents to improve their learning in the context of provision of patient care or other
+educational opportunities. More specifically, formative evaluations help:
+• residents identify their strengths and weaknesses and target areas that need work
+• program directors and faculty members recognize where residents are struggling and
+address problems immediately
+Summative evaluation is evaluating a resident’s learning by comparing the residents
+against the goals and objectives of the rotation and program, respectively. Summative
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 43 of 64
+evaluation is utilized to make decisions about promotion to the next level of training, or
+program completion.
+End-of-rotation and end-of-year evaluations have both summative and formative
+components. Information from a summative evaluation can be used formatively when
+residents or faculty members use it to guide their efforts and activities in subsequent
+rotations and to successfully complete the residency program.
+Feedback, formative evaluation, and summative evaluation compare intentions with
+accomplishments, enabling the transformation of a neophyte physician to one with
+growing expertise.
+Background and Intent: Faculty members should provide feedback frequently
+throughout the course of each rotation. Residents require feedback from faculty
+members to reinforce well-performed duties and tasks, as well as to correct
+deficiencies. This feedback will allow for the development of the learner as they strive
+to achieve the Milestones. More frequent feedback is strongly encouraged for residents
+who have deficiencies that may result in a poor final rotation evaluation.
+5.1.a. Evaluation must be documented at the completion of the assignment. (Core)
+5.1.a.1. For block rotations of greater than three months in duration, evaluation
+must be documented at least every three months. (Core)
+5.1.a.2. Longitudinal experiences, such as continuity clinic in the context of other
+clinical responsibilities, must be evaluated at least every three months
+and at completion. (Core)
+5.1.b. The program must provide an objective performance evaluation based on the
+Competencies and the specialty-specific Milestones. (Core)
+5.1.b.1. The program must use multiple evaluators (e.g., faculty members, peers,
+patients, self, and other professional staff members). (Core)
+5.1.b.2. The program must provide that information to the Clinical Competency
+Committee for its synthesis of progressive resident performance and
+improvement toward unsupervised practice. (Core)
+5.1.c. The program director or their designee, with input from the Clinical
+Competency Committee, must meet with and review with each resident their
+documented semi-annual evaluation of performance, including progress along
+the specialty-specific Milestones. (Core)
+5.1.d. The program director or their designee, with input from the Clinical
+Competency Committee, must assist residents in developing individualized
+learning plans to capitalize on their strengths and identify areas for growth.
+(Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 44 of 64
+5.1.e. The program director or their designee, with input from the Clinical
+Competency Committee, must develop plans for residents failing to progress,
+following institutional policies and procedures. (Core)
+Background and Intent: Learning is an active process that requires effort from the
+teacher and the learner. Faculty members evaluate a resident's performance at least
+at the end of each rotation. The program director or their designee will review those
+evaluations, including their progress on the Milestones, at a minimum of every six
+months. Residents should be encouraged to reflect upon the evaluation, using the
+information to reinforce well-performed tasks or knowledge or to modify deficiencies
+in knowledge or practice. Working together with the faculty members, residents should
+develop an individualized learning plan.
+Residents who are experiencing difficulties with achieving progress along the
+Milestones may require intervention to address specific deficiencies. Such intervention,
+documented in an individual remediation plan developed by the program director or
+a faculty mentor and the resident, will take a variety of forms based on the specific
+learning needs of the resident. However, the ACGME recognizes that there are situations
+which require more significant intervention that may alter the time course of resident
+progression. To ensure due process, it is essential that the program director follow
+institutional policies and procedures.
+5.1.f. At least annually, there must be a summative evaluation of each resident
+that includes their readiness to progress to the next year of the program, if
+applicable. (Core)
+5.1.g. The evaluations of a resident’s performance must be accessible for review by
+the resident. (Core)
+5.1.h. The program must assess residents’ skills in data gathering and analysis, physical
+examination, clinical reasoning, patient management, and procedures in all clinical
+settings. (Core)
+5.2. Resident Evaluation: Final Evaluation
+The program director must provide a final evaluation for each resident upon
+completion of the program. (Core)
+5.2.a. The specialty-specific Milestones, and when applicable the specialty-specific
+Case Logs, must be used as tools to ensure residents are able to engage in
+autonomous practice upon completion of the program. (Core)
+5.2.b. The final evaluation must become part of the resident’s permanent record
+maintained by the institution, and must be accessible for review by the
+resident in accordance with institutional policy. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 45 of 64
+5.2.c. The final evaluation must verify that the resident has demonstrated the
+knowledge, skills, and behaviors necessary to enter autonomous practice.
+(Core)
+5.2.d. The final evaluation must be shared with the resident upon completion of the
+program. (Core)
+5.3. Clinical Competency Committee
+A Clinical Competency Committee must be appointed by the program director.
+(Core)
+5.3.a. At a minimum, the Clinical Competency Committee must include three
+members of the program faculty, at least one of whom is a core faculty
+member. (Core)
+5.3.b. Additional members must be faculty members from the same program or
+other programs, or other health professionals who have extensive contact and
+experience with the program’s residents. (Core)
+Background and Intent: The requirements regarding the Clinical Competency
+Committee do not preclude or limit a program director’s participation on the Clinical
+Competency Committee. The intent is to leave flexibility for each program to decide the
+best structure for its own circumstances, but a program should consider: its program
+director’s other roles as resident advocate, advisor, and confidante; the impact of the
+program director’s presence on the other Clinical Competency Committee members’
+discussions and decisions; the size of the program faculty; and other program-relevant
+factors. The program director has final responsibility for resident evaluation and
+promotion decisions.
+Program faculty may include more than the physician faculty members, such as other
+physicians and non-physicians who teach and evaluate the program’s residents. There
+may be additional members of the Clinical Competency Committee. Chief residents who
+have completed core residency programs in their specialty may be members of the
+Clinical Competency Committee.
+5.3.c. The Clinical Competency Committee must review all resident evaluations at
+least semi-annually. (Core)
+5.3.d. The Clinical Competency Committee must determine each resident’s progress
+on achievement of the specialty-specific Milestones. (Core)
+5.3.e. The Clinical Competency Committee must meet prior to the residents’ semi-
+annual evaluations and advise the program director regarding each resident’s
+progress. (Core)
+5.4. Faculty Evaluation
+The program must have a process to evaluate each faculty member’s performance
+as it relates to the educational program at least annually. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 46 of 64
+Background and Intent: The program director is responsible for the educational
+program and all educators. While the term “faculty” may be applied to physicians
+within a given institution for other reasons, it is applied to residency program faculty
+members only through approval by a program director. The development of the faculty
+improves the education, clinical, and research aspects of a program. Faculty members
+have a strong commitment to the resident and desire to provide optimal education and
+work opportunities. Faculty members must be provided feedback on their contribution
+to the mission of the program. All faculty members who interact with residents
+desire feedback on their education, clinical care, and research. If a faculty member
+does not interact with residents, feedback is not required. With regard to the varied
+operating environments and configurations, the residency program director may need
+to work with others to determine the effectiveness of the program’s faculty performance
+with regard to their role in the educational program. All teaching faculty members
+should have their educational efforts evaluated by the residents in a confidential and
+anonymous manner. Other aspects for the feedback may include research or clinical
+productivity, review of patient outcomes, or peer review of scholarly activity. The
+process should reflect the local environment and identify the necessary information.
+The feedback from the various sources should be summarized and provided to the
+faculty on an annual basis by a member of the leadership team of the program.
+5.4.a. This evaluation must include a review of the faculty member’s clinical
+teaching abilities, engagement with the educational program, participation
+in faculty development related to their skills as an educator, clinical
+performance, professionalism, and scholarly activities. (Core)
+5.4.b. This evaluation must include written, anonymous, and confidential
+evaluations by the residents. (Core)
+5.4.c. Faculty members must receive feedback on their evaluations at least annually.
+(Core)
+5.4.d. Results of the faculty educational evaluations should be incorporated into
+program-wide faculty development plans. (Core)
+Background and Intent: The quality of the faculty’s teaching and clinical care is a
+determinant of the quality of the program and the quality of the residents’ future clinical
+care. Therefore, the program has the responsibility to evaluate and improve the program
+faculty members’ teaching, scholarship, professionalism, and quality care. This section
+mandates annual review of the program’s faculty members for this purpose, and can be
+used as input into the Annual Program Evaluation.
+5.5. Program Evaluation and Improvement
+The program director must appoint the Program Evaluation Committee to
+conduct and document the Annual Program Evaluation as part of the program’s
+continuous improvement process. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 47 of 64
+5.5.a. The Program Evaluation Committee must be composed of at least two
+program faculty members, at least one of whom is a core faculty member,
+and at least one resident. (Core)
+5.5.b. Program Evaluation Committee responsibilities must include review of the
+program’s self-determined goals and progress toward meeting them. (Core)
+5.5.c. Program Evaluation Committee responsibilities must include guiding ongoing
+program improvement, including development of new goals, based upon
+outcomes. (Core)
+5.5.d. Program Evaluation Committee responsibilities must include review of
+the current operating environment to identify strengths, challenges,
+opportunities, and threats as related to the program’s mission and aims. (Core)
+Background and Intent: To achieve its mission and educate and train quality physicians,
+a program must evaluate its performance and plan for improvement in the Annual
+Program Evaluation. Performance of residents and faculty members is a reflection of
+program quality, and can use metrics that reflect the goals that a program has set for
+itself. The Program Evaluation Committee utilizes outcome parameters and other data to
+assess the program’s progress toward achievement of its goals and aims. The Program
+Evaluation Committee advises the program director through program oversight.
+5.5.e. The Program Evaluation Committee should consider the outcomes from
+prior Annual Program Evaluation(s), aggregate resident and faculty written
+evaluations of the program, and other relevant data in its assessment of the
+program . (Core)
+Background and Intent: Other data to be considered for assessment include:
+• Curriculum
+• ACGME letters of notification, including citations, Areas for Improvement, and
+comments
+• Quality and safety of patient care
+• Aggregate resident and faculty well-being; recruitment and retention; engagement in
+quality improvement and patient safety; and scholarly activity
+• ACGME Resident and Faculty Survey results
+• Aggregate resident Milestones evaluations, and achievement on in-training
+examinations (where applicable), board pass and certification rates, and graduate
+performance.
+• Aggregate faculty evaluation and professional development
+5.5.f. The Program Evaluation Committee must evaluate the program’s mission and
+aims, strengths, areas for improvement, and threats. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 48 of 64
+[Pending the outcome of the major revision of the Common Program
+Requirements, enforcement of Common Program Requirement 5.5.f. has been
+suspended]
+5.5.g. The Annual Program Evaluation, including the action plan, must be distributed
+to and discussed with the residents and the members of the teaching faculty,
+and be submitted to the DIO. (Core)
+5.5.h. The program must complete a Self-Study and submit it to the DIO. (Core)
+[Pending the outcome of the major revision of the Common Program
+Requirements, enforcement of Common Program Requirement 5.5.h. has been
+suspended]
+Board Certification
+One goal of ACGME-accredited education is to educate physicians who seek and achieve
+board certification. One measure of the effectiveness of the educational program is the
+ultimate pass rate.
+The program director should encourage all eligible program graduates to take the
+certifying examination offered by the applicable American Board of Medical Specialties
+(ABMS) member board or American Osteopathic Association (AOA) certifying board.
+5.6. Board Certification
+For specialties in which the ABMS member board and/or AOA certifying board
+offer(s) an annual written exam, in the preceding three years, the program’s
+aggregate pass rate of those taking the examination for the first time must be
+higher than the bottom fifth percentile of programs in that specialty. (Outcome)
+5.6.a. For specialties in which the ABMS member board and/or AOA certifying board
+offer(s) a biennial written exam, in the preceding six years, the program’s
+aggregate pass rate of those taking the examination for the first time must be
+higher than the bottom fifth percentile of programs in that specialty. (Outcome)
+5.6.b. For specialties in which the ABMS member board and/or AOA certifying board
+offer(s) an annual oral exam, in the preceding three years, the program’s
+aggregate pass rate of those taking the examination for the first time must be
+higher than the bottom fifth percentile of programs in that specialty. (Outcome)
+5.6.c. For specialties in which the ABMS member board and/or AOA certifying
+board offer(s) a biennial oral exam, in the preceding six years, the program’s
+aggregate pass rate of those taking the examination for the first time must be
+higher than the bottom fifth percentile of programs in that specialty. (Outcome)
+5.6.d. For each of the exams referenced in 5.6.a.-c., any program whose graduates
+over the time period specified in the requirement have achieved an 80 percent
+pass rate will have met this requirement, no matter the percentile rank of the
+program for pass rate in that specialty. (Outcome)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 49 of 64
+Background and Intent: Setting a single standard for pass rate that works across
+specialties is not supportable based on the heterogeneity of the psychometrics of
+different examinations. By using a percentile rank, the performance of the lower five
+percent (fifth percentile) of programs can be identified and set on a path to curricular
+and test preparation reform.
+There are specialties where there is a very high board pass rate that could leave
+successful programs in the bottom five percent (fifth percentile) despite admirable
+performance. These high-performing programs should not be cited, and 5.6.d. is
+designed to address this.
+5.6.e. Programs must report, in ADS, board certification status annually for the
+cohort of board-eligible residents that graduated seven years earlier. (Core)
+Background and Intent: It is essential that residency programs demonstrate knowledge
+and skill transfer to their residents. One measure of that is the qualifying or initial
+certification exam pass rate. Another important parameter of the success of the
+program is the ultimate board certification rate of its graduates. Graduates are eligible
+for up to seven years from residency graduation for initial certification. The ACGME will
+calculate a rolling three-year average of the ultimate board certification rate at seven
+years post-graduation, and the Review Committees will monitor it.
+The Review Committees will track the rolling seven-year certification rate as an indicator
+of program quality. Programs are encouraged to monitor their graduates’ performance
+on board certification examinations.
+In the future, the ACGME may establish parameters related to ultimate board
+certification rates.
+Section 6: The Learning and Working Environment
+The Learning and Working Environment
+Residency education must occur in the context of a learning and working environment that
+emphasizes the following principles:
+• Excellence in the safety and quality of care rendered to patients by residents
+today
+• Excellence in the safety and quality of care rendered to patients by today’s
+residents in their future practice
+• Excellence in professionalism
+• Appreciation for the privilege of caring for patients
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 50 of 64
+• Commitment to the well-being of the students, residents, faculty members, and
+all members of the health care team
+Culture of Safety
+A culture of safety requires continuous identification of vulnerabilities and a willingness to
+transparently deal with them. An effective organization has formal mechanisms to assess
+the knowledge, skills, and attitudes of its personnel toward safety in order to identify areas
+for improvement.
+6.1. The program, its faculty, residents, and fellows must actively participate in patient
+safety systems and contribute to a culture of safety. (Core)
+Patient Safety Events
+Reporting, investigation, and follow-up of safety events, near misses, and unsafe
+conditions are pivotal mechanisms for improving patient safety, and are essential for the
+success of any patient safety program. Feedback and experiential learning are essential
+to developing true competence in the ability to identify causes and institute sustainable
+systems-based changes to ameliorate patient safety vulnerabilities.
+6.2. Residents, fellows, faculty members, and other clinical staff members must know
+their responsibilities in reporting patient safety events and unsafe conditions at
+the clinical site, including how to report such events. (Core)
+6.2.a. Residents, fellows, faculty members, and other clinical staff members must be
+provided with summary information of their institution’s patient safety reports.
+(Core)
+6.3. Residents must participate as team members in real and/or simulated
+interprofessional clinical patient safety and quality improvement activities, such
+as root cause analyses or other activities that include analysis, as well as
+formulation and implementation of actions. (Core)
+Quality Metrics
+Access to data is essential to prioritizing activities for care improvement and evaluating
+success of improvement efforts.
+6.4. Residents and faculty members must receive data on quality metrics and
+benchmarks related to their patient populations. (Core)
+Supervision and Accountability
+Although the attending physician is ultimately responsible for the care of the patient, every
+physician shares in the responsibility and accountability for their efforts in the provision of
+care. Effective programs, in partnership with their Sponsoring Institutions, define, widely
+communicate, and monitor a structured chain of responsibility and accountability as it
+relates to the supervision of all patient care.
+Supervision in the setting of graduate medical education provides safe and effective care
+to patients; ensures each resident’s development of the skills, knowledge, and attitudes
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 51 of 64
+required to enter the unsupervised practice of medicine; and establishes a foundation for
+continued professional growth.
+6.5. Residents and faculty members must inform each patient of their respective roles
+in that patient’s care when providing direct patient care. This information must be
+available to residents, faculty members, other members of the health care team,
+and patients. (Core)
+Background and Intent: Each patient will have an identifiable and appropriately
+credentialed and privileged attending physician (or licensed independent practitioner
+as specified by the applicable Review Committee) who is responsible and accountable
+for the patient’s care.
+6.6. The program must demonstrate that the appropriate level of supervision in place
+for all residents is based on each resident’s level of training and ability, as well as
+patient complexity and acuity. Supervision may be exercised through a variety of
+methods, as appropriate to the situation. (Core)
+Background and Intent: Appropriate supervision is essential for patient safety and
+high-quality teaching. Supervision is also contextual. There is tremendous variability
+of resident-patient interactions, training locations, and resident skills and abilities, even
+at the same level of the educational program. The degree of supervision for a resident
+is expected to evolve progressively as the resident gains more experience, even with
+the same patient condition or procedure. The level of supervision for each resident
+is commensurate with that resident’s level of independence in practice; this level of
+supervision may be enhanced based on factors such as patient safety, complexity,
+acuity, urgency, risk of serious safety events, or other pertinent variables.
+Levels of Supervision
+To promote appropriate resident supervision while providing for graded authority and
+responsibility, the program must use the following classification of supervision.
+6.7. Direct Supervision
+The supervising physician is physically present with the resident during the key
+portions of the patient interaction.
+The supervising physician and/or patient is not physically present with the
+resident and the supervising physician is concurrently monitoring the patient care
+through appropriate telecommunication technology.
+6.7.a. PGY-1 residents must initially be supervised directly, only as described in the
+above definition. (Core)
+6.7.a.1. A supervising physician must be immediately available to be physically present
+for PGY-1 residents on inpatient rotations who have demonstrated the skills
+sufficient to progress to indirect supervision. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 52 of 64
+Indirect Supervision
+The supervising physician is not providing physical or concurrent visual or audio
+supervision but is immediately available to the resident for guidance and is available to
+provide appropriate direct supervision.
+Oversight
+The supervising physician is available to provide review of procedures/encounters with
+feedback provided after care is delivered.
+6.8. The program must define when physical presence of a supervising physician is
+required. (Core)
+6.9. The privilege of progressive authority and responsibility, conditional
+independence, and a supervisory role in patient care delegated to each resident
+must be assigned by the program director and faculty members. (Core)
+6.9.a. The program director must evaluate each resident’s abilities based on specific
+criteria, guided by the Milestones. (Core)
+6.9.b. Faculty members functioning as supervising physicians must delegate
+portions of care to residents based on the needs of the patient and the skills
+of each resident. (Core)
+6.9.c. Senior residents or fellows should serve in a supervisory role to junior
+residents in recognition of their progress toward independence, based on the
+needs of each patient and the skills of the individual resident or fellow. (Detail)
+6.10. Programs must set guidelines for circumstances and events in which residents
+must communicate with the supervising faculty member(s). (Core)
+6.10.a. Each resident must know the limits of their scope of authority, and the
+circumstances under which the resident is permitted to act with conditional
+independence. (Outcome)
+Background and Intent: The ACGME Glossary of Terms defines conditional
+independence as: Graded, progressive responsibility for patient care with defined
+oversight.
+6.11. Faculty supervision assignments must be of sufficient duration to assess the
+knowledge and skills of each resident and to delegate to the resident the
+appropriate level of patient care authority and responsibility. (Core)
+6.12. Professionalism
+Programs, in partnership with their Sponsoring Institutions, must educate
+residents and faculty members concerning the professional and ethical
+responsibilities of physicians, including but not limited to their obligation to be
+appropriately rested and fit to provide the care required by their patients. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 53 of 64
+Background and Intent: This requirement emphasizes the professional responsibility
+of residents and faculty members to arrive for work adequately rested and ready to
+care for patients. It is also the responsibility of residents, faculty members, and other
+members of the care team to be observant, to intervene, and/or to escalate their concern
+about resident and faculty member fitness for work, depending on the situation, and
+in accordance with institutional policies. This includes recognition of impairment,
+including from illness, fatigue, and substance use, in themselves, their peers, and other
+members of the health care team, and the recognition that under certain circumstances,
+the best interests of the patient may be served by transitioning that patient’s care to
+another qualified and rested practitioner.
+6.12.a. The learning objectives of the program must be accomplished without
+excessive reliance on residents to fulfill non-physician obligations. (Core)
+Background and Intent: Routine reliance on residents to fulfill non-physician obligations
+increases work compression for residents and does not provide an optimal educational
+experience. Non-physician obligations are those duties which in most institutions are
+performed by nursing and allied health professionals, transport services, or clerical
+staff. Examples of such obligations include transport of patients from the wards or
+units for procedures elsewhere in the hospital; routine blood drawing for laboratory
+tests; routine monitoring of patients when off the ward; and clerical duties, such as
+scheduling. While it is understood that residents may be expected to do any of these
+things on occasion when the need arises, these activities should not be performed by
+residents routinely and must be kept to a minimum to optimize resident education.
+6.12.b. The learning objectives of the program must ensure manageable patient care
+responsibilities. (Core)
+Background and Intent: The Common Program Requirements do not define
+“manageable patient care responsibilities” as this is variable by specialty and
+PGY level. Review Committees will provide further detail regarding patient care
+responsibilities in the applicable specialty-specific Program Requirements and
+accompanying FAQs. However, all programs, regardless of specialty, should carefully
+assess how the assignment of patient care responsibilities can affect work
+compression, especially at the PGY-1 level.
+6.12.c. The learning objectives of the program must include efforts to enhance
+the meaning that each resident finds in the experience of being a
+physician, including protecting time with patients, providing administrative
+support, promoting progressive independence and flexibility, and enhancing
+professional relationships. (Core)
+6.12.d. The program director, in partnership with the Sponsoring Institution, must
+provide a culture of professionalism that supports patient safety and personal
+responsibility. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 54 of 64
+Background and Intent: The accurate reporting of clinical and educational work hours,
+patient outcomes, and clinical experience data are the responsibility of the program
+leadership, residents, and faculty.
+6.12.e. Residents and faculty members must demonstrate an understanding of their
+personal role in the safety and welfare of patients entrusted to their care,
+including the ability to report unsafe conditions and safety events. (Core)
+6.12.f. Programs, in partnership with their Sponsoring Institutions, must provide a
+professional, respectful, and civil environment that is psychologically safe
+and that is free from discrimination, sexual and other forms of harassment,
+mistreatment, abuse, or coercion of students, residents, faculty, and staff.
+(Core)
+Background and Intent: Psychological safety is defined as an environment of trust
+and respect that allows individuals to feel able to ask for help, admit mistakes, raise
+concerns, suggest ideas, and challenge ways of working and the ideas of others on
+the team, including the ideas of those in authority, without fear of humiliation, and the
+knowledge that mistakes will be handled justly and fairly.
+The ACGME is unable to adjudicate disputes between individuals, including residents,
+faculty members, and staff members. However, information that suggests a pattern
+of behavior that violates the requirement above will trigger a careful review and, if
+deemed appropriate, action by the Review Committee and/or ACGME, in accordance
+with ACGME Policies and Procedures.
+6.12.g. Programs, in partnership with their Sponsoring Institutions, should have
+a process for education of residents and faculty regarding unprofessional
+behavior and a confidential process for reporting, investigating, and
+addressing such concerns. (Core)
+Well-Being
+Psychological, emotional, and physical well-being are critical in the development of the
+competent, caring, and resilient physician and require proactive attention to life inside
+and outside of medicine. Well-being requires that physicians retain the joy in medicine
+while managing their own real-life stresses. Self-care and responsibility to support other
+members of the health care team are important components of professionalism; they are
+also skills that must be modeled, learned, and nurtured in the context of other aspects of
+residency training.
+Residents and faculty members are at risk for burnout and depression. Programs, in
+partnership with their Sponsoring Institutions, have the same responsibility to address
+well-being as other aspects of resident competence. Physicians and all members of the
+health care team share responsibility for the well-being of each other. A positive culture
+in a clinical learning environment models constructive behaviors, and prepares residents
+with the skills and attitudes needed to thrive throughout their careers.
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 55 of 64
+6.13. The responsibility of the program, in partnership with the Sponsoring Institution,
+must include:
+6.13.a. attention to scheduling, work intensity, and work compression that impacts
+resident well-being; (Core)
+6.13.b. evaluating workplace safety data and addressing the safety of residents and
+faculty members; (Core)
+Background and Intent: This requirement emphasizes the responsibility shared by the
+Sponsoring Institution and its programs to gather information and utilize systems that
+monitor and enhance resident and faculty member safety, including physical safety.
+Issues to be addressed include, but are not limited to, monitoring of workplace injuries,
+physical or emotional violence, vehicle collisions, and emotional well-being after safety
+events.
+6.13.c. policies and programs that encourage optimal resident and faculty member
+well-being; and, (Core)
+Background and Intent: Well-being includes having time away from work to engage
+with family and friends, as well as to attend to personal needs and to one’s own
+health, including adequate rest, healthy diet, and regular exercise. The intent of this
+requirement is to ensure that residents have the opportunity to access medical and
+dental care, including mental health care, at times that are appropriate to their individual
+circumstances. Residents must be provided with time away from the program as needed
+to access care, including appointments scheduled during their working hours.
+6.13.c.1. Residents must be given the opportunity to attend medical, mental
+health, and dental care appointments, including those scheduled during
+their working hours. (Core)
+6.13.d. education of residents and faculty members in:
+6.13.d.1. identification of the symptoms of burnout, depression, and substance
+use disorders, suicidal ideation, or potential for violence, including
+means to assist those who experience these conditions; (Core)
+6.13.d.2. recognition of these symptoms in themselves and how to seek
+appropriate care; and, (Core)
+6.13.d.3. access to appropriate tools for self-screening. (Core)
+Background and Intent: Programs and Sponsoring Institutions are encouraged to review
+materials to create systems for identification of burnout, depression, and substance
+use disorders. Materials and more information are available in Learn at ACGME (https://
+dl.acgme.org/pages/well-being-tools-resources).
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 56 of 64
+Individuals experiencing burnout, depression, a substance use disorder, and/or suicidal
+ideation are often reluctant to reach out for help due to the stigma associated with
+these conditions and may be concerned that seeking help may have a negative impact
+on their career. Recognizing that physicians are at increased risk in these areas, it is
+essential that residents and faculty members are able to report their concerns when
+another resident or faculty member displays signs of any of these conditions, so that
+the program director or other designated personnel, such as the department chair,
+may assess the situation and intervene as necessary to facilitate access to appropriate
+care. Residents and faculty members must know which personnel, in addition to the
+program director, have been designated with this responsibility; those personnel and
+the program director should be familiar with the institution’s impaired physician policy
+and any employee health, employee assistance, and/or wellness/well-being programs
+within the institution. In cases of physician impairment, the program director or
+designated personnel should follow the policies of their institution for reporting.
+6.13.e. providing access to confidential, affordable mental health assessment,
+counseling, and treatment, including access to urgent and emergent care 24
+hours a day, seven days a week. (Core)
+Background and Intent: The intent of this requirement is to ensure that residents
+have immediate access at all times to a mental health professional (psychiatrist,
+psychologist, Licensed Clinical Social Worker, Primary Mental Health Nurse Practitioner,
+or Licensed Professional Counselor) for urgent or emergent mental health issues. In-
+person, telemedicine, or telephonic means may be utilized to satisfy this requirement.
+Care in the Emergency Department may be necessary in some cases, but not as the
+primary or sole means to meet the requirement.
+The reference to affordable counseling is intended to require that financial cost not be a
+barrier to obtaining care.
+6.14. There are circumstances in which residents may be unable to attend work,
+including but not limited to fatigue, illness, family emergencies, and medical,
+parental, or caregiver leave. Each program must allow an appropriate length of
+absence for residents unable to perform their patient care responsibilities. (Core)
+6.14.a. The program must have policies and procedures in place to ensure coverage
+of patient care and ensure continuity of patient care. (Core)
+6.14.b. These policies must be implemented without fear of negative consequences
+for the resident who is or was unable to provide the clinical work. (Core)
+Background and Intent: Residents may need to extend their length of training
+depending on length of absence and specialty board eligibility requirements.
+Teammates should assist colleagues in need and fairly reintegrate them upon return.
+6.15. Fatigue Mitigation
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 57 of 64
+Programs must educate all residents and faculty members in recognition of
+the signs of fatigue and sleep deprivation, alertness management, and fatigue
+mitigation processes. (Detail)
+Background and Intent: Providing medical care to patients is physically and mentally
+demanding. Night shifts, even for those who have had enough rest, cause fatigue.
+Experiencing fatigue in a supervised environment during training prepares residents
+for managing fatigue in practice. It is expected that programs adopt fatigue mitigation
+processes and ensure that there are no negative consequences and/or stigma for using
+fatigue mitigation strategies.
+Strategies that may be used include but are not limited to strategic napping;
+the judicious use of caffeine; availability of other caregivers; time management to
+maximize sleep off-duty; learning to recognize the signs of fatigue, and self-monitoring
+performance and/or asking others to monitor performance; remaining active to promote
+alertness; maintaining a healthy diet; using relaxation techniques to fall asleep;
+maintaining a consistent sleep routine; exercising regularly; increasing sleep time
+before and after call; and ensuring sufficient sleep recovery periods.
+6.16. The program, in partnership with its Sponsoring Institution, must ensure adequate
+sleep facilities and safe transportation options for residents who may be too
+fatigued to safely return home. (Core)
+6.17. Clinical Responsibilities
+The clinical responsibilities for each resident must be based on PGY level, patient
+safety, resident ability, severity and complexity of patient illness/condition, and
+available support services. (Core)
+Background and Intent: The changing clinical care environment of medicine has meant
+that work compression due to high complexity has increased stress on residents.
+Faculty members and program directors need to make sure residents function in an
+environment that has safe patient care and a sense of resident well-being. It is an
+essential responsibility of the program director to monitor resident workload. Workload
+should be distributed among the resident team and interdisciplinary teams to minimize
+work compression.
+6.17.a. Programs must ensure that residents’ clinical responsibilities on inpatient rotations
+are consistent with the requirements in 4.11.e. (Core)
+6.18. Teamwork
+Residents must care for patients in an environment that maximizes
+communication and promotes safe, interprofessional, team-based care in the
+specialty and larger health system. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 58 of 64
+Background and Intent: Effective programs will have a structure that promotes safe,
+interprofessional, team-based care. Optimal patient safety occurs in the setting of a
+coordinated interprofessional learning and working environment.
+6.18.a. The program must provide educational experiences that allow residents to interact
+with and learn from other health care professionals, including physicians in other
+specialties, advanced practice providers, nurses, social workers, physical therapists,
+case managers, language interpreters, and dieticians, in order to achieve effective,
+interdisciplinary, and interprofessional team-based care. (Core)
+Specialty-Specific Background and Intent: Physician and non-physicians, core and non-core
+faculty members, are part of the different teams that form depending on the health care
+situation and on patients’ health status and circumstances. The intent of the requirement is
+to ensure that residents will have access to the appropriate health care personnel as defined
+by the circumstances, and that interdisciplinary, interprofessional teams will be constituted as
+appropriate and as needed.
+6.19. Transitions of Care
+Programs must design clinical assignments to optimize transitions in patient care,
+including their safety, frequency, and structure. (Core)
+6.19.a. Programs, in partnership with their Sponsoring Institutions, must ensure and
+monitor effective, structured hand-off processes to facilitate both continuity of
+care and patient safety. (Core)
+6.19.b. Programs must ensure that residents are competent in communicating with
+team members in the hand-off process. (Outcome)
+Clinical Experience and Education
+Programs, in partnership with their Sponsoring Institutions, must design an effective
+program structure that is configured to provide residents with educational and clinical
+experience opportunities, as well as reasonable opportunities for rest and personal
+activities.
+Background and Intent: The terms “clinical experience and education,” “clinical and
+educational work,” and “clinical and educational work hours” replace the terms “duty
+hours,” “duty periods,” and “duty.” These terms are used in response to concerns that
+the previous use of the term “duty” in reference to number of hours worked may have
+led some to conclude that residents’ duty to “clock out” on time superseded their duty
+to their patients.
+6.20. Maximum Hours of Clinical and Educational Work per Week
+Clinical and educational work hours must be limited to no more than 80 hours
+per week, averaged over a four-week period, including all in-house clinical and
+educational activities, clinical work done from home, and all moonlighting. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 59 of 64
+Background and Intent: Programs and residents have a shared responsibility to ensure
+that the 80-hour maximum weekly limit is not exceeded. While the requirement has been
+written with the intent of allowing residents to remain beyond their scheduled work
+periods to care for a patient or participate in an educational activity, these additional
+hours must be accounted for in the allocated 80 hours when averaged over four weeks.
+Work from Home
+While the requirement specifies that clinical work done from home must be counted
+toward the 80-hour maximum weekly limit, the expectation remains that scheduling be
+structured so that residents are able to complete most work on site during scheduled
+clinical work hours without requiring them to take work home. The requirements
+acknowledge the changing landscape of medicine, including electronic health records,
+and the resulting increase in the amount of work residents choose to do from home.
+The requirement provides flexibility for residents to do this while ensuring that the
+time spent by residents completing clinical work from home is accomplished within the
+80-hour weekly maximum. Types of work from home that must be counted include using
+an electronic health record and taking calls from home. Reading done in preparation for
+the following day’s cases, studying, and research done from home do not count toward
+the 80 hours. Resident decisions to leave the hospital before their clinical work has
+been completed and to finish that work later from home should be made in consultation
+with the resident’s supervisor. In such circumstances, residents should be mindful of
+their professional responsibility to complete work in a timely manner and to maintain
+patient confidentiality.
+Residents are to track the time they spend on clinical work from home and to report
+that time to the program. Decisions regarding whether to report infrequent phone calls
+of very short duration will be left to the individual resident. Programs will need to factor
+in time residents are spending on clinical work at home when schedules are developed
+to ensure that residents are not working in excess of 80 hours per week, averaged
+over four weeks. There is no requirement that programs assume responsibility for
+documenting this time. Rather, the program’s responsibility is ensuring that residents
+report their time from home and that schedules are structured to ensure that residents
+are not working in excess of 80 hours per week, averaged over four weeks.
+6.21. Mandatory Time Free of Clinical Work and Education
+Residents should have eight hours off between scheduled clinical work and
+education periods. (Detail)
+Background and Intent: There may be circumstances when residents choose to stay
+to care for their patients or return to the hospital with fewer than eight hours free of
+clinical experience and education. This occurs within the context of the 80-hour and
+the one-day-off-in-seven requirements. While it is expected that resident schedules will
+be structured to ensure that residents are provided with a minimum of eight hours off
+between scheduled work periods, it is recognized that residents may choose to remain
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 60 of 64
+beyond their scheduled time, or return to the clinical site during this time-off period, to
+care for a patient. The requirement preserves the flexibility for residents to make those
+choices. It is also noted that the 80-hour weekly limit (averaged over four weeks) is a
+deterrent for scheduling fewer than eight hours off between clinical and education work
+periods, as it would be difficult for a program to design a schedule that provides fewer
+than eight hours off without violating the 80-hour rule.
+6.21.a. Residents must have at least 14 hours free of clinical work and education after
+24 hours of in-house call. (Core)
+Background and Intent: Residents have a responsibility to return to work rested, and
+thus are expected to use this time away from work to get adequate rest. In support of
+this goal, residents are encouraged to prioritize sleep over other discretionary activities.
+6.21.b. Residents must be scheduled for a minimum of one day in seven free of
+clinical work and required education (when averaged over four weeks). At-
+home call cannot be assigned on these free days. (Core)
+Background and Intent: The requirement provides flexibility for programs to distribute
+days off in a manner that meets program and resident needs. It is strongly
+recommended that residents’ preference regarding how their days off are distributed
+be considered as schedules are developed. It is desirable that days off be distributed
+throughout the month, but some residents may prefer to group their days off to have
+a “golden weekend,” meaning a consecutive Saturday and Sunday free from work.
+The requirement for one free day in seven should not be interpreted as precluding a
+golden weekend. Where feasible, schedules may be designed to provide residents with
+a weekend, or two consecutive days, free of work. The applicable Review Committee
+will evaluate the number of consecutive days of work and determine whether they meet
+educational objectives. Programs are encouraged to distribute days off in a fashion that
+optimizes resident well-being, and educational and personal goals. It is noted that a day
+off is defined in the ACGME Glossary of Terms as “one (1) continuous 24-hour period
+free from all administrative, clinical, and educational activities.”
+6.22. Maximum Clinical Work and Education Period Length
+Clinical and educational work periods for residents must not exceed 24 hours of
+continuous scheduled clinical assignments. (Core)
+6.22.a. Up to four hours of additional time may be used for activities related to
+patient safety, such as providing effective transitions of care, and/or resident
+education. Additional patient care responsibilities must not be assigned to a
+resident during this time. (Core)
+Background and Intent: The additional time referenced in 6.22.a. should not be used
+for the care of new patients. It is essential that the resident continue to function as a
+member of the team in an environment where other members of the team can assess
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 61 of 64
+resident fatigue, and that supervision for post-call residents is provided. This 24 hours
+and up to an additional four hours must occur within the context of 80-hour weekly limit,
+averaged over four weeks.
+6.23. Clinical and Educational Work Hour Exceptions
+In rare circumstances, after handing off all other responsibilities, a resident,
+on their own initiative, may elect to remain or return to the clinical site in the
+following circumstances: to continue to provide care to a single severely ill or
+unstable patient; to give humanistic attention to the needs of a patient or patient’s
+family; or to attend unique educational events. (Detail)
+6.23.a. These additional hours of care or education must be counted toward the
+80-hour weekly limit. (Detail)
+Background and Intent: This requirement is intended to provide residents with some
+control over their schedules by providing the flexibility to voluntarily remain beyond
+the scheduled responsibilities under the circumstances described above. It is important
+to note that a resident may remain to attend a conference, or return for a conference
+later in the day, only if the decision is made voluntarily. Residents must not be required
+to stay. Programs allowing residents to remain or return beyond the scheduled work
+and clinical education period must ensure that the decision to remain is initiated by
+the resident and that residents are not coerced. This additional time must be counted
+toward the 80-hour maximum weekly limit.
+6.24. A Review Committee may grant rotation-specific exceptions for up to 10 percent
+or a maximum of 88 clinical and educational work hours to individual programs
+based on a sound educational rationale.
+The Review Committee for Internal Medicine will not consider requests for exceptions to
+the 80-hour limit to the resident work week.
+[Pending the outcome of the major revision of the Common Program Requirements,
+enforcement of Common Program Requirement 6.24. has been suspended]
+6.25. Moonlighting
+Moonlighting must not interfere with the ability of the resident to achieve the
+goals and objectives of the educational program, and must not interfere with the
+resident’s fitness for work nor compromise patient safety. (Core)
+6.25.a. Time spent by residents in internal and external moonlighting (as defined in
+the ACGME Glossary of Terms) must be counted toward the 80-hour maximum
+weekly limit. (Core)
+6.25.b. PGY-1 residents are not permitted to moonlight. (Core)
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 62 of 64
+Background and Intent: For additional clarification of the expectations related to
+moonlighting, please refer to the Common Program Requirement FAQs (available at
+http://www.acgme.org/What-We-Do/Accreditation/Common-Program-Requirements).
+6.26. In-House Night Float
+Night float must occur within the context of the 80-hour and one-day-off-in-seven
+requirements. (Core)
+6.26.a. Residents must not be assigned more than two months of night float during any
+year of the educational program, or more than four months of night float during the
+course of the residency. (Core)
+6.26.b. Residents must not be assigned to more than one month of consecutive night float
+rotation. (Core)
+Specialty-Specific Background and Intent: Night float rotations are designed to either eliminate
+in-house call or to assist other residents during the night. Residents assigned to night float
+are assigned on-site duty during evening/night shifts and are responsible for admitting or cross-
+covering patients until morning and will not have daytime assignments or ongoing primary
+responsibility for these patients. The Committee has limited the number a program can assign
+because it believes too many such rotations can negatively affect resident well-being and
+contribute to burnout and fatigue. Overnight shifts occurring during critical care rotations (in
+the medical intensive care unit or the critical care unit) do not count towards night float, but
+towards the maximum six months of required critical care time. Overnight emergency medicine
+assignments do not count towards night float.
+6.27. Maximum In-House On-Call Frequency
+Residents must be scheduled for in-house call no more frequently than every third
+night (when averaged over a four-week period). (Core)
+6.28. At-Home Call
+Time spent on patient care activities by residents on at-home call must count
+toward the 80-hour maximum weekly limit. The frequency of at-home call is not
+subject to the every-third-night limitation, but must satisfy the requirement for one
+day in seven free of clinical work and education, when averaged over four weeks.
+(Core)
+6.28.a. At-home call must not be so frequent or taxing as to preclude rest or
+reasonable personal time for each resident. (Core)
+Background and Intent: As noted in 6.20., clinical work done from home when a resident
+is taking at-home call must count toward the 80-hour maximum weekly limit. This
+acknowledges the often significant amount of time residents devote to clinical activities
+when taking at-home call, and ensures that taking at-home call does not result in
+residents routinely working more than 80 hours per week. At-home call activities that
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 63 of 64
+must be counted include responding to phone calls and other forms of communication,
+as well as documentation, such as entering notes in an electronic health record.
+Activities such as reading about the next day’s case, studying, or research activities
+do not count toward the 80-hour weekly limit.
+In their evaluation of residency/fellowship programs, Review Committees will look at the
+overall impact of at-home call on resident/fellow rest and personal time.
+Internal Medicine
+©2026 Accreditation Council for Graduate Medical Education (ACGME) Page 64 of 64

@@ -1,0 +1,128 @@
+
+> residency-scheduler-pro-v-2@0.0.0 test
+> vitest scheduler.test.ts --reporter=verbose
+
+
+ DEV  v3.2.4 /home/adroit/Projects/residency-optimizer
+
+stdout | services/scheduler.test.ts > Schedule Generator
+Starting Algorithm Competition with 100 tries for Staffing First, Stochastic, Education First...
+
+ ✓ services/scheduler.test.ts > Schedule Generator > should generate a schedule for every resident 25ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should enforce 4+1 Clinic weeks (Cohort rule) 68ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should not leave any week unassigned 156ms
+stdout | services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules
+Starting Algorithm Competition with 2 tries for Staffing First, Stochastic, Education First...
+
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY1 required electives 9ms
+ × services/scheduler.test.ts > Schedule Generator > should assign PGY2 required rotations 25ms
+   → expected 2 to be greater than or equal to 8
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY3 required electives 5ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign correct block lengths for rotations 7ms
+ ✓ services/scheduler.test.ts > Schedule Generator > Weekly Staffing Requirements > should have at least 1 intern on Night Float per week 6ms
+ ✓ services/scheduler.test.ts > Schedule Generator > Weekly Staffing Requirements > should have 0 weekly staffing violations 22ms
+stdout | services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules
+Starting Algorithm Competition with 2 tries for Staffing First, Stochastic, Education First...
+
+ ✓ services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules 8624ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  services/scheduler.test.ts > Schedule Generator > should assign PGY2 required rotations
+AssertionError: expected 2 to be greater than or equal to 8
+ ❯ services/scheduler.test.ts:80:119
+     78|             expect(assignments.filter(a => a === AssignmentType.EM).le…
+     79|             // Relax GI/Pulm/Neph to 0 or 2 depending on tightness
+     80|             expect(assignments.filter(a => a === AssignmentType.WARDS_…
+       |                                                                                                                       ^
+     81|         });
+     82|     });
+ ❯ services/scheduler.test.ts:75:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  17:41:42
+   Duration  26.04s (transform 141ms, setup 0ms, collect 162ms, tests 25.45s, environment 0ms, prepare 75ms)
+
+ FAIL  Tests failed. Watching for file changes...
+       press h to show help, press q to quit
+c[3J RERUN  services/generators/experimental.ts x1
+        Filename pattern: scheduler.test.ts
+
+stdout | services/scheduler.test.ts > Schedule Generator
+Starting Algorithm Competition with 100 tries for Staffing First, Stochastic, Education First...
+
+stdout | services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules
+Starting Algorithm Competition with 2 tries for Staffing First, Stochastic, Education First...
+
+ ✓ services/scheduler.test.ts > Schedule Generator > should generate a schedule for every resident 7ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should enforce 4+1 Clinic weeks (Cohort rule) 17ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should not leave any week unassigned 46ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY1 required electives 2ms
+ × services/scheduler.test.ts > Schedule Generator > should assign PGY2 required rotations 7ms
+   → expected 7 to be greater than or equal to 8
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY3 required electives 1ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign correct block lengths for rotations 0ms
+ ✓ services/scheduler.test.ts > Schedule Generator > Weekly Staffing Requirements > should have at least 1 intern on Night Float per week 3ms
+ ✓ services/scheduler.test.ts > Schedule Generator > Weekly Staffing Requirements > should have 0 weekly staffing violations 3ms
+stdout | services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules
+Starting Algorithm Competition with 2 tries for Staffing First, Stochastic, Education First...
+
+ ✓ services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules 698ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  services/scheduler.test.ts > Schedule Generator > should assign PGY2 required rotations
+AssertionError: expected 7 to be greater than or equal to 8
+ ❯ services/scheduler.test.ts:80:119
+     78|             expect(assignments.filter(a => a === AssignmentType.EM).le…
+     79|             // Relax GI/Pulm/Neph to 0 or 2 depending on tightness
+     80|             expect(assignments.filter(a => a === AssignmentType.WARDS_…
+       |                                                                                                                       ^
+     81|         });
+     82|     });
+ ❯ services/scheduler.test.ts:75:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  17:47:30
+   Duration  123.85s
+
+ FAIL  Tests failed. Watching for file changes...
+       press h to show help, press q to quit
+c[3J RERUN  services/scheduler.test.ts x2
+        Filename pattern: scheduler.test.ts
+
+stdout | services/scheduler.test.ts > Schedule Generator
+Starting Algorithm Competition with 100 tries for Staffing First, Stochastic, Education First...
+
+stdout | services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules
+Starting Algorithm Competition with 2 tries for Staffing First, Stochastic, Education First...
+
+ ✓ services/scheduler.test.ts > Schedule Generator > should generate a schedule for every resident 8ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should enforce 4+1 Clinic weeks (Cohort rule) 12ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should not leave any week unassigned 27ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY1 required electives 1ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY2 required rotations 1ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign PGY3 required electives 2ms
+ ✓ services/scheduler.test.ts > Schedule Generator > should assign correct block lengths for rotations 0ms
+ ✓ services/scheduler.test.ts > Schedule Generator > Weekly Staffing Requirements > should have at least 1 intern on Night Float per week 1ms
+ ✓ services/scheduler.test.ts > Schedule Generator > Weekly Staffing Requirements > should have 0 weekly staffing violations 2ms
+stdout | services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules
+Starting Algorithm Competition with 2 tries for Staffing First, Stochastic, Education First...
+
+ ✓ services/scheduler.test.ts > Schedule Generator > should produce non-deterministic (unique) schedules 578ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  17:49:56
+   Duration  18.44s
+
+ PASS  Waiting for file changes...
+       press h to show help, press q to quit

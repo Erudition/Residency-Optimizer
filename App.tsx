@@ -20,7 +20,7 @@ import {
   TOTAL_WEEKS
 } from './constants';
 import historicalGridData from './specification/historical_schedules_grid_v2.json';
-import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleRegret, getRequirementViolations, getWeeklyViolations, getAuditViolations } from './services/scheduler';
+import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations, getAuditViolations } from './services/scheduler';
 import { preloadHistoricalData } from './services/generators/historyPreloader';
 import { ScheduleTable } from './components/ScheduleTable';
 import { Dashboard } from './components/Dashboard';
@@ -278,7 +278,7 @@ const App: React.FC = () => {
   const [compParams, setCompParams] = useState<CompetitionParams>(() => {
     const loaded = loadState('rsp_comp_params_v1', {
       tries: 100,
-      priority: CompetitionPriority.BEST_REGRET,
+      priority: CompetitionPriority.BEST_SCORE,
       algorithmIds: ['stochastic', 'experimental', 'strict'],
       topN: 10,
       multiYear: 3
@@ -437,7 +437,7 @@ const App: React.FC = () => {
     residents: Resident[], 
     existing: ScheduleGrid, 
     params: CompetitionParams, 
-    onProgress: (iteration: number, attempts: number, regrets: number[] | undefined, year: number, overallProgress: number) => void, 
+    onProgress: (iteration: number, attempts: number, scores: number[] | undefined, year: number, overallProgress: number) => void,
     historicalSchedules: ScheduleHistory, 
     cohortAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
@@ -462,9 +462,9 @@ const App: React.FC = () => {
       }
 
       worker.onmessage = (e) => {
-        const { type, iteration, overallProgress, bestRegret, attempts, year, results, error } = e.data;
+        const { type, iteration, overallProgress, bestScore, attempts, year, results, error } = e.data;
         if (type === 'progress') {
-          onProgress(iteration, attempts, bestRegret, year, overallProgress);
+          onProgress(iteration, attempts, bestScore, year, overallProgress);
         } else if (type === 'success') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -695,7 +695,7 @@ const App: React.FC = () => {
               constraints: getWeeklyViolations(residents, copy)
             },
             fairness: calculateFairnessMetrics(residents, copy),
-            regret: calculateScheduleRegret(residents, copy, historySchedules)
+            score: calculateScheduleScore(residents, copy, historySchedules)
           }
         };
       }));
@@ -863,6 +863,41 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleFactoryReset = () => {
+    if (confirm("This will delete ALL data. Are you sure?")) {
+      setResidents(GENERATE_INITIAL_RESIDENTS());
+      setSchedules([]);
+      setActiveScheduleId("all");
+    }
+  };
+
+  const handleDeleteAllSchedules = () => {
+    if (confirm("Delete all schedule versions?")) {
+      setSchedules([]);
+      setActiveScheduleId("all");
+    }
+  };
+
+  const handleUnpinAllWeeks = () => {
+    if (confirm("Unpin all assignments across all schedules?")) {
+      setSchedules(prev => prev.map(s => ({
+        ...s,
+        data: Object.fromEntries(Object.entries(s.data).map(([year, grid]) => [
+          year,
+          Object.fromEntries(Object.entries(grid as ScheduleGrid).map(([rid, weeks]) => [
+            rid,
+            weeks.map(w => ({ ...w, locked: false }))
+          ]))
+        ]))
+      })));
+    }
+  };
+
+  const handleResetResidents = () => {
+    if (confirm("Reset all residents to defaults?")) {
+      setResidents(GENERATE_INITIAL_RESIDENTS());
+    }
+  };
   const handleLockResident = (residentId: string) => {
     if (!activeScheduleId) return;
     setSchedules(prev => prev.map(s => {
