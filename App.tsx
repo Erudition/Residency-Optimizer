@@ -1103,22 +1103,24 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-hidden relative bg-white min-h-0">
         <div className="absolute inset-0 flex flex-col">
           {activeScheduleId === 'draft' && !isHistoricalYear ? (
-            <CompetitorStudio
-              algorithms={algoConfig}
-              stats={algoStats}
-              params={compParams}
-              onParamsChange={setCompParams}
-              onToggleAlgorithm={(id) => {
-                setCompParams(prev => ({
-                  ...prev,
-                  algorithmIds: prev.algorithmIds.includes(id)
-                    ? prev.algorithmIds.filter(a => a !== id)
-                    : [...prev.algorithmIds, id]
-                }));
-              }}
-              onCompete={handleGenerate}
-              onClearStats={() => setAlgoStats([])}
-            />
+            isGenerating ? renderGenerationDashboard() : (
+              <CompetitorStudio
+                algorithms={algoConfig}
+                stats={algoStats}
+                params={compParams}
+                onParamsChange={setCompParams}
+                onToggleAlgorithm={(id) => {
+                  setCompParams(prev => ({
+                    ...prev,
+                    algorithmIds: prev.algorithmIds.includes(id)
+                      ? prev.algorithmIds.filter(a => a !== id)
+                      : [...prev.algorithmIds, id]
+                  }));
+                }}
+                onCompete={handleGenerate}
+                onClearStats={() => setAlgoStats([])}
+              />
+            )
           ) : (activeScheduleId === 'all' && !isHistoricalYear) ? (
             <div className="flex-1 bg-white overflow-y-auto">
               <ScheduleComparison
