@@ -157,7 +157,11 @@ export const GlobalOptimizer: React.FC<Props> = ({
         (iteration, attempts, scores, year, overallProgress) => {
           const now = Date.now();
           if (scores) {
-            convergenceBufferRef.current.push(scores);
+            while (convergenceBufferRef.current.length < iteration) {
+              const prev = convergenceBufferRef.current[convergenceBufferRef.current.length - 1] || scores.map(() => 0);
+              convergenceBufferRef.current.push(prev);
+            }
+            convergenceBufferRef.current[iteration] = scores;
           }
           if (now - lastUpdateRef.current > 1000) {
             setGenProgress(Math.round(overallProgress * 100));

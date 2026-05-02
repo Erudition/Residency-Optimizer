@@ -31,7 +31,7 @@ export const generateSchedule = async (
     { id: 'strict', generator: EducationFirstGenerator, name: 'Education First' },
   ];
 
-  const selectedGenerators = allGenerators.filter(g => algorithmIds.includes(g.id));
+  const selectedGenerators = algorithmIds.map(id => allGenerators.find(g => g.id === id)).filter(Boolean) as any[];
   if (selectedGenerators.length === 0) {
     selectedGenerators.push({ id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' });
   }
