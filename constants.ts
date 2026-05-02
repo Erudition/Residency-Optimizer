@@ -264,7 +264,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     [AssignmentType.CARDS]: {
         type: AssignmentType.CARDS, label: 'Cardiology',
         intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
-        minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 0,
+        minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 4,
         targetIntern: 2, targetPGY3: 2
     },
     [AssignmentType.ID]: {

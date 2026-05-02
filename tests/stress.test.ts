@@ -6,6 +6,7 @@ import { EducationFirstGenerator } from '../services/generators/educationFirst';
 import { StaffingFirstGenerator } from '../services/generators/staffingFirst';
 import { WeekByWeekGenerator } from '../services/generators/weekByWeek';
 import { StochasticGenerator } from '../services/generators/stochastic';
+import { ExactConstraintGenerator } from '../services/generators/exact';
 
 // CRITICAL RULE (Enforced by Connor):
 // Do NOT allow more than 0 violations in the algorithm stress tests.
@@ -58,8 +59,40 @@ describe('Algorithm Stress Tests', () => {
         });
     };
 
+
+
     runTest('WeekByWeek', WeekByWeekGenerator);
     runTest('EducationFirst', EducationFirstGenerator);
     runTest('StaffingFirst', StaffingFirstGenerator);
     runTest('Stochastic', StochasticGenerator);
+
+    test('ExactConstraintGenerator produces 0 violations', () => {
+        const startYear = 2026;
+        const residents = GENERATE_RESIDENTS_FOR_YEAR(startYear);
+        const runningHistory: Record<number, ScheduleGrid> = {};
+        const cohortAssignments: Record<string, number> = {};
+
+        let totalWeekly = 0;
+        let totalReqs = 0;
+
+        for (let year = startYear; year < startYear + 3; year++) {
+            const yearResidents = residents.filter(r => {
+                const level = year - r.startYear + 1;
+                return level >= 1 && level <= 3;
+            }).map(r => ({
+                ...r,
+                level: (year - r.startYear + 1) as 1 | 2 | 3,
+            }));
+
+            const yearSchedule = ExactConstraintGenerator.generate(yearResidents, {}, 0, runningHistory, cohortAssignments);
+
+            totalWeekly += getWeeklyViolations(yearResidents, yearSchedule).length;
+            totalReqs += getRequirementViolations(yearResidents, yearSchedule, runningHistory).length;
+
+            runningHistory[year] = yearSchedule;
+        }
+
+        expect(totalWeekly).toBe(0);
+        expect(totalReqs).toBe(0);
+    });
 });

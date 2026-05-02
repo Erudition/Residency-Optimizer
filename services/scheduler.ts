@@ -6,6 +6,7 @@ import { WeekByWeekGenerator } from './generators/weekByWeek';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
 import { StochasticGenerator } from './generators/stochastic';
 import { EducationFirstGenerator } from './generators/educationFirst';
+import { ExactConstraintGenerator } from './generators/exact';
 
 /**
  * Main Scheduling Engine - Competition Mode (Async)
@@ -29,6 +30,7 @@ export const generateSchedule = async (
     { id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' },
     { id: 'stochastic', generator: StochasticGenerator, name: 'Stochastic' },
     { id: 'strict', generator: EducationFirstGenerator, name: 'Education First' },
+    { id: 'exact', generator: ExactConstraintGenerator, name: 'Zero Violations Exact Solver' },
   ];
 
   const selectedGenerators = algorithmIds.map(id => allGenerators.find(g => g.id === id)).filter(Boolean) as any[];
@@ -185,7 +187,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   
   for (let week = 0; week < 52; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
-    const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC).length;
+    const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC || a === AssignmentType.NIMA_CLINIC).length;
     if (clinicCount === 0) {
       violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}` });
     }
