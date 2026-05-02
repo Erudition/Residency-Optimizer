@@ -7,10 +7,16 @@ import { StaffingFirstGenerator } from '../services/generators/staffingFirst';
 import { WeekByWeekGenerator } from '../services/generators/weekByWeek';
 import { StochasticGenerator } from '../services/generators/stochastic';
 
+// CRITICAL RULE (Enforced by Connor):
+// Do NOT allow more than 0 violations in the algorithm stress tests.
+// The generators MUST produce fully compliant schedules across all 3 years.
+
 describe('Algorithm Stress Tests', () => {
     const runTest = (name: string, gen: any) => {
-        test(`${name} stability`, () => {
-            const residents = GENERATE_RESIDENTS_FOR_YEAR(2026);
+        test(`${name} stability across 3 years`, () => {
+            const startYear = 2026;
+            const residents = GENERATE_RESIDENTS_FOR_YEAR(startYear);
+
             const emptySchedule: ScheduleGrid = {};
             residents.forEach(r => {
                 emptySchedule[r.id] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null, locked: false }));
@@ -21,24 +27,37 @@ describe('Algorithm Stress Tests', () => {
                 cohortAssignments[r.id] = idx % 5;
             });
 
-            const tries = 5;
-            const results = [];
+            let totalWeekly = 0;
+            let totalReqs = 0;
+            const runningHistory: Record<number, ScheduleGrid> = {};
 
-            for (let i = 0; i < tries; i++) {
-                const schedule = gen.generate(residents, emptySchedule, i, {}, cohortAssignments);
-                const weeklyCount = getWeeklyViolations(residents, schedule).length;
-                const reqsCount = getRequirementViolations(residents, schedule).length;
-                results.push({ weekly: weeklyCount, reqs: reqsCount });
+            for (let year = startYear; year < startYear + 3; year++) {
+                const yearResidents = residents.filter(r => {
+                    const level = year - r.startYear + 1;
+                    return level >= 1 && level <= 3;
+                }).map(r => ({
+                    ...r,
+                    level: (year - r.startYear + 1) as 1 | 2 | 3,
+                }));
+
+                const yearExisting = {};
+                const yearSchedule = gen.generate(yearResidents, yearExisting, 0, runningHistory, cohortAssignments);
+
+                const weeklyCount = getWeeklyViolations(yearResidents, yearSchedule).length;
+                const reqsCount = getRequirementViolations(yearResidents, yearSchedule, runningHistory).length;
+
+                totalWeekly += weeklyCount;
+                totalReqs += reqsCount;
+
+                runningHistory[year] = yearSchedule;
             }
 
-            const avgWeekly = results.reduce((sum, r) => sum + r.weekly, 0) / tries;
-            const avgReq = results.reduce((sum, r) => sum + r.reqs, 0) / tries;
+            console.log(`[${name}] Multi-Year Weekly Violations: ${totalWeekly}`);
+            console.log(`[${name}] Multi-Year Requirement Violations: ${totalReqs}`);
 
-            console.log(`[${name}] Avg Weekly Violations: ${avgWeekly.toFixed(2)}`);
-            console.log(`[${name}] Avg Requirement Violations: ${avgReq.toFixed(2)}`);
-
-            // Higher tolerance for educational requirements as they are harder to meet perfectly
-            expect(avgWeekly).toBeLessThan(500); 
+            // Enforce EXACTLY 0 violations as requested by Connor
+            expect(totalWeekly).toBe(0);
+            expect(totalReqs).toBe(0);
         });
     };
 

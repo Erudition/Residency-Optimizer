@@ -226,7 +226,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.MICU, label: 'ICU',
         intensity: 5, setting: ClinicalSetting.CRITICAL_CARE, duration: 4,
         minInterns: 2, maxInterns: 3, minSeniors: 2, maxSeniors: 2,
-        targetIntern: 4, targetSenior: 4
+        targetIntern: 8, targetSenior: 4
     },
     [AssignmentType.WARDS_RED]: {
         type: AssignmentType.WARDS_RED, label: 'Wards',
@@ -249,7 +249,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.EM, label: 'Emergency',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 1, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
-        targetIntern: 0, targetPGY2: 4 // Restricted to PGY2/3 per proposal
+        targetIntern: 0, targetPGY2: 2, targetPGY3: 2 // Restricted to PGY2/3 per proposal
     },
     [AssignmentType.CLINIC]: {
         type: AssignmentType.CLINIC, label: 'Clinic',
@@ -263,9 +263,9 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.CARDS]: {
         type: AssignmentType.CARDS, label: 'Cardiology',
-        intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 4,
+        intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 0,
-        targetIntern: 4,
+        targetIntern: 2, targetPGY3: 2
     },
     [AssignmentType.ID]: {
         type: AssignmentType.ID, label: 'Infectious Disease',
@@ -283,7 +283,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.PULM, label: 'Pulmonology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 4, minSeniors: 0, maxSeniors: 4,
-        targetIntern: 0, targetPGY2: 2
+        targetIntern: 2, targetPGY2: 2
     },
     [AssignmentType.ONC]: {
         type: AssignmentType.ONC, label: 'Heme/Onc',
@@ -293,7 +293,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.NEURO]: {
         type: AssignmentType.NEURO, label: 'Neurology',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4,
+        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
         targetPGY2: 2, // 2 weeks in PGY2
     },
@@ -305,7 +305,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.GI]: {
         type: AssignmentType.GI, label: 'Gastroenterology',
-        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
+        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
         targetPGY2: 2, // 2 weeks in PGY2
     },

@@ -62,7 +62,26 @@ export const EducationFirstGenerator: ScheduleGenerator = {
         allLevels.forEach(level => {
             const reqs = seededShuffle(REQUIREMENTS[level as 1|2|3] || []);
             // Sort by duration descending, then by capacity ascending (harder rotations first)
+            const criticalPriority: AssignmentType[] = [
+                AssignmentType.MICU,
+                AssignmentType.WARDS_RED,
+                AssignmentType.WARDS_BLUE,
+                AssignmentType.WARDS_METRO,
+                AssignmentType.GERI,
+                AssignmentType.EM,
+                AssignmentType.JR_HOSPITALIST,
+                AssignmentType.PALLIATIVE,
+                AssignmentType.ADD_MED,
+                AssignmentType.NIMA_BLOCK
+            ];
+
             reqs.sort((a, b) => {
+                const idxA = criticalPriority.indexOf(a.type);
+                const idxB = criticalPriority.indexOf(b.type);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
+
                 const metaA = ROTATION_METADATA[a.type];
                 const metaB = ROTATION_METADATA[b.type];
                 const durA = metaA?.duration || 4;
@@ -77,7 +96,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
             reqs.forEach(req => {
                 const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
                 
-                residents.filter(r => r.level === level).forEach(res => {
+                seededShuffle(residents.filter(r => r.level === level)).forEach(res => {
                     const cohort = cohortAssignments?.[res.id] ?? 0;
 
                     let safety = 0;
@@ -108,8 +127,8 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                                     if (res.level === 1 && cI >= maxI) { possible = false; break; }
                                     if (res.level > 1 && cS >= maxS) { possible = false; break; }
                                     
-                                    // Spreading score: prefer weeks with less staff
-                                    score += (cI + cS);
+                                    // Spreading score: prefer weeks with less staff (with random tiebreaker)
+                                    score += (cI + cS) + rng.next() * 0.1;
                                 }
 
                                 if (possible && score < bestScore) {
