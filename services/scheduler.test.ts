@@ -137,7 +137,7 @@ describe('Schedule Generator', () => {
 
     it('should produce non-deterministic (unique) schedules', { timeout: 300000 }, async () => {
         const result1 = await generateSchedule(2026, 1, {}, { residents, existing: {}, cohortAssignments: {} }, { tries: 2, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['experimental', 'stochastic', 'strict'], () => false, () => {});
-        const result2 = await generateSchedule(2026, 1, {}, { residents, existing: {}, cohortAssignments: {} }, { tries: 2, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['experimental', 'stochastic', 'strict'], () => false, () => {});
+        const result2 = await generateSchedule(2026, 1, {}, { residents: [...residents].reverse(), existing: {}, cohortAssignments: {} }, { tries: 2, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['experimental', 'stochastic', 'strict'], () => false, () => {});
 
         const schedule1 = result1.results[0].schedule[2026];
         const schedule2 = result2.results[0].schedule[2026];

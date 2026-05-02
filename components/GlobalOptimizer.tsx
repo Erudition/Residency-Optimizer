@@ -156,18 +156,18 @@ export const GlobalOptimizer: React.FC<Props> = ({
         compParams,
         (iteration, attempts, scores, year, overallProgress) => {
           const now = Date.now();
+          if (scores) {
+            convergenceBufferRef.current.push(scores);
+          }
           if (now - lastUpdateRef.current > 1000) {
             setGenProgress(Math.round(overallProgress * 100));
             setGenAttempts(attempts);
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
 
             if (scores) {
-              convergenceBufferRef.current.push(scores);
               setConvergenceData([...convergenceBufferRef.current]);
             }
             lastUpdateRef.current = now;
-          } else if (scores) {
-            convergenceBufferRef.current.push(scores);
           }
         },
         historySchedules,
@@ -206,7 +206,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
       <div className="max-w-4xl w-full">
         <GenerationDashboard 
           data={convergenceData}
-          maxTries={compParams.maxTries || 1000}
+          maxTries={compParams.tries || 300}
           onStop={() => {
             if (generationControllerRef.current) {
               generationControllerRef.current.abort();

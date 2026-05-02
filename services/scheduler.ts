@@ -134,6 +134,7 @@ export const generateSchedule = async (
     if (i % 10 === 0) {
       await new Promise(resolve => setTimeout(resolve, 0));
     }
+    i++;
   }
 
   return { results };

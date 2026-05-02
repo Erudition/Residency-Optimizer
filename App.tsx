@@ -591,25 +591,17 @@ const App: React.FC = () => {
         compParams,
         (iteration, attempts, scores, year, overallProgress) => {
           const now = Date.now();
-          // Still throttle updates, but now we update localized state
+          if (scores) {
+            convergenceBufferRef.current.push(scores);
+          }
           if (now - lastUpdateRef.current > 1000) {
             setGenProgress(Math.round(overallProgress * 100));
             setGenAttempts(attempts);
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
-            
-            // Only update convergence data if the user is looking at it
-          if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
-            if (convergenceBufferRef.current.length > 50) convergenceBufferRef.current.shift();
-            convergenceBufferRef.current.push(scores);
-            setConvergenceData([...convergenceBufferRef.current]);
-          } else if (scores) {
-            if (convergenceBufferRef.current.length > 50) convergenceBufferRef.current.shift();
-            convergenceBufferRef.current.push(scores);
-          }
+            if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
+              setConvergenceData([...convergenceBufferRef.current]);
+            }
             lastUpdateRef.current = now;
-          } else if (scores) {
-            if (convergenceBufferRef.current.length > 50) convergenceBufferRef.current.shift();
-            convergenceBufferRef.current.push(scores);
           }
         },
         historySchedules,
