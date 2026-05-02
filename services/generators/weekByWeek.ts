@@ -29,6 +29,17 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
+        let validCohortAssignments = { ...(cohortAssignments || {}) };
+        if (Object.keys(validCohortAssignments).length === 0) {
+            const sorted = [...residents].sort((a, b) => {
+                if (a.level !== b.level) return a.level - b.level;
+                return a.name.localeCompare(b.name);
+            });
+            sorted.forEach((r, idx) => {
+                validCohortAssignments[r.id] = idx % 5;
+            });
+        }
+
         // 1. Initial State & Clinic Weeks
         residents.forEach(r => {
             if (!newSchedule[r.id] || newSchedule[r.id].length !== TOTAL_WEEKS) {
@@ -37,7 +48,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 newSchedule[r.id] = newSchedule[r.id].map(cell => (cell && cell.locked) ? cell : { assignment: null, locked: false });
             }
 
-            const cohort = cohortAssignments ? cohortAssignments[r.id] : 0;
+            const cohort = validCohortAssignments[r.id] ?? 0;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % COHORT_COUNT === cohort) {
                     newSchedule[r.id][w] = { assignment: AssignmentType.CLINIC, locked: true };

@@ -31,13 +31,24 @@ export const EducationFirstGenerator: ScheduleGenerator = {
 
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
+        let validCohortAssignments = { ...(cohortAssignments || {}) };
+        if (Object.keys(validCohortAssignments).length === 0) {
+            const sorted = [...residents].sort((a, b) => {
+                if (a.level !== b.level) return a.level - b.level;
+                return a.name.localeCompare(b.name);
+            });
+            sorted.forEach((r, idx) => {
+                validCohortAssignments[r.id] = idx % 5;
+            });
+        }
+
         // 1. Initialize & Clinic Lock
         residents.forEach(r => {
             if (!newSchedule[r.id] || newSchedule[r.id].length !== TOTAL_WEEKS) {
                 newSchedule[r.id] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null, locked: false }));
             }
             const clinicType = r.clinicType || AssignmentType.CLINIC;
-            const cohort = cohortAssignments ? cohortAssignments[r.id] : 0;
+            const cohort = validCohortAssignments[r.id] ?? 0;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % COHORT_COUNT === cohort) {
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
@@ -69,7 +80,9 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 residents.filter(r => r.level === level).forEach(res => {
                     const cohort = cohortAssignments?.[res.id] ?? 0;
 
-                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target) {
+                    let safety = 0;
+                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target && safety < 10) {
+                        safety++;
                         let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
                         const dur = ROTATION_METADATA[req.type]?.duration || 4;
 
@@ -135,7 +148,9 @@ export const EducationFirstGenerator: ScheduleGenerator = {
 
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 // Interns
-                while (getAssignedCount(newSchedule, residents, w, type, 1) < (meta.minInterns || 0)) {
+                let safetyI = 0;
+                while (getAssignedCount(newSchedule, residents, w, type, 1) < (meta.minInterns || 0) && safetyI < 10) {
+                    safetyI++;
                     const pool = seededShuffle(residents.filter(r => {
                         const cohort = cohortAssignments?.[r.id] ?? 0;
                         return r.level === 1 && 
@@ -150,7 +165,9 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 }
 
                 // Seniors
-                while (getAssignedCount(newSchedule, residents, w, type, 2) < (meta.minSeniors || 0)) {
+                let safetyS = 0;
+                while (getAssignedCount(newSchedule, residents, w, type, 2) < (meta.minSeniors || 0) && safetyS < 10) {
+                    safetyS++;
                     const pool = seededShuffle(residents.filter(r => {
                         const cohort = cohortAssignments?.[r.id] ?? 0;
                         return r.level >= 2 && 
