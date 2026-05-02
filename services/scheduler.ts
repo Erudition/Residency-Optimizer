@@ -189,6 +189,28 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     if (clinicCount === 0) {
       violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}` });
     }
+
+    Object.values(AssignmentType).forEach(type => {
+      const meta = ROTATION_METADATA[type];
+      if (!meta) return;
+
+      const assignees = residents.filter(r => safeGrid[r.id]?.[week]?.assignment === type);
+      const interns = assignees.filter(r => r.level === 1).length;
+      const seniors = assignees.filter(r => r.level > 1).length;
+
+      if (interns < meta.minInterns) {
+        violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}` });
+      }
+      if (interns > meta.maxInterns) {
+        violations.push({ week, type, issue: `Max Interns (${meta.maxInterns}) exceeded: ${interns}` });
+      }
+      if (seniors < meta.minSeniors) {
+        violations.push({ week, type, issue: `Min Seniors (${meta.minSeniors}) unmet: ${seniors}` });
+      }
+      if (seniors > meta.maxSeniors) {
+        violations.push({ week, type, issue: `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}` });
+      }
+    });
   }
 
   return violations;
