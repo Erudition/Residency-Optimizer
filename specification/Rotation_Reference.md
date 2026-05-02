@@ -7,13 +7,21 @@ This document serves as the single source of truth for the classification, staff
 ## 1. CORE ROTATIONS
 Core rotations represent the foundational clinical experiences of the residency program. These rotations have strict daily staffing requirements that the scheduling engine must fulfill to maintain hospital operations and patient safety.
 
+## Wards Red
+*   **Setting:** Inpatient
+*   **Duration:** 4 weeks consecutive
+*   **Intensity Rating:** 4/5
+*   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
+*   **Methodist scheduling information:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors.
+
 ### Wards Red
 *   **Setting:** Inpatient
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 5
-*   **ACGME Targets:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors.
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
+*   **Methodist scheduling information:** Contributes to the core inpatient wards minimums.
 
 ### Wards Blue
 *   **Setting:** Inpatient
@@ -21,7 +29,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 4
-*   **ACGME Targets:** Contributes to the core inpatient wards minimums.
+*   **Methodist scheduling information:** Contributes to the core inpatient wards minimums.
 
 ### Met Wards (Metro Wards)
 *   **Setting:** Inpatient
@@ -29,7 +37,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 4
-*   **ACGME Targets:** Contributes to the core inpatient wards minimums.
+*   **Methodist scheduling information:** Contributes to the core inpatient wards minimums.
 
 ### ICU (Main)
 *   **Setting:** Critical Care
@@ -37,7 +45,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Intensity Rating:** 5/5
 *   **Staffing Requirements:** 4 Interns (Strict), 2 Seniors (Strict) (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 6
-*   **ACGME Targets:** 8 weeks required for Interns, 4 weeks required for Seniors.
+*   **Methodist scheduling information:** 8 weeks required for Interns, 4 weeks required for Seniors.
 
 ### Outpatient (CCIM & NIMA Continuity Clinics)
 *   **Setting:** Outpatient
@@ -45,7 +53,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 20
-*   **ACGME Targets:** Fulfills the 130-half-day longitudinal ambulatory continuity clinic ACGME mandate.
+*   **Methodist scheduling information:** Fulfills the 130-half-day longitudinal ambulatory continuity clinic ACGME mandate.
 
 ### Pulmonology / Procedural Service
 *   **Setting:** Inpatient
@@ -53,7 +61,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
-*   **ACGME Targets:** Required 2 weeks for Interns. Two weeks of supervision for seniors. Functions as a core procedural training service.
+*   **Methodist scheduling information:** Required 2 weeks for Interns. Two weeks of supervision for seniors. Functions as a core procedural training service.
 
 ### Emergency Medicine
 *   **Setting:** Inpatient (Emergency)
@@ -61,7 +69,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 1-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 4 weeks total. Restricted to PGY-2/PGY-3 residents.
+*   **Methodist scheduling information:** 4 weeks total. Restricted to PGY-2/PGY-3 residents.
 
 ### Night Float
 *   **Setting:** Inpatient
@@ -69,7 +77,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** Strict ACGME limits apply to night float frequency and consecutive duration.
+*   **Methodist scheduling information:** Strict ACGME limits apply to night float frequency and consecutive duration.
 
 ---
 
@@ -82,7 +90,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
-*   **ACGME Targets:** 2 weeks required for Interns; two weeks during PGY3.
+*   **Methodist scheduling information:** 2 weeks required for Interns; two weeks during PGY3.
 
 ### Infectious Disease (ID)
 *   **Setting:** Inpatient
@@ -90,7 +98,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 2 weeks required for Interns.
+*   **Methodist scheduling information:** 2 weeks required for Interns.
 
 ### Nephrology
 *   **Setting:** Inpatient
@@ -98,7 +106,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 2 weeks required for Interns.
+*   **Methodist scheduling information:** 2 weeks required for Interns.
 
 ### Heme/Onc
 *   **Setting:** Inpatient/Outpatient
@@ -106,7 +114,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 2 weeks required in PGY-3. 
+*   **Methodist scheduling information:** 2 weeks required in PGY-3. 
 
 ### Neurology
 *   **Setting:** Inpatient
@@ -114,7 +122,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
-*   **ACGME Targets:** 2 weeks required in PGY-2.
+*   **Methodist scheduling information:** 2 weeks required in PGY-2.
 
 ### Rheumatology
 *   **Setting:** Outpatient
@@ -122,7 +130,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
-*   **ACGME Targets:** 2 weeks required in PGY-2.
+*   **Methodist scheduling information:** 2 weeks required in PGY-2.
 
 ### Gastroenterology (GI)
 *   **Setting:** Outpatient
@@ -130,7 +138,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 2 weeks required in PGY-2.
+*   **Methodist scheduling information:** 2 weeks required in PGY-2.
 
 ### Addiction Medicine
 *   **Setting:** Inpatient
@@ -138,7 +146,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 4 weeks required in PGY-3.
+*   **Methodist scheduling information:** 4 weeks required in PGY-3.
 
 ### Endocrinology
 *   **Setting:** Outpatient
@@ -146,7 +154,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 2 weeks required in PGY-3.
+*   **Methodist scheduling information:** 2 weeks required in PGY-3.
 
 ### Geriatrics
 *   **Setting:** Outpatient
@@ -154,7 +162,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 4 weeks required in PGY-2.
+*   **Methodist scheduling information:** 4 weeks required in PGY-2.
 
 ### Palliative Care (HPC)
 *   **Setting:** Inpatient
@@ -162,7 +170,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **ACGME Targets:** 4 weeks required in PGY-3.
+*   **Methodist scheduling information:** 4 weeks required in PGY-3.
 
 ---
 
@@ -175,7 +183,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-20 Interns, 0-20 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 40
-*   **ACGME Targets:** Fills the ACGME mandate for individualized educational experiences.
+*   **Methodist scheduling information:** Fills the ACGME mandate for individualized educational experiences.
 
 ### Research
 *   **Setting:** Non-Clinical
