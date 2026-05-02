@@ -31,7 +31,17 @@ export const getRequirementCount = (row: ScheduleCell[], type: AssignmentType): 
 };
 
 export const getCumulativeRequirementCount = (residentId: string, currentYearRow: ScheduleCell[], type: AssignmentType, history?: ScheduleHistory): number => {
-    return getRequirementCount(currentYearRow, type);
+    let count = getRequirementCount(currentYearRow, type);
+    if (history) {
+        for (const year in history) {
+            const yearSchedule = history[year];
+            const row = yearSchedule[residentId];
+            if (row) {
+                count += getRequirementCount(row, type);
+            }
+        }
+    }
+    return count;
 };
 export const isAligned = (w: number, cohort: number, dur: number): boolean => {
     // COHORT_COUNT is 5

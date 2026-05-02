@@ -1,20 +1,31 @@
 
 import React from 'react';
-import { Resident, ScheduleGrid, AssignmentType } from '../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../types';
 import { ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement } from '../constants';
 import { CheckCircle2, XCircle, AlertCircle, ClipboardList, Info } from 'lucide-react';
 
 interface Props {
     residents: Resident[];
     schedule: ScheduleGrid;
+    history?: ScheduleHistory;
+    activeYear?: number;
     precalculatedViolations?: any[];
 }
 
-export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, precalculatedViolations }) => {
+export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear, precalculatedViolations }) => {
 
     const getResidentCount = (resId: string, type: AssignmentType) => {
-        const weeks = schedule[resId] || [];
-        return weeks.filter(c => c && fulfillsRequirement(c.assignment, type)).length;
+        let count = (schedule[resId] || []).filter(c => c && fulfillsRequirement(c.assignment, type)).length;
+        if (history && activeYear !== undefined) {
+            Object.entries(history).forEach(([yStr, grid]) => {
+                const y = parseInt(yStr);
+                if (y < activeYear) {
+                    const weeks = grid[resId] || [];
+                    count += weeks.filter(c => c && fulfillsRequirement(c.assignment, type)).length;
+                }
+            });
+        }
+        return count;
     };
 
     const renderGroup = (level: number) => {

@@ -144,3 +144,7 @@ To maintain year-independent data integrity, the application treats **Start Year
 *   **Current approach (stepping stone)**: The generator runs sequentially — Year 1 first, its output feeds as `historicalSchedules` into Year 2, then Year 3. Each year is a separate worker invocation. This satisfies cumulative ACGME requirement tracking but does not globally optimize across years.
 *   **Future goal**: A unified multi-year generator that accepts a partially-locked Year 1 (e.g., after residents fill in vacation days) and regenerates the remaining schedule across all future years simultaneously, satisfying cumulative 3-year constraints holistically. The `locked` flag infrastructure and `historicalSchedules` passthrough already exist as foundations for this.
 *   **Key use case**: After residents specify their vacation weeks for the current year, the system should recalculate remaining requirements and regenerate Years 2-3 to satisfy them — without disturbing locked assignments.
+
+## 20. Generator Seed Data & Testing Parity
+*   **Fresh Start Parity**: When testing the scheduling generators, tests must not manually seed cohort mappings. They must match the UI's behavior on fresh starts exactly, passing `{}` or empty cohort mappings to exercise the internal generator fallbacks properly and reliably.
+

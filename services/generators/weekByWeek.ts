@@ -97,7 +97,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
                 
                 seededShuffle(residents.filter(r => r.level === level)).forEach(res => {
-                    const cohort = cohortAssignments?.[res.id] ?? 0;
+                    const cohort = validCohortAssignments[res.id];
 
                     let safety = 0;
                     while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target && safety < 10) {
@@ -171,7 +171,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 while (getAssignedCount(newSchedule, residents, w, type, 1) < (meta.minInterns || 0) && safetyI < 10) {
                     safetyI++;
                     const pool = seededShuffle(residents.filter(r => {
-                        const cohort = cohortAssignments?.[r.id] ?? 0;
+                        const cohort = validCohortAssignments[r.id];
                         return r.level === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
@@ -188,7 +188,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 while (getAssignedCount(newSchedule, residents, w, type, 2) < (meta.minSeniors || 0) && safetyS < 10) {
                     safetyS++;
                     const pool = seededShuffle(residents.filter(r => {
-                        const cohort = cohortAssignments?.[r.id] ?? 0;
+                        const cohort = validCohortAssignments[r.id];
                         return r.level >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&

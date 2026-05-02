@@ -23,9 +23,6 @@ describe('Algorithm Stress Tests', () => {
             });
 
             const cohortAssignments: Record<string, number> = {};
-            residents.forEach((r, idx) => {
-                cohortAssignments[r.id] = idx % 5;
-            });
 
             let totalWeekly = 0;
             let totalReqs = 0;
