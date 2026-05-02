@@ -65,13 +65,12 @@ export const generateSchedule = async (
       try {
         let attemptTotalViolations = 0;
         let attemptUnderstaffing = 0;
-        let attemptFullData: Record<number, ScheduleGrid> = {};
+        let attemptFullData: Record<number, ScheduleGrid> = existing ? { ...existing } : {};
         let runningHistory = { ...historicalSchedules };
         let totalScore = 0;
 
         // Generate each year in sequence for this attempt
         for (let y = startYear; y < startYear + totalYears; y++) {
-          // Advance resident levels for this year
           const yearResidents = residents.filter(r => {
             const level = y - r.startYear + 1;
             return level >= 1 && level <= 3;
