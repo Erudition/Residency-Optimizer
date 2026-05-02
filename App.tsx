@@ -674,25 +674,18 @@ const App: React.FC = () => {
     if (selectedCell && activeScheduleId) {
       setSchedules(prev => prev.map(s => {
         if (s.id !== activeScheduleId) return s;
-        const copy = { ...s.data };
-        if (!copy[selectedCell.resId]) copy[selectedCell.resId] = [];
-        const updatedRow = [...copy[selectedCell.resId]];
+        const yearGrid = s.data?.[activeYear] || {};
+        const yearCopy = { ...yearGrid };
+        if (!yearCopy[selectedCell.resId]) yearCopy[selectedCell.resId] = [];
+        const updatedRow = [...yearCopy[selectedCell.resId]];
         updatedRow[selectedCell.week] = { assignment: type as any, locked: true };
-        copy[selectedCell.resId] = updatedRow;
+        yearCopy[selectedCell.resId] = updatedRow;
 
-        // Recalculate metrics for the edited schedule
+        const dataCopy = { ...s.data, [activeYear]: yearCopy };
+
         return {
           ...s,
-          data: copy,
-          metrics: {
-            stats: calculateStats(residents, copy),
-            violations: {
-              reqs: getRequirementViolations(residents, copy),
-              constraints: getWeeklyViolations(residents, copy)
-            },
-            fairness: calculateFairnessMetrics(residents, copy),
-            score: calculateScheduleScore(residents, copy, historySchedules)
-          }
+          data: dataCopy
         };
       }));
     }
