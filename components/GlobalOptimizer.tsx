@@ -206,8 +206,8 @@ export const GlobalOptimizer: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-light-1 flex flex-col items-center justify-center min-h-0">
-      <div className="max-w-4xl w-full">
+    <div className="flex-1 overflow-y-auto p-6 bg-light-1 flex flex-col items-center justify-center min-h-0">
+      <div className="max-w-full w-full px-2 md:px-6">
         <GenerationDashboard 
           data={convergenceData}
           maxTries={compParams.tries || 300}

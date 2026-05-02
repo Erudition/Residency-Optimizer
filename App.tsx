@@ -356,9 +356,48 @@ const App: React.FC = () => {
   }, [activeTab, activeSchedule?.isGenerating, convergenceData.length]);
 
 
+  // Derive cohort assignments for the selected year
+  const activeYearCohorts = useMemo(() => {
+    let yearCohorts = activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear];
+    if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
+      const activeResidentsForDefault = residents.filter(r => {
+        const level = activeYear - r.startYear + 1;
+        return level >= 1 && level <= 3;
+      }).sort((a, b) => {
+        const levelA = activeYear - a.startYear + 1;
+        const levelB = activeYear - b.startYear + 1;
+        if (levelA !== levelB) return levelA - levelB;
+        return a.name.localeCompare(b.name);
+      });
+      const defaultCohorts: Record<string, number> = {};
+      activeResidentsForDefault.forEach((r, idx) => {
+        defaultCohorts[r.id] = idx % 5;
+      });
+      yearCohorts = defaultCohorts;
+    }
+    return yearCohorts;
+  }, [activeSchedule, activeYear, historicalCohortsByYear, residents]);
+
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
-    const yearCohorts = activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year] || {};
+    let yearCohorts = year === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year]);
+    
+    if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
+      const activeResidents = residents.filter(r => {
+        const level = year - r.startYear + 1;
+        return level >= 1 && level <= 3;
+      }).sort((a, b) => {
+        const levelA = year - a.startYear + 1;
+        const levelB = year - b.startYear + 1;
+        if (levelA !== levelB) return levelA - levelB;
+        return a.name.localeCompare(b.name);
+      });
+      const defaultCohorts: Record<string, number> = {};
+      activeResidents.forEach((r, idx) => {
+        defaultCohorts[r.id] = idx % 5;
+      });
+      yearCohorts = defaultCohorts;
+    }
     
     return residents.filter(r => {
       const level = year - r.startYear + 1;
@@ -381,7 +420,7 @@ const App: React.FC = () => {
   };
 
   // Derive active residents for the selected year
-  const activeResidents = useMemo(() => getResidentsForYear(activeYear), [residents, activeYear, residentSortOrder, activeSchedule, historicalCohortsByYear]);
+  const activeResidents = useMemo(() => getResidentsForYear(activeYear), [residents, activeYear, residentSortOrder, activeSchedule, historicalCohortsByYear, activeYearCohorts]);
 
   const currentGrid = useMemo(() => {
     if (activeScheduleId === 'all' && !isHistoricalYear) return {};
@@ -674,25 +713,18 @@ const App: React.FC = () => {
     if (selectedCell && activeScheduleId) {
       setSchedules(prev => prev.map(s => {
         if (s.id !== activeScheduleId) return s;
-        const copy = { ...s.data };
-        if (!copy[selectedCell.resId]) copy[selectedCell.resId] = [];
-        const updatedRow = [...copy[selectedCell.resId]];
+        const yearGrid = s.data?.[activeYear] || {};
+        const yearCopy = { ...yearGrid };
+        if (!yearCopy[selectedCell.resId]) yearCopy[selectedCell.resId] = [];
+        const updatedRow = [...yearCopy[selectedCell.resId]];
         updatedRow[selectedCell.week] = { assignment: type as any, locked: true };
-        copy[selectedCell.resId] = updatedRow;
+        yearCopy[selectedCell.resId] = updatedRow;
 
-        // Recalculate metrics for the edited schedule
+        const dataCopy = { ...s.data, [activeYear]: yearCopy };
+
         return {
           ...s,
-          data: copy,
-          metrics: {
-            stats: calculateStats(residents, copy),
-            violations: {
-              reqs: getRequirementViolations(residents, copy),
-              constraints: getWeeklyViolations(residents, copy)
-            },
-            fairness: calculateFairnessMetrics(residents, copy),
-            score: calculateScheduleScore(residents, copy, historySchedules)
-          }
+          data: dataCopy
         };
       }));
     }
@@ -931,8 +963,8 @@ const App: React.FC = () => {
 
   const renderGenerationDashboard = () => {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
-        <div className="w-full max-w-4xl">
+      <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-6">
+        <div className="w-full max-w-full px-2 md:px-6">
           {convergenceData.length > 0 ? (
             <GenerationDashboard 
               data={convergenceData}
@@ -1143,8 +1175,8 @@ const App: React.FC = () => {
               />
             </div>
           ) : activeSchedule?.isGenerating ? (
-            <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
-              <div className="w-full max-w-4xl">
+            <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-6">
+              <div className="w-full max-w-full px-2 md:px-6">
             {/* Multiple charts for multi-year generation */}
               {convergenceData.length > 0 ? (
                 <GenerationDashboard 
@@ -1219,12 +1251,11 @@ const App: React.FC = () => {
 
                     <div />
                   </div>
-                  
-                  <ScheduleTable
+                          <ScheduleTable
                     residents={activeResidents}
                     schedule={currentGrid}
                     startYear={activeSchedule?.isHistory ? activeSchedule.startYear : activeYear}
-                    cohortAssignments={activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {}}
+                    cohortAssignments={activeYearCohorts}
                     onCellClick={handleCellClick}
                     onLockWeek={handleLockWeek}
                     onLockResident={handleLockResident}
@@ -1241,7 +1272,7 @@ const App: React.FC = () => {
                   <CohortKanban
                     residents={activeResidents}
                     activeYear={activeYear}
-                    cohortAssignments={activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {}}
+                    cohortAssignments={activeYearCohorts}
                     onAssignCohort={handleAssignCohort}
                   />
                 </div>

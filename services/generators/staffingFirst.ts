@@ -29,13 +29,24 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
+        let validCohortAssignments = { ...(cohortAssignments || {}) };
+        if (Object.keys(validCohortAssignments).length === 0) {
+            const sorted = [...residents].sort((a, b) => {
+                if (a.level !== b.level) return a.level - b.level;
+                return a.name.localeCompare(b.name);
+            });
+            sorted.forEach((r, idx) => {
+                validCohortAssignments[r.id] = idx % 5;
+            });
+        }
+
         // 1. Initialize & Clinic Lock
         residents.forEach(r => {
             if (!newSchedule[r.id] || newSchedule[r.id].length !== TOTAL_WEEKS) {
                 newSchedule[r.id] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null, locked: false }));
             }
             const clinicType = r.clinicType || AssignmentType.CLINIC;
-            const cohort = cohortAssignments ? cohortAssignments[r.id] : 0;
+            const cohort = validCohortAssignments[r.id] ?? 0;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % COHORT_COUNT === cohort) {
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
@@ -69,7 +80,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 let safety = 0;
                 while (getAssignedCount(newSchedule, residents, Math.max(0, w), type, 1) < (meta.minInterns || 0) && safety < 20) {
                     const pool = seededShuffle(residents.filter(r => {
-                        const cohort = cohortAssignments?.[r.id] ?? 0;
+                        const cohort = validCohortAssignments[r.id] ?? 0;
                         return r.level === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
@@ -86,7 +97,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 safety = 0;
                 while (getAssignedCount(newSchedule, residents, Math.max(0, w), type, 2) < (meta.minSeniors || 0) && safety < 20) {
                     const pool = seededShuffle(residents.filter(r => {
-                        const cohort = cohortAssignments?.[r.id] ?? 0;
+                        const cohort = validCohortAssignments[r.id] ?? 0;
                         return r.level >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
@@ -115,7 +126,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 let safety = 0;
                 while (getAssignedCount(newSchedule, residents, Math.max(0, w), type, 1) < maxI && safety < 20) {
                     const pool = seededShuffle(residents.filter(r => {
-                        const cohort = cohortAssignments?.[r.id] ?? 0;
+                        const cohort = validCohortAssignments[r.id] ?? 0;
                         const target = meta.targetIntern || 0;
                         return r.level === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
@@ -134,7 +145,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 safety = 0;
                 while (getAssignedCount(newSchedule, residents, Math.max(0, w), type, 2) < maxS && safety < 20) {
                     const pool = seededShuffle(residents.filter(r => {
-                        const cohort = cohortAssignments?.[r.id] ?? 0;
+                        const cohort = validCohortAssignments[r.id] ?? 0;
                         const target = r.level === 2 ? (meta.targetPGY2 || meta.targetSenior || 0) : (meta.targetPGY3 || meta.targetSenior || 0);
                         return r.level >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
@@ -160,10 +171,12 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
             reqs.forEach(req => {
                 const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
-                const cohort = cohortAssignments?.[res.id] ?? 0;
+                const cohort = validCohortAssignments[res.id] ?? 0;
                 const dur = ROTATION_METADATA[req.type]?.duration || 4;
 
-                while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target) {
+                let safety = 0;
+                while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target && safety < 10) {
+                    safety++;
                     let found = false;
                     const possibleWeeks = seededShuffle(Array.from({length: TOTAL_WEEKS - dur + 1}, (_, i) => i));
 
