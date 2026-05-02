@@ -117,10 +117,10 @@ export const ASSIGNMENT_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.HF]: 'bg-red/20 text-red-2-dark border-red/40',
     [AssignmentType.AMCS_CONSULTS]: 'bg-pink/40 text-pink-dark border-pink',
     [AssignmentType.ENT]: 'bg-teal-2/50 text-teal-2-dark border-teal-2',
+    [AssignmentType.PMNR]: 'bg-pale-blue text-pale-blue-dark border-pale-blue-dark',
     [AssignmentType.NIMA_CLINIC]: 'bg-light-yellow/30 text-light-yellow-dark border-light-yellow',
     [AssignmentType.JR_HOSPITALIST]: 'bg-light-purple/50 text-purple-2 border-light-purple',
 };
-
 export const ASSIGNMENT_HEX_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.WARDS_RED]: '#DF6133',
     [AssignmentType.WARDS_BLUE]: '#2F80FA',
@@ -150,10 +150,10 @@ export const ASSIGNMENT_HEX_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.HF]: '#F87A4C',
     [AssignmentType.AMCS_CONSULTS]: '#E34C6F',
     [AssignmentType.ENT]: '#6BC0B3',
+    [AssignmentType.PMNR]: '#9FC4FF',
     [AssignmentType.NIMA_CLINIC]: '#F7A501',
     [AssignmentType.JR_HOSPITALIST]: '#9FC4FF',
 };
-
 export const ASSIGNMENT_LABELS: Record<AssignmentType, string> = {
     [AssignmentType.WARDS_RED]: 'Wards Red',
     [AssignmentType.WARDS_BLUE]: 'Wards Blue',
@@ -183,10 +183,10 @@ export const ASSIGNMENT_LABELS: Record<AssignmentType, string> = {
     [AssignmentType.HF]: 'Heart Failure',
     [AssignmentType.AMCS_CONSULTS]: 'AMCS Consults',
     [AssignmentType.ENT]: 'Otolaryngology',
+    [AssignmentType.PMNR]: 'Physical Medicine & Rehab',
     [AssignmentType.NIMA_CLINIC]: 'NIMA (Clinic)',
     [AssignmentType.JR_HOSPITALIST]: 'Junior Hospitalist',
 };
-
 export const ASSIGNMENT_ABBREVIATIONS: Record<AssignmentType, string> = {
     [AssignmentType.WARDS_RED]: 'W-RED',
     [AssignmentType.WARDS_BLUE]: 'W-BLUE',
@@ -216,10 +216,10 @@ export const ASSIGNMENT_ABBREVIATIONS: Record<AssignmentType, string> = {
     [AssignmentType.HF]: 'HF',
     [AssignmentType.AMCS_CONSULTS]: 'AMCS',
     [AssignmentType.ENT]: 'ENT',
+    [AssignmentType.PMNR]: 'PMNR',
     [AssignmentType.NIMA_CLINIC]: 'NIMA',
     [AssignmentType.JR_HOSPITALIST]: 'JH',
 };
-
 // Configuration of each rotation's constraints and metadata
 export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     [AssignmentType.MICU]: {
@@ -364,6 +364,11 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 1, minSeniors: 0, maxSeniors: 1,
     },
+    [AssignmentType.PMNR]: {
+        type: AssignmentType.PMNR, label: 'PMNR',
+        intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
+        minInterns: 0, maxInterns: 1, minSeniors: 0, maxSeniors: 1,
+    },
     [AssignmentType.RESEARCH]: {
         type: AssignmentType.RESEARCH, label: 'Research',
         intensity: 1, setting: ClinicalSetting.NON_CLINICAL, duration: 2,
@@ -460,7 +465,7 @@ export const REQUIRED_TYPES = [
 ];
 
 export const ELECTIVE_TYPES = [
-    AssignmentType.ELECTIVE, AssignmentType.RESEARCH, AssignmentType.HF, AssignmentType.CCMA, AssignmentType.ENT
+    AssignmentType.ELECTIVE, AssignmentType.RESEARCH, AssignmentType.HF, AssignmentType.CCMA, AssignmentType.ENT, AssignmentType.PMNR
 ];
 
 export const VACATION_TYPE = AssignmentType.VACATION;

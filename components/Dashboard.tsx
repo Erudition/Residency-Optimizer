@@ -47,6 +47,7 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
       [AssignmentType.HF]: s[AssignmentType.HF] || 0,
       [AssignmentType.AMCS_CONSULTS]: s[AssignmentType.AMCS_CONSULTS] || 0,
       [AssignmentType.ENT]: s[AssignmentType.ENT] || 0,
+      [AssignmentType.PMNR]: s[AssignmentType.PMNR] || 0,
       [AssignmentType.JR_HOSPITALIST]: s[AssignmentType.JR_HOSPITALIST] || 0,
     };
   }), [residents, stats]);
@@ -104,6 +105,7 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
             <Bar isAnimationActive={false} dataKey={AssignmentType.HF} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.HF]} name="Heart Failure" />
             <Bar isAnimationActive={false} dataKey={AssignmentType.AMCS_CONSULTS} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.AMCS_CONSULTS]} name="AMCS Consults" />
             <Bar isAnimationActive={false} dataKey={AssignmentType.ENT} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ENT]} name="ENT" />
+            <Bar isAnimationActive={false} dataKey={AssignmentType.PMNR} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.PMNR]} name="PMNR" />
 
             <Bar isAnimationActive={false} dataKey={AssignmentType.ELECTIVE} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.ELECTIVE]} name="Elective" />
             <Bar isAnimationActive={false} dataKey={AssignmentType.VACATION} stackId="a" fill={ASSIGNMENT_HEX_COLORS[AssignmentType.VACATION]} name="Vacation" />
