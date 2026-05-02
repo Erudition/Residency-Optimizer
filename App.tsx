@@ -963,8 +963,8 @@ const App: React.FC = () => {
 
   const renderGenerationDashboard = () => {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
-        <div className="w-full max-w-4xl">
+      <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-6">
+        <div className="w-full max-w-full px-2 md:px-6">
           {convergenceData.length > 0 ? (
             <GenerationDashboard 
               data={convergenceData}
@@ -1175,8 +1175,8 @@ const App: React.FC = () => {
               />
             </div>
           ) : activeSchedule?.isGenerating ? (
-            <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-12">
-              <div className="w-full max-w-4xl">
+            <div className="flex-1 flex flex-col items-center justify-center bg-light-1/50 p-6">
+              <div className="w-full max-w-full px-2 md:px-6">
             {/* Multiple charts for multi-year generation */}
               {convergenceData.length > 0 ? (
                 <GenerationDashboard 

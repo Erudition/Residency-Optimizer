@@ -52,7 +52,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
   }, [data]);
 
   return (
-    <div className="bg-white rounded-3xl shadow-xl p-8 border border-light-5 flex flex-col gap-6 h-[550px]">
+    <div className="bg-white rounded-3xl shadow-xl p-8 border border-light-5 flex flex-col gap-6 h-[650px]">
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
