@@ -46,3 +46,15 @@ The 4+1 schedule relies on dividing the class into 5 equal cohorts. However, the
 
 ### Impact:
 This creates "Heavy Weeks" and "Light Weeks" where the supply of available residents fluctuates by up to 3 residents. In a "Light Week" with multiple seniors in clinic, it becomes mathematically impossible to fill all minimum core staffing slots (Wards + ICU + NF) without pulling from flexible electives, often violating educational targets.
+
+## 5. Cardiology (CARDS) Senior Staffing Impossibility
+The current curriculum rules require PGY-3 residents to rotate through Cardiology, but weekly staffing rules prevent senior residents from rotating.
+
+### The Math:
+*   **Curriculum Requirement (PGY-3)**: 8 residents × 2 weeks = **16 senior-weeks**.
+*   **Staffing Limits (CARDS)**: `maxSeniors: 0` = **0 senior-weeks available**.
+*   **Deficit**: **16 senior-weeks**.
+
+### Impact:
+*   Because seniors are restricted from rotating through Cardiology (`maxSeniors: 0`), there is no way to meet the PGY-3 curriculum requirement of 16 senior-weeks in Cardiology without generating weekly violations.
+

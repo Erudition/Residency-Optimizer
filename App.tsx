@@ -251,7 +251,7 @@ const App: React.FC = () => {
     { id: 'experimental', name: 'Staffing First', description: 'Staffing-centric optimization. Prioritizes 1-week slots to guarantee hospital minimums are met at all costs.', enabled: true, color: '#8b5cf6' },
     { id: 'strict', name: 'Education First', description: 'Objective-centric optimization. Prioritizes PGY educational targets with a residual capacity guard to ensure hospital coverage.', enabled: true, color: '#10b981' },
     { id: 'greedy', name: 'Week By Week', description: 'Staffing-centric generator. Iterates through each week and fills hospital gaps using first-available residents.', enabled: true, color: '#f59e0b' },
-
+    { id: 'exact', name: 'Zero Violations Exact Solver', description: 'Holistic multi-year solver using Simulated Annealing. Prioritizes 0 violations.', enabled: true, color: '#ec4899' }
   ]);
 
   const [algoStats, setAlgoStats] = useState<AlgorithmStats[]>(() => {
@@ -279,12 +279,12 @@ const App: React.FC = () => {
     const loaded = loadState('rsp_comp_params_v1', {
       tries: 100,
       priority: CompetitionPriority.BEST_SCORE,
-      algorithmIds: ['stochastic', 'experimental', 'strict'],
+      algorithmIds: ['stochastic', 'experimental', 'strict', 'exact'],
       topN: 10,
       multiYear: 3
     });
 
-    const validIds = ['stochastic', 'experimental', 'strict', 'greedy'];
+    const validIds = ['stochastic', 'experimental', 'strict', 'greedy', 'exact'];
     return {
       ...loaded,
       topN: loaded.topN || 10,
