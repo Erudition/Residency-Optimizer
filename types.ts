@@ -55,9 +55,9 @@ export enum AssignmentType {
   CCMA = 'CCMA',
   HF = 'Heart Failure',
   ENT = 'ENT',
+  PMNR = 'PMNR',
   NIMA_CLINIC = 'NIMA (Clinic)',
 }
-
 export interface ScheduleCell {
   assignment: AssignmentType;
   locked: boolean; // If manually set, don't overwrite
