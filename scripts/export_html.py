@@ -1,7 +1,7 @@
 import markdown
 import os
 
-with open("specification/MHS Curriculum Proposal", "r", encoding="utf-8") as f:
+with open("specification/MHS Curriculum Proposal.md", "r", encoding="utf-8") as f:
     text = f.read()
 
 html_body = markdown.markdown(text, extensions=['tables'])
