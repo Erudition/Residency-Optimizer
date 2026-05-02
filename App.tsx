@@ -442,9 +442,9 @@ const App: React.FC = () => {
     return {
       stats: calculateStats(activeResidents, currentGrid),
       violations: {
-        reqs: getRequirementViolations(activeResidents, currentGrid, fullHistory),
+        reqs: getRequirementViolations(activeResidents, currentGrid, fullHistory, activeYear),
         constraints: getWeeklyViolations(activeResidents, currentGrid),
-        audit: getAuditViolations(activeResidents, fullHistory)
+        audit: getAuditViolations(activeResidents, fullHistory, activeYear)
       },
       fairness: calculateFairnessMetrics(activeResidents, currentGrid)
     };

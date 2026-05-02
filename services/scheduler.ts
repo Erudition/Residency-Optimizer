@@ -153,13 +153,24 @@ export const calculateStats = (residents: Resident[], schedule: ScheduleGrid): S
   return stats;
 };
 
-export const getRequirementViolations = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): RequirementViolation[] => {
+export const getRequirementViolations = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory, activeYear?: number): RequirementViolation[] => {
   const violations: RequirementViolation[] = [];
   const safeGrid = schedule || {};
+  
+  const filteredHistory: ScheduleHistory = {};
+  if (historicalSchedules) {
+    Object.entries(historicalSchedules).forEach(([yStr, grid]) => {
+      const y = parseInt(yStr);
+      if (activeYear === undefined || y < activeYear) {
+        filteredHistory[y] = grid;
+      }
+    });
+  }
+
   residents.forEach(r => {
     const reqs = REQUIREMENTS[r.level] || [];
     reqs.forEach(req => {
-      const count = getCumulativeRequirementCount(r.id, safeGrid[r.id] || [], req.type, historicalSchedules);
+      const count = getCumulativeRequirementCount(r.id, safeGrid[r.id] || [], req.type, filteredHistory);
       if (count < req.target) {
         violations.push({ residentId: r.id, type: req.type, target: req.target, actual: count });
       }
@@ -167,6 +178,7 @@ export const getRequirementViolations = (residents: Resident[], schedule: Schedu
   });
   return violations;
 };
+
 
 export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid): WeeklyViolation[] => {
   const violations: WeeklyViolation[] = [];
@@ -183,7 +195,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   return violations;
 };
 
-export const getAuditViolations = (residents: Resident[], history: ScheduleHistory): number => {
+export const getAuditViolations = (residents: Resident[], history: ScheduleHistory, activeYear?: number): number => {
     let violationCount = 0;
 
     residents.forEach(r => {
@@ -191,7 +203,10 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
         let criticalCareCore = 0;
         let nightFloat = 0;
 
-        Object.entries(history).forEach(([_, grid]) => {
+        Object.entries(history).forEach(([yStr, grid]) => {
+            const y = parseInt(yStr);
+            if (activeYear !== undefined && y > activeYear) return;
+
             const weeks = grid[r.id] || [];
             weeks.forEach(c => {
                 if (!c || !c.assignment) return;
@@ -214,6 +229,7 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
 
     return violationCount;
 };
+
 
 
 const calculateSD = (values: number[], mean: number): number => {
