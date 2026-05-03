@@ -217,7 +217,7 @@ export const oklchToHex = (L: number, C: number, H: number): string => {
 export const getAssignmentColor = (assign: AssignmentType, isPast = false): string => {
     const hue = ASSIGNMENT_HUES[assign] ?? 180;
     const intensity = getIntensity(assign);
-    const chroma = intensity === 0 ? 0.02 : 0.04 + intensity * 0.025;
+    const chroma = intensity === 0 ? 0.015 : 0.01 + intensity * 0.038;
     const lightness = isPast ? 0.62 : 0.84;
     return `oklch(${lightness} ${chroma} ${hue})`;
 };
@@ -226,7 +226,7 @@ export const ASSIGNMENT_HEX_COLORS: Record<AssignmentType, string> = {} as any;
 Object.values(AssignmentType).forEach(type => {
     const hue = ASSIGNMENT_HUES[type] ?? 180;
     const intensity = getIntensity(type);
-    const chroma = intensity === 0 ? 0.02 : 0.04 + intensity * 0.025;
+    const chroma = intensity === 0 ? 0.015 : 0.01 + intensity * 0.038;
     ASSIGNMENT_HEX_COLORS[type] = oklchToHex(0.84, chroma, hue);
 });
 export const ASSIGNMENT_LABELS: Record<AssignmentType, string> = {
