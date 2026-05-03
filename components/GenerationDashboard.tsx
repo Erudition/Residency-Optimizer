@@ -163,8 +163,16 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {algorithms.map((algo, i) => {
           const isCanceled = canceledIds.has(algo.id);
-          const currentBest = data.length > 0 ? data[data.length - 1][i] : -Infinity;
-          const isWinner = currentBest === bestScore && currentBest !== -Infinity;
+          
+          let currentBest: number | null = -Infinity;
+          for (let d = data.length - 1; d >= 0; d--) {
+            if (data[d][i] !== null) {
+              currentBest = data[d][i];
+              break;
+            }
+          }
+          
+          const isWinner = currentBest === bestScore && currentBest !== -Infinity && currentBest !== null;
 
           return (
             <div 
