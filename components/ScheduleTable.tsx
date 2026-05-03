@@ -182,33 +182,24 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     return (
                       <td
                         key={`${resident.id}-${w}`}
-                        className={`border-b border-light-3 border-r text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-light-2'} p-1`}
-                        onClick={() => onCellClick(resident.id, idx)}
-                        onDoubleClick={() => onToggleLock(resident.id, idx)}
-                        onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
-                        onMouseLeave={handleMouseLeave}
-                        title="Click to edit, Double-click to toggle lock"
+                        className="border-b border-light-3 border-r p-1 text-center select-none relative"
                       >
-                        <div className={`
-                            w-full flex items-center justify-center text-xs font-medium transition-all
-                            ${colorClass}
-                            h-10 rounded px-1
-                            ${cell?.locked ? 'ring-2 ring-gray-600' : ''}
-                         `}>
+                        <button
+                          className={`${cell?.locked ? 'lemon-slot-locked' : 'lemon-slot'} ${colorClass}`}
+                          onClick={() => onCellClick(resident.id, idx)}
+                          onDoubleClick={() => onToggleLock(resident.id, idx)}
+                          onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
+                          onMouseLeave={handleMouseLeave}
+                          title="Click to edit, Double-click to toggle lock"
+                        >
                           {assign ? (
-                            <>
-                              <span className="truncate w-full block">
-                                {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
-                              </span>
-                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-70 text-primary" />}
-                            </>
+                            <span className="truncate w-full block">
+                              {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
+                            </span>
                           ) : (
-                            <>
-                              <span className="text-light-5">-</span>
-                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-40 text-muted" />}
-                            </>
+                            <span className="text-light-5">-</span>
                           )}
-                        </div>
+                        </button>
                       </td>
                     );
                   })}
