@@ -260,23 +260,23 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
        {/* Portal-like Tooltip */}
       {tooltip && tooltip.anchorRect && (
         <div
-          className="fixed z-[150] bg-black text-white text-xs rounded-lg py-2.5 px-3.5 shadow-xl pointer-events-none transform -translate-y-full flex flex-col gap-1 w-[420px] select-none animate-in fade-in zoom-in-95 duration-75"
+          className="fixed z-[150] backdrop-blur-md bg-white/85 text-black text-xs rounded-xl py-2.5 px-3.5 shadow-2xl pointer-events-none transform -translate-y-full flex flex-col gap-1 w-[420px] select-none border border-light-4/60 animate-in fade-in zoom-in-95 duration-75"
           style={{
             left: `${left}px`,
             top: `${top}px`,
           }}
         >
           <div className="flex justify-between items-start gap-2">
-            <span className="font-bold text-sm text-white truncate leading-tight select-none">
+            <span className="font-bold text-sm text-black truncate leading-tight select-none">
               {tooltip.assignmentName}
             </span>
-            <span className="text-light-5 text-[11px] font-medium shrink-0 bg-white/10 px-1.5 py-0.5 rounded select-none">
+            <span className="text-muted text-[11px] font-medium shrink-0 bg-light-1/80 border border-light-4/50 px-1.5 py-0.5 rounded select-none">
               {tooltip.progress}
             </span>
           </div>
 
           {tooltip.peers.length > 0 && (
-            <div className="border-t border-white/15 pt-2 mt-1">
+            <div className="border-t border-light-3 pt-2 mt-1">
               <div className="text-muted mb-1 text-[10px] uppercase font-bold tracking-wider select-none">
                 Coworkers on shift
               </div>
@@ -291,7 +291,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {pgyGroup.map(r => (
-                          <span key={r.id} className="bg-white/10 px-2 py-0.5 rounded text-[11px] font-medium text-white/90 select-none">
+                          <span key={r.id} className="bg-light-1/80 border border-light-4/50 text-black px-2 py-0.5 rounded text-[11px] font-medium select-none">
                             {r.name}
                           </span>
                         ))}
@@ -305,7 +305,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
 
           {/* Arrow */}
           <div
-            className="absolute -bottom-1 w-2.5 h-2.5 bg-black transform rotate-45"
+            className="absolute -bottom-1 w-2.5 h-2.5 bg-white/85 backdrop-blur-md border-b border-r border-light-4/60 transform rotate-45"
             style={{
               left: `${arrowLeft}px`,
               marginLeft: '-5px',
