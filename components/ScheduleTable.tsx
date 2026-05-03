@@ -136,7 +136,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                 <th
                   key={w}
                   onDoubleClick={() => onLockWeek(idx)}
-                  className={`border-b border-r border-light-5 p-1 min-w-[80px] text-center bg-light-1 cursor-pointer hover:bg-light-blue/20 transition-colors ${isPastWeek(w, startYear) ? 'opacity-40 grayscale-[0.5]' : ''}`}
+                  className="border-b border-r border-light-5 p-1 min-w-[80px] text-center bg-light-1 cursor-pointer hover:bg-light-blue/20 transition-colors"
                   title="Double-click to toggle lock for this entire week"
                 >
                   <div className="flex flex-col items-center">
@@ -182,30 +182,30 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     return (
                       <td
                         key={`${resident.id}-${w}`}
-                        className={`border-b border-light-3 border-r text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-light-2'} ${isPast ? 'bg-light-1/50 p-0' : 'p-1'}`}
+                        className={`border-b border-light-3 border-r text-center cursor-pointer select-none relative ${assign ? '' : 'hover:bg-light-2'} p-1`}
                         onClick={() => onCellClick(resident.id, idx)}
                         onDoubleClick={() => onToggleLock(resident.id, idx)}
                         onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
                         onMouseLeave={handleMouseLeave}
-                        title={isPast ? "Historical assignment (locked)" : "Click to edit, Double-click to toggle lock"}
+                        title="Click to edit, Double-click to toggle lock"
                       >
                         <div className={`
                             w-full flex items-center justify-center text-xs font-medium transition-all
                             ${colorClass}
-                            ${isPast ? 'h-full opacity-30 grayscale-[0.8] border-none' : 'h-10 rounded px-1'}
-                            ${cell?.locked && !isPast ? 'ring-2 ring-gray-600' : ''}
+                            h-10 rounded px-1
+                            ${cell?.locked ? 'ring-2 ring-gray-600' : ''}
                          `}>
                           {assign ? (
                             <>
                               <span className="truncate w-full block">
                                 {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
                               </span>
-                              {cell?.locked && !isPast && <Lock size={10} className="absolute top-1 right-1 opacity-70 text-primary" />}
+                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-70 text-primary" />}
                             </>
                           ) : (
                             <>
                               <span className="text-light-5">-</span>
-                              {cell?.locked && !isPast && <Lock size={10} className="absolute top-1 right-1 opacity-40 text-muted" />}
+                              {cell?.locked && <Lock size={10} className="absolute top-1 right-1 opacity-40 text-muted" />}
                             </>
                           )}
                         </div>

@@ -7,21 +7,13 @@ This document serves as the single source of truth for the classification, staff
 ## 1. CORE ROTATIONS
 Core rotations represent the foundational clinical experiences of the residency program. These rotations have strict daily staffing requirements that the scheduling engine must fulfill to maintain hospital operations and patient safety.
 
-## Wards Red
-*   **Setting:** Inpatient
-*   **Duration:** 4 weeks consecutive
-*   **Intensity Rating:** 4/5
-*   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
-*   **Methodist scheduling information:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors.
-
 ### Wards Red
 *   **Setting:** Inpatient
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 4
-*   **Methodist scheduling information:** Contributes to the core inpatient wards minimums.
+*   **Methodist scheduling information:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors. Contributes to the core inpatient wards minimums.
 
 ### Wards Blue
 *   **Setting:** Inpatient
