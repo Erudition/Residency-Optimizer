@@ -13,6 +13,7 @@ interface Props {
 }
 
 export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
+  const [isPromoting, setIsPromoting] = React.useState(false);
   const startTimeRef = React.useRef<number>(Date.now());
   
   const eta = useMemo(() => {
@@ -76,10 +77,21 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
             Abort
           </button>
           <button 
-            onClick={onSelectWinners} 
-            className="px-6 py-2.5 rounded-xl bg-blue text-white font-bold shadow-lg shadow-blue/20 hover:bg-blue-dark transition-all active:scale-95 text-sm"
+            onClick={() => {
+              setIsPromoting(true);
+              onSelectWinners();
+            }}
+            disabled={isPromoting}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold shadow-lg transition-all active:scale-95 text-sm ${isPromoting ? 'bg-light-4 text-muted cursor-not-allowed' : 'bg-blue text-white shadow-blue/20 hover:bg-blue-dark'}`}
           >
-            Promote Best Now
+            {isPromoting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
+                Promoting Best...
+              </>
+            ) : (
+              'Promote Best Now'
+            )}
           </button>
         </div>
       </div>
