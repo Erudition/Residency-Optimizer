@@ -1,6 +1,8 @@
 # Schedule Grid
 - slots should use posthog-lemon-style colored buttons in each cell, with locked cells having the depressed style (button disabled) and unlocked cells being normal pressable buttons
+- all lemon-slot borders and shadows should be derived from the slot background color using CSS relative colors (e.g., oklch(from var(--slot-bg) l c h)) for premium visual fidelity
 - Ensure double-click-to-lock works on week headers (locks entire column) and resident names in the list (locks entire row)
+
 
 # ACGME Audit Tab
 - Must have a red badge next to tab label showing total number of violations - number must exactly match the total in that tab
