@@ -1,8 +1,7 @@
-
 import React, { useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting, ScheduleHistory } from '../types';
 import { ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, ACGME_TYPES, MHS_TYPES } from '../constants';
-import { CheckCircle2, XCircle, AlertCircle, ClipboardList, Info, ShieldCheck, ShieldAlert, Clock, AlertTriangle, Users, Calendar } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, ClipboardList, Info, ShieldCheck, ShieldAlert, Clock, AlertTriangle, Users, Calendar, Building2, Hospital } from 'lucide-react';
 
 interface Props {
     residents: Resident[];
@@ -12,6 +11,60 @@ interface Props {
     precalculatedViolations?: any[];
     mode: 'acgme' | 'mhs';
 }
+
+const StackedProgressBar = ({ 
+    yearData, 
+    target, 
+    colorClass,
+    totalValue,
+    isCap = false
+}: { 
+    yearData: Record<number, number>, 
+    target: number, 
+    colorClass: string,
+    totalValue: number,
+    isCap?: boolean
+}) => {
+    const isViolation = isCap ? totalValue > target : totalValue < target * 0.8; 
+
+    return (
+        <div className="w-full flex flex-col gap-1">
+            <div className="flex justify-between text-[10px] font-bold tracking-tight">
+                <span className="text-muted flex items-center gap-1">
+                    <span className={`${isViolation ? 'text-red-600 font-black' : 'text-primary font-bold'} text-xs`}>{totalValue}</span>
+                    <span className="text-muted">/ {target}w</span>
+                </span>
+                {isCap && totalValue > target && <span className="text-red font-black text-[9px] animate-pulse">! OVER CAP</span>}
+            </div>
+            
+            <div className="flex flex-col gap-0.5">
+                {[1, 2, 3].map(pgy => {
+                    const value = yearData[pgy] || 0;
+                    const yearlyTarget = target / 3;
+                    const width = Math.min(100, (value / yearlyTarget) * 100);
+                    const opacity = pgy === 1 ? 'opacity-40' : pgy === 2 ? 'opacity-70' : 'opacity-100';
+                    
+                    return (
+                        <div key={pgy} className="h-1 w-full bg-light-3 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full transition-all duration-500 ${colorClass} ${opacity}`}
+                                style={{ width: `${width}%` }}
+                                title={`PGY-${pgy}: ${value}w / ${yearlyTarget.toFixed(1)}w`}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="h-2 w-full bg-light-2 rounded-full overflow-hidden border border-light-5 mt-1">
+                <div
+                    className={`h-full transition-all duration-500 ${colorClass}`}
+                    style={{ width: `${Math.min(100, (totalValue / target) * 100)}%` }}
+                />
+            </div>
+        </div>
+    );
+};
 
 export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear, precalculatedViolations, mode }) => {
 
@@ -30,13 +83,47 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     };
 
     const auditData = useMemo(() => {
-        if (mode !== 'mhs' || activeYear === undefined || !history) return [];
+        if (!history || activeYear === undefined) return [];
         return residents.map(r => {
-            const activePgy = activeYear - r.startYear + 1;
+            const currentPgy = activeYear - r.startYear + 1;
             const currentYearGrid = history[activeYear] || {};
             const activeWeeks = currentYearGrid[r.id] || [];
 
-            const isPGY2 = activePgy === 2;
+            const pgyData: Record<number, { outpatient: number, inpatient: number, criticalCare: number, nightFloat: number }> = {
+                1: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
+                2: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
+                3: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 }
+            };
+
+            let totalOutpatient = 0;
+            let totalInpatient = 0;
+            let totalCriticalCare = 0;
+            let totalCriticalCareCore = 0;
+            let totalNightFloat = 0;
+
+            Object.entries(history).forEach(([yearStr, grid]) => {
+                const year = parseInt(yearStr);
+                const pgy = year - r.startYear + 1;
+                if (pgy < 1 || pgy > 3) return;
+
+                const weeks = grid[r.id] || [];
+                weeks.forEach(c => {
+                    if (!c || !c.assignment) return;
+                    const meta = ROTATION_METADATA[c.assignment];
+                    if (!meta) return;
+
+                    if (meta.setting === ClinicalSetting.OUTPATIENT) { pgyData[pgy].outpatient++; totalOutpatient++; }
+                    if (meta.setting === ClinicalSetting.INPATIENT) { pgyData[pgy].inpatient++; totalInpatient++; }
+                    if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
+                        pgyData[pgy].criticalCare++; totalCriticalCare++;
+                        if (c.assignment !== AssignmentType.AMCS_CONSULTS) totalCriticalCareCore++;
+                    }
+                    if (c.assignment === AssignmentType.NIGHT_FLOAT) { pgyData[pgy].nightFloat++; totalNightFloat++; }
+                });
+            });
+
+            // Policy Audit
+            const isPGY2 = currentPgy === 2;
             const hasNIMA = activeWeeks.some(c => c && (c.assignment === AssignmentType.NIMA_BLOCK || c.assignment === AssignmentType.NIMA_CLINIC));
             const hasCCIM = activeWeeks.some(c => c && c.assignment === AssignmentType.CLINIC);
             const clinicValid = isPGY2 ? hasNIMA : hasCCIM;
@@ -54,14 +141,33 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
             return {
                 ...r,
+                pgyData,
+                outpatient: totalOutpatient,
+                inpatient: totalInpatient,
+                criticalCare: totalCriticalCare,
+                nightFloat: totalNightFloat,
+                critCareViolation: totalCriticalCareCore > 24,
+                nfViolation: totalNightFloat > 6,
                 clinicValid,
                 hasBlackoutVacation,
                 hasSplitBlockDeficit,
                 hasElectiveToOverwrite,
-                pgy: activePgy
+                pgy: currentPgy
             };
         });
-    }, [residents, history, activeYear, mode]);
+    }, [residents, history, activeYear]);
+
+    const globalStats = useMemo(() => {
+        if (mode !== 'acgme') return null;
+        const total = auditData.length;
+        return {
+            outpatientMet: auditData.filter(d => d.outpatient >= 44).length,
+            inpatientMet: auditData.filter(d => (d.inpatient + d.criticalCare) >= 48).length,
+            critCareSafe: auditData.filter(d => !d.critCareViolation).length,
+            nfSafe: auditData.filter(d => d.nightFloat >= 6).length,
+            total
+        };
+    }, [auditData, mode]);
 
     const jeopardyGapWeeks = useMemo(() => {
         if (mode !== 'mhs' || activeYear === undefined || !history) return [];
@@ -95,7 +201,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     }, [residents, history, activeYear, mode]);
 
     const renderGroup = (level: number) => {
-        const groupResidents = residents.filter(r => r.level === level);
+        const groupResidents = residents.filter(r => (activeYear! - r.startYear + 1) === level);
         const allReqs = REQUIREMENTS[level] || [];
         const reqs = allReqs.filter(r => mode === 'acgme' ? ACGME_TYPES.includes(r.type) : MHS_TYPES.includes(r.type));
 
@@ -200,13 +306,118 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                     </div>
                 </div>
 
+                {/* ACGME Summary Charts */}
+                {mode === 'acgme' && globalStats && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-light-blue/20 rounded-lg text-blue"><Hospital size={20} /></div>
+                                <div className="text-xs font-bold text-muted uppercase">Outpatient Compliance</div>
+                            </div>
+                            <div className="text-2xl font-bold text-primary">{globalStats.outpatientMet} / {globalStats.total}</div>
+                            <div className="text-[10px] text-muted mt-1">Goal: 44 Weeks (11 Months)</div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-lime-green/20 rounded-lg text-green"><Building2 size={20} /></div>
+                                <div className="text-xs font-bold text-muted uppercase">Inpatient Compliance</div>
+                            </div>
+                            <div className="text-2xl font-bold text-primary">{globalStats.inpatientMet} / {globalStats.total}</div>
+                            <div className="text-[10px] text-muted mt-1">Goal: 48 Weeks (12 Months)</div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-light-purple/30 rounded-lg text-purple"><Clock size={20} /></div>
+                                <div className="text-2xl font-bold text-primary">{globalStats.critCareSafe} / {globalStats.total}</div>
+                                <div className="text-[10px] text-muted mt-1">Goal: Max 24 Weeks (6 Months)</div>
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-creamsicle/30 rounded-lg text-orange"><ShieldCheck size={20} /></div>
+                                <div className="text-xs font-bold text-muted uppercase">Night Float Target</div>
+                            </div>
+                            <div className="text-2xl font-bold text-primary">{globalStats.nfSafe} / {globalStats.total}</div>
+                            <div className="text-[10px] text-muted mt-1">Goal: 6 Weeks Total</div>
+                        </div>
+                    </div>
+                )}
+
                 {renderGroup(1)}
                 {renderGroup(2)}
                 {renderGroup(3)}
 
+                {mode === 'acgme' && (
+                    <div className="mt-8 bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
+                        <div className="px-6 py-4 border-b bg-light-1 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-primary flex items-center gap-2">
+                                <ShieldCheck className="text-green" size={20} /> ACGME Graduation Requirement Audit (Cumulative)
+                            </h2>
+                            <span className="text-xs text-muted italic">Tracking progress across all historical and current schedules.</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-light-2 text-[10px] uppercase font-bold text-secondary">
+                                    <tr>
+                                        <th className="px-6 py-3 sticky left-0 bg-light-2 z-10 w-48">Resident</th>
+                                        <th className="px-6 py-3">Outpatient (44w)</th>
+                                        <th className="px-6 py-3">Inpatient (48w)</th>
+                                        <th className="px-6 py-3">Crit Care (Max 24w)</th>
+                                        <th className="px-6 py-3">Night Float (6w)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {auditData.map(d => (
+                                        <tr key={d.id} className="hover:bg-light-1">
+                                            <td className="px-6 py-4 font-medium sticky left-0 bg-white z-10 border-r">
+                                                <div className="flex flex-col">
+                                                    <span className="text-black">{d.name}</span>
+                                                    <span className="text-[10px] text-muted">PGY-{d.pgy} • Cohort {String.fromCharCode(65 + d.cohort)}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 w-1/4">
+                                                <StackedProgressBar 
+                                                    yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).outpatient]))} 
+                                                    target={44} 
+                                                    colorClass="bg-blue"
+                                                    totalValue={d.outpatient}
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 w-1/4">
+                                                <StackedProgressBar 
+                                                    yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).inpatient + (data as any).criticalCare]))} 
+                                                    target={48} 
+                                                    colorClass="bg-green-2"
+                                                    totalValue={d.inpatient + d.criticalCare}
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 w-1/4">
+                                                <StackedProgressBar 
+                                                    yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).criticalCare]))} 
+                                                    target={24} 
+                                                    colorClass="bg-purple"
+                                                    totalValue={d.criticalCare}
+                                                    isCap={true}
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 w-1/4">
+                                                <StackedProgressBar 
+                                                    yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).nightFloat]))} 
+                                                    target={6} 
+                                                    colorClass="bg-orange"
+                                                    totalValue={d.nightFloat}
+                                                />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
                 {mode === 'mhs' && auditData.length > 0 && (
                     <div className="space-y-8 mt-12">
-                        {/* Policy Audit Section */}
                         <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
                             <div className="px-6 py-4 border-b bg-light-1 flex items-center gap-3">
                                 <ShieldCheck className="text-blue" size={20} />
@@ -283,7 +494,6 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                             </div>
                         </div>
 
-                        {/* Jeopardy Pool Section */}
                         <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
                             <div className="px-6 py-4 border-b bg-light-1 flex items-center gap-3">
                                 <Users className="text-purple" size={20} />
