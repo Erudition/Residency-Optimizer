@@ -273,7 +273,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
        {/* Portal-like Tooltip */}
       {tooltip && tooltip.anchorRect && (
         <div
-          className="fixed z-[150] backdrop-blur-xl bg-white/45 text-black text-xs rounded-xl py-2.5 px-3.5 shadow-2xl pointer-events-none transform -translate-y-full flex flex-col gap-1 w-[420px] select-none border border-white/50 animate-in fade-in zoom-in-95 duration-75"
+          className="fixed z-[150] backdrop-blur-xl bg-white/45 text-black text-xs rounded-xl py-2.5 px-3.5 shadow-2xl pointer-events-none transform -translate-y-full flex flex-col gap-1 w-[420px] select-none border border-white/50 vista-tooltip"
           style={{
             left: `${left}px`,
             top: `${top}px`,
