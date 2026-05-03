@@ -41,3 +41,19 @@ In addition to standard internal medicine subspecialties, residents are required
 3.  **Addiction Medicine**
 4.  **Emergency Medicine** *(Strictly limited to PGY-2 and PGY-3 years; ACGME explicitly restricts interns from primary EM assignments).*
 5.  **Neurology**
+
+## 5. Inpatient Patient Census Caps (Wards)
+When your program generates daily team assignments and accepts admissions, ACGME enforces strict patient volume limits based on PGY level:
+
+**PGY-1 (Interns):**
+*   **Admissions:** Maximum 5 new patients assigned per admitting day (plus up to 2 in-house transfers).
+*   **Short-term cap:** Maximum 8 new patients in any 48-hour period.
+*   **Ongoing scale:** Maximum 10 total patients for ongoing care at any given time.
+
+**PGY-2 or PGY-3 (Residents) Supervising PGY-1s:**
+*   *If supervising ONE intern:* Maximum 14 total patients for ongoing care.
+*   *If supervising MULTIPLE interns:* 
+    *   Maximum 10 new patients (+4 transfers) per admitting day.
+    *   Maximum 16 new patients in any 48-hour period.
+    *   Maximum 20 total patients for ongoing care.
+

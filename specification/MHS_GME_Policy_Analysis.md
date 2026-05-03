@@ -24,3 +24,10 @@ These explicit rules dictate when and how residents can take PTO, most of which 
 *   **Prohibited Rotations:** Block generation logic must flag an error if a resident is mapped for PTO while assigned to Wards, ICU, or their "+1" CCIM continuity clinic. PTO must strictly fall on flexible elective or consult blocks.
 *   **Weekend Bridging:** Vacation must be taken on consecutive days attached to a weekend. Weekends are counted as standard days off, not PTO.
 *   **Lead Time Protocol:** The system should implement a validation check requiring a minimum **60-day notice** for PTO requests.
+
+## 3. Duty Hours
+Any algorithms mapping shifts (especially for Night Float and ICU) must adhere to:
+*   Maximum **80 hours** per week, averaged over a 4-week period.
+*   Maximum **24 consecutive hours** of scheduled clinical assignments (plus up to 4 additional hours for care transition).
+*   Residents must be provided at least **1 day off in 7**, averaged over a 4-week period.
+

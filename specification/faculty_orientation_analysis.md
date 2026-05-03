@@ -51,3 +51,14 @@ The slides illustrate a variable mix of heterogeneous team structures (e.g., 1 S
 
 - **Requirement:** *"In-house 24/7 Supervision."*
 - **Implication for App:** Whenever a resident is scheduled for Night Float (NF), MICU, or weekend Wards, a corresponding attending schedule must map exactly 1-to-1 to ensure there are no gaps in 24/7 in-house coverage.
+
+## 6. Clinic Faculty Ratios
+During outpatient staffing, specific ratios must be maintained:
+*   Standard precepting: **1 faculty member to 4 learners**.
+*   If the faculty member is concurrently managing their own patient panel: **1 faculty member to 2 learners**.
+
+## 7. Faculty & Attending Scope
+Based on new faculty orientation materials:
+*   **Out of Scope Tracking:** The application will not natively track daily admissions caps, rolling 48-hour totals, running patient census, daily 12-hour shift duty hours limits, the 1-day-off-in-7 rule, or Thursday Academic Half-Day (AHD) intra-day coverage. These will be managed organically by the teams.
+*   **In-house 24/7 Supervision:** The system requires that whenever a resident is scheduled for Night Float (NF), MICU, or weekend Wards, a corresponding attending schedule must map exactly 1-to-1 to ensure there are no gaps in 24/7 coverage.
+
