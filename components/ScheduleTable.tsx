@@ -36,6 +36,7 @@ interface TooltipData {
   assignmentName: string;
   progress: string;
   peers: Resident[];
+  anchorRect?: DOMRect;
 }
 
 export const ScheduleTable: React.FC<Props> = React.memo(({
@@ -121,20 +122,41 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     const peers = residents
       .filter(r => r.id !== resident.id && schedule[r.id]?.[weekIdx]?.assignment === assignment);
 
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 
     setTooltip({
       x: rect.left + window.scrollX + rect.width / 2,
       y: rect.top + window.scrollY,
       assignmentName: ASSIGNMENT_LABELS[assignment],
       progress: `Week ${currentWeekNum} of ${totalWeeks}`,
-      peers
+      peers,
+      anchorRect: rect
     });
   };
 
   const handleMouseLeave = () => {
     setTooltip(null);
   };
+
+  let left = 0;
+  let top = 0;
+  let arrowLeft = 0;
+  const tooltipWidth = 420;
+
+  if (tooltip && tooltip.anchorRect) {
+    left = tooltip.anchorRect.left + tooltip.anchorRect.width / 2 - tooltipWidth / 2;
+    top = tooltip.anchorRect.top - 8;
+
+    if (left + tooltipWidth > window.innerWidth - 16) {
+      left = window.innerWidth - tooltipWidth - 16;
+    }
+    if (left < 16) {
+      left = 16;
+    }
+
+    const slotCenterX = tooltip.anchorRect.left + tooltip.anchorRect.width / 2;
+    arrowLeft = slotCenterX - left;
+  }
 
   return (
     <div className="flex flex-col h-full bg-white overflow-hidden relative">
@@ -235,28 +257,41 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
         </table>
       </div>
 
-      {/* Portal-like Tooltip */}
-      {tooltip && (
+       {/* Portal-like Tooltip */}
+      {tooltip && tooltip.anchorRect && (
         <div
-          className="fixed z-[150] bg-black text-white text-xs rounded-lg py-2 px-3 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px] w-64"
-          style={{ left: tooltip.x, top: tooltip.y }}
+          className="fixed z-[150] bg-black text-white text-xs rounded-lg py-2.5 px-3.5 shadow-xl pointer-events-none transform -translate-y-full flex flex-col gap-1 w-[420px] select-none animate-in fade-in zoom-in-95 duration-75"
+          style={{
+            left: `${left}px`,
+            top: `${top}px`,
+          }}
         >
-          <div className="font-bold text-sm mb-1">{tooltip.assignmentName}</div>
-          <div className="text-light-5 mb-2">{tooltip.progress}</div>
+          <div className="flex justify-between items-start gap-2">
+            <span className="font-bold text-sm text-white truncate leading-tight select-none">
+              {tooltip.assignmentName}
+            </span>
+            <span className="text-light-5 text-[11px] font-medium shrink-0 bg-white/10 px-1.5 py-0.5 rounded select-none">
+              {tooltip.progress}
+            </span>
+          </div>
 
           {tooltip.peers.length > 0 && (
-            <div className="border-t border-light-9 pt-2 mt-1">
-              <div className="text-muted mb-1 text-[10px] uppercase font-semibold">With:</div>
-              <div className="space-y-1">
+            <div className="border-t border-white/15 pt-2 mt-1">
+              <div className="text-muted mb-1 text-[10px] uppercase font-bold tracking-wider select-none">
+                Coworkers on shift
+              </div>
+              <div className="flex flex-col gap-1.5">
                 {[1, 2, 3].map(pgy => {
                   const pgyGroup = tooltip.peers.filter(r => r.level === pgy);
                   if (pgyGroup.length === 0) return null;
                   return (
-                    <div key={pgy} className="flex gap-1 items-start">
-                      <span className="text-[10px] text-muted font-bold w-10 shrink-0">PGY-{pgy}:</span>
+                    <div key={pgy} className="flex gap-2 items-start">
+                      <span className="text-[10px] text-muted font-bold w-12 shrink-0 select-none pt-0.5">
+                        PGY-{pgy}:
+                      </span>
                       <div className="flex flex-wrap gap-1">
                         {pgyGroup.map(r => (
-                          <span key={r.id} className="bg-light-9 px-1.5 py-0.5 rounded text-[10px]">
+                          <span key={r.id} className="bg-white/10 px-2 py-0.5 rounded text-[11px] font-medium text-white/90 select-none">
                             {r.name}
                           </span>
                         ))}
@@ -269,7 +304,13 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
           )}
 
           {/* Arrow */}
-          <div className="absolute left-1/2 -bottom-1 w-2 h-2 bg-black transform -translate-x-1/2 rotate-45"></div>
+          <div
+            className="absolute -bottom-1 w-2.5 h-2.5 bg-black transform rotate-45"
+            style={{
+              left: `${arrowLeft}px`,
+              marginLeft: '-5px',
+            }}
+          />
         </div>
       )}
     </div>
