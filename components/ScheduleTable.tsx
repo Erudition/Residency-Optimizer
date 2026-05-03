@@ -168,11 +168,16 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
-    setIsTooltipVisible(false);
+    if (tooltipLeaveTimeoutRef.current) {
+      clearTimeout(tooltipLeaveTimeoutRef.current);
+    }
     tooltipLeaveTimeoutRef.current = window.setTimeout(() => {
-      setTooltip(null);
-      isTooltipVisibleRef.current = false;
-    }, 150);
+      setIsTooltipVisible(false);
+      tooltipLeaveTimeoutRef.current = window.setTimeout(() => {
+        setTooltip(null);
+        isTooltipVisibleRef.current = false;
+      }, 150);
+    }, 50);
   };
 
   let left = 0;
@@ -181,7 +186,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   const tooltipWidth = 420;
 
   if (tooltip && tooltip.anchorRect) {
-    left = tooltip.anchorRect.left + tooltip.anchorRect.width / 2 - tooltipWidth / 2;
+    left = tooltip.anchorRect.left;
     top = tooltip.anchorRect.top - 8;
 
     if (left + tooltipWidth > window.innerWidth - 16) {
