@@ -122,40 +122,113 @@ export const ASSIGNMENT_COLORS: Record<AssignmentType, string> = {
     [AssignmentType.NIMA_CLINIC]: 'bg-light-yellow/30 text-light-yellow-dark border-light-yellow',
     [AssignmentType.JR_HOSPITALIST]: 'bg-light-purple/50 text-purple-2 border-light-purple',
 };
-export const ASSIGNMENT_HEX_COLORS: Record<AssignmentType, string> = {
-    [AssignmentType.WARDS_RED]: '#DF6133',
-    [AssignmentType.WARDS_BLUE]: '#2F80FA',
-    [AssignmentType.MICU]: '#B62AD9',
-    [AssignmentType.NIGHT_FLOAT]: '#8567FF',
-    [AssignmentType.EM]: '#EB9D2A',
-    [AssignmentType.CLINIC]: '#F7A501',
-    [AssignmentType.ELECTIVE]: '#6AA84F',
-    [AssignmentType.VACATION]: '#D2D3CC',
-    [AssignmentType.WARDS_METRO]: '#29DBBB',
-    [AssignmentType.CARDS]: '#E34C6F',
-    [AssignmentType.ID]: '#96E5B6',
-    [AssignmentType.NEPH]: '#FFBA53',
-    [AssignmentType.PULM]: '#30ABC6',
-    [AssignmentType.METRO_ICU]: '#A621C8',
-    [AssignmentType.ONC]: '#E34C6F',
-    [AssignmentType.NEURO]: '#8567FF',
-    [AssignmentType.RHEUM]: '#36C46F',
-    [AssignmentType.GI]: '#EB9D2A',
-    [AssignmentType.ADD_MED]: '#BFC1B7',
-    [AssignmentType.ENDO]: '#FFD699',
-    [AssignmentType.GERI]: '#BFC1B7',
-    [AssignmentType.PALLIATIVE]: '#9FC4FF',
-    [AssignmentType.NIMA_BLOCK]: '#FFCE5C',
-    [AssignmentType.RESEARCH]: '#D2D3CC',
-    [AssignmentType.CCMA]: '#E2D6FF',
-    [AssignmentType.HF]: '#F87A4C',
-    [AssignmentType.AMCS_CONSULTS]: '#E34C6F',
-    [AssignmentType.ENT]: '#6BC0B3',
-    [AssignmentType.PMNR]: '#9FC4FF',
-    [AssignmentType.ANAESTHESIA]: '#A9DDF3',
-    [AssignmentType.NIMA_CLINIC]: '#F7A501',
-    [AssignmentType.JR_HOSPITALIST]: '#9FC4FF',
+export const ASSIGNMENT_HUES: Record<AssignmentType, number> = {
+    [AssignmentType.MICU]: 300,
+    [AssignmentType.METRO_ICU]: 330,
+    [AssignmentType.WARDS_RED]: 25,
+    [AssignmentType.NIGHT_FLOAT]: 265,
+    [AssignmentType.WARDS_BLUE]: 210,
+    [AssignmentType.EM]: 40,
+    [AssignmentType.WARDS_METRO]: 155,
+    [AssignmentType.AMCS_CONSULTS]: 345,
+    [AssignmentType.CCMA]: 280,
+    [AssignmentType.ANAESTHESIA]: 190,
+    [AssignmentType.JR_HOSPITALIST]: 235,
+    [AssignmentType.CLINIC]: 65,
+    [AssignmentType.NIMA_CLINIC]: 75,
+    [AssignmentType.CARDS]: 350,
+    [AssignmentType.NIMA_BLOCK]: 95,
+    [AssignmentType.PMNR]: 205,
+    [AssignmentType.ID]: 140,
+    [AssignmentType.NEPH]: 50,
+    [AssignmentType.PULM]: 185,
+    [AssignmentType.ONC]: 355,
+    [AssignmentType.NEURO]: 270,
+    [AssignmentType.RHEUM]: 125,
+    [AssignmentType.GI]: 70,
+    [AssignmentType.ADD_MED]: 110,
+    [AssignmentType.ENDO]: 45,
+    [AssignmentType.GERI]: 135,
+    [AssignmentType.PALLIATIVE]: 215,
+    [AssignmentType.HF]: 15,
+    [AssignmentType.ENT]: 170,
+    [AssignmentType.RESEARCH]: 100,
+    [AssignmentType.ELECTIVE]: 150,
+    [AssignmentType.VACATION]: 80,
 };
+
+const getIntensity = (type: AssignmentType): number => {
+    switch (type) {
+        case AssignmentType.MICU:
+        case AssignmentType.METRO_ICU:
+            return 5;
+        case AssignmentType.WARDS_RED:
+        case AssignmentType.NIGHT_FLOAT:
+            return 4;
+        case AssignmentType.WARDS_BLUE:
+        case AssignmentType.EM:
+        case AssignmentType.WARDS_METRO:
+        case AssignmentType.AMCS_CONSULTS:
+        case AssignmentType.CCMA:
+        case AssignmentType.ANAESTHESIA:
+        case AssignmentType.JR_HOSPITALIST:
+            return 3;
+        case AssignmentType.CLINIC:
+        case AssignmentType.NIMA_CLINIC:
+        case AssignmentType.CARDS:
+        case AssignmentType.NIMA_BLOCK:
+        case AssignmentType.PMNR:
+            return 2;
+        case AssignmentType.VACATION:
+            return 0;
+        default:
+            return 1;
+    }
+};
+
+export const oklchToHex = (L: number, C: number, H: number): string => {
+    const a = C * Math.cos(H * Math.PI / 180);
+    const b = C * Math.sin(H * Math.PI / 180);
+
+    const l_ = (L + 0.3963377774 * a + 0.2158037573 * b);
+    const m_ = (L - 0.1055613458 * a - 0.0638541728 * b);
+    const s_ = (L - 0.0894841775 * a - 1.2914855378 * b);
+
+    const l = Math.pow(Math.max(0, l_), 3);
+    const m = Math.pow(Math.max(0, m_), 3);
+    const s = Math.pow(Math.max(0, s_), 3);
+
+    const r_linear = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+    const g_linear = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+    const b_linear = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+
+    const r_val = r_linear <= 0.0031308 ? 12.92 * r_linear : 1.055 * Math.pow(r_linear, 1 / 2.4) - 0.055;
+    const g_val = g_linear <= 0.0031308 ? 12.92 * g_linear : 1.055 * Math.pow(g_linear, 1 / 2.4) - 0.055;
+    const b_val = b_linear <= 0.0031308 ? 12.92 * b_linear : 1.055 * Math.pow(b_linear, 1 / 2.4) - 0.055;
+
+    const toHex = (c: number) => {
+        const value = Math.max(0, Math.min(255, Math.round(c * 255)));
+        return value.toString(16).padStart(2, '0').toUpperCase();
+    };
+
+    return `#${toHex(r_val)}${toHex(g_val)}${toHex(b_val)}`;
+};
+
+export const getAssignmentColor = (assign: AssignmentType, isPast = false): string => {
+    const hue = ASSIGNMENT_HUES[assign] ?? 180;
+    const intensity = getIntensity(assign);
+    const chroma = intensity === 0 ? 0.02 : 0.04 + intensity * 0.025;
+    const lightness = isPast ? 0.70 : 0.84;
+    return `oklch(${lightness} ${chroma} ${hue})`;
+};
+
+export const ASSIGNMENT_HEX_COLORS: Record<AssignmentType, string> = {} as any;
+Object.values(AssignmentType).forEach(type => {
+    const hue = ASSIGNMENT_HUES[type] ?? 180;
+    const intensity = getIntensity(type);
+    const chroma = intensity === 0 ? 0.02 : 0.04 + intensity * 0.025;
+    ASSIGNMENT_HEX_COLORS[type] = oklchToHex(0.84, chroma, hue);
+});
 export const ASSIGNMENT_LABELS: Record<AssignmentType, string> = {
     [AssignmentType.WARDS_RED]: 'Wards Red',
     [AssignmentType.WARDS_BLUE]: 'Wards Blue',

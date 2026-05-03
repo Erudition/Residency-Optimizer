@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
-import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS, ASSIGNMENT_HEX_COLORS } from '../constants';
+import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS, ASSIGNMENT_HEX_COLORS, getAssignmentColor } from '../constants';
 import { User, Lock, Calendar } from 'lucide-react';
 
 interface Props {
@@ -174,8 +174,8 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   {WEEKS.map((w, idx) => {
                     const cell = residentSchedule[idx];
                     const assign = cell?.assignment;
-                    const bgHex = assign ? ASSIGNMENT_HEX_COLORS[assign] : '#ffffff';
                     const isPast = isPastWeek(w, startYear);
+                    const bgHex = assign ? getAssignmentColor(assign, isPast) : '#ffffff';
 
                     return (
                       <td
