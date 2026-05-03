@@ -56,6 +56,7 @@ export enum AssignmentType {
   HF = 'Heart Failure',
   ENT = 'ENT',
   PMNR = 'PMNR',
+  ANAESTHESIA = 'ANAESTHESIA',
   NIMA_CLINIC = 'NIMA (Clinic)',
 }
 export interface ScheduleCell {
