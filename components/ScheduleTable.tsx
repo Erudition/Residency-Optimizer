@@ -57,11 +57,13 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
 
   const clickTimeoutRef = useRef<Record<string, number>>({});
   const hoverTimeoutRef = useRef<number | null>(null);
+  const tooltipLeaveTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       Object.values(clickTimeoutRef.current).forEach(clearTimeout);
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      if (tooltipLeaveTimeoutRef.current) clearTimeout(tooltipLeaveTimeoutRef.current);
     };
   }, []);
 
@@ -83,6 +85,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
 
   // Tooltip State
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+  const [isTooltipVisible, setIsTooltipVisible] = useState(false);
 
   // Handle Resizing
   const startResize = (e: React.MouseEvent) => {
@@ -116,9 +119,16 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
+    if (tooltipLeaveTimeoutRef.current) {
+      clearTimeout(tooltipLeaveTimeoutRef.current);
+      tooltipLeaveTimeoutRef.current = null;
+    }
 
     if (!assignment) {
-      setTooltip(null);
+      setIsTooltipVisible(false);
+      tooltipLeaveTimeoutRef.current = window.setTimeout(() => {
+        setTooltip(null);
+      }, 150);
       return;
     }
 
@@ -140,6 +150,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
         peers,
         anchorRect: rect
       });
+      setIsTooltipVisible(true);
     }, 150);
   };
 
@@ -148,7 +159,10 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
-    setTooltip(null);
+    setIsTooltipVisible(false);
+    tooltipLeaveTimeoutRef.current = window.setTimeout(() => {
+      setTooltip(null);
+    }, 150);
   };
 
   let left = 0;
@@ -273,10 +287,12 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
        {/* Portal-like Tooltip */}
       {tooltip && tooltip.anchorRect && (
         <div
-          className="fixed z-[150] backdrop-blur-xl bg-white/45 text-black text-xs rounded-xl py-2.5 px-3.5 shadow-2xl pointer-events-none transform -translate-y-full flex flex-col gap-1 w-[420px] select-none border border-white/50 vista-tooltip"
+          className="fixed z-[150] backdrop-blur-xl bg-white/45 text-black text-xs rounded-xl py-2.5 px-3.5 shadow-2xl pointer-events-none flex flex-col gap-1 w-[420px] select-none border border-white/50 transition-all duration-150 ease-out"
           style={{
             left: `${left}px`,
             top: `${top}px`,
+            opacity: isTooltipVisible ? 1 : 0,
+            transform: isTooltipVisible ? 'translateY(-100%) scale(1)' : 'translateY(-101%) scale(0.96)',
           }}
         >
           <div className="flex justify-between items-start gap-2">
