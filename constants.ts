@@ -126,7 +126,7 @@ export const ASSIGNMENT_HUES: Record<AssignmentType, number> = {
     [AssignmentType.MICU]: 300,
     [AssignmentType.METRO_ICU]: 330,
     [AssignmentType.WARDS_RED]: 25,
-    [AssignmentType.NIGHT_FLOAT]: 265,
+    [AssignmentType.NIGHT_FLOAT]: 282,
     [AssignmentType.WARDS_BLUE]: 210,
     [AssignmentType.EM]: 40,
     [AssignmentType.WARDS_METRO]: 155,
@@ -136,7 +136,7 @@ export const ASSIGNMENT_HUES: Record<AssignmentType, number> = {
     [AssignmentType.JR_HOSPITALIST]: 235,
     [AssignmentType.CLINIC]: 65,
     [AssignmentType.NIMA_CLINIC]: 75,
-    [AssignmentType.CARDS]: 350,
+    [AssignmentType.CARDS]: 20,
     [AssignmentType.NIMA_BLOCK]: 95,
     [AssignmentType.PMNR]: 205,
     [AssignmentType.ID]: 140,
@@ -218,7 +218,7 @@ export const getAssignmentColor = (assign: AssignmentType, isPast = false): stri
     const hue = ASSIGNMENT_HUES[assign] ?? 180;
     const intensity = getIntensity(assign);
     const chroma = intensity === 0 ? 0.02 : 0.04 + intensity * 0.025;
-    const lightness = isPast ? 0.70 : 0.84;
+    const lightness = isPast ? 0.62 : 0.84;
     return `oklch(${lightness} ${chroma} ${hue})`;
 };
 
