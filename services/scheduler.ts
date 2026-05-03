@@ -24,6 +24,30 @@ export const generateSchedule = async (
   isPromoted: () => boolean = () => false
 ): Promise<{ results: CompetitionResult[] }> => {
   const { residents, existing, cohortAssignments } = constraints;
+
+  const getAugmentedResidents = (baseResidents: Resident[], maxYear: number): Resident[] => {
+    const minYear = Math.min(...baseResidents.map(r => r.startYear), startYear);
+    const allResidents = [...baseResidents];
+    for (let currentY = minYear; currentY <= maxYear; currentY++) {
+      if (!allResidents.some(r => r.startYear === currentY)) {
+        const lastKnownYear = Math.max(...baseResidents.map(r => r.startYear));
+        const size = baseResidents.filter(r => r.startYear === lastKnownYear).length;
+        for (let i = 0; i < size; i++) {
+          allResidents.push({
+            id: `c${currentY}-${i+1}`,
+            name: `New ${currentY} Resident ${i+1}`,
+            startYear: currentY,
+            level: 1,
+            avoidResidentIds: [],
+          });
+        }
+      }
+    }
+    return allResidents;
+  };
+
+  const augmentedResidents = getAugmentedResidents(residents, startYear + totalYears + 1);
+
   const allGenerators = [
     { id: 'greedy', generator: WeekByWeekGenerator, name: 'Week By Week' },
     { id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' },
@@ -103,7 +127,7 @@ export const generateSchedule = async (
 
         // Generate each year in sequence for this attempt
         for (let y = startYear; y < startYear + totalYears; y++) {
-          const yearResidents = residents.filter(r => {
+          const yearResidents = augmentedResidents.filter(r => {
             const level = y - r.startYear + 1;
             return level >= 1 && level <= 3;
           }).map(r => ({

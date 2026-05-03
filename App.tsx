@@ -361,11 +361,33 @@ const App: React.FC = () => {
   }, [activeTab, activeSchedule?.isGenerating, convergenceData.length]);
 
 
+  const getAugmentedResidents = (baseResidents: Resident[], maxYear: number): Resident[] => {
+    const minYear = Math.min(...baseResidents.map(r => r.startYear), activeYear);
+    const allResidents = [...baseResidents];
+    for (let currentY = minYear; currentY <= maxYear; currentY++) {
+      if (!allResidents.some(r => r.startYear === currentY)) {
+        const lastKnownYear = Math.max(...baseResidents.map(r => r.startYear));
+        const size = baseResidents.filter(r => r.startYear === lastKnownYear).length;
+        for (let i = 0; i < size; i++) {
+          allResidents.push({
+            id: `c${currentY}-${i+1}`,
+            name: `New ${currentY} Resident ${i+1}`,
+            startYear: currentY,
+            level: 1,
+            avoidResidentIds: [],
+          });
+        }
+      }
+    }
+    return allResidents;
+  };
+
   // Derive cohort assignments for the selected year
   const activeYearCohorts = useMemo(() => {
     let yearCohorts = activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear];
     if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
-      const activeResidentsForDefault = residents.filter(r => {
+      const augmented = getAugmentedResidents(residents, activeYear + 1);
+      const activeResidentsForDefault = augmented.filter(r => {
         const level = activeYear - r.startYear + 1;
         return level >= 1 && level <= 3;
       }).sort((a, b) => {
@@ -386,9 +408,10 @@ const App: React.FC = () => {
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
     let yearCohorts = year === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year]);
-    
+    const augmented = getAugmentedResidents(residents, year + 1);
+
     if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
-      const activeResidents = residents.filter(r => {
+      const activeResidents = augmented.filter(r => {
         const level = year - r.startYear + 1;
         return level >= 1 && level <= 3;
       }).sort((a, b) => {
@@ -404,7 +427,7 @@ const App: React.FC = () => {
       yearCohorts = defaultCohorts;
     }
     
-    return residents.filter(r => {
+    return augmented.filter(r => {
       const level = year - r.startYear + 1;
       return level >= 1 && level <= 3;
     }).map(r => {
