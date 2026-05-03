@@ -98,72 +98,81 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
   const pgy2Data = React.useMemo(() => data.filter(d => d.pgy === 'PGY2'), [data]);
   const pgy3Data = React.useMemo(() => data.filter(d => d.pgy === 'PGY3'), [data]);
 
-  const ChartSection = ({ title, dataSet }: { title: string, dataSet: any[] }) => (
-    <div className="mb-8 p-4 bg-white rounded-lg border shadow-sm">
-      <h3 className="text-lg font-bold mb-4 text-primary">{title} Workload Distribution</h3>
-      <div className="h-[400px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={dataSet} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="name"
-              fontSize={10}
-              angle={-45}
-              textAnchor="end"
-              height={80}
-              interval={0}
-            />
-            <YAxis domain={[0, 52]} />
-            <Tooltip
-              cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
-              wrapperStyle={{ zIndex: 100 }}
-            />
-            <Legend verticalAlign="bottom" height={36} />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_RED} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_RED)} name="Wards Red" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_BLUE} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_BLUE)} name="Wards Blue" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.MICU} stackId="a" fill={getHighChromaColor(AssignmentType.MICU)} name="ICU" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.NIGHT_FLOAT} stackId="a" fill={getHighChromaColor(AssignmentType.NIGHT_FLOAT)} name="Night Float" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.EM} stackId="a" fill={getHighChromaColor(AssignmentType.EM)} name="EM" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.CLINIC} stackId="a" fill={getHighChromaColor(AssignmentType.CLINIC)} name="Clinic" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.CARDS} stackId="a" fill={getHighChromaColor(AssignmentType.CARDS)} name="Cardiology" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.ID} stackId="a" fill={getHighChromaColor(AssignmentType.ID)} name="Inf. Disease" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.NEPH} stackId="a" fill={getHighChromaColor(AssignmentType.NEPH)} name="Nephrology" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.PULM} stackId="a" fill={getHighChromaColor(AssignmentType.PULM)} name="Pulmonology" />
+  const ChartSection = ({ title, dataSet }: { title: string, dataSet: any[] }) => {
+    // Dynamic height based on number of residents (35px per resident + padding)
+    const chartHeight = Math.max(400, dataSet.length * 35 + 80);
+    
+    return (
+      <div className="p-4 bg-white rounded-lg border shadow-sm flex flex-col h-full">
+        <h3 className="text-lg font-bold mb-4 text-primary">{title} Workload Distribution</h3>
+        <div style={{ height: `${chartHeight}px` }} className="w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart layout="vertical" data={dataSet} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                type="number" 
+                domain={[0, 52]} 
+              />
+              <YAxis 
+                type="category" 
+                dataKey="name" 
+                width={110} 
+                interval={0}
+                fontSize={11}
+              />
+              <Tooltip
+                cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                wrapperStyle={{ zIndex: 100 }}
+              />
+              <Legend verticalAlign="bottom" height={36} />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_RED} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_RED)} name="Wards Red" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_BLUE} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_BLUE)} name="Wards Blue" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.MICU} stackId="a" fill={getHighChromaColor(AssignmentType.MICU)} name="ICU" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.NIGHT_FLOAT} stackId="a" fill={getHighChromaColor(AssignmentType.NIGHT_FLOAT)} name="Night Float" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.EM} stackId="a" fill={getHighChromaColor(AssignmentType.EM)} name="EM" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.CLINIC} stackId="a" fill={getHighChromaColor(AssignmentType.CLINIC)} name="Clinic" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.CARDS} stackId="a" fill={getHighChromaColor(AssignmentType.CARDS)} name="Cardiology" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.ID} stackId="a" fill={getHighChromaColor(AssignmentType.ID)} name="Inf. Disease" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.NEPH} stackId="a" fill={getHighChromaColor(AssignmentType.NEPH)} name="Nephrology" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.PULM} stackId="a" fill={getHighChromaColor(AssignmentType.PULM)} name="Pulmonology" />
 
-            <Bar isAnimationActive={false} dataKey={AssignmentType.METRO_ICU} stackId="a" fill={getHighChromaColor(AssignmentType.METRO_ICU)} name="Metro ICU" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.ONC} stackId="a" fill={getHighChromaColor(AssignmentType.ONC)} name="Heme/Onc" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.NEURO} stackId="a" fill={getHighChromaColor(AssignmentType.NEURO)} name="Neurology" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.RHEUM} stackId="a" fill={getHighChromaColor(AssignmentType.RHEUM)} name="Rheumatology" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.GI} stackId="a" fill={getHighChromaColor(AssignmentType.GI)} name="GI" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.METRO_ICU} stackId="a" fill={getHighChromaColor(AssignmentType.METRO_ICU)} name="Metro ICU" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.ONC} stackId="a" fill={getHighChromaColor(AssignmentType.ONC)} name="Heme/Onc" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.NEURO} stackId="a" fill={getHighChromaColor(AssignmentType.NEURO)} name="Neurology" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.RHEUM} stackId="a" fill={getHighChromaColor(AssignmentType.RHEUM)} name="Rheumatology" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.GI} stackId="a" fill={getHighChromaColor(AssignmentType.GI)} name="GI" />
 
-            <Bar isAnimationActive={false} dataKey={AssignmentType.ADD_MED} stackId="a" fill={getHighChromaColor(AssignmentType.ADD_MED)} name="Addiction Med" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.ENDO} stackId="a" fill={getHighChromaColor(AssignmentType.ENDO)} name="Endocrinology" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.GERI} stackId="a" fill={getHighChromaColor(AssignmentType.GERI)} name="Geriatrics" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.PALLIATIVE} stackId="a" fill={getHighChromaColor(AssignmentType.PALLIATIVE)} name="Palliative" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.ADD_MED} stackId="a" fill={getHighChromaColor(AssignmentType.ADD_MED)} name="Addiction Med" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.ENDO} stackId="a" fill={getHighChromaColor(AssignmentType.ENDO)} name="Endocrinology" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.GERI} stackId="a" fill={getHighChromaColor(AssignmentType.GERI)} name="Geriatrics" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.PALLIATIVE} stackId="a" fill={getHighChromaColor(AssignmentType.PALLIATIVE)} name="Palliative" />
 
-            <Bar isAnimationActive={false} dataKey={AssignmentType.RESEARCH} stackId="a" fill={getHighChromaColor(AssignmentType.RESEARCH)} name="Research" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.CCMA} stackId="a" fill={getHighChromaColor(AssignmentType.CCMA)} name="CCMA" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.HF} stackId="a" fill={getHighChromaColor(AssignmentType.HF)} name="Heart Failure" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.AMCS_CONSULTS} stackId="a" fill={getHighChromaColor(AssignmentType.AMCS_CONSULTS)} name="AMCS Consults" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.ENT} stackId="a" fill={getHighChromaColor(AssignmentType.ENT)} name="ENT" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.PMNR} stackId="a" fill={getHighChromaColor(AssignmentType.PMNR)} name="PMNR" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.RESEARCH} stackId="a" fill={getHighChromaColor(AssignmentType.RESEARCH)} name="Research" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.CCMA} stackId="a" fill={getHighChromaColor(AssignmentType.CCMA)} name="CCMA" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.HF} stackId="a" fill={getHighChromaColor(AssignmentType.HF)} name="Heart Failure" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.AMCS_CONSULTS} stackId="a" fill={getHighChromaColor(AssignmentType.AMCS_CONSULTS)} name="AMCS Consults" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.ENT} stackId="a" fill={getHighChromaColor(AssignmentType.ENT)} name="ENT" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.PMNR} stackId="a" fill={getHighChromaColor(AssignmentType.PMNR)} name="PMNR" />
 
-            <Bar isAnimationActive={false} dataKey={AssignmentType.ELECTIVE} stackId="a" fill={getHighChromaColor(AssignmentType.ELECTIVE)} name="Elective" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.VACATION} stackId="a" fill={getHighChromaColor(AssignmentType.VACATION)} name="Vacation" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_METRO} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_METRO)} name="Metro Wards" />
-            <Bar isAnimationActive={false} dataKey={AssignmentType.JR_HOSPITALIST} stackId="a" fill={getHighChromaColor(AssignmentType.JR_HOSPITALIST)} name="Jr Hospitalist" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.ELECTIVE} stackId="a" fill={getHighChromaColor(AssignmentType.ELECTIVE)} name="Elective" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.VACATION} stackId="a" fill={getHighChromaColor(AssignmentType.VACATION)} name="Vacation" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_METRO} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_METRO)} name="Metro Wards" />
+              <Bar isAnimationActive={false} dataKey={AssignmentType.JR_HOSPITALIST} stackId="a" fill={getHighChromaColor(AssignmentType.JR_HOSPITALIST)} name="Jr Hospitalist" />
 
-          </BarChart>
-        </ResponsiveContainer>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="p-6 bg-light-1 min-h-full">
-      <ChartSection title="PGY 1 (Interns)" dataSet={pgy1Data} />
-      <ChartSection title="PGY 2" dataSet={pgy2Data} />
-      <ChartSection title="PGY 3" dataSet={pgy3Data} />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <ChartSection title="PGY 1 (Interns)" dataSet={pgy1Data} />
+        <ChartSection title="PGY 2" dataSet={pgy2Data} />
+        <ChartSection title="PGY 3" dataSet={pgy3Data} />
+      </div>
     </div>
   );
 });
