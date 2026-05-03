@@ -2,13 +2,8 @@
 
 The Residency Scheduler uses a **Tournament Leaderboard** model to determine the best possible schedule across multiple competing algorithms.
 
-## Scoring Heuristics (The "Fitness" Function)
-Schedules are ranked by a total score where **higher is better**. The score is composed of:
-
-1.  **Hard Constraint Penalty (Staffing)**: -10,000 points for every resident-week violation of `min/max` staffing floors.
-2.  **Educational Requirement Penalty**: -50,000 points for every missing mandatory rotation for any resident.
-3.  **Fairness Bonus (PGY-3)**: Up to +10,000 points based on the fairness coefficient of the senior class.
-4.  **Streak Penalty**: Negative points for long stretches of high-intensity rotations.
+## Scoring Model
+Candidate schedules are ranked using a multi-factor fitness function. For a detailed breakdown of point values, penalties, and fairness bonuses, see [Scoring Specification](./scoring.md).
 
 ## Independent Solver Exhaustion
 To ensure computational efficiency, each solver (algorithm) stops independently when it is statistically unlikely to find further improvements.

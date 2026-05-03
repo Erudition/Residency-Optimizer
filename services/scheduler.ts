@@ -21,7 +21,7 @@ export const generateSchedule = async (
   params: CompetitionParams,
   algorithmIds: string[],
   isAlgorithmCanceled: (id: string) => boolean,
-  onProgress: (iteration: number, scores: number[], attempts: number) => void,
+  onProgress: (iteration: number, scores: number[], attempts: number, exhaustionPoints: number[]) => void,
   isPromoted: () => boolean = () => false
 ): Promise<{ results: CompetitionResult[] }> => {
   const { residents, existing, cohortAssignments } = constraints;
@@ -174,7 +174,11 @@ export const generateSchedule = async (
 
     if (promoted) break;
 
-    onProgress(i, currentBestScores, i);
+    const exhaustionPoints = selectedGenerators.map(g => 
+      algoState[g.id].lastBestIteration + (algoState[g.id].iterationsToFindBest * 10)
+    );
+
+    onProgress(i, currentBestScores, i, exhaustionPoints);
 
     if (i % 10 === 0) {
       await new Promise(resolve => setTimeout(resolve, 0));

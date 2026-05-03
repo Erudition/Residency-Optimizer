@@ -8,9 +8,9 @@ let overallProgress = 0;
 let lastUpdate = 0;
 let pendingProgress: any = null;
 
-const postProgress = (iteration: number, scores: number[], attempts: number) => {
+const postProgress = (iteration: number, scores: number[], attempts: number, exhaustionPoints: number[]) => {
   const now = Date.now();
-  pendingProgress = { type: 'progress', iteration, overallProgress, bestScore: scores, attempts };
+  pendingProgress = { type: 'progress', iteration, overallProgress, bestScore: scores, attempts, exhaustionPoints };
   
   if (now - lastUpdate > 200) { // Throttled to 200ms
     postMessage(pendingProgress);
@@ -36,9 +36,12 @@ onmessage = async (e: MessageEvent) => {
         params,
         algorithmIds,
         (id) => cancelledAlgorithmIds.has(id),
-        (iteration, scores, attempts) => {
-          overallProgress = iteration / (params.tries || 300);
-          postProgress(iteration, scores, attempts);
+        (iteration, scores, attempts, exhaustionPoints) => {
+          // Overall progress is % of non-canceled algorithms that are exhausted
+          // but that's hard to calculate here since we don't have the exhausted flag easily.
+          // Let's just use iteration / 1000 as a rough indicator or just keep it simple.
+          overallProgress = Math.min(0.99, iteration / 1000); 
+          postProgress(iteration, scores, attempts, exhaustionPoints);
         },
         () => isPromoteTriggered
       );

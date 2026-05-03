@@ -4,6 +4,7 @@ import { ConvergenceDataPoint } from '../types';
 
 interface Props {
   data: number[][]; // Each element is an array of scores, one per algorithm
+  exhaustionPoints: number[];
   maxTries: number;
   onStop: () => void;
   onSelectWinners: () => void;
@@ -12,7 +13,7 @@ interface Props {
   canceledIds: Set<string>;
 }
 
-export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
+export const GenerationDashboard: React.FC<Props> = ({ data, exhaustionPoints, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
   const [isPromoting, setIsPromoting] = React.useState(false);
   const startTimeRef = React.useRef<number>(Date.now());
   
@@ -169,7 +170,9 @@ export const GenerationDashboard: React.FC<Props> = ({ data, maxTries, onStop, o
                 {currentBest === -Infinity ? '---' : currentBest.toFixed(1)}
                 {isWinner && <span className="text-[8px] text-blue font-black uppercase">Best</span>}
               </div>
-              <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">Attempt #{data.length}</div>
+              <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">
+                Attempt {data.length} / {exhaustionPoints[i] || '?'}
+              </div>
             </div>
           );
         })}
