@@ -47,14 +47,37 @@ The 4+1 schedule relies on dividing the class into 5 equal cohorts. However, the
 ### Impact:
 This creates "Heavy Weeks" and "Light Weeks" where the supply of available residents fluctuates by up to 3 residents. In a "Light Week" with multiple seniors in clinic, it becomes mathematically impossible to fill all minimum core staffing slots (Wards + ICU + NF) without pulling from flexible electives, often violating educational targets.
 
-## 5. Cardiology (CARDS) Senior Staffing Impossibility
-The current curriculum rules require PGY-3 residents to rotate through Cardiology, but weekly staffing rules prevent senior residents from rotating.
+## 6. Intern Core Supply Deficit (Critical)
+The current core staffing requirements for interns exceed the total available supply when factoring in the 4+1 cohort clinic weeks.
 
 ### The Math:
-*   **Curriculum Requirement (PGY-3)**: 8 residents × 2 weeks = **16 senior-weeks**.
-*   **Staffing Limits (CARDS)**: `maxSeniors: 0` = **0 senior-weeks available**.
-*   **Deficit**: **16 senior-weeks**.
+*   **Total Interns**: 15.
+*   **Cohort Logic**: 1/5th (3 residents) are in Clinic (+1 week) at all times.
+*   **Available for Core**: **12 interns**.
+*   **Minimum Core Requirements**:
+    *   MICU: 4 (Per authoritative reference)
+    *   Wards Red: 2
+    *   Wards Blue: 2
+    *   Met Wards: 3
+    *   Night Float: 1
+    *   Pulm: 1
+    *   **Total Required**: **13 interns**.
+*   **Deficit**: **1 intern per week (Systemic)**.
 
 ### Impact:
-*   Because seniors are restricted from rotating through Cardiology (`maxSeniors: 0`), there is no way to meet the PGY-3 curriculum requirement of 16 senior-weeks in Cardiology without generating weekly violations.
+*   It is mathematically impossible to satisfy all core minimums simultaneously.
+*   **Resolution Strategy**: Per `GEMINI.md`, the 4th intern slot at MICU is backfilled by an NP/PA. The scheduling engine must be configured to target **3 Interns** for MICU to achieve a zero-violation resident schedule.
+
+## 8. Night Float & Pulmonology Supply Gap
+The current curriculum assigns 2 weeks of Night Float (NF) and 2 weeks of Pulmonology to each intern. However, to staff these positions every week of the year, a larger pool of intern-weeks is required.
+
+### The Math:
+*   **Total Weeks in Year**: 52.
+*   **Required Staffing (Min 1/week)**: 52 intern-weeks each for NF and Pulm.
+*   **Total Available (15 residents * 2 weeks)**: **30 intern-weeks each**.
+*   **Deficit**: **22 weeks per year (42% shortfall)**.
+
+### Impact:
+*   For approximately 22 weeks of the year, it is mathematically impossible to have an intern on Night Float or Pulmonology under the current 2-week-per-resident rule.
+*   **Resolution Strategy**: The scheduling engine must accept 0 interns for these rotations during the "gap" weeks. Minimum constraints should be set to 0 in `constants.ts` for these specific rotations to avoid constant violations, or the curriculum must be adjusted to 4 weeks per resident.
 

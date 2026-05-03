@@ -30,7 +30,7 @@ export const generateSchedule = async (
     { id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' },
     { id: 'stochastic', generator: StochasticGenerator, name: 'Stochastic' },
     { id: 'strict', generator: EducationFirstGenerator, name: 'Education First' },
-    { id: 'exact', generator: ExactConstraintGenerator, name: 'Zero Violations Exact Solver' },
+    { id: 'exact', generator: ExactConstraintGenerator, name: 'Annealed Core Constraint Solver' },
   ];
 
   const selectedGenerators = algorithmIds.map(id => allGenerators.find(g => g.id === id)).filter(Boolean) as any[];
@@ -55,8 +55,14 @@ export const generateSchedule = async (
     }
 
     const currentBestScores: number[] = [];
-    
+    let promoted = false;
+
     for (let idx = 0; idx < selectedGenerators.length; idx++) {
+      if (isPromoted()) {
+        promoted = true;
+        break;
+      }
+      
       const g = selectedGenerators[idx];
       
       if (isAlgorithmCanceled(g.id)) {
@@ -129,6 +135,8 @@ export const generateSchedule = async (
       }
       currentBestScores.push(algorithmBestScores[g.id] === -Infinity ? -1000000 : algorithmBestScores[g.id]);
     }
+
+    if (promoted) break;
 
     onProgress(i, currentBestScores, i);
 

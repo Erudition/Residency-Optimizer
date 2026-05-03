@@ -30,13 +30,7 @@ describe('Algorithm Stress Tests', () => {
             const runningHistory: Record<number, ScheduleGrid> = {};
 
             for (let year = startYear; year < startYear + 3; year++) {
-                const yearResidents = residents.filter(r => {
-                    const level = year - r.startYear + 1;
-                    return level >= 1 && level <= 3;
-                }).map(r => ({
-                    ...r,
-                    level: (year - r.startYear + 1) as 1 | 2 | 3,
-                }));
+                const yearResidents = GENERATE_RESIDENTS_FOR_YEAR(year);
 
                 const yearExisting = {};
                 const yearSchedule = gen.generate(yearResidents, yearExisting, 0, runningHistory, cohortAssignments);
@@ -76,19 +70,20 @@ describe('Algorithm Stress Tests', () => {
         let totalReqs = 0;
 
         for (let year = startYear; year < startYear + 3; year++) {
-            const yearResidents = residents.filter(r => {
-                const level = year - r.startYear + 1;
-                return level >= 1 && level <= 3;
-            }).map(r => ({
-                ...r,
-                level: (year - r.startYear + 1) as 1 | 2 | 3,
-            }));
+            const yearResidents = GENERATE_RESIDENTS_FOR_YEAR(year);
 
             const yearSchedule = ExactConstraintGenerator.generate(yearResidents, {}, 0, runningHistory, cohortAssignments);
 
-            totalWeekly += getWeeklyViolations(yearResidents, yearSchedule).length;
+            const weeklyViolations = getWeeklyViolations(yearResidents, yearSchedule);
+            if (year === 2026 && weeklyViolations.length > 0) {
+                require('fs').writeFileSync('weekly_violations_2026.json', JSON.stringify(weeklyViolations, null, 2));
+            }
+            totalWeekly += weeklyViolations.length;
             totalReqs += getRequirementViolations(yearResidents, yearSchedule, runningHistory).length;
 
+            if (weeklyViolations.length > 0) {
+                console.log(`Year ${year} had ${weeklyViolations.length} weekly violations. First 5:`, weeklyViolations.slice(0, 5));
+            }
             runningHistory[year] = yearSchedule;
         }
 

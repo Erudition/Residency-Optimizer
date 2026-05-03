@@ -219,12 +219,8 @@ export const GlobalOptimizer: React.FC<Props> = ({
             onCancel();
           }}
           onSelectWinners={() => {
-            // Signal to worker to wrap up early if possible, 
-            // but here we can just terminate and use current best if we had it.
-            // For now, abort triggers normal flow if results were available.
-            if (generationControllerRef.current) {
-              generationControllerRef.current.abort();
-            }
+            // Signal to workers to wrap up early and return the best result found so far
+            activeWorkersRef.current.forEach(worker => worker.postMessage({ type: 'promote' }));
           }}
           onCancelAlgorithm={handleCancelAlgorithm}
           algorithms={algoConfig.filter(a => (compParams.algorithmIds || []).includes(a.id))}
