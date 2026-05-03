@@ -56,10 +56,12 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   const startWidthRef = useRef(0);
 
   const clickTimeoutRef = useRef<Record<string, number>>({});
+  const hoverTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       Object.values(clickTimeoutRef.current).forEach(clearTimeout);
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     };
   }, []);
 
@@ -111,30 +113,41 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
 
   // Tooltip Logic
   const handleMouseEnter = (e: React.MouseEvent, resident: Resident, weekIdx: number, assignment: AssignmentType) => {
-    if (!assignment) return;
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
 
-    // 1. Calculate Progress (Week X of Y)
-    const residentSchedule = schedule[resident.id] || [];
-    const totalWeeks = residentSchedule.filter(c => c && c.assignment === assignment).length;
-    const currentWeekNum = residentSchedule.slice(0, weekIdx + 1).filter(c => c && c.assignment === assignment).length;
-
-    // 2. Find Peers
-    const peers = residents
-      .filter(r => r.id !== resident.id && schedule[r.id]?.[weekIdx]?.assignment === assignment);
+    if (!assignment) {
+      setTooltip(null);
+      return;
+    }
 
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 
-    setTooltip({
-      x: rect.left + window.scrollX + rect.width / 2,
-      y: rect.top + window.scrollY,
-      assignmentName: ASSIGNMENT_LABELS[assignment],
-      progress: `Week ${currentWeekNum} of ${totalWeeks}`,
-      peers,
-      anchorRect: rect
-    });
+    hoverTimeoutRef.current = window.setTimeout(() => {
+      const residentSchedule = schedule[resident.id] || [];
+      const totalWeeks = residentSchedule.filter(c => c && c.assignment === assignment).length;
+      const currentWeekNum = residentSchedule.slice(0, weekIdx + 1).filter(c => c && c.assignment === assignment).length;
+
+      const peers = residents
+        .filter(r => r.id !== resident.id && schedule[r.id]?.[weekIdx]?.assignment === assignment);
+
+      setTooltip({
+        x: rect.left + window.scrollX + rect.width / 2,
+        y: rect.top + window.scrollY,
+        assignmentName: ASSIGNMENT_LABELS[assignment],
+        progress: `Week ${currentWeekNum} of ${totalWeeks}`,
+        peers,
+        anchorRect: rect
+      });
+    }, 150);
   };
 
   const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
     setTooltip(null);
   };
 
@@ -260,7 +273,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
        {/* Portal-like Tooltip */}
       {tooltip && tooltip.anchorRect && (
         <div
-          className="fixed z-[150] backdrop-blur-md bg-white/85 text-black text-xs rounded-xl py-2.5 px-3.5 shadow-2xl pointer-events-none transform -translate-y-full flex flex-col gap-1 w-[420px] select-none border border-light-4/60 animate-in fade-in zoom-in-95 duration-75"
+          className="fixed z-[150] backdrop-blur-xl bg-white/45 text-black text-xs rounded-xl py-2.5 px-3.5 shadow-2xl pointer-events-none transform -translate-y-full flex flex-col gap-1 w-[420px] select-none border border-white/50 animate-in fade-in zoom-in-95 duration-75"
           style={{
             left: `${left}px`,
             top: `${top}px`,
@@ -270,13 +283,13 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
             <span className="font-bold text-sm text-black truncate leading-tight select-none">
               {tooltip.assignmentName}
             </span>
-            <span className="text-muted text-[11px] font-medium shrink-0 bg-light-1/80 border border-light-4/50 px-1.5 py-0.5 rounded select-none">
+            <span className="text-muted text-[11px] font-medium shrink-0 bg-white/40 border border-white/50 px-1.5 py-0.5 rounded select-none">
               {tooltip.progress}
             </span>
           </div>
 
           {tooltip.peers.length > 0 && (
-            <div className="border-t border-light-3 pt-2 mt-1">
+            <div className="border-t border-black/10 pt-2 mt-1">
               <div className="text-muted mb-1 text-[10px] uppercase font-bold tracking-wider select-none">
                 Coworkers on shift
               </div>
@@ -291,7 +304,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {pgyGroup.map(r => (
-                          <span key={r.id} className="bg-light-1/80 border border-light-4/50 text-black px-2 py-0.5 rounded text-[11px] font-medium select-none">
+                          <span key={r.id} className="bg-white/40 border border-white/50 text-black px-2 py-0.5 rounded text-[11px] font-medium select-none">
                             {r.name}
                           </span>
                         ))}
@@ -305,7 +318,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
 
           {/* Arrow */}
           <div
-            className="absolute -bottom-1 w-2.5 h-2.5 bg-white/85 backdrop-blur-md border-b border-r border-light-4/60 transform rotate-45"
+            className="absolute -bottom-1 w-2.5 h-2.5 bg-white/45 backdrop-blur-xl border-b border-r border-white/50 transform rotate-45"
             style={{
               left: `${arrowLeft}px`,
               marginLeft: '-5px',
