@@ -145,11 +145,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                 criticalCare: totalCriticalCare,
                 nightFloat: totalNightFloat,
                 critCareViolation: totalCriticalCareCore > 18,
-                nfViolation: totalNightFloat > 12,
-                clinicValid,
-                hasBlackoutVacation,
-                hasSplitBlockDeficit,
-                hasElectiveToOverwrite
+                nfViolation: totalNightFloat > 12
             };
         });
     }, [residents, history, activeYear]);
@@ -164,38 +160,6 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
             total
         };
     }, [auditData]);
-
-    const jeopardyGapWeeks = useMemo(() => {
-        const gaps: number[] = [];
-        const currentYearGrid = history[activeYear] || {};
-
-        for (let w = 0; w < 52; w++) {
-            let pgy2Flexible = 0;
-            let pgy3Flexible = 0;
-
-            residents.forEach(res => {
-                const pgy = activeYear - res.startYear + 1;
-                const cell = currentYearGrid[res.id]?.[w];
-                if (!cell || !cell.assignment) return;
-                const assign = cell.assignment;
-                const isFlexible = assign === AssignmentType.ELECTIVE || [
-                    AssignmentType.CARDS, AssignmentType.ID, AssignmentType.NEPH, AssignmentType.PULM,
-                    AssignmentType.ONC, AssignmentType.NEURO, AssignmentType.RHEUM, AssignmentType.GI,
-                    AssignmentType.ADD_MED, AssignmentType.ENDO, AssignmentType.GERI, AssignmentType.PALLIATIVE
-                ].includes(assign);
-
-                if (isFlexible) {
-                    if (pgy === 2) pgy2Flexible++;
-                    if (pgy === 3) pgy3Flexible++;
-                }
-            });
-
-            if (pgy2Flexible === 0 || pgy3Flexible === 0) {
-                gaps.push(w + 1);
-            }
-        }
-        return gaps;
-    }, [residents, history, activeYear]);
 
     return (
         <div className="p-6 h-full overflow-y-auto bg-light-1">
@@ -301,122 +265,6 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                             ))}
                         </tbody>
                     </table>
-                </div>
-
-                {/* Additional 2026 Curriculum Specific Policy Audit Table */}
-                <div className="bg-white rounded-xl shadow-md border border-light-5 overflow-hidden">
-                    <div className="p-4 border-b bg-light-1 flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-primary flex items-center gap-2">
-                            <ShieldCheck className="text-blue" /> MHS Policy & Deficit Recovery Audit (Curriculum 2026)
-                        </h2>
-                        <span className="text-xs text-muted italic">Auditing longitudinal clinic, leave of absence deficit recovery, and blackout dates.</span>
-                    </div>
-                    <div className="p-4 bg-light-1 flex gap-4 text-xs">
-                        <div className="flex items-center gap-2">
-                            <span className="inline-block w-3 h-3 bg-green rounded-full"></span>
-                            <span>Compliant</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="inline-block w-3 h-3 bg-red rounded-full"></span>
-                            <span>Needs Attention / Override Needed</span>
-                        </div>
-                    </div>
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-light-2 text-[10px] uppercase font-bold text-secondary">
-                            <tr>
-                                <th className="px-6 py-3 sticky left-0 bg-light-2 z-10 w-48">Resident</th>
-                                <th className="px-6 py-3">Clinic Assignment</th>
-                                <th className="px-6 py-3">Blackout Period Status</th>
-                                <th className="px-6 py-3">Deficit Recovery Flag</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {auditData.map(d => (
-                                <tr key={d.id} className="hover:bg-light-1">
-                                    <td className="px-6 py-4 font-medium sticky left-0 bg-white z-10 border-r">
-                                        <div className="flex flex-col">
-                                            <span className="text-black">{d.name}</span>
-                                            <span className="text-[10px] text-muted">PGY-{activeYear - d.startYear + 1}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            {d.clinicValid ? (
-                                                <span className="text-green font-bold flex items-center gap-1">
-                                                    <ShieldCheck size={16} /> Valid {activeYear - d.startYear + 1 === 2 ? 'NIMA' : 'CCIM'}
-                                                </span>
-                                            ) : (
-                                                <span className="text-red font-bold flex items-center gap-1">
-                                                    <AlertTriangle size={16} /> Incorrect Location
-                                                </span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            {!d.hasBlackoutVacation ? (
-                                                <span className="text-green font-bold flex items-center gap-1">
-                                                    <ShieldCheck size={16} /> No PTO Conflicts
-                                                </span>
-                                            ) : (
-                                                <span className="text-red font-bold flex items-center gap-1">
-                                                    <AlertTriangle size={16} /> Blackout Conflict
-                                                </span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            {!d.hasSplitBlockDeficit ? (
-                                                <span className="text-green font-bold flex items-center gap-1">
-                                                    <ShieldCheck size={16} /> Fully Met / Split Core On-Track
-                                                </span>
-                                            ) : d.hasElectiveToOverwrite ? (
-                                                <span className="text-orange-600 font-bold flex items-center gap-1">
-                                                    <AlertTriangle size={16} /> Pure Elective Overwritten to Fulfill Deficit
-                                                </span>
-                                            ) : (
-                                                <span className="text-red font-bold flex items-center gap-1">
-                                                    <AlertTriangle size={16} /> Deficit Flag (Override Needed)
-                                                </span>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Jeopardy Coverage / Backup Gaps Section */}
-                <div className="bg-white rounded-xl shadow-md border border-light-5 overflow-hidden">
-                    <div className="p-4 border-b bg-light-1">
-                        <h2 className="text-lg font-bold text-primary flex items-center gap-2">
-                            <ShieldCheck className="text-purple" /> Jeopardy & Backup Coverage Status
-                        </h2>
-                    </div>
-                    <div className="p-4 text-sm text-secondary space-y-2">
-                        <p> Hunter's Curriculum Proposal explicitly mandates at least one PGY-3 and one PGY-2 on a flexible block per week to serve as a reliable Jeopardy pool. </p>
-                        <div className="p-3 bg-light-2 rounded-lg border border-light-5">
-                            {jeopardyGapWeeks.length === 0 ? (
-                                <div className="text-green font-bold flex items-center gap-2">
-                                    <ShieldCheck className="text-green" /> All weeks have first and second line Jeopardy coverage fully staffed!
-                                </div>
-                            ) : (
-                                <div className="text-red-600 font-bold flex items-center gap-2 flex-wrap">
-                                    <AlertTriangle className="text-red-600" />
-                                    <span>Jeopardy Gaps detected in {jeopardyGapWeeks.length} weeks. The following weeks have zero available flexible coverage:</span>
-                                    <div className="flex gap-1 flex-wrap mt-1">
-                                        {jeopardyGapWeeks.map(w => (
-                                            <span key={w} className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded">
-                                                Week {w}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
                 </div>
 
             </div>
