@@ -113,13 +113,13 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white border rounded-lg shadow-sm overflow-hidden relative">
+    <div className="flex flex-col h-full bg-white overflow-hidden relative">
       <div className="overflow-auto spreadsheet-container relative flex-1">
         <table className="border-separate border-spacing-0 w-max">
           <thead className="sticky top-0 z-30 bg-light-1 text-xs uppercase text-muted font-semibold shadow-sm h-12">
             <tr>
               <th
-                className="sticky left-0 z-40 p-0 border-b border-r border-light-5 text-left align-middle bg-white/80 backdrop-blur-md transition-all"
+                className="sticky left-0 z-40 p-0 text-left align-middle bg-white/80 backdrop-blur-md transition-all"
                 style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
               >
                 <div className="flex items-center justify-between h-full px-2 relative">
@@ -136,7 +136,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                 <th
                   key={w}
                   onDoubleClick={() => onLockWeek(idx)}
-                  className="border-b border-r border-light-5 p-1 min-w-[80px] text-center bg-light-1 cursor-pointer hover:bg-light-blue/20 transition-colors"
+                  className="p-1 min-w-[80px] text-center bg-light-1 cursor-pointer hover:bg-light-blue/20 transition-colors"
                   title="Double-click to toggle lock for this entire week"
                 >
                   <div className="flex flex-col items-center">
@@ -157,7 +157,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               return (
                 <tr key={resident.id} className="hover:bg-light-1 transition-colors">
                   <td
-                    className="sticky left-0 z-20 border-b border-r border-light-5 p-2 font-medium text-black group bg-white/80 backdrop-blur-md cursor-pointer hover:bg-light-blue/20 transition-colors"
+                    className="sticky left-0 z-20 p-2 font-medium text-black group bg-white/80 backdrop-blur-md cursor-pointer hover:bg-light-blue/20 transition-colors"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
                     onDoubleClick={() => onLockResident(resident.id)}
                     title={`Double-click to toggle lock for ${resident.name}`}
@@ -180,7 +180,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     return (
                       <td
                         key={`${resident.id}-${w}`}
-                        className="border-b border-light-3 border-r p-1 text-center select-none relative"
+                        className="p-1 text-center select-none relative"
                       >
                         <button
                           className={cell?.locked ? 'lemon-slot-locked' : 'lemon-slot'}
