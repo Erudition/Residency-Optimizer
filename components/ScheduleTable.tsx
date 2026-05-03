@@ -58,6 +58,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   const clickTimeoutRef = useRef<Record<string, number>>({});
   const hoverTimeoutRef = useRef<number | null>(null);
   const tooltipLeaveTimeoutRef = useRef<number | null>(null);
+  const isTooltipVisibleRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -128,13 +129,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       setIsTooltipVisible(false);
       tooltipLeaveTimeoutRef.current = window.setTimeout(() => {
         setTooltip(null);
+        isTooltipVisibleRef.current = false;
       }, 150);
       return;
     }
 
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 
-    hoverTimeoutRef.current = window.setTimeout(() => {
+    const updateTooltip = () => {
       const residentSchedule = schedule[resident.id] || [];
       const totalWeeks = residentSchedule.filter(c => c && c.assignment === assignment).length;
       const currentWeekNum = residentSchedule.slice(0, weekIdx + 1).filter(c => c && c.assignment === assignment).length;
@@ -151,7 +153,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
         anchorRect: rect
       });
       setIsTooltipVisible(true);
-    }, 150);
+      isTooltipVisibleRef.current = true;
+    };
+
+    if (isTooltipVisibleRef.current) {
+      updateTooltip();
+    } else {
+      hoverTimeoutRef.current = window.setTimeout(updateTooltip, 150);
+    }
   };
 
   const handleMouseLeave = () => {
@@ -162,6 +171,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     setIsTooltipVisible(false);
     tooltipLeaveTimeoutRef.current = window.setTimeout(() => {
       setTooltip(null);
+      isTooltipVisibleRef.current = false;
     }, 150);
   };
 
