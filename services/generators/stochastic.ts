@@ -57,41 +57,11 @@ export const StochasticGenerator: ScheduleGenerator = {
         });
 
 
-        // 2. Education Placement (Aggregation Aware)
+        // 2. High-Entropy Placement (Pure Random Order)
         const allLevels = [1, 2, 3];
         allLevels.forEach(level => {
+            // SHUFFLE REQUIREMENTS COMPLETELY - No priority sorting
             const reqs = seededShuffle(REQUIREMENTS[level as 1|2|3] || []);
-            // Sort by duration descending, then by capacity ascending (harder rotations first)
-            const criticalPriority: AssignmentType[] = [
-                AssignmentType.MICU,
-                AssignmentType.WARDS_RED,
-                AssignmentType.WARDS_BLUE,
-                AssignmentType.WARDS_METRO,
-                AssignmentType.GERI,
-                AssignmentType.EM,
-                AssignmentType.JR_HOSPITALIST,
-                AssignmentType.PALLIATIVE,
-                AssignmentType.ADD_MED,
-                AssignmentType.NIMA_BLOCK
-            ];
-
-            reqs.sort((a, b) => {
-                const idxA = criticalPriority.indexOf(a.type);
-                const idxB = criticalPriority.indexOf(b.type);
-                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                if (idxA !== -1) return -1;
-                if (idxB !== -1) return 1;
-
-                const metaA = ROTATION_METADATA[a.type];
-                const metaB = ROTATION_METADATA[b.type];
-                const durA = metaA?.duration || 4;
-                const durB = metaB?.duration || 4;
-                if (durA !== durB) return durB - durA;
-                
-                const maxA = (level === 1 ? metaA?.maxInterns : metaA?.maxSeniors) || 99;
-                const maxB = (level === 1 ? metaB?.maxInterns : metaB?.maxSeniors) || 99;
-                return maxA - maxB;
-            });
 
             reqs.forEach(req => {
                 const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
@@ -111,7 +81,6 @@ export const StochasticGenerator: ScheduleGenerator = {
                             if (!isAligned(w, cohort, dur)) continue;
                             if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
 
-                            // Try all compatible types for this week
                             for (const type of compatibleTypes) {
                                 const meta = ROTATION_METADATA[type];
                                 let score = 0;
@@ -120,15 +89,14 @@ export const StochasticGenerator: ScheduleGenerator = {
                                 for (let i = 0; i < dur; i++) {
                                     const cI = getAssignedCount(newSchedule, residents, w + i, type, 1);
                                     const cS = getAssignedCount(newSchedule, residents, w + i, type, 2);
-
                                     const maxI = meta?.maxInterns || 99;
                                     const maxS = meta?.maxSeniors || 99;
 
                                     if (res.level === 1 && cI >= maxI) { possible = false; break; }
                                     if (res.level > 1 && cS >= maxS) { possible = false; break; }
                                     
-                                    // Spreading score: prefer weeks with less staff (with random tiebreaker)
-                                    score += (cI + cS) + rng.next() * 0.1;
+                                    // Heavy randomization of scores to explore different paths
+                                    score += (cI + cS) + rng.next() * 5.0;
                                 }
 
                                 if (possible && score < bestScore) {
@@ -139,26 +107,18 @@ export const StochasticGenerator: ScheduleGenerator = {
                             }
                         }
 
-                        if (bestW === -1) break; // Cannot fit anymore
+                        if (bestW === -1) break;
                         placeBlock(newSchedule, res.id, bestW, dur, bestType);
                     }
                 });
             });
         });
 
-        // 3. Staffing Sweep (Foundation) - Mandatory Minima
-        const criticalTypes = [
-            AssignmentType.MICU,
-            AssignmentType.WARDS_RED,
-            AssignmentType.WARDS_BLUE,
-            AssignmentType.NIGHT_FLOAT,
-            AssignmentType.EM,
-            AssignmentType.WARDS_METRO,
-            AssignmentType.JR_HOSPITALIST,
-            AssignmentType.CARDS,
-            AssignmentType.NEPH,
-            AssignmentType.ID
-        ];
+        // 3. Staffing Sweep
+        const criticalTypes = Object.values(AssignmentType).filter(t => {
+            const m = ROTATION_METADATA[t];
+            return m && (m.minInterns > 0 || m.minSeniors > 0);
+        });
 
         criticalTypes.forEach(type => {
             const meta = ROTATION_METADATA[type];
@@ -176,9 +136,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
                                getAssignedCount(newSchedule, residents, w, type, 1) < (meta.maxInterns || 99);
-                    })).sort((a, b) => getCumulativeRequirementCount(a.id, newSchedule[a.id], type, historicalSchedules) - 
-                                     getCumulativeRequirementCount(b.id, newSchedule[b.id], type, historicalSchedules));
-                    
+                    }));
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
                 }
@@ -193,9 +151,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
                                getAssignedCount(newSchedule, residents, w, type, 2) < (meta.maxSeniors || 99);
-                    })).sort((a, b) => getCumulativeRequirementCount(a.id, newSchedule[a.id], type, historicalSchedules) - 
-                                     getCumulativeRequirementCount(b.id, newSchedule[b.id], type, historicalSchedules));
-                    
+                    }));
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
                 }

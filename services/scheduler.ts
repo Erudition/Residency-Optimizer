@@ -89,7 +89,9 @@ export const generateSchedule = async (
           }));
 
           const yearExisting = existing[y] || {};
-          const yearSchedule = g.generator.generate(yearResidents, yearExisting, i + idx, runningHistory, cohortAssignments[y]);
+          // Ensure unique seed per algorithm and iteration
+          const attemptSeed = i * selectedGenerators.length + idx;
+          const yearSchedule = g.generator.generate(yearResidents, yearExisting, attemptSeed, runningHistory, cohortAssignments[y]);
           
           const yearScore = calculateScheduleScore(yearResidents, yearSchedule, runningHistory);
           const reqViolations = getRequirementViolations(yearResidents, yearSchedule, runningHistory);

@@ -57,96 +57,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
         });
 
 
-        // 2. Education Placement (Aggregation Aware)
-        const allLevels = [1, 2, 3];
-        allLevels.forEach(level => {
-            const reqs = seededShuffle(REQUIREMENTS[level as 1|2|3] || []);
-            // Sort by duration descending, then by capacity ascending (harder rotations first)
-            const criticalPriority: AssignmentType[] = [
-                AssignmentType.MICU,
-                AssignmentType.WARDS_RED,
-                AssignmentType.WARDS_BLUE,
-                AssignmentType.WARDS_METRO,
-                AssignmentType.GERI,
-                AssignmentType.EM,
-                AssignmentType.JR_HOSPITALIST,
-                AssignmentType.PALLIATIVE,
-                AssignmentType.ADD_MED,
-                AssignmentType.NIMA_BLOCK
-            ];
-
-            reqs.sort((a, b) => {
-                const idxA = criticalPriority.indexOf(a.type);
-                const idxB = criticalPriority.indexOf(b.type);
-                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                if (idxA !== -1) return -1;
-                if (idxB !== -1) return 1;
-
-                const metaA = ROTATION_METADATA[a.type];
-                const metaB = ROTATION_METADATA[b.type];
-                const durA = metaA?.duration || 4;
-                const durB = metaB?.duration || 4;
-                if (durA !== durB) return durB - durA;
-                
-                const maxA = (level === 1 ? metaA?.maxInterns : metaA?.maxSeniors) || 99;
-                const maxB = (level === 1 ? metaB?.maxInterns : metaB?.maxSeniors) || 99;
-                return maxA - maxB;
-            });
-
-            reqs.forEach(req => {
-                const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
-                
-                seededShuffle(residents.filter(r => r.level === level)).forEach(res => {
-                    const cohort = validCohortAssignments[res.id];
-
-                    let safety = 0;
-                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target && safety < 10) {
-                        safety++;
-                        let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
-                        const dur = ROTATION_METADATA[req.type]?.duration || 4;
-
-                        const possibleWeeks = seededShuffle(Array.from({length: TOTAL_WEEKS - dur + 1}, (_, i) => i));
-
-                        for (const w of possibleWeeks) {
-                            if (!isAligned(w, cohort, dur)) continue;
-                            if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
-
-                            // Try all compatible types for this week
-                            for (const type of compatibleTypes) {
-                                const meta = ROTATION_METADATA[type];
-                                let score = 0;
-                                let possible = true;
-
-                                for (let i = 0; i < dur; i++) {
-                                    const cI = getAssignedCount(newSchedule, residents, w + i, type, 1);
-                                    const cS = getAssignedCount(newSchedule, residents, w + i, type, 2);
-
-                                    const maxI = meta?.maxInterns || 99;
-                                    const maxS = meta?.maxSeniors || 99;
-
-                                    if (res.level === 1 && cI >= maxI) { possible = false; break; }
-                                    if (res.level > 1 && cS >= maxS) { possible = false; break; }
-                                    
-                                    // Spreading score: prefer weeks with less staff (with random tiebreaker)
-                                    score += (cI + cS) + rng.next() * 0.1;
-                                }
-
-                                if (possible && score < bestScore) {
-                                    bestScore = score;
-                                    bestW = w;
-                                    bestType = type;
-                                }
-                            }
-                        }
-
-                        if (bestW === -1) break; // Cannot fit anymore
-                        placeBlock(newSchedule, res.id, bestW, dur, bestType);
-                    }
-                });
-            });
-        });
-
-        // 3. Staffing Sweep (Foundation) - Mandatory Minima
+        // 2. Staffing Sweep FIRST (Foundation) - Mandatory Minima
         const criticalTypes = [
             AssignmentType.MICU,
             AssignmentType.WARDS_RED,
@@ -200,6 +111,60 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
                 }
             }
+        });
+
+
+        // 3. Education Placement SECOND (Residual Capacity)
+        const allLevels = [1, 2, 3];
+        allLevels.forEach(level => {
+            const reqs = seededShuffle(REQUIREMENTS[level as 1|2|3] || []);
+            reqs.forEach(req => {
+                const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
+                
+                seededShuffle(residents.filter(r => r.level === level)).forEach(res => {
+                    const cohort = validCohortAssignments[res.id];
+
+                    let safety = 0;
+                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target && safety < 10) {
+                        safety++;
+                        let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
+                        const dur = ROTATION_METADATA[req.type]?.duration || 4;
+
+                        const possibleWeeks = seededShuffle(Array.from({length: TOTAL_WEEKS - dur + 1}, (_, i) => i));
+
+                        for (const w of possibleWeeks) {
+                            if (!isAligned(w, cohort, dur)) continue;
+                            if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
+
+                            for (const type of compatibleTypes) {
+                                const meta = ROTATION_METADATA[type];
+                                let score = 0;
+                                let possible = true;
+
+                                for (let i = 0; i < dur; i++) {
+                                    const cI = getAssignedCount(newSchedule, residents, w + i, type, 1);
+                                    const cS = getAssignedCount(newSchedule, residents, w + i, type, 2);
+                                    const maxI = meta?.maxInterns || 99;
+                                    const maxS = meta?.maxSeniors || 99;
+
+                                    if (res.level === 1 && cI >= maxI) { possible = false; break; }
+                                    if (res.level > 1 && cS >= maxS) { possible = false; break; }
+                                    score += (cI + cS) + rng.next() * 0.1;
+                                }
+
+                                if (possible && score < bestScore) {
+                                    bestScore = score;
+                                    bestW = w;
+                                    bestType = type;
+                                }
+                            }
+                        }
+
+                        if (bestW === -1) break;
+                        placeBlock(newSchedule, res.id, bestW, dur, bestType);
+                    }
+                });
+            });
         });
 
         // 4. Final Elective Fill
