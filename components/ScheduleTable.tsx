@@ -54,6 +54,28 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
+  const clickTimeoutRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    return () => {
+      Object.values(clickTimeoutRef.current).forEach(clearTimeout);
+    };
+  }, []);
+
+  const handleCellClick = (residentId: string, weekIdx: number) => {
+    const key = `${residentId}-${weekIdx}`;
+    if (clickTimeoutRef.current[key]) {
+      clearTimeout(clickTimeoutRef.current[key]);
+      delete clickTimeoutRef.current[key];
+      onToggleLock(residentId, weekIdx);
+    } else {
+      clickTimeoutRef.current[key] = window.setTimeout(() => {
+        onCellClick(residentId, weekIdx);
+        delete clickTimeoutRef.current[key];
+      }, 280);
+    }
+  };
+
   // Tooltip State
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
@@ -185,8 +207,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                         <button
                           className={cell?.locked ? 'lemon-slot-locked' : 'lemon-slot'}
                           style={{ '--slot-bg': bgHex } as React.CSSProperties}
-                          onClick={() => onCellClick(resident.id, idx)}
-                          onDoubleClick={() => onToggleLock(resident.id, idx)}
+                          onClick={() => handleCellClick(resident.id, idx)}
                           onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
                           onMouseLeave={handleMouseLeave}
                           title="Click to edit, Double-click to toggle lock"
