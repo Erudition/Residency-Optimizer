@@ -20,6 +20,9 @@ Here are the rules that must govern the schedule generation:
 See @specification/MHS Curriculum Proposal.md
 > The MHS Curriculum Proposal.md serves as the absolute and final authority for all scheduling structures, rotation lengths, target PGY distributions, and curriculum logic. In the event of any disagreement or conflict between this document and other files (such as `constants.ts`, `Rotation_Reference.md`, or historical records), **this document supersedes them.** Schedule algorithms and programmatic definitions must be updated to match the rules established here.
 
+## Engine Rules
+See @specification/engine.md
+
 ## Clinic Faculty Ratios
 See @specification/faculty_orientation_analysis.md
 
