@@ -398,11 +398,9 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
 };
 
-// Consistent order for requirement columns in UI
-export const REQUIREMENT_ORDER = [
+export const ACGME_TYPES = [
     AssignmentType.WARDS_RED,
     AssignmentType.MICU,
-    AssignmentType.NIGHT_FLOAT,
     AssignmentType.EM,
     AssignmentType.CARDS,
     AssignmentType.ID,
@@ -412,11 +410,22 @@ export const REQUIREMENT_ORDER = [
     AssignmentType.NEURO,
     AssignmentType.RHEUM,
     AssignmentType.GI,
-    AssignmentType.ADD_MED,
     AssignmentType.ENDO,
-    AssignmentType.GERI,
+    AssignmentType.GERI
+];
+
+export const MHS_TYPES = [
+    AssignmentType.NIGHT_FLOAT,
+    AssignmentType.ADD_MED,
     AssignmentType.PALLIATIVE,
-    AssignmentType.NIMA_BLOCK
+    AssignmentType.NIMA_BLOCK,
+    AssignmentType.JR_HOSPITALIST
+];
+
+// Consistent order for requirement columns in UI
+export const REQUIREMENT_ORDER = [
+    ...ACGME_TYPES,
+    ...MHS_TYPES
 ];
 
 // DYNAMIC REQUIREMENTS GENERATION

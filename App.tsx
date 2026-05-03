@@ -17,7 +17,9 @@ import {
   ASSIGNMENT_HEX_COLORS,
   ASSIGNMENT_ABBREVIATIONS,
   ACTIVE_START_YEAR,
-  TOTAL_WEEKS
+  TOTAL_WEEKS,
+  ACGME_TYPES,
+  MHS_TYPES
 } from './constants';
 import historicalGridData from './specification/historical_schedules_grid_v2.json';
 import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations, getAuditViolations } from './services/scheduler';
@@ -242,7 +244,7 @@ const App: React.FC = () => {
 
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => preloadHistoricalData(residents), [residents]);
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'residents' | 'backup' | 'reset'>('residents');
   
@@ -1119,7 +1121,8 @@ const App: React.FC = () => {
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
           <NavButton id="coverage" label="Coverage" icon={Table} badgeCount={violations.constraints.length} />
-          <NavButton id="requirements" label="Requirements" icon={ClipboardList} badgeCount={violations.reqs.length} />
+          <NavButton id="acgme_requirements" label="ACGME Reqs" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).length} />
+          <NavButton id="mhs_requirements" label="MHS Reqs" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).length} />
           <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} badgeCount={violations.audit} />
           <NavButton id="cohorts" label="Cohorts" icon={Users} />
           <NavButton id="relationships" label="Relationships" icon={Network} />
@@ -1265,7 +1268,8 @@ const App: React.FC = () => {
               )}
               {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
               {activeTab === 'coverage' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
-              {activeTab === 'requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} /></div>}
+              {activeTab === 'acgme_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} /></div>}
+              {activeTab === 'mhs_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="mhs" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} /></div>}
               {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={activeSchedule?.data || {}} activeYear={activeYear} /></div>}
               {activeTab === 'cohorts' && (
                 <div className="flex-1 overflow-hidden">
