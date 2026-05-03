@@ -135,15 +135,16 @@ export const generateSchedule = async (
 
         // 1. Improvement Logic
         if (score > state.bestScore) {
-          const n = i - state.lastBestIteration;
-          state.iterationsToFindBest = Math.max(10, n); // Minimum 10 iteration window
+          const gap = i - state.lastBestIteration;
+          // Track the LONGEST gap ever seen between improvements
+          state.iterationsToFindBest = Math.max(state.iterationsToFindBest, gap);
           state.lastBestIteration = i;
           state.bestScore = score;
         } 
         // 2. Exhaustion Logic
         else if (i - state.lastBestIteration > state.iterationsToFindBest * 10) {
           state.exhausted = true;
-          console.log(`Solver ${g.name} exhausted at iteration ${i}. (Window: ${state.iterationsToFindBest * 10})`);
+          console.log(`Solver ${g.name} exhausted at iteration ${i}. (Max Gap: ${state.iterationsToFindBest}, Window: ${state.iterationsToFindBest * 10})`);
         }
 
         // Check if this multi-year package qualifies for Top N (Higher is Better)
