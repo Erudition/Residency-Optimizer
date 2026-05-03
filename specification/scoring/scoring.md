@@ -10,7 +10,7 @@ This document defines the fitness function used by the Tournament Leaderboard to
 | **Staffing Requirements** | 0.490 | Normalizes all week-level minimum and maximum service staffing limits. |
 | **Total Intensity** | 0.006 | Normalizes the sum of all assigned block intensities to minimize total program burden. |
 | **Streak Equity** | 0.004 | Normalizes the standard deviation of maximum high-intensity streaks. |
-| **Relationship Diversity** | 0.003 | Normalizes the percentage of unique residents a person has shared a team with (prioritizing PGY-1 > PGY-2 > PGY-3). |
+| **Coworking Diversity** | 0.003 | Normalizes the percentage of unique residents a person has shared a team with (prioritizing PGY-1 > PGY-2 > PGY-3). |
 | **Jeopardy Pool Stability** | 0.001 | Normalizes the variance of the available Jeopardy pool size across all weeks. |
 | **PGY-3 Fairness** | 0.003 | Normalizes the equity of desirable/undesirable block distribution among PGY-3s. |
 | **PGY-2 Fairness** | 0.002 | Normalizes the equity of desirable/undesirable block distribution among PGY-2s. |
@@ -57,7 +57,7 @@ Penalizes uneven distribution of high-intensity rotation runs to prevent individ
 *   **Worst Score (0%)**: Maximum possible Standard Deviation (e.g., one resident has a 52-week streak, all others have 0).
 *   **Percentage**: `Max(0, 100 - (Actual SD / Worst Case SD) * 100)`
 
-### 5. Relationship Diversity
+### 5. Coworking Diversity
 Measures the percentage of unique residents each person has shared a team with. High diversity ensures cross-cohort collaboration and prevents team isolation. The score calculation gives higher weight to diversity in earlier years (PGY-1 > PGY-2 > PGY-3).
 
 *   **Perfect Score (100%)**: Every resident shares a team with 100% of the other residents in the program at least once during the year.

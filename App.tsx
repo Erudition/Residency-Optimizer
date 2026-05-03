@@ -245,7 +245,7 @@ const App: React.FC = () => {
 
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => preloadHistoricalData(residents), [residents]);
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'residents' | 'backup' | 'reset'>('residents');
   
@@ -1130,7 +1130,7 @@ const App: React.FC = () => {
           <NavButton id="mhs_requirements" label="MHS Reqs" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).length} />
           <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} badgeCount={violations.audit} />
           <NavButton id="cohorts" label="Cohorts" icon={Users} />
-          <NavButton id="relationships" label="Relationships" icon={Network} />
+          <NavButton id="coworking" label="Coworking" icon={Network} />
           <NavButton id="fairness" label="Fairness" icon={Scale} />
           <NavButton id="export" label="Export" icon={FileSpreadsheet} />
         </div>
@@ -1288,7 +1288,7 @@ const App: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'relationships' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'coworking' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
               {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={fairness} /></div>}
               {activeTab === 'export' && (
                 <div className="flex-1 overflow-y-auto p-8 bg-light-1">

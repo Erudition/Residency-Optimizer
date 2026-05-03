@@ -15,4 +15,6 @@ To ensure computational efficiency, each solver (algorithm) stops independently 
 4.  A solver is marked as **Exhausted** only when it has failed to find a new best for $N_{max} \times 10$ iterations.
 5.  The global competition ends when all active solvers are exhausted or the user manually promotes the leaderboard.
 
+When a solver is terminated, the line in the graph terminates at that iteration with an X marker. All other proceed to the right with circular markers.
+
 This logic ensures that solvers that struggle initially but eventually find a path to improvement are given enough time to explore, while efficient solvers that plateau early can stop quickly to save resources.
