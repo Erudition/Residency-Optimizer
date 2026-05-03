@@ -33,7 +33,6 @@ import { FairnessStats } from './components/FairnessStats';
 import { RequirementsStats } from './components/RequirementsStats';
 import { ScheduleComparison } from './components/ScheduleComparison';
 import { ACGMEAudit } from './components/ACGMEAudit';
-import { MHSAudit } from './components/MHSAudit';
 import { CompetitorStudio } from './components/CompetitorStudio';
 import { CohortKanban } from './components/CohortKanban';
 import { GenerationDashboard } from './components/GenerationDashboard';
@@ -246,7 +245,7 @@ const App: React.FC = () => {
 
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => preloadHistoricalData(residents), [residents]);
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'mhs_audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'relationships' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'residents' | 'backup' | 'reset'>('residents');
   
@@ -1126,7 +1125,6 @@ const App: React.FC = () => {
           <NavButton id="acgme_requirements" label="ACGME Reqs" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).length} />
           <NavButton id="mhs_requirements" label="MHS Reqs" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).length} />
           <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} badgeCount={violations.audit} />
-          <NavButton id="mhs_audit" label="MHS Audit" icon={ShieldAlert} />
           <NavButton id="cohorts" label="Cohorts" icon={Users} />
           <NavButton id="relationships" label="Relationships" icon={Network} />
           <NavButton id="fairness" label="Fairness" icon={Scale} />
@@ -1274,7 +1272,6 @@ const App: React.FC = () => {
               {activeTab === 'acgme_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} /></div>}
               {activeTab === 'mhs_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="mhs" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} /></div>}
               {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={activeSchedule?.data || {}} activeYear={activeYear} /></div>}
-              {activeTab === 'mhs_audit' && <div className="flex-1 overflow-y-auto"><MHSAudit residents={activeResidents} history={activeSchedule?.data || {}} activeYear={activeYear} /></div>}
               {activeTab === 'cohorts' && (
                 <div className="flex-1 overflow-hidden">
                   <CohortKanban

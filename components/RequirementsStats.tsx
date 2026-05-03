@@ -1,8 +1,8 @@
 
-import React from 'react';
-import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../types';
+import React, { useMemo } from 'react';
+import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting, ScheduleHistory } from '../types';
 import { ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, ACGME_TYPES, MHS_TYPES } from '../constants';
-import { CheckCircle2, XCircle, AlertCircle, ClipboardList, Info } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, ClipboardList, Info, ShieldCheck, ShieldAlert, Clock, AlertTriangle, Users, Calendar } from 'lucide-react';
 
 interface Props {
     residents: Resident[];
@@ -29,6 +29,71 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
         return count;
     };
 
+    const auditData = useMemo(() => {
+        if (mode !== 'mhs' || activeYear === undefined || !history) return [];
+        return residents.map(r => {
+            const activePgy = activeYear - r.startYear + 1;
+            const currentYearGrid = history[activeYear] || {};
+            const activeWeeks = currentYearGrid[r.id] || [];
+
+            const isPGY2 = activePgy === 2;
+            const hasNIMA = activeWeeks.some(c => c && (c.assignment === AssignmentType.NIMA_BLOCK || c.assignment === AssignmentType.NIMA_CLINIC));
+            const hasCCIM = activeWeeks.some(c => c && c.assignment === AssignmentType.CLINIC);
+            const clinicValid = isPGY2 ? hasNIMA : hasCCIM;
+
+            const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
+            const hasBlackoutVacation = activeWeeks.some((c, idx) => c && c.assignment === AssignmentType.VACATION && blackoutWeeks.includes(idx));
+
+            const splitBlocks = [AssignmentType.NEURO, AssignmentType.GI, AssignmentType.PULM];
+            const hasSplitBlockDeficit = splitBlocks.some(st => {
+                const total = activeWeeks.filter(c => c && c.assignment === st).length;
+                return total === 1;
+            });
+
+            const hasElectiveToOverwrite = activeWeeks.some(c => c && c.assignment === AssignmentType.ELECTIVE);
+
+            return {
+                ...r,
+                clinicValid,
+                hasBlackoutVacation,
+                hasSplitBlockDeficit,
+                hasElectiveToOverwrite,
+                pgy: activePgy
+            };
+        });
+    }, [residents, history, activeYear, mode]);
+
+    const jeopardyGapWeeks = useMemo(() => {
+        if (mode !== 'mhs' || activeYear === undefined || !history) return [];
+        const gaps: number[] = [];
+        const currentYearGrid = history[activeYear] || {};
+
+        for (let w = 0; w < 52; w++) {
+            let pgy2Flexible = 0;
+            let pgy3Flexible = 0;
+
+            residents.forEach(res => {
+                const pgy = activeYear - res.startYear + 1;
+                const cell = currentYearGrid[res.id]?.[w];
+                if (!cell || !cell.assignment) return;
+                const assign = cell.assignment;
+                const isFlexible = assign === AssignmentType.ELECTIVE || [
+                    AssignmentType.CARDS, AssignmentType.ID, AssignmentType.NEPH, AssignmentType.PULM,
+                    AssignmentType.ONC, AssignmentType.NEURO, AssignmentType.RHEUM, AssignmentType.GI,
+                    AssignmentType.ADD_MED, AssignmentType.ENDO, AssignmentType.GERI, AssignmentType.PALLIATIVE
+                ].includes(assign);
+
+                if (isFlexible) {
+                    if (pgy === 2) pgy2Flexible++;
+                    if (pgy === 3) pgy3Flexible++;
+                }
+            });
+
+            if (pgy2Flexible === 0 || pgy3Flexible === 0) gaps.push(w + 1);
+        }
+        return gaps;
+    }, [residents, history, activeYear, mode]);
+
     const renderGroup = (level: number) => {
         const groupResidents = residents.filter(r => r.level === level);
         const allReqs = REQUIREMENTS[level] || [];
@@ -37,7 +102,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
         if (reqs.length === 0 || groupResidents.length === 0) return null;
 
         return (
-            <div className="bg-white rounded-lg shadow-sm border border-light-5 overflow-hidden mb-8">
+            <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden mb-8">
                 <div className="px-6 py-4 border-b border-light-3 bg-light-1/50 flex items-center gap-2">
                     <span className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide
               ${level === 1 ? 'bg-lime-green/40 text-green-dark' : level === 2 ? 'bg-light-blue text-navy' : 'bg-light-purple/50 text-purple-2'}
@@ -114,21 +179,21 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
     return (
         <div className="h-full overflow-y-auto bg-light-1 p-6">
-            <div className="max-w-6xl mx-auto">
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-light-5 mb-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-light-5 mb-8">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-xl ${mode === 'acgme' ? 'bg-blue/10 text-blue' : 'bg-purple/10 text-purple-2'}`}>
-                                <ClipboardList size={24} />
+                            <div className={`p-3 rounded-xl ${mode === 'acgme' ? 'bg-blue/10 text-blue' : 'bg-purple/10 text-purple-2'}`}>
+                                <ClipboardList size={28} />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-primary tracking-tight uppercase">
+                                <h2 className="text-2xl font-black text-primary tracking-tight uppercase">
                                     {mode === 'acgme' ? 'ACGME Requirements' : 'MHS Specific Requirements'}
                                 </h2>
                                 <p className="text-muted text-sm font-medium">
                                     {mode === 'acgme' 
-                                        ? 'Core specialty and multidisciplinary mandates' 
-                                        : 'Program-specific curricular goals and staffing targets'}
+                                        ? 'Core specialty and multidisciplinary mandates for national accreditation.' 
+                                        : 'Program-specific curricular goals, staffing targets, and institutional policies.'}
                                 </p>
                             </div>
                         </div>
@@ -138,6 +203,125 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                 {renderGroup(1)}
                 {renderGroup(2)}
                 {renderGroup(3)}
+
+                {mode === 'mhs' && auditData.length > 0 && (
+                    <div className="space-y-8 mt-12">
+                        {/* Policy Audit Section */}
+                        <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
+                            <div className="px-6 py-4 border-b bg-light-1 flex items-center gap-3">
+                                <ShieldCheck className="text-blue" size={20} />
+                                <h2 className="text-lg font-bold text-primary uppercase tracking-tight">
+                                    Curriculum 2026 Policy Audit
+                                </h2>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-light-2 text-[10px] uppercase font-bold text-secondary">
+                                        <tr>
+                                            <th className="px-6 py-3 sticky left-0 bg-light-2 z-10 w-48">Resident</th>
+                                            <th className="px-6 py-3">Clinic Assignment</th>
+                                            <th className="px-6 py-3">Blackout Period Status</th>
+                                            <th className="px-6 py-3">Deficit Recovery Flag</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {auditData.map(d => (
+                                            <tr key={d.id} className="hover:bg-light-1">
+                                                <td className="px-6 py-4 font-medium sticky left-0 bg-white z-10 border-r">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-black font-bold">{d.name}</span>
+                                                        <span className="text-[10px] text-muted font-black uppercase">PGY-{d.pgy}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        {d.clinicValid ? (
+                                                            <span className="text-green font-bold flex items-center gap-1">
+                                                                <ShieldCheck size={16} /> Valid {d.pgy === 2 ? 'NIMA' : 'CCIM'}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-red font-bold flex items-center gap-1 text-xs uppercase tracking-tighter">
+                                                                <AlertTriangle size={16} /> Incorrect Location
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        {!d.hasBlackoutVacation ? (
+                                                            <span className="text-green font-bold flex items-center gap-1">
+                                                                <ShieldCheck size={16} /> No PTO Conflicts
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-red font-bold flex items-center gap-1 text-xs uppercase tracking-tighter">
+                                                                <AlertTriangle size={16} /> Blackout Conflict
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        {!d.hasSplitBlockDeficit ? (
+                                                            <span className="text-green font-bold flex items-center gap-1">
+                                                                <ShieldCheck size={16} /> Fully Met / On-Track
+                                                            </span>
+                                                        ) : d.hasElectiveToOverwrite ? (
+                                                            <span className="text-orange-600 font-bold flex items-center gap-1 text-xs uppercase tracking-tighter leading-tight max-w-[200px]">
+                                                                <AlertTriangle size={16} className="shrink-0" /> Elective Overwritten for Deficit
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-red font-bold flex items-center gap-1 text-xs uppercase tracking-tighter">
+                                                                <AlertTriangle size={16} /> Deficit (Override Needed)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Jeopardy Pool Section */}
+                        <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
+                            <div className="px-6 py-4 border-b bg-light-1 flex items-center gap-3">
+                                <Users className="text-purple" size={20} />
+                                <h2 className="text-lg font-bold text-primary uppercase tracking-tight">
+                                    Jeopardy & Backup Coverage Status
+                                </h2>
+                            </div>
+                            <div className="p-6 text-sm text-secondary space-y-4">
+                                <p className="text-navy-dark leading-relaxed font-medium">
+                                    Mandate: At least **one PGY-3 and one PGY-2** on a flexible block (Elective or Consult) per week to serve as a reliable Jeopardy pool.
+                                </p>
+
+                                <div className={`p-4 rounded-xl border ${jeopardyGapWeeks.length === 0 ? 'bg-green/10 border-green/30' : 'bg-red/10 border-red/30'}`}>
+                                    {jeopardyGapWeeks.length === 0 ? (
+                                        <div className="text-green-dark font-black flex items-center gap-3">
+                                            <ShieldCheck className="text-green" size={16} />
+                                            <span>All weeks have first and second line Jeopardy coverage fully staffed!</span>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="text-red-700 font-black flex items-center gap-3">
+                                                <AlertTriangle className="text-red" size={16} />
+                                                <span>Jeopardy Gaps detected in {jeopardyGapWeeks.length} weeks.</span>
+                                            </div>
+                                            <div className="flex gap-1.5 flex-wrap ml-9">
+                                                {jeopardyGapWeeks.map(w => (
+                                                    <span key={w} className="px-2.5 py-1 bg-white border border-red-200 text-red-700 text-xs font-black rounded-lg shadow-sm">
+                                                        Week {w}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
