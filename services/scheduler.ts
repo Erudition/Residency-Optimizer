@@ -1,6 +1,5 @@
-
 import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting } from '../types';
-import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS } from '../constants';
+import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS, fulfillsRequirement } from '../constants';
 import { getRequirementCount, getCumulativeRequirementCount } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
@@ -21,7 +20,7 @@ export const generateSchedule = async (
   params: CompetitionParams,
   algorithmIds: string[],
   isAlgorithmCanceled: (id: string) => boolean,
-  onProgress: (iteration: number, scores: number[], attempts: number, exhaustionPoints: number[]) => void,
+  onProgress: (iteration: number, scores: (number | null)[], attempts: number[], exhaustionPoints: number[], exhaustedCount: number) => void,
   isPromoted: () => boolean = () => false
 ): Promise<{ results: CompetitionResult[] }> => {
   const { residents, existing, cohortAssignments } = constraints;
@@ -78,7 +77,6 @@ export const generateSchedule = async (
       break;
     }
 
-    const currentBestScores: number[] = [];
     let promoted = false;
 
     for (let idx = 0; idx < selectedGenerators.length; idx++) {
@@ -91,7 +89,6 @@ export const generateSchedule = async (
       const state = algoState[g.id];
       
       if (isAlgorithmCanceled(g.id) || state.exhausted) {
-        currentBestScores.push(state.bestScore === -Infinity ? -1000000 : state.bestScore);
         continue;
       }
 
@@ -136,7 +133,6 @@ export const generateSchedule = async (
         // 1. Improvement Logic
         if (score > state.bestScore) {
           const gap = i - state.lastBestIteration;
-          // Track the LONGEST gap ever seen between improvements
           state.iterationsToFindBest = Math.max(state.iterationsToFindBest, gap);
           state.lastBestIteration = i;
           state.bestScore = score;
@@ -169,16 +165,26 @@ export const generateSchedule = async (
       } catch (e) {
         console.error(`Generator ${g.name} failed attempt ${i}`, e);
       }
-      currentBestScores.push(state.bestScore === -Infinity ? -1000000 : state.bestScore);
     }
 
     if (promoted) break;
 
-    const exhaustionPoints = selectedGenerators.map(g => 
-      algoState[g.id].lastBestIteration + (algoState[g.id].iterationsToFindBest * 10)
-    );
+    const currentBestScores: (number | null)[] = [];
+    const attemptCounts: number[] = [];
+    const exhaustionPoints: number[] = [];
+    let exhaustedCount = 0;
 
-    onProgress(i, currentBestScores, i, exhaustionPoints);
+    selectedGenerators.forEach(g => {
+      const state = algoState[g.id];
+      const isActuallyExhausted = isAlgorithmCanceled(g.id) || state.exhausted;
+      if (isActuallyExhausted) exhaustedCount++;
+      
+      currentBestScores.push(isActuallyExhausted ? null : (state.bestScore === -Infinity ? -1000000 : state.bestScore));
+      attemptCounts.push(state.totalAttempts);
+      exhaustionPoints.push(state.lastBestIteration + (state.iterationsToFindBest * 10));
+    });
+
+    onProgress(i, currentBestScores, attemptCounts, exhaustionPoints, exhaustedCount);
 
     if (i % 10 === 0) {
       await new Promise(resolve => setTimeout(resolve, 0));

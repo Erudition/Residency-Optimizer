@@ -3,7 +3,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { ConvergenceDataPoint } from '../types';
 
 interface Props {
-  data: number[][]; // Each element is an array of scores, one per algorithm
+  data: (number | null)[][]; // Each element is an array of scores, one per algorithm
+  attempts: number[];
   exhaustionPoints: number[];
   maxTries: number;
   onStop: () => void;
@@ -13,7 +14,24 @@ interface Props {
   canceledIds: Set<string>;
 }
 
-export const GenerationDashboard: React.FC<Props> = ({ data, exhaustionPoints, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
+const CustomizedXDot = (props: any) => {
+  const { cx, cy, stroke, payload, dataKey, index, fullData } = props;
+  
+  // Only show X if this is the last valid point for this series
+  const currentVal = payload[dataKey];
+  const nextVal = fullData[index + 1]?.[dataKey];
+  
+  if (currentVal !== null && (nextVal === null || nextVal === undefined)) {
+    return (
+      <svg x={cx - 6} y={cy - 6} width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={4} strokeLinecap="round">
+        <path d="M18 6L6 18M6 6l12 12" />
+      </svg>
+    );
+  }
+  return null;
+};
+
+export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustionPoints, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
   const [isPromoting, setIsPromoting] = React.useState(false);
   const startTimeRef = React.useRef<number>(Date.now());
   
@@ -132,9 +150,10 @@ export const GenerationDashboard: React.FC<Props> = ({ data, exhaustionPoints, m
                 name={algo.name}
                 stroke={algo.color} 
                 strokeWidth={2.5}
-                dot={false}
+                dot={<CustomizedXDot fullData={chartData} />}
                 activeDot={{ r: 4, strokeWidth: 0 }}
                 isAnimationActive={false}
+                connectNulls={false}
               />
             ))}
           </LineChart>
@@ -171,7 +190,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, exhaustionPoints, m
                 {isWinner && <span className="text-[8px] text-blue font-black uppercase">Best</span>}
               </div>
               <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">
-                Attempt {data.length} / {exhaustionPoints[i] || '?'}
+                Attempt {attempts[i] || 0} / {exhaustionPoints[i] || '?'}
               </div>
             </div>
           );

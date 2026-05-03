@@ -262,9 +262,10 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  const [convergenceData, setConvergenceData] = useState<number[][]>([]);
+  const [convergenceData, setConvergenceData] = useState<(number | null)[][]>([]);
   const [exhaustionPoints, setExhaustionPoints] = useState<number[]>([]);
-  const convergenceBufferRef = useRef<number[][]>([]);
+  const [algoAttempts, setAlgoAttempts] = useState<number[]>([]);
+  const convergenceBufferRef = useRef<(number | null)[][]>([]);
   const lastUpdateRef = useRef<number>(0);
   const [canceledAlgoIds, setCanceledAlgoIds] = useState<Set<string>>(new Set());
   const activeWorkersRef = useRef<Set<Worker>>(new Set());
@@ -480,7 +481,7 @@ const App: React.FC = () => {
     residents: Resident[], 
     existing: ScheduleGrid, 
     params: CompetitionParams, 
-    onProgress: (iteration: number, attempts: number, scores: number[] | undefined, year: number, overallProgress: number, exhaustionPoints: number[]) => void,
+    onProgress: (iteration: number, attempts: number[], scores: (number | null)[] | undefined, year: number, overallProgress: number, exhaustionPoints: number[], exhaustedCount: number) => void,
     historicalSchedules: ScheduleHistory, 
     cohortAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
@@ -505,9 +506,9 @@ const App: React.FC = () => {
       }
 
       worker.onmessage = (e) => {
-        const { type, iteration, overallProgress, bestScore, attempts, exhaustionPoints, results, error } = e.data;
+        const { type, iteration, overallProgress, bestScore, attempts, exhaustionPoints, exhaustedCount, results, error } = e.data;
         if (type === 'progress') {
-          onProgress(iteration, attempts, bestScore, startYear, overallProgress, exhaustionPoints);
+          onProgress(iteration, attempts, bestScore, startYear, overallProgress, exhaustionPoints, exhaustedCount || 0);
         } else if (type === 'success') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -632,7 +633,7 @@ const App: React.FC = () => {
         residents,
         {},
         compParams,
-        (iteration, attempts, scores, year, overallProgress, exhPoints) => {
+        (iteration, attempts, scores, year, overallProgress, exhPoints, exhCount) => {
           const now = Date.now();
           if (scores) {
             while (convergenceBufferRef.current.length < iteration) {
@@ -643,7 +644,7 @@ const App: React.FC = () => {
           }
           if (now - lastUpdateRef.current > 1000) {
             setGenProgress(Math.round(overallProgress * 100));
-            setGenAttempts(attempts);
+            setAlgoAttempts(attempts);
             setExhaustionPoints(exhPoints);
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
             if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
@@ -973,6 +974,7 @@ const App: React.FC = () => {
           {convergenceData.length > 0 ? (
             <GenerationDashboard
               data={convergenceData}
+              attempts={algoAttempts}
               exhaustionPoints={exhaustionPoints}
               maxTries={2000}              onStop={stopGeneration}
               onSelectWinners={() => {
@@ -1187,6 +1189,7 @@ const App: React.FC = () => {
               {convergenceData.length > 0 ? (
                 <GenerationDashboard 
                   data={convergenceData}
+                  attempts={algoAttempts}
                   exhaustionPoints={exhaustionPoints}
                   maxTries={2000}
                   onStop={stopGeneration}
