@@ -166,10 +166,10 @@ const AssignmentModal = ({
     <>
       <div className="fixed inset-0 z-[100] bg-black/5 select-none" onClick={onClose} />
       <div
-        className="fixed bg-white rounded-xl shadow-2xl border border-light-4 p-3 z-[101] select-none flex flex-col gap-2 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+        className="fixed bg-white rounded-xl shadow-2xl border border-light-4 p-3.5 z-[101] select-none flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
         style={{
-          width: `${popupWidth}px`,
-          height: `${popupHeight}px`,
+          width: `${popupWidth + 6}px`,
+          height: `${popupHeight + 6}px`,
           left: `${left}px`,
           top: `${top}px`,
         }}
@@ -178,7 +178,7 @@ const AssignmentModal = ({
           <span className="text-xs font-bold text-muted uppercase tracking-wider select-none">Select Rotation</span>
           <button onClick={onClose} className="text-muted hover:text-black text-sm select-none px-1">✕</button>
         </div>
-        <div className="grid grid-cols-4 gap-1.5 overflow-hidden select-none">
+        <div className="grid grid-cols-4 gap-1.5 select-none">
           {Object.entries(ASSIGNMENT_LABELS).map(([key, label]) => {
             const bgHex = getAssignmentColor(key as AssignmentType, false);
             return (
