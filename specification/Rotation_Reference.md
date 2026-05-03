@@ -192,13 +192,6 @@ These are highly individualized rotation experiences that residents can select t
 *   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 20
 
-### Research
-*   **Setting:** Non-Clinical
-*   **Duration:** 2 weeks
-*   **Intensity Rating:** 1/5
-*   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 20
-
 ### Junior Hospitalist
 *   **Setting:** Inpatient
 *   **Duration:** 4 weeks consecutive
