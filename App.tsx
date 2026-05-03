@@ -123,10 +123,31 @@ const AssignmentModal = ({
 }) => {
   if (!isOpen || !anchorRect) return null;
 
-  const popupWidth = 280;
-  const popupHeight = 330;
+  const keys = Object.keys(ASSIGNMENT_LABELS);
+  let r = 0;
+  let c = 0;
 
-  let left = anchorRect.left + anchorRect.width / 2 - popupWidth / 2;
+  if (current && keys.includes(current)) {
+    const i = keys.indexOf(current);
+    r = Math.floor(i / 4);
+    c = i % 4;
+  }
+
+  const btnWidth = 112;
+  const btnHeight = 40;
+  const gap = 6;
+  const pPadding = 12;
+  const titleHeight = 24;
+
+  const popupBtnLeft = pPadding + c * (btnWidth + gap) + btnWidth / 2;
+  const popupBtnTop = pPadding + titleHeight + gap + r * (btnHeight + gap) + btnHeight / 2;
+
+  const popupWidth = 490;
+  const popupHeight = 462;
+
+  let left = anchorRect.left + anchorRect.width / 2 - popupBtnLeft;
+  let top = anchorRect.top + anchorRect.height / 2 - popupBtnTop;
+
   if (left + popupWidth > window.innerWidth - 16) {
     left = window.innerWidth - popupWidth - 16;
   }
@@ -134,9 +155,8 @@ const AssignmentModal = ({
     left = 16;
   }
 
-  let top = anchorRect.bottom + 8;
   if (top + popupHeight > window.innerHeight - 16) {
-    top = anchorRect.top - popupHeight - 8;
+    top = window.innerHeight - popupHeight - 16;
   }
   if (top < 16) {
     top = 16;
@@ -149,24 +169,25 @@ const AssignmentModal = ({
         className="fixed bg-white rounded-xl shadow-2xl border border-light-4 p-3 z-[101] select-none flex flex-col gap-2 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
         style={{
           width: `${popupWidth}px`,
-          maxHeight: `${popupHeight}px`,
+          height: `${popupHeight}px`,
           left: `${left}px`,
           top: `${top}px`,
         }}
       >
-        <div className="flex justify-between items-center px-1">
+        <div className="flex justify-between items-center px-1" style={{ height: `${titleHeight}px` }}>
           <span className="text-xs font-bold text-muted uppercase tracking-wider select-none">Select Rotation</span>
           <button onClick={onClose} className="text-muted hover:text-black text-sm select-none px-1">✕</button>
         </div>
-        <div className="grid grid-cols-2 gap-1.5 overflow-y-auto pr-0.5 flex-1">
+        <div className="grid grid-cols-4 gap-1.5 overflow-hidden select-none">
           {Object.entries(ASSIGNMENT_LABELS).map(([key, label]) => {
             const bgHex = getAssignmentColor(key as AssignmentType, false);
             return (
               <button
                 key={key}
                 onClick={() => onSave(key as AssignmentType)}
-                className="p-1.5 h-10 rounded font-bold text-xs text-black transition-all flex items-center justify-center text-center leading-tight hover:brightness-95 active:translate-y-[1px] select-none"
+                className="h-10 rounded font-bold text-[10px] text-black transition-all flex items-center justify-center text-center leading-tight hover:brightness-95 active:translate-y-[1px] select-none p-1"
                 style={{
+                  width: `${btnWidth}px`,
                   backgroundColor: bgHex,
                   border: `1.5px solid oklch(from ${bgHex} calc(l - 0.08) c h)`,
                   boxShadow: `0 2px 0 oklch(from ${bgHex} calc(l - 0.12) c h)`,
@@ -175,13 +196,13 @@ const AssignmentModal = ({
                 }}
                 title={label}
               >
-                {label}
+                <span className="truncate max-w-full">{label}</span>
               </button>
             );
           })}
           <button
             onClick={() => onSave(null)}
-            className="p-2 h-10 rounded font-bold text-xs text-red hover:bg-red/10 border border-light-4 transition-all active:translate-y-[1px] col-span-2 select-none"
+            className="p-2 h-10 rounded font-bold text-xs text-red hover:bg-red/10 border border-light-4 transition-all active:translate-y-[1px] col-span-4 select-none"
           >
             Clear Assignment
           </button>
