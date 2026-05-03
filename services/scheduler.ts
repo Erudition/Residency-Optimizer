@@ -39,18 +39,42 @@ export const generateSchedule = async (
   }
 
   const results: CompetitionResult[] = [];
-  const algorithmBestScores: Record<string, number> = {};
-  // Standardizing on Score: Higher is Better. Initial best is -Infinity.
-  selectedGenerators.forEach(g => algorithmBestScores[g.id] = -Infinity);
+  const algoState: Record<string, {
+    bestScore: number,
+    lastBestIteration: number,
+    iterationsToFindBest: number,
+    exhausted: boolean,
+    totalAttempts: number
+  }> = {};
+
+  selectedGenerators.forEach(g => {
+    algoState[g.id] = {
+      bestScore: -Infinity,
+      lastBestIteration: 0,
+      iterationsToFindBest: 20, // Start with a reasonable window (200 attempts)
+      exhausted: false,
+      totalAttempts: 0
+    };
+  });
 
   console.log(`Starting Unified Multi-Year Competition (${totalYears} years)...`);
 
   let i = 0;
-  const tries = params.tries || 300;
+  const HARD_CAP = 2000; // Safety cap
 
-  while (i < tries) {
+  while (i < HARD_CAP) {
     if (isPromoted()) {
       console.log("Promotion triggered - ending generation early with best results found so far.");
+      break;
+    }
+
+    // Check if all active and non-canceled algorithms are exhausted
+    const allExhausted = selectedGenerators.every(g => 
+      isAlgorithmCanceled(g.id) || algoState[g.id].exhausted
+    );
+
+    if (allExhausted) {
+      console.log(`All solvers exhausted after ${i} iterations. Stopping.`);
       break;
     }
 
@@ -64,11 +88,14 @@ export const generateSchedule = async (
       }
       
       const g = selectedGenerators[idx];
+      const state = algoState[g.id];
       
-      if (isAlgorithmCanceled(g.id)) {
-        currentBestScores.push(algorithmBestScores[g.id]);
+      if (isAlgorithmCanceled(g.id) || state.exhausted) {
+        currentBestScores.push(state.bestScore === -Infinity ? -1000000 : state.bestScore);
         continue;
       }
+
+      state.totalAttempts++;
 
       try {
         let attemptTotalViolations = 0;
@@ -89,7 +116,6 @@ export const generateSchedule = async (
           }));
 
           const yearExisting = existing[y] || {};
-          // Ensure unique seed per algorithm and iteration
           const attemptSeed = i * selectedGenerators.length + idx;
           const yearSchedule = g.generator.generate(yearResidents, yearExisting, attemptSeed, runningHistory, cohortAssignments[y]);
           
@@ -102,11 +128,23 @@ export const generateSchedule = async (
           attemptFullData[y] = yearSchedule;
           totalScore += yearScore;
           
-          // Update running history for the next year in the block
           runningHistory[y] = yearSchedule;
         }
         
         const score = totalScore;
+
+        // 1. Improvement Logic
+        if (score > state.bestScore) {
+          const n = i - state.lastBestIteration;
+          state.iterationsToFindBest = Math.max(10, n); // Minimum 10 iteration window
+          state.lastBestIteration = i;
+          state.bestScore = score;
+        } 
+        // 2. Exhaustion Logic
+        else if (i - state.lastBestIteration > state.iterationsToFindBest * 10) {
+          state.exhausted = true;
+          console.log(`Solver ${g.name} exhausted at iteration ${i}. (Window: ${state.iterationsToFindBest * 10})`);
+        }
 
         // Check if this multi-year package qualifies for Top N (Higher is Better)
         const currentWorstScore = results.length >= (params.topN || 1) ? results[results.length - 1].score : -Infinity;
@@ -120,7 +158,6 @@ export const generateSchedule = async (
             understaffing: attemptUnderstaffing
           };
 
-
           results.push(result);
           results.sort((a, b) => b.score - a.score); // DESC sort (higher score first)
 
@@ -128,14 +165,10 @@ export const generateSchedule = async (
             results.pop();
           }
         }
-
-        if (score > algorithmBestScores[g.id]) {
-          algorithmBestScores[g.id] = score;
-        }
       } catch (e) {
         console.error(`Generator ${g.name} failed attempt ${i}`, e);
       }
-      currentBestScores.push(algorithmBestScores[g.id] === -Infinity ? -1000000 : algorithmBestScores[g.id]);
+      currentBestScores.push(state.bestScore === -Infinity ? -1000000 : state.bestScore);
     }
 
     if (promoted) break;
