@@ -8,7 +8,7 @@ interface Props {
   schedule: ScheduleGrid;
   startYear: number;
   cohortAssignments?: Record<string, number>;
-  onCellClick: (residentId: string, week: number) => void;
+  onCellClick: (residentId: string, week: number, rect?: DOMRect) => void;
   onLockWeek: (weekIdx: number) => void;
   onLockResident: (residentId: string) => void;
   onToggleLock: (residentId: string, weekIdx: number) => void;
@@ -62,7 +62,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     };
   }, []);
 
-  const handleCellClick = (residentId: string, weekIdx: number) => {
+  const handleCellClick = (residentId: string, weekIdx: number, rect?: DOMRect) => {
     const key = `${residentId}-${weekIdx}`;
     if (clickTimeoutRef.current[key]) {
       clearTimeout(clickTimeoutRef.current[key]);
@@ -70,7 +70,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       onToggleLock(residentId, weekIdx);
     } else {
       clickTimeoutRef.current[key] = window.setTimeout(() => {
-        onCellClick(residentId, weekIdx);
+        onCellClick(residentId, weekIdx, rect);
         delete clickTimeoutRef.current[key];
       }, 280);
     }
@@ -207,7 +207,10 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                         <button
                           className={cell?.locked ? 'lemon-slot-locked' : 'lemon-slot'}
                           style={{ '--slot-bg': bgHex } as React.CSSProperties}
-                          onClick={() => handleCellClick(resident.id, idx)}
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            handleCellClick(resident.id, idx, rect);
+                          }}
                           onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
                           onMouseLeave={handleMouseLeave}
                           title="Click to edit, Double-click to toggle lock"

@@ -19,7 +19,8 @@ import {
   ACTIVE_START_YEAR,
   TOTAL_WEEKS,
   ACGME_TYPES,
-  MHS_TYPES
+  MHS_TYPES,
+  getAssignmentColor
 } from './constants';
 import historicalGridData from './specification/historical_schedules_grid_v2.json';
 import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations, getAuditViolations } from './services/scheduler';
@@ -111,42 +112,82 @@ const AssignmentModal = ({
   isOpen,
   onClose,
   current,
-  onSave
+  onSave,
+  anchorRect
 }: {
   isOpen: boolean;
   onClose: () => void;
   current: AssignmentType | null;
-  onSave: (val: AssignmentType | null) => void
+  onSave: (val: AssignmentType | null) => void;
+  anchorRect: DOMRect | null;
 }) => {
-  if (!isOpen) return null;
+  if (!isOpen || !anchorRect) return null;
+
+  const popupWidth = 280;
+  const popupHeight = 330;
+
+  let left = anchorRect.left + anchorRect.width / 2 - popupWidth / 2;
+  if (left + popupWidth > window.innerWidth - 16) {
+    left = window.innerWidth - popupWidth - 16;
+  }
+  if (left < 16) {
+    left = 16;
+  }
+
+  let top = anchorRect.bottom + 8;
+  if (top + popupHeight > window.innerHeight - 16) {
+    top = anchorRect.top - popupHeight - 8;
+  }
+  if (top < 16) {
+    top = 16;
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h3 className="text-lg font-bold mb-4">Edit Assignment</h3>
-        <div className="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto pr-2">
-          {Object.entries(ASSIGNMENT_LABELS).map(([key, label]) => (
-            <Button
-              key={key}
-              onClick={() => onSave(key as AssignmentType)}
-              className={`p-3 rounded border text-sm font-medium transition-colors text-left
-                ${current === key ? 'ring-2 ring-blue bg-light-blue/20 border-blue' : 'hover:bg-light-1 border-light-5'}
-              `}
-            >
-              {label}
-            </Button>
-          ))}
-          <Button
+    <>
+      <div className="fixed inset-0 z-[100] bg-black/5 select-none" onClick={onClose} />
+      <div
+        className="fixed bg-white rounded-xl shadow-2xl border border-light-4 p-3 z-[101] select-none flex flex-col gap-2 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+        style={{
+          width: `${popupWidth}px`,
+          maxHeight: `${popupHeight}px`,
+          left: `${left}px`,
+          top: `${top}px`,
+        }}
+      >
+        <div className="flex justify-between items-center px-1">
+          <span className="text-xs font-bold text-muted uppercase tracking-wider select-none">Select Rotation</span>
+          <button onClick={onClose} className="text-muted hover:text-black text-sm select-none px-1">✕</button>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5 overflow-y-auto pr-0.5 flex-1">
+          {Object.entries(ASSIGNMENT_LABELS).map(([key, label]) => {
+            const bgHex = getAssignmentColor(key as AssignmentType, false);
+            return (
+              <button
+                key={key}
+                onClick={() => onSave(key as AssignmentType)}
+                className="p-1.5 h-10 rounded font-bold text-xs text-black transition-all flex items-center justify-center text-center leading-tight hover:brightness-95 active:translate-y-[1px] select-none"
+                style={{
+                  backgroundColor: bgHex,
+                  border: `1.5px solid oklch(from ${bgHex} calc(l - 0.08) c h)`,
+                  boxShadow: `0 2px 0 oklch(from ${bgHex} calc(l - 0.12) c h)`,
+                  outline: current === key ? '3px solid #2f80fa' : 'none',
+                  outlineOffset: current === key ? '1px' : 'none'
+                }}
+                title={label}
+              >
+                {label}
+              </button>
+            );
+          })}
+          <button
             onClick={() => onSave(null)}
-            className="p-3 rounded border border-light-5 text-sm font-medium text-red hover:bg-red/10 col-span-2"
+            className="p-2 h-10 rounded font-bold text-xs text-red hover:bg-red/10 border border-light-4 transition-all active:translate-y-[1px] col-span-2 select-none"
           >
             Clear Assignment
-          </Button>
+          </button>
         </div>
-        <Button variant="secondary" size="md"  onClick={onClose}  className="mt-4 w-full py-2 bg-light-2 rounded hover:bg-light-3" >
-          Cancel
-        </Button>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -481,6 +522,7 @@ const App: React.FC = () => {
   const hasViolations = violations.reqs.length > 0 || violations.constraints.length > 0;
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ resId: string, week: number } | null>(null);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [scheduleToRename, setScheduleToRename] = useState<ScheduleSession | null>(null);
@@ -733,8 +775,9 @@ const App: React.FC = () => {
     setScheduleToRename(null);
   };
 
-  const handleCellClick = (resId: string, week: number) => {
+  const handleCellClick = (resId: string, week: number, rect?: DOMRect) => {
     setSelectedCell({ resId, week });
+    if (rect) setAnchorRect(rect);
     setModalOpen(true);
   };
 
@@ -1496,7 +1539,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} />
+      <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} anchorRect={anchorRect} />
       <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => setRenameModalOpen(false)} onSave={handleRename} />
     </div>
   );
