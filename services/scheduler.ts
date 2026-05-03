@@ -114,7 +114,9 @@ export const generateSchedule = async (
 
           const yearExisting = existing[y] || {};
           const attemptSeed = i * selectedGenerators.length + idx;
-          const yearSchedule = g.generator.generate(yearResidents, yearExisting, attemptSeed, runningHistory, cohortAssignments[y]);
+          const yearSchedule = yearResidents.length > 0 
+            ? g.generator.generate(yearResidents, yearExisting, attemptSeed, runningHistory, cohortAssignments[y])
+            : JSON.parse(JSON.stringify(yearExisting || {}));
           
           const yearScore = calculateScheduleScore(yearResidents, yearSchedule, runningHistory);
           const reqViolations = getRequirementViolations(yearResidents, yearSchedule, runningHistory);
