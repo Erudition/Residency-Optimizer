@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
-import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS } from '../constants';
+import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS, ASSIGNMENT_HEX_COLORS } from '../constants';
 import { User, Lock, Calendar } from 'lucide-react';
 
 interface Props {
@@ -174,9 +174,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   {WEEKS.map((w, idx) => {
                     const cell = residentSchedule[idx];
                     const assign = cell?.assignment;
-                    const colorClass = assign
-                      ? ASSIGNMENT_COLORS[assign]
-                      : 'bg-white';
+                    const bgHex = assign ? ASSIGNMENT_HEX_COLORS[assign] : '#ffffff';
                     const isPast = isPastWeek(w, startYear);
 
                     return (
@@ -185,7 +183,8 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                         className="border-b border-light-3 border-r p-1 text-center select-none relative"
                       >
                         <button
-                          className={`${cell?.locked ? 'lemon-slot-locked' : 'lemon-slot'} ${colorClass}`}
+                          className={cell?.locked ? 'lemon-slot-locked' : 'lemon-slot'}
+                          style={{ '--slot-bg': bgHex } as React.CSSProperties}
                           onClick={() => onCellClick(resident.id, idx)}
                           onDoubleClick={() => onToggleLock(resident.id, idx)}
                           onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
