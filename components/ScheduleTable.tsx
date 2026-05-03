@@ -62,7 +62,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     };
   }, []);
 
-  const handleCellClick = (residentId: string, weekIdx: number, rect?: DOMRect) => {
+  const handleCellClick = (residentId: string, weekIdx: number, isLocked: boolean, rect?: DOMRect) => {
     const key = `${residentId}-${weekIdx}`;
     if (clickTimeoutRef.current[key]) {
       clearTimeout(clickTimeoutRef.current[key]);
@@ -70,7 +70,9 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       onToggleLock(residentId, weekIdx);
     } else {
       clickTimeoutRef.current[key] = window.setTimeout(() => {
-        onCellClick(residentId, weekIdx, rect);
+        if (!isLocked) {
+          onCellClick(residentId, weekIdx, rect);
+        }
         delete clickTimeoutRef.current[key];
       }, 280);
     }
@@ -209,7 +211,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           style={{ '--slot-bg': bgHex } as React.CSSProperties}
                           onClick={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
-                            handleCellClick(resident.id, idx, rect);
+                            handleCellClick(resident.id, idx, !!cell?.locked, rect);
                           }}
                           onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
                           onMouseLeave={handleMouseLeave}
