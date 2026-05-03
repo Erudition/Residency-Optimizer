@@ -22,7 +22,7 @@ The core curriculum proposal outlines *what* blocks the residents must take, but
 Here are the rules that must govern the schedule generation:
 
 ## 1. 4+1 Cohort Division Logic
-See @specification/MHS Curriculum Proposal.md
+Refer to the complete cohort constraints in the curriculum proposal above.
 
 ## 2. Inpatient Patient Census Caps (Wards)
 See @specification/simplified_acgme_requirements.md
@@ -34,19 +34,19 @@ See @specification/faculty_orientation_analysis.md
 See @specification/MHS_GME_Policy_Analysis.md
 
 ## 5. Subspecialty Auditing List
-See @specification/simplified_acgme_requirements.md
+Refer to the simplified ACGME requirements for auditing domains.
 
 ## 6. Rotation Month Minimums & Maximums
-See @specification/simplified_acgme_requirements.md
+Refer to the simplified ACGME requirements for overall month requirements.
 
 ## 7. Mandatory Multidisciplinary Clinical Experiences
-See @specification/simplified_acgme_requirements.md
+Refer to the simplified ACGME requirements for multidisciplinary experiences.
 
 ## 8. Faculty & Attending Scope
-See @specification/faculty_orientation_analysis.md
+Refer to the faculty orientation analysis for detailed scope restrictions.
 
 ## 9. Reminders
-See @specification/MHS Curriculum Proposal.md
+Refer to the complete curriculum proposal for important reminders.
 
 ## 10. UI Presentation Standards
 See @specification/interface
@@ -55,22 +55,22 @@ See @specification/interface
 *   **Vitest Testing:** When running Vitest tests via the shell, always use `--run` (or equivalent) to disable watch mode. This is especially critical when piping output to a file or running in the background, as watch mode can prevent the IDE from correctly terminating the process, leading to stale background tasks.
 
 ## 12. Deficit Recovery & Scheduling Engine Logic
-See @specification/MHS Curriculum Proposal.md
+Refer to the complete curriculum proposal for details.
 
 ## 13. Year-Specific Cohort Mapping
-See @specification/MHS Curriculum Proposal.md
+Refer to the complete curriculum proposal for details.
 
 ## 14. Jeopardy & Backup Coverage Logic
-See @specification/MHS Curriculum Proposal.md
+Refer to the complete curriculum proposal for details.
 
 ## 15. Start Year vs PGY Level Logic
-See @specification/MHS Curriculum Proposal.md
+Refer to the complete curriculum proposal for details.
 
 ## 16. Database Purity
 *   **No Placeholders**: Initial data generation and "Factory Reset" logic must not create placeholder resident records for future years. Only residents with explicitly defined names or manually added data should exist in the database.
 
 ## 17. Dynamic Academic Year Labeling
-See @specification/MHS Curriculum Proposal.md
+Refer to the complete curriculum proposal for details.
 
 ## 18. Unauthorized Constraint Modification
 *   **Hard Constraint**: The AI must NOT change staffing ratios (e.g., `maxSeniors`, `maxInterns`) or educational requirement targets (e.g., `minWeeks`) without explicit human permission.
