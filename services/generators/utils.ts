@@ -32,6 +32,9 @@ export const getRequirementCount = (row: ScheduleCell[], type: AssignmentType): 
 
 export const getCumulativeRequirementCount = (residentId: string, currentYearRow: ScheduleCell[], type: AssignmentType, history?: ScheduleHistory): number => {
     let count = getRequirementCount(currentYearRow, type);
+    if (type === AssignmentType.NIGHT_FLOAT) {
+        return count;
+    }
     if (history) {
         for (const year in history) {
             const yearSchedule = history[year];

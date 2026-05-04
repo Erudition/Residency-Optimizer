@@ -328,7 +328,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     [AssignmentType.NIGHT_FLOAT]: {
         type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', category: 'Night Float',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 2,
-        minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
+        minInterns: 1, maxInterns: 2, minSeniors: 1, maxSeniors: 2,
         minWeeksIntern: 2, minWeeksPGY2: 2, minWeeksPGY3: 2 // 2 weeks per year per proposal
     },
     [AssignmentType.EM]: {
