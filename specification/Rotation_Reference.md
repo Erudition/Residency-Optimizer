@@ -11,33 +11,45 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Setting:** Inpatient
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 4/5
-*   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
-*   **Methodist scheduling information:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors. Contributes to the core inpatient wards minimums.
+*   **MAX Staffing Requirements:** 3 Interns, 2 Seniors
+*   **MIN Staffing Requirements:** 2 Interns, 1 Senior
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 5
+*   **Total Min Acceptable Residents Concurrently Scheduled:** 3
+*   **Additional Notes:** Can take up to 1 Medical Student
+*   **Methodist scheduling information:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors. Contributes to the core inpatient wards minimums. Interns may not be scheduled without supervision, seniors may be scheduled without interns.
 
 ### Wards Blue
 *   **Setting:** Inpatient
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
-*   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
-*   **Methodist scheduling information:** Contributes to the core inpatient wards minimums.
+*   **MAX Staffing Requirements:** 3 Interns, 2 Seniors
+*   **MIN Staffing Requirements:** 2 Interns, 1 Senior
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 5
+*   **Total Min Acceptable Residents Concurrently Scheduled:** 3
+*   **Additional Notes:** Can take up to 1 Medical Student
+*   **Methodist scheduling information:** Contributes to the core inpatient wards minimums. Interns may not be scheduled without supervision, seniors may be scheduled without interns.
 
 ### Met Wards (Metro Wards)
 *   **Setting:** Inpatient
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
-*   **Staffing Requirements:** 3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 4
-*   **Methodist scheduling information:** Contributes to the core inpatient wards minimums.
+*   **MAX Staffing Requirements:** 3 Interns, 2 Seniors
+*   **MIN Staffing Requirements:** 2 Interns, 1 Senior
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 5
+*   **Total Min Acceptable Residents Concurrently Scheduled:** 3
+*   **Additional Notes:** Can take up to 1 Medical Student
+*   **Methodist scheduling information:** Contributes to the core inpatient wards minimums. Interns may not be scheduled without supervision, seniors may be scheduled without interns.
 
 ### ICU (Main)
 *   **Setting:** Critical Care
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 5/5
-*   **Staffing Requirements:** 4 Interns (Strict), 2 Seniors (Strict) (+ up to 1 Medical Student)
+*   **MAX Staffing Requirements:** 4 Interns, 2 Seniors
+*   **MIN Staffing Requirements:** 2 Interns, 2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 6
-*   **Methodist scheduling information:** 8 weeks required for Interns, 4 weeks required for Seniors.
+*   **Total Min Acceptable Residents Concurrently Scheduled:** 4
+*   **Additional Notes:** Can take up to 1 Medical Student
+*   **Methodist scheduling information:** 8 weeks required for Interns, 4 weeks required for Seniors. Interns may not be scheduled without supervision, seniors may be scheduled without interns.
 
 ### Outpatient (CCIM & NIMA Continuity Clinics)
 *   **Setting:** Outpatient
@@ -51,9 +63,11 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Setting:** Inpatient
 *   **Duration:** 2 weeks consecutive (PGY-1)
 *   **Intensity Rating:** 1/5
-*   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
+*   **MAX Staffing Requirements:** 2 Interns, 2 Seniors
+*   **MIN Staffing Requirements:** 1 Intern, 1 Senior
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
-*   **Methodist scheduling information:** Required 2 weeks for Interns. Two weeks of supervision for seniors. Functions as a core procedural training service.
+*   **Total Min Acceptable Residents Concurrently Scheduled:** 1 (if only senior available)
+*   **Methodist scheduling information:** Required 2 weeks for Interns. Two weeks of supervision for seniors. Functions as a core procedural training service. Interns may not be scheduled without supervision, seniors may be scheduled without interns.
 
 ### Emergency Medicine
 *   **Setting:** Inpatient (Emergency)
@@ -61,15 +75,17 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 1-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 4 weeks total. Restricted to PGY-2/PGY-3 residents.
+*   **Methodist scheduling information:** 4 weeks total over PGY2/PGY3. Restricted to PGY-2/PGY-3 residents. No interns may be scheduled for this rotation.
 
 ### Night Float
 *   **Setting:** Inpatient
 *   **Duration:** 2 weeks consecutive (Cap limit is 2 weeks consecutive, max 6 weeks per residency)
 *   **Intensity Rating:** 4/5
-*   **Staffing Requirements:** 1-2 Interns, 1-2 Seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** Strict ACGME limits apply to night float frequency and consecutive duration.
+*   **MAX Staffing Requirements:** 2 Interns, 2 Seniors
+*   **MIN Staffing Requirements:** 1 Intern, 1 Senior
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 3
+*   **Total Min Acceptable Residents Concurrently Scheduled:** 1    
+*   **Methodist scheduling information:** Strict ACGME limits apply to night float frequency and consecutive duration. Interns may not be scheduled without supervision, seniors may be scheduled without interns.
 
 ---
 
