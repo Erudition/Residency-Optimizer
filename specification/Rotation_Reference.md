@@ -12,7 +12,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Duration:** 4 weeks consecutive (for the resident)
 *   **Intensity Rating:** 4/5
 *   **MAX Staffing Requirements:** 3 Interns, 2 Seniors
-*   **MIN Staffing Requirements:** 2 Interns, 1 Senior
+*   **MIN Staffing Requirements:** 1 Interns, 1 Senior
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 5
 *   **Total Min Acceptable Residents Concurrently Scheduled:** 3
 *   **Additional Notes:** Can take up to 1 Medical Student
@@ -23,7 +23,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **MAX Staffing Requirements:** 3 Interns, 2 Seniors
-*   **MIN Staffing Requirements:** 2 Interns, 1 Senior
+*   **MIN Staffing Requirements:** 1 Interns, 1 Senior
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 5
 *   **Total Min Acceptable Residents Concurrently Scheduled:** 3
 *   **Additional Notes:** Can take up to 1 Medical Student
@@ -34,7 +34,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
 *   **MAX Staffing Requirements:** 3 Interns, 2 Seniors
-*   **MIN Staffing Requirements:** 2 Interns, 1 Senior
+*   **MIN Staffing Requirements:** 1 Interns, 1 Senior
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 5
 *   **Total Min Acceptable Residents Concurrently Scheduled:** 3
 *   **Additional Notes:** Can take up to 1 Medical Student
@@ -98,7 +98,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
-*   **Methodist scheduling information:** 2 weeks required for Interns; two weeks during PGY3.
+*   **Methodist scheduling information:** 2 weeks required for Interns; two weeks during PGY3. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ### Infectious Disease (ID)
 *   **Setting:** Inpatient
@@ -106,7 +106,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 2 weeks required for Interns.
+*   **Methodist scheduling information:** 2 weeks required for Interns. Additional weeks may be scheduled as an elective as long as staffing limits are respected. If not completed intern year, it must be completed during second or third years of residency.
 
 ### Nephrology
 *   **Setting:** Inpatient
@@ -114,7 +114,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 2 weeks required for Interns.
+*   **Methodist scheduling information:** 2 weeks required for Interns. Additional weeks may be scheduled as an elective as long as staffing limits are respected. If not completed intern year, it must be completed during second or third years of residency.
 
 ### Heme/Onc
 *   **Setting:** Inpatient/Outpatient
@@ -122,7 +122,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 2 weeks required in PGY-3. 
+*   **Methodist scheduling information:** 2 weeks required in PGY-3. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ### Neurology
 *   **Setting:** Inpatient
@@ -130,7 +130,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
-*   **Methodist scheduling information:** 2 weeks required in PGY-2.
+*   **Methodist scheduling information:** 2 weeks required in PGY-2. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows. PGY1s may not be scheduled for this rotation.
 
 ### Rheumatology
 *   **Setting:** Outpatient
@@ -138,7 +138,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
-*   **Methodist scheduling information:** 2 weeks required in PGY-2.
+*   **Methodist scheduling information:** 2 weeks required in PGY-2. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows. PGY1s may not be scheduled for this rotation.
 
 ### Gastroenterology (GI)
 *   **Setting:** Outpatient
@@ -146,7 +146,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 2 weeks required in PGY-2.
+*   **Methodist scheduling information:** 2 weeks required in PGY-2. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ### Addiction Medicine
 *   **Setting:** Inpatient
@@ -154,7 +154,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 4 weeks required in PGY-3.
+*   **Methodist scheduling information:** 4 weeks required in PGY-3. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ### Endocrinology
 *   **Setting:** Outpatient
@@ -162,7 +162,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 2 weeks required in PGY-3.
+*   **Methodist scheduling information:** 2 weeks required in PGY-3. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ### Geriatrics
 *   **Setting:** Outpatient
@@ -170,7 +170,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 4 weeks required in PGY-2.
+*   **Methodist scheduling information:** 4 weeks required in PGY-2. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ### Palliative Care (HPC)
 *   **Setting:** Inpatient
@@ -178,14 +178,12 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 4 weeks required in PGY-3.
+*   **Methodist scheduling information:** 4 weeks required in PGY-3. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ---
 
 ## 3. ELECTIVES & ADDITIONAL EXPERIENCES
 These are highly individualized rotation experiences that residents can select to fulfill their "Individualized Educational Experiences" time. 
-
-
 
 ### Procedural Teaching / Supervision
 *   **Setting:** Inpatient / Outpatient
@@ -193,7 +191,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-2 seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** Dedicated senior role overseeing PGY-1s on Pulmonology Consults or in the ICU.
+*   **Methodist scheduling information:** Dedicated senior role overseeing PGY-1s on Pulmonology Consults or in the ICU. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ## **3.1 Pure Elective
 *   **Setting:** Inpatient / Outpatient (Varies)
@@ -210,7 +208,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-2 seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** Counts toward outpatient experience requirements. Max acceptable residents includes those on those on senior selective NIMA rotation. 
+*   **Methodist scheduling information:** Counts toward outpatient experience requirements. Max acceptable residents includes those on those on senior selective NIMA rotation. Additional weeks may be scheduled as an elective as long as staffing limits are respected. 
 
 ### Research
 *   **Setting:** Non-Clinical
@@ -225,6 +223,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-2 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Methodist scheduling information:** Additional weeks may be scheduled as an elective as long as staffing limits are respected.
 
 ### Metro ICU
 *   **Setting:** Critical Care
@@ -232,7 +231,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 5/5
 *   **Staffing Requirements:** 0-3 Interns, 0-3 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
-*   **Methodist scheduling information:** An optional four weeks may be used to meet critical care requirements for seniors. It is recommended that seniors complete this rotation as long as doing so does not affect ICU staffing at Main ICU.
+*   **Methodist scheduling information:** An optional four weeks may be used to meet critical care requirements for seniors. It is recommended that seniors complete this rotation as long as doing so does not affect ICU staffing at Main ICU. Additional weeks may be scheduled as an elective as long as ACGME crit care limits are respected.
 
 ### Otolaryngology (ENT)
 *   **Setting:** Outpatient
@@ -240,6 +239,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-1 Intern, 0-1 Senior
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
+*   **Methodist scheduling information:** Additional weeks may be scheduled as an elective as long as staffing limits are respected. 
 
 ### Heart Failure (HF)
 *   **Setting:** Inpatient
@@ -247,6 +247,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-2 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Methodist scheduling information:** Additional weeks may be scheduled as an elective as long as staffing limits are respected. 
 
 ### Anaesthesia
 *   **Setting:** Inpatient
@@ -254,6 +255,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
+*   **Methodist scheduling information:** Additional weeks may be scheduled as an elective as long as staffing limits are respected. 
 
 ### PM&R
 *   **Setting:** Inpatient
@@ -261,7 +263,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 
+*   **Methodist scheduling information:** Additional weeks may be scheduled as an elective as long as staffing limits are respected. 
 
 ## Senior Selectives
 *   **Methodist scheduling information:** Dedicated internal medicine experience for seniors. Counts toward resident directed time.
@@ -273,6 +275,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-2 seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Methodist scheduling information:** Counts toward senior directed time.
 
 ### Admitting
 *   **Setting:** Inpatient
@@ -281,6 +284,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 0-2 seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Methodist scheduling information:** Counts toward senior directed time.
 
 ### Primary Care
 *   **Setting:** Outpatient
@@ -289,6 +293,7 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-2 seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Methodist scheduling information:** Counts toward senior directed time.
 
 ---
 
@@ -314,4 +319,4 @@ These are highly individualized rotation experiences that residents can select t
 *   **Intensity Rating:** 0/5
 *   **Staffing Requirements:** 0-20 Interns, 0-20 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 40
-*   **Notes:** Approved by Program Director.
+*   **Notes:** Must be approved by Program Director.
