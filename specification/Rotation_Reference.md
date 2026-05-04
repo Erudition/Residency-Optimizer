@@ -169,6 +169,16 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 ## 3. ELECTIVES & ADDITIONAL EXPERIENCES
 These are highly individualized rotation experiences that residents can select to fulfill their "Individualized Educational Experiences" time. 
 
+
+
+### Procedural Teaching / Supervision
+*   **Setting:** Inpatient / Outpatient
+*   **Duration:** 2 weeks
+*   **Intensity Rating:** 3/5
+*   **Staffing Requirements:** 0-2 seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Methodist scheduling information:** Dedicated senior role overseeing PGY-1s on Pulmonology Consults or in the ICU.
+
 ## **3.1 Pure Elective
 *   **Setting:** Inpatient / Outpatient (Varies)
 *   **Duration:** 2-4 weeks
@@ -177,34 +187,21 @@ These are highly individualized rotation experiences that residents can select t
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 40
 *   **Methodist scheduling information:** Fills the ACGME mandate for individualized educational experiences.
 
+### Outpatient Elective Experience
+*   **Setting:** Outpatient
+*   **Location:** NIMA
+*   **Duration:** 2-4 weeks consecutive
+*   **Intensity Rating:** 3/5
+*   **Staffing Requirements:** 0-2 seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Methodist scheduling information:** Counts toward outpatient experience requirements. Max acceptable residents includes those on those on senior selective NIMA rotation. 
+
 ### Research
 *   **Setting:** Non-Clinical
 *   **Duration:** 2 weeks
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-10 Interns, 0-10 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 20
-
-### Junior Hospitalist
-*   **Setting:** Inpatient
-*   **Duration:** 4 weeks consecutive
-*   **Intensity Rating:** 3/5
-*   **Staffing Requirements:** 0-2 seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-
-### Admitting
-*   **Setting:** Inpatient
-*   **Duration:** 4 weeks consecutive
-*   **Intensity Rating:** 4/5
-*   **Staffing Requirements:** 0-2 seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-
-### Primary Care
-*   **Setting:** Outpatient
-*   **Duration:** 4 weeks consecutive
-*   **Intensity Rating:** 3/5
-*   **Staffing Requirements:** 0-2 seniors
-*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-
 
 ### Advanced Mechanical Circulatory Support / Cardiac ICU (CC-ICU)
 *   **Setting** Inpatient
@@ -242,9 +239,51 @@ These are highly individualized rotation experiences that residents can select t
 *   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
 
+### PM&R
+*   **Setting:** Inpatient
+*   **Duration:** 2 weeks 
+*   **Intensity Rating:** 1/5
+*   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+*   **Methodist scheduling information:** 
+
+## Senior Selectives
+*   **Methodist scheduling information:** Dedicated internal medicine experience for seniors. Counts toward resident directed time.
+
+### Junior Hospitalist
+*   **Setting:** Inpatient
+*   **Location:** Methodist
+*   **Duration:** 4 weeks consecutive
+*   **Intensity Rating:** 3/5
+*   **Staffing Requirements:** 0-2 seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+
+### Admitting
+*   **Setting:** Inpatient
+*   **Location:** Methodist
+*   **Duration:** 4 weeks consecutive
+*   **Intensity Rating:** 4/5
+*   **Staffing Requirements:** 0-2 seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+
+### Primary Care
+*   **Setting:** Outpatient
+*   **Location:** NIMA
+*   **Duration:** 4 weeks consecutive
+*   **Intensity Rating:** 3/5
+*   **Staffing Requirements:** 0-2 seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 2
+
 ---
 
 ## 4. NON-CLINICAL BLOCKS
+
+### Board Prep
+*   **Setting:** Non-Clinical
+*   **Duration:** 2-4 weeks
+*   **Intensity Rating:** 1/5
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 20
+*   **Methodist scheduling information:** Dedicated individualized non-clinical time for PGY-2 and PGY-3 board preparation.
 
 ### Vacation
 *   **Setting:** Non-Clinical
@@ -253,3 +292,10 @@ These are highly individualized rotation experiences that residents can select t
 *   **Staffing Requirements:** 0-20 Interns, 0-20 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 40
 *   **Notes:** Must be taken during Elective or Consult blocks per the MHS Curriculum Proposal. Cannot be taken during Wards, ICU, or +1 Clinic weeks.
+
+### Leave
+*   **Setting:** Non-Clinical
+*   **Intensity Rating:** 0/5
+*   **Staffing Requirements:** 0-20 Interns, 0-20 Seniors
+*   **Total Max Acceptable Residents Concurrently Scheduled:** 40
+*   **Notes:** Approved by Program Director.
