@@ -1415,7 +1415,7 @@ const App: React.FC = () => {
               {activeTab === 'coverage' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
               {activeTab === 'acgme_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} /></div>}
               {activeTab === 'mhs_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="mhs" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} /></div>}
-              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={activeSchedule?.data || {}} activeYear={activeYear} /></div>}
+              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} /></div>}
               {activeTab === 'cohorts' && (
                 <div className="flex-1 overflow-hidden">
                   <CohortKanban

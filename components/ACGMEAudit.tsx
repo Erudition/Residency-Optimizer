@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting, ScheduleHistory } from '../types';
 import { ROTATION_METADATA } from '../constants';
-import { ShieldCheck, Clock, Building2, Hospital } from 'lucide-react';
+import { ShieldCheck, Clock, Building2, Hospital, AlertTriangle } from 'lucide-react';
 
 interface Props {
     residents: Resident[];
@@ -26,13 +26,17 @@ const StackedProgressBar = ({
     const isViolation = isCap ? totalValue > target : totalValue < target; 
 
     return (
-        <div className="w-full flex flex-col gap-1">
-            <div className="flex justify-between text-[10px] font-bold tracking-tight">
+        <div className={`w-full flex flex-col gap-1 p-2 rounded-xl transition-all border ${isViolation ? 'bg-red/5 border-red/20 shadow-sm' : 'border-transparent hover:bg-light-2/40'}`}>
+            <div className="flex justify-between items-center text-[10px] font-bold tracking-tight">
                 <span className="text-muted flex items-center gap-1">
-                    <span className={`${isViolation ? 'text-red-600 font-black' : 'text-primary font-bold'} text-xs`}>{totalValue}</span>
+                    <span className={`${isViolation ? 'text-red font-black' : 'text-primary font-bold'} text-xs`}>{totalValue}</span>
                     <span className="text-muted">/ {target}w</span>
                 </span>
-                {isCap && totalValue > target && <span className="text-red font-black text-[9px] animate-pulse">! OVER CAP</span>}
+                {isViolation && (
+                    <span className="text-red font-black text-[9px] animate-pulse flex items-center gap-0.5">
+                        <AlertTriangle size={10} className="shrink-0" /> {isCap ? 'OVER CAP' : 'UNDER TARGET'}
+                    </span>
+                )}
             </div>
             
             <div className="flex flex-col gap-0.5">
@@ -45,7 +49,7 @@ const StackedProgressBar = ({
                     return (
                         <div key={pgy} className="h-1 w-full bg-light-3 rounded-full overflow-hidden">
                             <div
-                                className={`h-full transition-all duration-500 ${colorClass} ${opacity}`}
+                                className={`h-full transition-all duration-500 ${isViolation ? 'bg-red' : colorClass} ${opacity}`}
                                 style={{ width: `${width}%` }}
                                 title={`PGY-${pgy}: ${value}w / ${yearlyTarget.toFixed(1)}w`}
                             />
@@ -56,7 +60,7 @@ const StackedProgressBar = ({
 
             <div className="h-2 w-full bg-light-2 rounded-full overflow-hidden border border-light-5 mt-1">
                 <div
-                    className={`h-full transition-all duration-500 ${colorClass}`}
+                    className={`h-full transition-all duration-500 ${isViolation ? 'bg-red' : colorClass}`}
                     style={{ width: `${Math.min(100, (totalValue / target) * 100)}%` }}
                 />
             </div>
@@ -146,7 +150,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
             <div className="max-w-7xl mx-auto space-y-6">
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
+                    <div className={`p-4 rounded-xl shadow-sm border transition-all ${globalStats.outpatientMet < globalStats.total ? 'bg-red/5 border-red/20' : 'bg-white border-light-5'}`}>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-light-blue/20 rounded-lg text-blue"><Hospital size={20} /></div>
                             <div className="text-xs font-bold text-muted uppercase">Outpatient Compliance</div>
@@ -154,7 +158,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                         <div className="text-2xl font-bold text-primary">{globalStats.outpatientMet} / {globalStats.total}</div>
                         <div className="text-[10px] text-muted mt-1">Goal: 44 Weeks (11 Months)</div>
                     </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
+                    <div className={`p-4 rounded-xl shadow-sm border transition-all ${globalStats.inpatientMet < globalStats.total ? 'bg-red/5 border-red/20' : 'bg-white border-light-5'}`}>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-lime-green/20 rounded-lg text-green"><Building2 size={20} /></div>
                             <div className="text-xs font-bold text-muted uppercase">Inpatient Compliance</div>
@@ -162,14 +166,15 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                         <div className="text-2xl font-bold text-primary">{globalStats.inpatientMet} / {globalStats.total}</div>
                         <div className="text-[10px] text-muted mt-1">Goal: 48 Weeks (12 Months)</div>
                     </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
+                    <div className={`p-4 rounded-xl shadow-sm border transition-all ${globalStats.critCareSafe < globalStats.total ? 'bg-red/5 border-red/20' : 'bg-white border-light-5'}`}>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-light-purple/30 rounded-lg text-purple"><Clock size={20} /></div>
-                            <div className="text-2xl font-bold text-primary">{globalStats.critCareSafe} / {globalStats.total}</div>
-                            <div className="text-[10px] text-muted mt-1">Goal: Max 24 Weeks (6 Months)</div>
+                            <div className="text-xs font-bold text-muted uppercase">Crit Care Cap</div>
                         </div>
+                        <div className="text-2xl font-bold text-primary">{globalStats.critCareSafe} / {globalStats.total}</div>
+                        <div className="text-[10px] text-muted mt-1">Goal: Max 24 Weeks (6 Months)</div>
                     </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
+                    <div className={`p-4 rounded-xl shadow-sm border transition-all ${globalStats.nfSafe < globalStats.total ? 'bg-red/5 border-red/20' : 'bg-white border-light-5'}`}>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-creamsicle/30 rounded-lg text-orange"><ShieldCheck size={20} /></div>
                             <div className="text-xs font-bold text-muted uppercase">Night Float Target</div>
@@ -189,7 +194,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                     <table className="w-full text-sm text-left">
                         <thead className="bg-light-2 text-[10px] uppercase font-bold text-secondary">
                             <tr>
-                                <th className="px-6 py-3 sticky left-0 bg-light-2 z-10 w-48">Resident</th>
+                                <th className="px-6 py-3 sticky left-0 bg-light-2 z-10 w-48 border-r border-light-5">Resident</th>
                                 <th className="px-6 py-3">Outpatient (44w)</th>
                                 <th className="px-6 py-3">Inpatient (48w)</th>
                                 <th className="px-6 py-3">Crit Care (Max 24w)</th>
@@ -197,49 +202,59 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {auditData.map(d => (
-                                <tr key={d.id} className="hover:bg-light-1">
-                                    <td className="px-6 py-4 font-medium sticky left-0 bg-white z-10 border-r">
-                                        <div className="flex flex-col">
-                                            <span className="text-black">{d.name}</span>
-                                            <span className="text-[10px] text-muted">PGY-{d.level} • Cohort {String.fromCharCode(65 + d.cohort)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 w-1/4">
-                                        <StackedProgressBar 
-                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).outpatient]))} 
-                                            target={44} 
-                                            colorClass="bg-blue"
-                                            totalValue={d.outpatient}
-                                        />
-                                    </td>
-                                    <td className="px-6 py-4 w-1/4">
-                                        <StackedProgressBar 
-                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).inpatient + (data as any).criticalCare]))} 
-                                            target={48} 
-                                            colorClass="bg-green-2"
-                                            totalValue={d.inpatient + d.criticalCare}
-                                        />
-                                    </td>
-                                    <td className="px-6 py-4 w-1/4">
-                                        <StackedProgressBar 
-                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).criticalCareCore]))} 
-                                            target={24} 
-                                            colorClass="bg-purple"
-                                            totalValue={d.criticalCareCore}
-                                            isCap={true}
-                                        />
-                                    </td>
-                                    <td className="px-6 py-4 w-1/4">
-                                        <StackedProgressBar 
-                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).nightFloat]))} 
-                                            target={6} 
-                                            colorClass="bg-orange"
-                                            totalValue={d.nightFloat}
-                                        />
-                                    </td>
-                                </tr>
-                            ))}
+                            {auditData.map(d => {
+                                const hasAnyViolation = d.outpatientViolation || d.inpatientViolation || d.critCareViolation || d.nfViolation;
+                                return (
+                                    <tr key={d.id} className={`hover:bg-light-1/60 transition-colors ${hasAnyViolation ? 'bg-red/5' : ''}`}>
+                                        <td className={`px-6 py-4 font-medium sticky left-0 z-10 border-r border-light-4 ${hasAnyViolation ? 'bg-red/5' : 'bg-white'}`}>
+                                            <div className="flex flex-col">
+                                                <span className="text-black flex items-center gap-1.5 flex-wrap">
+                                                    {d.name}
+                                                    {hasAnyViolation && (
+                                                        <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-red/10 text-red text-[10px] font-black tracking-wide uppercase">
+                                                            <AlertTriangle size={10} /> Violation
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span className="text-[10px] text-muted mt-0.5">PGY-{d.level} • Cohort {String.fromCharCode(65 + d.cohort)}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 w-1/4">
+                                            <StackedProgressBar 
+                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).outpatient]))} 
+                                                target={44} 
+                                                colorClass="bg-blue"
+                                                totalValue={d.outpatient}
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 w-1/4">
+                                            <StackedProgressBar 
+                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).inpatient + (data as any).criticalCare]))} 
+                                                target={48} 
+                                                colorClass="bg-green-2"
+                                                totalValue={d.inpatient + d.criticalCare}
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 w-1/4">
+                                            <StackedProgressBar 
+                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).criticalCareCore]))} 
+                                                target={24} 
+                                                colorClass="bg-purple"
+                                                totalValue={d.criticalCareCore}
+                                                isCap={true}
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 w-1/4">
+                                            <StackedProgressBar 
+                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).nightFloat]))} 
+                                                target={6} 
+                                                colorClass="bg-orange"
+                                                totalValue={d.nightFloat}
+                                            />
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

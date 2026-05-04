@@ -33,3 +33,9 @@ To maintain year-independent data integrity, the application treats **Start Year
 ### Dynamic Academic Year Labeling
 *   **Constraint**: The "Current" academic year label must be determined dynamically based on the current calendar date, using **July 1st** as the transition point.
 *   **Implementation**: `getYearLabel` in `App.tsx` calculates the offset relative to the current physical academic year rather than a hardcoded constant, ensuring UI accuracy without manual code updates each July.
+
+### Week-by-Week Staffing (The Relay Race)
+*   **Scheduling Philosophy**: The engine staffs hospital rotations on a **week-by-week basis**. While residents may be assigned to a rotation for a 4-week "block," the hospital's minimum staffing levels (`minInterns`, `minSeniors`) are fulfilled by the total pool of residents not in clinic that week.
+*   **Cohort Independence**: Inpatient staffing is **NOT** cohort-aligned. A single rotation team (e.g., Wards Red) will frequently be staffed by residents from different cohorts simultaneously. When one resident leaves for their clinic week, another resident (from a cohort that just finished clinic) takes their place in a "relay race" model.
+*   **Algorithm Requirement**: Generators must prioritize weekly staffing coverage using the full available pool (12/15 residents) rather than trying to fit cohorts into rigid calendar-wide blocks.
+

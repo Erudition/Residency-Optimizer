@@ -9,10 +9,11 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Wards Red
 *   **Setting:** Inpatient
-*   **Duration:** 4 weeks consecutive
+*   **Duration:** 4 weeks consecutive (for the resident)
 *   **Intensity Rating:** 4/5
 *   **Staffing Requirements:** 2-3 Interns, 1-2 Seniors (+ up to 1 Medical Student)
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 4
+*   **Notes**: "Consecutive" refers to the resident's learning experience within their 4-week core window. The hospital's staffing of the slot is continuous and may be fulfilled by different residents as they cycle through their "+1" clinic weeks.
 *   **Methodist scheduling information:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors. Contributes to the core inpatient wards minimums.
 
 ### Wards Blue

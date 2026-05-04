@@ -40,6 +40,7 @@ See @specification/interface
 
 
 ## Unauthorized Constraint Modification
-*   **Hard Constraint**: The AI must NOT change staffing ratios (e.g., `maxSeniors`, `maxInterns`) or educational requirement targets (e.g., `minWeeks`) without explicit human permission.
-*   **Impossibility Reporting**: If the existing constraints create a mathematical impossibility (e.g., requirement > capacity), the AI must report this as a bottleneck (see `bottlenecks_discovered.md`) but must attempt to generate the most compliant schedule possible under the *original* constraints.
+*   **Hard Constraint**: The AI must NOT change staffing ratios (e.g., `minInterns`, `minSeniors`, `maxInterns`, `maxSeniors`) or educational requirement targets (e.g., `minWeeks`) without explicit human permission.
+*   **Logical Guardrail (4+1 Availability)**: Under the 4+1 model, exactly **4/5ths** of the resident pool is available for inpatient service every week. For a class of 15, this means **12 residents** are always available. The AI must never assume that a service can only be staffed by a single cohort.
+*   **Impossibility Reporting**: If the existing constraints create a mathematical impossibility, the AI must report this as a bottleneck (see `bottlenecks_discovered.md`) but must attempt to generate the most compliant schedule possible under the *original* constraints. Never "fix" an algorithm failure by zeroing out a requirement.
 

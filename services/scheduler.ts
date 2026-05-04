@@ -310,7 +310,8 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
 
         Object.entries(history).forEach(([yStr, grid]) => {
             const year = parseInt(yStr);
-            if (activeYear !== undefined && year > activeYear) return;
+            const pgy = year - r.startYear + 1;
+            if (pgy < 1 || pgy > 3) return;
 
             const weeks = grid[r.id] || [];
             weeks.forEach(c => {
@@ -492,6 +493,31 @@ export const calculateScheduleScore = (residents: Resident[], schedule: Schedule
 
   const streakPenalty = streakSD * -1000;
 
+  // 4. Continuity (Avoid "Salad" schedules)
+  let continuityPenalty = 0;
+  residents.forEach(r => {
+    const weeks = schedule[r.id] || [];
+    // Stagger blocks by cohort if possible, or just use standard 5-week cycle windows
+    // For simplicity and general score, we check all 4-week rolling windows or fixed cycles.
+    // Let's use fixed 5-week cycles (4 core + 1 clinic)
+    for (let cycle = 0; cycle < 10; cycle++) {
+      const start = cycle * 5;
+      const core = weeks.slice(start, start + 4).map(c => c?.assignment).filter(Boolean);
+      if (core.length < 2) continue;
+      
+      let changes = 0;
+      for (let i = 1; i < core.length; i++) {
+        if (core[i] !== core[i-1]) changes++;
+      }
+      
+      // 0 changes (4 weeks) = 0 penalty
+      // 1 change (2+2) = 10000 penalty (discouraged)
+      // 2+ changes (salad) = 50000+ penalty (strictly forbidden)
+      if (changes === 1) continuityPenalty += 10000;
+      else if (changes > 1) continuityPenalty += changes * 50000;
+    }
+  });
+
   // Total Score
-  return violationPenalty + fairnessBonus + streakPenalty;
+  return violationPenalty + fairnessBonus + streakPenalty - continuityPenalty;
 };
