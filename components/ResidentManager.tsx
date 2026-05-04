@@ -18,11 +18,15 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
   // New Resident State
   const [newResidentName, setNewResidentName] = useState('');
   const [newResidentStartYear, setNewResidentStartYear] = useState<number>(activeYear);
+  const [newResidentTransferInYear, setNewResidentTransferInYear] = useState<number | ''>('');
+  const [newResidentTransferOutYear, setNewResidentTransferOutYear] = useState<number | ''>('');
   
   // Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editStartYear, setEditStartYear] = useState<number>(activeYear);
+  const [editTransferInYear, setEditTransferInYear] = useState<number | ''>('');
+  const [editTransferOutYear, setEditTransferOutYear] = useState<number | ''>('');
 
   // Delete Confirmation State
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -38,9 +42,13 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
       level: 1, // Placeholder, calculated on-the-fly in schedule views
       startYear: newResidentStartYear,
       avoidResidentIds: [],
+      transferInYear: newResidentTransferInYear === '' ? undefined : newResidentTransferInYear,
+      transferOutYear: newResidentTransferOutYear === '' ? undefined : newResidentTransferOutYear,
     };
     setResidents(prev => [...prev, newResident]);
     setNewResidentName('');
+    setNewResidentTransferInYear('');
+    setNewResidentTransferOutYear('');
   };
 
   const handleRemoveClick = (e: React.MouseEvent, id: string) => {
@@ -70,12 +78,16 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
     setEditingId(resident.id);
     setEditName(resident.name);
     setEditStartYear(resident.startYear);
+    setEditTransferInYear(resident.transferInYear ?? '');
+    setEditTransferOutYear(resident.transferOutYear ?? '');
   };
 
   const cancelEditing = () => {
     setEditingId(null);
     setEditName('');
     setEditStartYear(activeYear);
+    setEditTransferInYear('');
+    setEditTransferOutYear('');
   };
 
   const saveEditing = () => {
@@ -86,6 +98,8 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
             ...r,
             name: editName,
             startYear: editStartYear,
+            transferInYear: editTransferInYear === '' ? undefined : editTransferInYear,
+            transferOutYear: editTransferOutYear === '' ? undefined : editTransferOutYear,
           };
         }
         return r;
@@ -245,7 +259,27 @@ Robert Brown,3`;
               type="number"
               value={newResidentStartYear}
               onChange={(e) => setNewResidentStartYear(Number(e.target.value))}
-              className="w-32"
+              className="w-24"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary mb-1">Transfer In</label>
+            <Input
+              type="number"
+              value={newResidentTransferInYear}
+              onChange={(e) => setNewResidentTransferInYear(e.target.value === '' ? '' : Number(e.target.value))}
+              className="w-24"
+              placeholder="N/A"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary mb-1">Transfer Out</label>
+            <Input
+              type="number"
+              value={newResidentTransferOutYear}
+              onChange={(e) => setNewResidentTransferOutYear(e.target.value === '' ? '' : Number(e.target.value))}
+              className="w-24"
+              placeholder="N/A"
             />
           </div>
           <Button variant="primary" size="md" onClick={handleAdd} className="gap-2">
@@ -256,10 +290,11 @@ Robert Brown,3`;
       </Card>
 
       <Card className="mb-12">
-        <div className="p-4 border-b border-light-5 bg-light-1 font-semibold text-primary grid grid-cols-12 gap-4">
-            <div className="col-span-8">Name</div>
-            <div className="col-span-2 text-center">Start Year</div>
-            <div className="col-span-2 text-center">Actions</div>
+        <div className="p-4 border-b border-light-5 bg-light-1 font-semibold text-primary grid grid-cols-12 gap-4 text-xs md:text-sm">
+            <div className="col-span-4 md:col-span-6">Name</div>
+            <div className="col-span-2 text-center">Start</div>
+            <div className="col-span-2 text-center">In/Out</div>
+            <div className="col-span-4 md:col-span-2 text-center">Actions</div>
         </div>
         <div className="overflow-visible min-h-[100px]">
             {residents.map(r => {
@@ -269,7 +304,7 @@ Robert Brown,3`;
                 <div key={r.id} className={`p-4 border-b border-light-5 last:border-0 grid grid-cols-12 gap-4 items-center ${isEditing ? 'bg-light-blue/20' : 'hover:bg-light-1'}`}>
                     {isEditing ? (
                       <>
-                        <div className="col-span-8">
+                        <div className="col-span-4 md:col-span-6">
                           <Input 
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
@@ -284,7 +319,23 @@ Robert Brown,3`;
                             className="w-full"
                           />
                         </div>
-                        <div className="col-span-2 text-center flex justify-center gap-2">
+                        <div className="col-span-2 text-center flex gap-1">
+                          <Input 
+                            type="number"
+                            value={editTransferInYear}
+                            onChange={(e) => setEditTransferInYear(e.target.value === '' ? '' : Number(e.target.value))}
+                            className="w-full text-xs"
+                            placeholder="In"
+                          />
+                          <Input 
+                            type="number"
+                            value={editTransferOutYear}
+                            onChange={(e) => setEditTransferOutYear(e.target.value === '' ? '' : Number(e.target.value))}
+                            className="w-full text-xs"
+                            placeholder="Out"
+                          />
+                        </div>
+                        <div className="col-span-4 md:col-span-2 text-center flex justify-center gap-2">
                            <Button variant="ghost" size="sm" onClick={saveEditing} className="text-green hover:text-green-dark hover:bg-lime-green/40" title="Save">
                              <Check size={16}/>
                            </Button>
@@ -295,13 +346,26 @@ Robert Brown,3`;
                       </>
                     ) : (
                       <>
-                        <div className="col-span-8 font-medium">{r.name}</div>
+                        <div className="col-span-4 md:col-span-6 font-medium truncate">{r.name}</div>
                         <div className="col-span-2 text-center">
                             <Badge variant="info">
                                 {r.startYear}
                             </Badge>
                         </div>
-                        <div className="col-span-2 text-center flex justify-center gap-2 items-center">
+                        <div className="col-span-2 text-center flex flex-col gap-1 items-center">
+                            {r.transferInYear && (
+                                <Badge variant="success" className="text-[10px]">
+                                    In: {r.transferInYear}
+                                </Badge>
+                            )}
+                            {r.transferOutYear && (
+                                <Badge variant="danger" className="text-[10px]">
+                                    Out: {r.transferOutYear}
+                                </Badge>
+                            )}
+                            {!r.transferInYear && !r.transferOutYear && <span className="text-xs text-muted">—</span>}
+                        </div>
+                        <div className="col-span-4 md:col-span-2 text-center flex justify-center gap-2 items-center">
                             {deleteConfirmId === r.id ? (
                                 <>
                                     <Button 

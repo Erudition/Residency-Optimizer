@@ -4,9 +4,7 @@ import { WeekByWeekGenerator } from './weekByWeek';
 
 class SeededRNG {
     private seed: number;
-    constructor(seed: number) {
-        this.seed = seed;
-    }
+    constructor(seed: number) { this.seed = seed; }
     next(): number {
         this.seed = (this.seed * 9301 + 49297) % 233280;
         return this.seed / 233280;
@@ -17,301 +15,187 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
     name: "Annealed Core Constraint Solver",
     generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
-        
-        // --- INTERRUPTION SUPPORT ---
-        const checkInterrupt = () => {
-            if (typeof self !== 'undefined' && (self as any).isPromoteTriggered) return true;
-            return false;
-        };
+        const checkInterrupt = () => (typeof self !== 'undefined' && (self as any).isPromoteTriggered);
 
         let validCohortAssignments = { ...(cohortAssignments || {}) };
         if (Object.keys(validCohortAssignments).length === 0) {
-            const sorted = [...residents].sort((a, b) => {
-                if (a.level !== b.level) return a.level - b.level;
-                return a.name.localeCompare(b.name);
-            });
-            sorted.forEach((r, idx) => {
-                validCohortAssignments[r.id] = idx % 5;
-            });
+            const sorted = [...residents].sort((a, b) => (a.level !== b.level) ? a.level - b.level : a.name.localeCompare(b.name));
+            sorted.forEach((r, idx) => { validCohortAssignments[r.id] = idx % 5; });
         }
 
-        // --- 1. DEFINE 2-WEEK ALIGNED BLOCKS ---
-        const coreBlocks: Record<string, [number, number][]> = {};
-        residents.forEach(r => {
-            const cohort = validCohortAssignments[r.id] ?? 0;
-            coreBlocks[r.id] = [];
-            for (let cycle = 0; cycle < 10; cycle++) {
-                const cycleStart = cycle * 5;
-                const coreWeeks: number[] = [];
-                for (let i = 0; i < 5; i++) {
-                    const w = cycleStart + i;
-                    const isClinic = w % 5 === cohort;
-                    const isLocked = existingSchedule && existingSchedule[r.id] && existingSchedule[r.id][w]?.locked;
-                    if (!isClinic && !isLocked) coreWeeks.push(w);
-                }
-                if (coreWeeks.length === 4) {
-                    coreBlocks[r.id].push([coreWeeks[0], coreWeeks[1]]);
-                    coreBlocks[r.id].push([coreWeeks[2], coreWeeks[3]]);
-                } else if (coreWeeks.length > 1) {
-                    for (let i = 0; i < coreWeeks.length - 1; i += 2) {
-                        coreBlocks[r.id].push([coreWeeks[i], coreWeeks[i+1]]);
-                    }
-                }
-            }
-        });
-
+        const relevantReqTypesSet = new Set<AssignmentType>();
+        [1, 2, 3].forEach(l => (REQUIREMENTS[l as 1|2|3] || []).forEach(r => relevantReqTypesSet.add(r.type)));
+        const relevantReqTypes = Array.from(relevantReqTypesSet);
+        const typeFulfillment: Record<string, AssignmentType[]> = {};
+        Object.values(AssignmentType).forEach(type => { typeFulfillment[type] = relevantReqTypes.filter(req => fulfillsRequirement(type, req)); });
+        const assignmentsByLevel: Record<number, AssignmentType[]> = {
+            1: Object.values(AssignmentType).filter(t => t !== AssignmentType.CLINIC && t !== AssignmentType.NIMA_CLINIC && (ROTATION_METADATA[t]?.maxInterns || 0) > 0),
+            2: Object.values(AssignmentType).filter(t => t !== AssignmentType.CLINIC && t !== AssignmentType.NIMA_CLINIC && (ROTATION_METADATA[t]?.maxSeniors || 0) > 0),
+            3: Object.values(AssignmentType).filter(t => t !== AssignmentType.CLINIC && t !== AssignmentType.NIMA_CLINIC && (ROTATION_METADATA[t]?.maxSeniors || 0) > 0),
+        };
         const constrainedTypes = Object.values(AssignmentType).filter(type => {
             const m = ROTATION_METADATA[type];
             return m && (m.minInterns > 0 || m.maxInterns < 10 || m.minSeniors > 0 || m.maxSeniors < 10);
         });
+        const superCriticalTypes = [
+            AssignmentType.MICU, AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE,
+            AssignmentType.NIGHT_FLOAT, AssignmentType.EM, AssignmentType.WARDS_METRO
+        ];
 
-        const weekTypeCounts: { interns: Record<AssignmentType, number>, seniors: Record<AssignmentType, number> }[] = [];
-        const residentCounts: Record<string, Record<AssignmentType, number>> = {};
-        const relevantReqTypes = new Set<AssignmentType>();
-        [1, 2, 3].forEach(l => (REQUIREMENTS[l] || []).forEach(r => relevantReqTypes.add(r.type)));
+        const residentMap = new Map(residents.map(r => [r.id, r]));
+        const flexibleWeeks: Record<string, number[]> = {};
+        const isFlexible: Record<string, boolean[]> = {};
+        residents.forEach(r => {
+            const cohort = validCohortAssignments[r.id] ?? 0;
+            flexibleWeeks[r.id] = []; isFlexible[r.id] = Array(TOTAL_WEEKS).fill(false);
+            for (let w = 0; w < TOTAL_WEEKS; w++) { if (w % 5 !== cohort && !(existingSchedule?.[r.id]?.[w]?.locked)) { flexibleWeeks[r.id].push(w); isFlexible[r.id][w] = true; } }
+        });
 
-        const getWeekViolationsFromCounts = (w: number): number => {
-            let count = 0;
-            const interns = weekTypeCounts[w].interns;
-            const seniors = weekTypeCounts[w].seniors;
+        const W_STAFFING = 10000000, W_REQUIREMENT = 10000, W_CONTINUITY = 1000;
 
-            const clinicCount = (interns[AssignmentType.CLINIC] || 0) + (seniors[AssignmentType.CLINIC] || 0) +
-                                (interns[AssignmentType.NIMA_CLINIC] || 0) + (seniors[AssignmentType.NIMA_CLINIC] || 0);
-            if (clinicCount === 0) count += 50000; 
-
-            constrainedTypes.forEach(type => {
-                const meta = ROTATION_METADATA[type];
-                if (!meta) return;
-                const cInterns = interns[type] || 0;
-                const cSeniors = seniors[type] || 0;
-                if (cInterns < meta.minInterns) count += Math.pow(meta.minInterns - cInterns, 2) * 10000;
-                if (cInterns > meta.maxInterns) count += Math.pow(cInterns - meta.maxInterns, 2) * 10000;
-                if (cSeniors < meta.minSeniors) count += Math.pow(meta.minSeniors - cSeniors, 2) * 10000;
-                if (cSeniors > meta.maxSeniors) count += Math.pow(cSeniors - meta.maxSeniors, 2) * 10000;
-            });
-            return count;
+        const getTypeStaffingPenalty = (type: AssignmentType, interns: number, seniors: number): number => {
+            const m = ROTATION_METADATA[type]!; let c = 0;
+            if (interns < m.minInterns) c += (m.minInterns - interns) * W_STAFFING;
+            if (interns > m.maxInterns) c += (interns - m.maxInterns) * W_STAFFING;
+            if (seniors < m.minSeniors) c += (m.minSeniors - seniors) * W_STAFFING;
+            if (seniors > m.maxSeniors) c += (seniors - m.maxSeniors) * W_STAFFING;
+            return c;
         };
 
-        const getResidentViolationPenalty = (rId: string): number => {
-            let p = 0;
-            const r = residents.find(res => res.id === rId);
-            if (!r) return 0;
-            (REQUIREMENTS[r.level] || []).forEach(req => {
-                const current = residentCounts[rId][req.type] || 0;
-                if (current < req.target) p += Math.pow(req.target - current, 2) * 50000; 
-            });
-            return p;
-        };
-
-        const getResidentContinuityPenalty = (rId: string, schedule: ScheduleGrid): number => {
-            let p = 0;
-            const cohort = validCohortAssignments[rId] ?? 0;
-            for (let cycle = 0; cycle < 10; cycle++) {
-                const start = cycle * 5;
-                const core = [];
-                for (let i = 0; i < 5; i++) {
-                    const w = start + i;
-                    if (w % 5 !== cohort) core.push(schedule[rId][w]?.assignment);
-                }
-                if (core.length < 2) continue;
-                let changes = 0;
-                for (let i = 1; i < core.length; i++) if (core[i] !== core[i-1]) changes++;
-                if (changes === 1) p += 10000; 
-                else if (changes > 1) p += changes * 50000;
-            }
-            return p;
-        };
-
-        const calculateTotalPenalty = (schedule: ScheduleGrid): number => {
-            // Setup temporary structures for evaluation
-            const tempWeekCounts: { interns: Record<AssignmentType, number>, seniors: Record<AssignmentType, number> }[] = [];
-            const tempResCounts: Record<string, Record<AssignmentType, number>> = {};
-            
-            for (let w = 0; w < TOTAL_WEEKS; w++) {
-                tempWeekCounts[w] = { interns: {} as any, seniors: {} as any };
-                Object.values(AssignmentType).forEach(t => { tempWeekCounts[w].interns[t] = 0; tempWeekCounts[w].seniors[t] = 0; });
-            }
-            
-            residents.forEach(r => {
-                tempResCounts[r.id] = {} as any;
-                relevantReqTypes.forEach(t => {
-                    let count = 0;
-                    if (historicalSchedules) Object.values(historicalSchedules).forEach(grid => grid[r.id]?.forEach(c => { if (c?.assignment && fulfillsRequirement(c.assignment, t)) count++; }));
-                    if (existingSchedule && existingSchedule[r.id]) existingSchedule[r.id].forEach(c => { if (c?.locked && c.assignment && fulfillsRequirement(c.assignment, t)) count++; });
-                    tempResCounts[r.id][t] = count;
-                });
-                for (let w = 0; w < TOTAL_WEEKS; w++) {
-                    const a = schedule[r.id][w]?.assignment;
-                    if (a) {
-                        if (r.level === 1) tempWeekCounts[w].interns[a]++;
-                        else tempWeekCounts[w].seniors[a]++;
-                        if (!(existingSchedule?.[r.id]?.[w]?.locked)) relevantReqTypes.forEach(t => { if (fulfillsRequirement(a, t)) tempResCounts[r.id][t]++; });
-                    }
-                }
-            });
-
-            const getWeekP = (w: number): number => {
-                let c = 0;
-                const interns = tempWeekCounts[w].interns;
-                const seniors = tempWeekCounts[w].seniors;
-                const clinicCount = (interns[AssignmentType.CLINIC] || 0) + (seniors[AssignmentType.CLINIC] || 0) +
-                                    (interns[AssignmentType.NIMA_CLINIC] || 0) + (seniors[AssignmentType.NIMA_CLINIC] || 0);
-                if (clinicCount === 0) c += 50000;
-                constrainedTypes.forEach(type => {
-                    const m = ROTATION_METADATA[type];
-                    if (!m) return;
-                    const cI = interns[type] || 0;
-                    const cS = seniors[type] || 0;
-                    if (cI < m.minInterns) c += Math.pow(m.minInterns - cI, 2) * 10000;
-                    if (cI > m.maxInterns) c += Math.pow(cI - m.maxInterns, 2) * 10000;
-                    if (cS < m.minSeniors) c += Math.pow(m.minSeniors - cS, 2) * 10000;
-                    if (cS > m.maxSeniors) c += Math.pow(cS - m.maxSeniors, 2) * 10000;
-                });
-                return c;
-            };
-
-            const getResP = (rId: string): number => {
-                let p = 0;
-                const r = residents.find(res => res.id === rId);
-                if (!r) return 0;
-                (REQUIREMENTS[r.level] || []).forEach(req => {
-                    const cur = tempResCounts[rId][req.type] || 0;
-                    if (cur < req.target) p += Math.pow(req.target - cur, 2) * 50000;
-                });
-                return p;
-            };
-
-            let total = 0;
-            for (let w = 0; w < TOTAL_WEEKS; w++) total += getWeekP(w);
-            residents.forEach(r => { total += getResP(r.id); total += getResidentContinuityPenalty(r.id, schedule); });
+        const getWeekPenalty = (w: number, wc: any): number => {
+            let total = 0; constrainedTypes.forEach(t => total += getTypeStaffingPenalty(t, wc.interns[t] || 0, wc.seniors[t] || 0));
             return total;
         };
 
-        // --- 2. MULTI-SEED INITIALIZATION (Best of 20) ---
-        let currentSchedule: ScheduleGrid = {};
-        let bestPenalty = Infinity;
+        const getResPenalty = (rId: string, rc: Record<string, number>): number => {
+            let p = 0; const r = residentMap.get(rId)!;
+            (REQUIREMENTS[r.level] || []).forEach(req => { const c = rc[req.type] || 0; if (c < req.target) p += (req.target - c) * W_REQUIREMENT; });
+            return p;
+        };
 
-        for (let seedOff = 0; seedOff < 20; seedOff++) {
-            const cand = WeekByWeekGenerator.generate(residents, existingSchedule, attemptIndex + seedOff, historicalSchedules, validCohortAssignments);
-            const p = calculateTotalPenalty(cand);
-            if (p < bestPenalty) {
-                bestPenalty = p;
-                currentSchedule = cand;
+        const getCycleCont = (rId: string, sched: ScheduleGrid, cycle: number): number => {
+            const cohort = validCohortAssignments[rId] ?? 0, start = cycle * 5;
+            let lastA: string | null = null, changes = 0, coreCount = 0;
+            for (let i = 0; i < 5; i++) {
+                const w = start + i; if (w % 5 !== cohort) { const a = sched[rId][w]?.assignment; if (a) { coreCount++; if (lastA && a !== lastA) changes++; lastA = a; } }
             }
-        }
+            return (coreCount < 2) ? 0 : changes * W_CONTINUITY;
+        };
 
-        // Final sync of global structures for the winner
-        // Reset weekTypeCounts and residentCounts to match currentSchedule
-        for (let w = 0; w < TOTAL_WEEKS; w++) {
-            weekTypeCounts[w] = { interns: {} as any, seniors: {} as any };
-            Object.values(AssignmentType).forEach(t => { weekTypeCounts[w].interns[t] = 0; weekTypeCounts[w].seniors[t] = 0; });
-        }
+        const baseResidentCounts: Record<string, Record<string, number>> = {};
         residents.forEach(r => {
-            residentCounts[r.id] = {} as any;
+            baseResidentCounts[r.id] = {};
             relevantReqTypes.forEach(t => {
                 let count = 0;
                 if (historicalSchedules) Object.values(historicalSchedules).forEach(grid => grid[r.id]?.forEach(c => { if (c?.assignment && fulfillsRequirement(c.assignment, t)) count++; }));
-                if (existingSchedule && existingSchedule[r.id]) existingSchedule[r.id].forEach(c => { if (c?.locked && c.assignment && fulfillsRequirement(c.assignment, t)) count++; });
-                residentCounts[r.id][t] = count;
+                if (existingSchedule?.[r.id]) existingSchedule[r.id].forEach(c => { if (c?.locked && c.assignment && fulfillsRequirement(c.assignment, t)) count++; });
+                baseResidentCounts[r.id][t] = count;
             });
-            for (let w = 0; w < TOTAL_WEEKS; w++) {
-                const a = currentSchedule[r.id][w]?.assignment;
-                if (a) {
-                    if (r.level === 1) weekTypeCounts[w].interns[a]++;
-                    else weekTypeCounts[w].seniors[a]++;
-                    if (!(existingSchedule?.[r.id]?.[w]?.locked)) relevantReqTypes.forEach(t => { if (fulfillsRequirement(a, t)) residentCounts[r.id][t]++; });
-                }
-            }
         });
 
-        let totalPenalty = calculateTotalPenalty(currentSchedule);
-        if (totalPenalty === 0) return currentSchedule;
-
-        // --- 3. ANNEALING LOOP (Operates on 2-week blocks) ---
-        const maxSteps = 100000; 
-        let T = 1.0;
-
-        for (let step = 0; step < maxSteps; step++) {
-            if (step % 1000 === 0 && checkInterrupt()) break;
-
-            T *= 0.99995;
-            const r = residents[Math.floor(rng.next() * residents.length)];
-            const blocks = coreBlocks[r.id];
-            if (blocks.length < 2) continue;
-
-            const idxA = Math.floor(rng.next() * blocks.length);
-            const b1 = blocks[idxA];
-
-            if (rng.next() < 0.3) {
-                const a1 = currentSchedule[r.id][b1[0]].assignment;
-                if (!a1) continue;
-                const possible = Object.values(AssignmentType).filter(t => {
-                    if (t === a1) return false;
-                    const m = ROTATION_METADATA[t];
-                    return m && (r.level === 1 ? m.maxInterns > 0 : m.maxSeniors > 0);
-                });
-                const a2 = possible[Math.floor(rng.next() * possible.length)];
-                const oldP = getWeekViolationsFromCounts(b1[0]) + getWeekViolationsFromCounts(b1[1]) + getResidentViolationPenalty(r.id) + getResidentContinuityPenalty(r.id, currentSchedule);
-                b1.forEach(w => {
-                    if (r.level === 1) { weekTypeCounts[w].interns[a1]--; weekTypeCounts[w].interns[a2]++; }
-                    else { weekTypeCounts[w].seniors[a1]--; weekTypeCounts[w].seniors[a2]++; }
-                    currentSchedule[r.id][w].assignment = a2;
-                });
-                relevantReqTypes.forEach(t => {
-                    const f1 = fulfillsRequirement(a1, t);
-                    const f2 = fulfillsRequirement(a2, t);
-                    if (f1 && !f2) residentCounts[r.id][t] -= 2;
-                    else if (!f1 && f2) residentCounts[r.id][t] += 2;
-                });
-                const newP = getWeekViolationsFromCounts(b1[0]) + getWeekViolationsFromCounts(b1[1]) + getResidentViolationPenalty(r.id) + getResidentContinuityPenalty(r.id, currentSchedule);
-                const delta = newP - oldP;
-                if (delta <= 0 || rng.next() < Math.exp(-delta / T)) {
-                    totalPenalty += delta;
-                    if (totalPenalty === 0) return currentSchedule;
-                } else {
-                    b1.forEach(w => {
-                        if (r.level === 1) { weekTypeCounts[w].interns[a2]--; weekTypeCounts[w].interns[a1]++; }
-                        else { weekTypeCounts[w].seniors[a2]--; weekTypeCounts[w].seniors[a1]++; }
-                        currentSchedule[r.id][w].assignment = a1;
-                    });
-                    relevantReqTypes.forEach(t => {
-                        const f1 = fulfillsRequirement(a1, t);
-                        const f2 = fulfillsRequirement(a2, t);
-                        if (f1 && !f2) residentCounts[r.id][t] += 2;
-                        else if (!f1 && f2) residentCounts[r.id][t] -= 2;
-                    });
+        const calculateTotal = (sched: ScheduleGrid): number => {
+            const tempRC: Record<string, Record<string, number>> = {};
+            residents.forEach(r => tempRC[r.id] = { ...baseResidentCounts[r.id] });
+            const tempWC: any[] = Array.from({ length: TOTAL_WEEKS }, () => ({ interns: {}, seniors: {} }));
+            residents.forEach(r => {
+                for (let w = 0; w < TOTAL_WEEKS; w++) {
+                    const a = sched[r.id][w]?.assignment;
+                    if (a) {
+                        if (r.level === 1) tempWC[w].interns[a] = (tempWC[w].interns[a] || 0) + 1; else tempWC[w].seniors[a] = (tempWC[w].seniors[a] || 0) + 1;
+                        if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => tempRC[r.id][t] = (tempRC[r.id][t] || 0) + 1);
+                    }
                 }
-            } else {
-                let idxB = Math.floor(rng.next() * blocks.length);
-                while (idxB === idxA) idxB = Math.floor(rng.next() * blocks.length);
-                const b2 = blocks[idxB];
-                const a1 = currentSchedule[r.id][b1[0]].assignment;
-                const a2 = currentSchedule[r.id][b2[0]].assignment;
-                if (a1 === a2) continue;
-                const oldP = getWeekViolationsFromCounts(b1[0]) + getWeekViolationsFromCounts(b1[1]) + getWeekViolationsFromCounts(b2[0]) + getWeekViolationsFromCounts(b2[1]) + getResidentContinuityPenalty(r.id, currentSchedule);
-                [...b1, ...b2].forEach(w => {
-                    const oldA = currentSchedule[r.id][w].assignment;
-                    const newA = (w === b1[0] || w === b1[1]) ? a2 : a1;
-                    if (r.level === 1) { weekTypeCounts[w].interns[oldA]--; weekTypeCounts[w].interns[newA]++; }
-                    else { weekTypeCounts[w].seniors[oldA]--; weekTypeCounts[w].seniors[newA]++; }
-                    currentSchedule[r.id][w].assignment = newA;
-                });
-                const newP = getWeekViolationsFromCounts(b1[0]) + getWeekViolationsFromCounts(b1[1]) + getWeekViolationsFromCounts(b2[0]) + getWeekViolationsFromCounts(b2[1]) + getResidentContinuityPenalty(r.id, currentSchedule);
-                const delta = newP - oldP;
-                if (delta <= 0 || rng.next() < Math.exp(-delta / T)) {
-                    totalPenalty += delta;
-                    if (totalPenalty === 0) return currentSchedule;
-                } else {
-                    [...b1, ...b2].forEach(w => {
-                        const oldA = currentSchedule[r.id][w].assignment;
-                        const newA = (w === b1[0] || w === b1[1]) ? a1 : a2;
-                        if (r.level === 1) { weekTypeCounts[w].interns[oldA]--; weekTypeCounts[w].interns[newA]++; }
-                        else { weekTypeCounts[w].seniors[oldA]--; weekTypeCounts[w].seniors[newA]++; }
-                        currentSchedule[r.id][w].assignment = newA;
-                    });
-                }
-            }
+            });
+            let total = 0; for (let w = 0; w < TOTAL_WEEKS; w++) total += getWeekPenalty(w, tempWC[w]);
+            residents.forEach(r => { total += getResPenalty(r.id, tempRC[r.id]); for (let c = 0; c < 10; c++) total += getCycleCont(r.id, sched, c); });
+            return total;
+        };
+
+        let currentSchedule: ScheduleGrid = {}, bestP = Infinity;
+        for (let s = 0; s < 50; s++) {
+            const cand = WeekByWeekGenerator.generate(residents, existingSchedule, attemptIndex + s, historicalSchedules, validCohortAssignments);
+            const p = calculateTotal(cand); if (p < bestP) { bestP = p; currentSchedule = cand; }
         }
+
+        const weekCounts: any[] = Array.from({ length: TOTAL_WEEKS }, () => ({ interns: {}, seniors: {} }));
+        const resCounts: Record<string, any> = {};
+        const resContCache: Record<string, number[]> = {};
+
+        const syncState = () => {
+            for (let w = 0; w < TOTAL_WEEKS; w++) { weekCounts[w].interns = {}; weekCounts[w].seniors = {}; }
+            residents.forEach(r => {
+                resCounts[r.id] = { ...baseResidentCounts[r.id] }; resContCache[r.id] = [];
+                for (let w = 0; w < TOTAL_WEEKS; w++) {
+                    const a = currentSchedule[r.id][w]?.assignment;
+                    if (a) {
+                        if (r.level === 1) weekCounts[w].interns[a] = (weekCounts[w].interns[a] || 0) + 1; else weekCounts[w].seniors[a] = (weekCounts[w].seniors[a] || 0) + 1;
+                        if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) + 1);
+                    }
+                }
+                for (let c = 0; c < 10; c++) resContCache[r.id][c] = getCycleCont(r.id, currentSchedule, c);
+            });
+        };
+        syncState();
+
+        const staffingSweep = (aggressive: boolean = false) => {
+            for (let w = 0; w < TOTAL_WEEKS; w++) {
+                constrainedTypes.forEach(t => {
+                    const m = ROTATION_METADATA[t]!;
+                    while ((weekCounts[w].interns[t] || 0) < m.minInterns) {
+                        const pool = residents.filter(res => res.level === 1 && isFlexible[res.id][w] && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
+                        if (pool.length === 0) break;
+                        const oldA = currentSchedule[pool[0].id][w].assignment!;
+                        currentSchedule[pool[0].id][w].assignment = t; weekCounts[w].interns[oldA]--; weekCounts[w].interns[t]++;
+                    }
+                    while ((weekCounts[w].seniors[t] || 0) < m.minSeniors) {
+                        const pool = residents.filter(res => res.level >= 2 && isFlexible[res.id][w] && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
+                        if (pool.length === 0) break;
+                        const oldA = currentSchedule[pool[0].id][w].assignment!;
+                        currentSchedule[pool[0].id][w].assignment = t; weekCounts[w].seniors[oldA]--; weekCounts[w].seniors[t]++;
+                    }
+                    while ((weekCounts[w].interns[t] || 0) > m.maxInterns) {
+                        const pool = residents.filter(res => res.level === 1 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment === t);
+                        if (pool.length === 0) break;
+                        currentSchedule[pool[0].id][w].assignment = AssignmentType.ELECTIVE; weekCounts[w].interns[t]--;
+                    }
+                    while ((weekCounts[w].seniors[t] || 0) > m.maxSeniors) {
+                        const pool = residents.filter(res => res.level >= 2 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment === t);
+                        if (pool.length === 0) break;
+                        currentSchedule[pool[0].id][w].assignment = AssignmentType.ELECTIVE; weekCounts[w].seniors[t]--;
+                    }
+                });
+            }
+            syncState();
+        };
+
+        staffingSweep(true);
+        const weekPenaltyCache: number[] = weekCounts.map((wc, w) => getWeekPenalty(w, wc));
+        const resReqPenaltyCache: Record<string, number> = {};
+        residents.forEach(r => resReqPenaltyCache[r.id] = getResPenalty(r.id, resCounts[r.id]));
+        let currentPenalty = 0; weekPenaltyCache.forEach(p => currentPenalty += p);
+        residents.forEach(r => { currentPenalty += resReqPenaltyCache[r.id]; resContCache[r.id].forEach(p => currentPenalty += p); });
+
+        if (currentPenalty === 0) return currentSchedule;
+
+        const maxSteps = 200000;
+        for (let step = 0; step < maxSteps; step++) {
+            if (step % 10000 === 0 && checkInterrupt()) break;
+            const r = residents[Math.floor(rng.next() * residents.length)], weeks = flexibleWeeks[r.id];
+            if (weeks.length === 0) continue;
+            const w = weeks[Math.floor(rng.next() * weeks.length)], a1 = currentSchedule[r.id][w].assignment!, a2 = assignmentsByLevel[r.level][Math.floor(rng.next() * assignmentsByLevel[r.level].length)];
+            if (a1 === a2) continue;
+
+            const cycle = Math.floor(w / 5), oldWP = weekPenaltyCache[w], oldRP = resReqPenaltyCache[r.id], oldCP = resContCache[r.id][cycle];
+            if (r.level === 1) { weekCounts[w].interns[a1]--; weekCounts[w].interns[a2]++; } else { weekCounts[w].seniors[a1]--; weekCounts[w].seniors[a2]++; }
+            typeFulfillment[a1]?.forEach(t => resCounts[r.id][t]--); typeFulfillment[a2]?.forEach(t => resCounts[r.id][t]++);
+            currentSchedule[r.id][w].assignment = a2;
+            const newWP = getWeekPenalty(w, weekCounts[w]), newRP = getResPenalty(r.id, resCounts[r.id]), newCP = getCycleCont(r.id, currentSchedule, cycle);
+            const delta = (newWP + newRP + newCP) - (oldWP + oldRP + oldCP);
+            if (delta < 0) { currentPenalty += delta; weekPenaltyCache[w] = newWP; resReqPenaltyCache[r.id] = newRP; resContCache[r.id][cycle] = newCP; if (currentPenalty === 0) break; }
+            else { if (r.level === 1) { weekCounts[w].interns[a2]--; weekCounts[w].interns[a1]++; } else { weekCounts[w].seniors[a2]--; weekCounts[w].seniors[a1]++; } typeFulfillment[a1]?.forEach(t => resCounts[r.id][t]++); typeFulfillment[a2]?.forEach(t => resCounts[r.id][t]--); currentSchedule[r.id][w].assignment = a1; }
+        }
+
+        staffingSweep(true);
         return currentSchedule;
     }
 }

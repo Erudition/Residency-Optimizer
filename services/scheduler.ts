@@ -129,7 +129,10 @@ export const generateSchedule = async (
         for (let y = startYear; y < startYear + totalYears; y++) {
           const yearResidents = augmentedResidents.filter(r => {
             const level = y - r.startYear + 1;
-            return level >= 1 && level <= 3;
+            const isPgyInRange = level >= 1 && level <= 3;
+            const hasJoined = r.transferInYear === undefined || r.transferInYear <= y;
+            const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= y;
+            return isPgyInRange && hasJoined && hasNotLeft;
           }).map(r => ({
             ...r,
             level: (y - r.startYear + 1) as 1 | 2 | 3,

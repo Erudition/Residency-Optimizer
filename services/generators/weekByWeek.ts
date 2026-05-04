@@ -42,6 +42,62 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             });
         }
 
+        // 1. PRE-CALCULATE HISTORICAL COUNTS & INITIALIZE TRACKERS
+        const historicalCounts: Record<string, Record<string, number>> = {};
+        const currentCounts: Record<string, Record<string, number>> = {};
+        const weekTypeCounts: { interns: Record<string, number>, seniors: Record<string, number> }[] = [];
+        for (let w = 0; w < TOTAL_WEEKS; w++) {
+            weekTypeCounts[w] = { interns: {}, seniors: {} };
+        }
+
+        const updateCounts = (rId: string, level: number, week: number, type: AssignmentType, dur: number) => {
+            for (let i = 0; i < dur; i++) {
+                const w = week + i;
+                if (w >= TOTAL_WEEKS) continue;
+                if (level === 1) weekTypeCounts[w].interns[type] = (weekTypeCounts[w].interns[type] || 0) + 1;
+                else weekTypeCounts[w].seniors[type] = (weekTypeCounts[w].seniors[type] || 0) + 1;
+            }
+            (REQUIREMENTS[level] || []).forEach(req => {
+                if (fulfillsRequirement(type, req.type)) {
+                    currentCounts[rId][req.type] = (currentCounts[rId][req.type] || 0) + dur;
+                }
+            });
+        };
+
+        residents.forEach(r => {
+            historicalCounts[r.id] = {};
+            currentCounts[r.id] = {};
+            if (historicalSchedules) {
+                Object.values(historicalSchedules).forEach(grid => {
+                    const row = grid[r.id];
+                    if (row) {
+                        row.forEach(c => {
+                            if (c && c.assignment) {
+                                (REQUIREMENTS[r.level] || []).forEach(req => {
+                                    if (fulfillsRequirement(c.assignment, req.type)) {
+                                        historicalCounts[r.id][req.type] = (historicalCounts[r.id][req.type] || 0) + 1;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Track existing assignments
+            if (existingSchedule[r.id]) {
+                existingSchedule[r.id].forEach((cell, w) => {
+                    if (cell && cell.assignment) {
+                        updateCounts(r.id, r.level, w, cell.assignment, 1);
+                    }
+                });
+            }
+        });
+
+        const getCumulativeReqCountFast = (rId: string, type: AssignmentType): number => {
+            return (historicalCounts[rId][type] || 0) + (currentCounts[rId][type] || 0);
+        };
+
         // 1. Initialize & Clinic Lock
         residents.forEach(r => {
             if (!newSchedule[r.id] || newSchedule[r.id].length !== TOTAL_WEEKS) {
@@ -51,7 +107,10 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             const cohort = validCohortAssignments[r.id] ?? 0;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % COHORT_COUNT === cohort) {
-                    newSchedule[r.id][w] = { assignment: clinicType, locked: true };
+                    if (!newSchedule[r.id][w]?.assignment) {
+                        newSchedule[r.id][w] = { assignment: clinicType, locked: true };
+                        updateCounts(r.id, r.level, w, clinicType, 1);
+                    }
                 }
             }
         });
@@ -76,31 +135,33 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 const dur = meta.duration || 4;
 
                 // Interns
-                while (getAssignedCount(newSchedule, residents, w, type, 1) < meta.minInterns) {
+                while ((weekTypeCounts[w].interns[type] || 0) < meta.minInterns) {
                     const pool = seededShuffle(residents.filter(r => {
                         return r.level === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, validCohortAssignments[r.id], dur) &&
-                               getAssignedCount(newSchedule, residents, w, type, 1) < meta.maxInterns;
-                    })).sort((a, b) => getCumulativeRequirementCount(a.id, newSchedule[a.id], type, historicalSchedules) - 
-                                     getCumulativeRequirementCount(b.id, newSchedule[b.id], type, historicalSchedules));
+                               (weekTypeCounts[w].interns[type] || 0) < meta.maxInterns;
+                    })).sort((a, b) => getCumulativeReqCountFast(a.id, type) - 
+                                     getCumulativeReqCountFast(b.id, type));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
+                    updateCounts(pool[0].id, pool[0].level, w, type, dur);
                 }
 
                 // Seniors
-                while (getAssignedCount(newSchedule, residents, w, type, 2) < meta.minSeniors) {
+                while ((weekTypeCounts[w].seniors[type] || 0) < meta.minSeniors) {
                     const pool = seededShuffle(residents.filter(r => {
                         return r.level >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, validCohortAssignments[r.id], dur) &&
-                               getAssignedCount(newSchedule, residents, w, type, 2) < meta.maxSeniors;
-                    })).sort((a, b) => getCumulativeRequirementCount(a.id, newSchedule[a.id], type, historicalSchedules) - 
-                                     getCumulativeRequirementCount(b.id, newSchedule[b.id], type, historicalSchedules));
+                               (weekTypeCounts[w].seniors[type] || 0) < meta.maxSeniors;
+                    })).sort((a, b) => getCumulativeReqCountFast(a.id, type) - 
+                                     getCumulativeReqCountFast(b.id, type));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
+                    updateCounts(pool[0].id, pool[0].level, w, type, dur);
                 }
             });
 
@@ -109,18 +170,19 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 if (newSchedule[r.id][w]?.assignment) return; // Already assigned
 
                 const pendingReqs = seededShuffle(REQUIREMENTS[r.level] || []).filter(req => {
-                    return getCumulativeRequirementCount(r.id, newSchedule[r.id], req.type, historicalSchedules) < req.target;
+                    return getCumulativeReqCountFast(r.id, req.type) < req.target;
                 });
 
                 for (const req of pendingReqs) {
                     const dur = ROTATION_METADATA[req.type]?.duration || 4;
                     if (canFitBlock(newSchedule, r.id, w, dur) && isAligned(w, validCohortAssignments[r.id], dur)) {
                         const meta = ROTATION_METADATA[req.type];
-                        const cI = getAssignedCount(newSchedule, residents, w, req.type, 1);
-                        const cS = getAssignedCount(newSchedule, residents, w, req.type, 2);
+                        const cI = weekTypeCounts[w].interns[req.type] || 0;
+                        const cS = weekTypeCounts[w].seniors[req.type] || 0;
                         
                         if ((r.level === 1 && cI < meta.maxInterns) || (r.level > 1 && cS < meta.maxSeniors)) {
                             placeBlock(newSchedule, r.id, w, dur, req.type);
+                            updateCounts(r.id, r.level, w, req.type, dur);
                             break;
                         }
                     }

@@ -7,10 +7,10 @@ export const ACTIVE_START_YEAR = 2026;
 export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
     const residents: Resident[] = [];
 
-    const CLASS_2023 = ["Wright, Andrew Hunter","Melo, Sebastian"];
-    const CLASS_2024 = ["Baset, Nawsin","Cho, Kevin Wook Jin","De La Cruz, Aaron Daniel","Deen, Nafis M","Liu, Gongkai","Masud, Saad","Min, Shao-Ting","Mysore, Nishad Narain","Thanedar, Sarita","Yu, Tommy"];
-    const CLASS_2025 = ["Alvarado, Ramona Davina","Dawood, Umar Asif","Delano, Victoria Remilekun","Echegaray, Sebastian Alexander","Hill, Brittany Marie","Jentz, Austin Lee","Letson, Mia Kang","Millan, Cassandra Marie","Nazeer, Usman Imran","Ndze, Lila Linda","Orden, Martin Basobas","Rendon, Arthur Isaac","Sanderson, Jacob Nakolo","Shah, Vidur Hemant"];
-    const CLASS_2026 = ["Alhaddadein, Yara","Chen, Chang-Rong","DeVolder, Mitchell","Gurram, Neha","Hamadneh, Yazan","Joseph, Rachel","King, Matthew","Mukherjee, Lipilekha","Omokaro, Precious","Paripati, Laxmi Mahita Reddy","Quillin, Travis","Rakaba, Michelle","Suresh, Sneha","Thupili, Sasanka","Yekini, Stephen"];
+    const CLASS_2023 = ["Wright, Andrew Hunter", "Melo, Sebastian"];
+    const CLASS_2024 = ["Baset, Nawsin", "Cho, Kevin Wook Jin", "De La Cruz, Aaron Daniel", "Deen, Nafis M", "Liu, Gongkai", "Masud, Saad", "Min, Shao-Ting", "Mysore, Nishad Narain", "Thanedar, Sarita", "Yu, Tommy"];
+    const CLASS_2025 = ["Alvarado, Ramona Davina", "Dawood, Umar Asif", "Delano, Victoria Remilekun", "Echegaray, Sebastian Alexander", "Hill, Brittany Marie", "Jentz, Austin Lee", "Letson, Mia Kang", "Millan, Cassandra Marie", "Nazeer, Usman Imran", "Ndze, Lila Linda", "Orden, Martin Basobas", "Rendon, Arthur Isaac", "Sanderson, Jacob Nakolo", "Shah, Vidur Hemant"];
+    const CLASS_2026 = ["Alhaddadein, Yara", "Chen, Chang-Rong", "DeVolder, Mitchell", "Gurram, Neha", "Hamadneh, Yazan", "Joseph, Rachel", "King, Matthew", "Mukherjee, Lipilekha", "Omokaro, Precious", "Paripati, Laxmi Mahita Reddy", "Quillin, Travis", "Rakaba, Michelle", "Suresh, Sneha", "Thupili, Sasanka", "Yekini, Stephen"];
 
     const getNamesForClass = (startYear: number, size: number) => {
         if (startYear === 2023) return CLASS_2023;
@@ -28,21 +28,43 @@ export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
         return 15; // default size for future classes
     };
 
+    const getTransferOutYear = (name: string): number | undefined => {
+        if (name.includes("Mysore, Nishad Narain")) return 2024;
+        if (name.includes("Cho, Kevin Wook Jin")) return 2025;
+        return undefined;
+    };
+
     let idCounter = 1;
-    
+
     // Track backwards 2 years from activeYear to get the current PGY 1, 2, 3
     for (let startYear = activeYear - 2; startYear <= activeYear; startYear++) {
         const level = (activeYear - startYear + 1) as 1 | 2 | 3;
         const size = getClassSize(startYear);
         const names = getNamesForClass(startYear, size);
-        
+
         for (let i = 0; i < size; i++) {
+            const name = names[i] || `Resident ${idCounter}`;
+            const transferOutYear = getTransferOutYear(name);
+            const transferInYear = undefined; // Support can be added as needed
+
+            // Filter out residents who have already transferred out before this active year
+            if (transferOutYear !== undefined && transferOutYear < activeYear) {
+                continue;
+            }
+
+            // Filter out residents who have not yet transferred in for this active year
+            if (transferInYear !== undefined && transferInYear > activeYear) {
+                continue;
+            }
+
             residents.push({
-                id: `c${startYear}-${i+1}`, 
-                name: names[i] || `Resident ${idCounter}`,
+                id: `c${startYear}-${i + 1}`,
+                name,
                 level,
                 startYear,
                 avoidResidentIds: [],
+                transferOutYear,
+                transferInYear
             });
             idCounter++;
         }
@@ -74,12 +96,18 @@ export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
         const actualSize = names.length;
         
         for (let i = 0; i < actualSize; i++) {
+            const name = names[i];
+            let transferOutYear: number | undefined = undefined;
+            if (name.includes("Mysore, Nishad Narain")) transferOutYear = 2024;
+            if (name.includes("Cho, Kevin Wook Jin")) transferOutYear = 2025;
+
             allResidents.push({
                 id: `c${startYear}-${i+1}`,
-                name: names[i],
+                name,
                 level: 1, // Base level, will be shifted by activeYear
                 startYear,
                 avoidResidentIds: [],
+                transferOutYear
             });
         }
     });

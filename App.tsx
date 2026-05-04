@@ -452,7 +452,10 @@ const App: React.FC = () => {
       const augmented = getAugmentedResidents(residents, activeYear + 1);
       const activeResidentsForDefault = augmented.filter(r => {
         const level = activeYear - r.startYear + 1;
-        return level >= 1 && level <= 3;
+        const isPgyInRange = level >= 1 && level <= 3;
+        const hasJoined = r.transferInYear === undefined || r.transferInYear <= activeYear;
+        const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= activeYear;
+        return isPgyInRange && hasJoined && hasNotLeft;
       }).sort((a, b) => {
         const levelA = activeYear - a.startYear + 1;
         const levelB = activeYear - b.startYear + 1;
@@ -476,7 +479,10 @@ const App: React.FC = () => {
     if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
       const activeResidents = augmented.filter(r => {
         const level = year - r.startYear + 1;
-        return level >= 1 && level <= 3;
+        const isPgyInRange = level >= 1 && level <= 3;
+        const hasJoined = r.transferInYear === undefined || r.transferInYear <= year;
+        const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= year;
+        return isPgyInRange && hasJoined && hasNotLeft;
       }).sort((a, b) => {
         const levelA = year - a.startYear + 1;
         const levelB = year - b.startYear + 1;
@@ -489,16 +495,20 @@ const App: React.FC = () => {
       });
       yearCohorts = defaultCohorts;
     }
-    
+
     return augmented.filter(r => {
       const level = year - r.startYear + 1;
-      return level >= 1 && level <= 3;
+      const isPgyInRange = level >= 1 && level <= 3;
+      const hasJoined = r.transferInYear === undefined || r.transferInYear <= year;
+      const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= year;
+      return isPgyInRange && hasJoined && hasNotLeft;
     }).map(r => {
       const level = (year - r.startYear + 1) as 1 | 2 | 3;
       const clinicType = level === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
       const cohort = yearCohorts[r.id] ?? 0;
       return { ...r, level, clinicType, cohort };
     }).sort((a, b) => {
+
       if (residentSortOrder === 'cohort') {
         if (a.cohort !== b.cohort) return a.cohort - b.cohort;
         if (a.level !== b.level) return a.level - b.level;

@@ -16,6 +16,8 @@ export interface Resident {
   startYear: number; // The calendar year they started as a PGY-1 (e.g. 2026)
   avoidResidentIds: string[];
   clinicType?: AssignmentType;
+  transferInYear?: number; // First academic year they joined (if not PGY-1)
+  transferOutYear?: number; // Last academic year they completed (if they left early)
 }
 
 export enum AssignmentType {
