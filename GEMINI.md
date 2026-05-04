@@ -14,6 +14,10 @@ If NTS tools are available, use them entirely for reads, edits, searches -- but 
 # Specification
 The files found in the `specification/` folder are the authoritative sources of truth for the application code you write. Report, and then correct, any code that is out of sync with the spec.
 
+- [Engine Rules](./specification/engine.md)
+- [Scheduling Generators](./specification/generators.md)
+- [ACGME Requirements](./specification/acgme_requirements.md)
+
 
 Here are the rules that must govern the schedule generation:
 
