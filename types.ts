@@ -74,10 +74,10 @@ export type ScheduleStats = Record<string, Record<AssignmentType, number>>;
 export interface Requirement {
   [residentId: string]: Record<AssignmentType, number>;
 }
-
 export interface RotationConfig {
   type: AssignmentType;
   label: string;
+  category?: string;
   intensity: number; // 1-5
   duration: number; // Standard block duration
   setting: ClinicalSetting;
@@ -88,11 +88,11 @@ export interface RotationConfig {
   minSeniors: number;
   maxSeniors: number;
 
-  // Targets (Total weeks per resident per year)
-  targetIntern?: number;
-  targetSenior?: number; // General senior target
-  targetPGY2?: number;   // Specific PGY2 target
-  targetPGY3?: number;   // Specific PGY3 target
+  // Minimum weeks per resident per year
+  minWeeksIntern?: number;
+  minWeeksSenior?: number; // General senior minimum
+  minWeeksPGY2?: number;   // Specific PGY2 minimum
+  minWeeksPGY3?: number;   // Specific PGY3 minimum
 
   notes?: string;
 }
@@ -126,7 +126,7 @@ export interface CohortFairnessMetrics {
 export interface RequirementViolation {
   residentId: string;
   type: AssignmentType;
-  target: number;
+  minWeeks: number;
   actual: number;
 }
 

@@ -89,29 +89,15 @@ export const CohortKanban: React.FC<Props> = ({
             <p className="text-xs text-muted font-medium">Assign residents to 4+1 blocks for AY {activeYear}-{activeYear+1}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-light-2 rounded-full border border-light-4/50">
-          <span className="text-[10px] font-black text-muted uppercase tracking-tighter mr-1">Legend:</span>
-          <div className="flex items-center gap-4 text-[10px] font-bold text-muted">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-green" /> PGY-1
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-blue" /> PGY-2
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-purple" /> PGY-3
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Kanban Board */}
       <div className="flex-1 overflow-x-auto p-6 flex gap-6">
         {cohorts.map(cohort => (
           <div key={cohort.index} className="w-72 flex flex-col gap-4 shrink-0">
-            <div className={`p-4 rounded-2xl border-2 border-dashed ${cohort.color} flex items-center justify-between`}>
-              <span className="font-black text-sm uppercase tracking-wider">{cohort.name}</span>
-              <Badge variant="info" className="bg-white/50 border-current px-2 py-0.5 text-xs">
+            <div className={`p-4 rounded-2xl border border-light-4 bg-white flex items-center justify-between shadow-sm`}>
+              <span className="font-black text-sm uppercase tracking-wider text-primary">{cohort.name}</span>
+              <Badge variant="info" className="bg-light-1 border-light-4 text-muted px-2 py-0.5 text-xs">
                 {cohort.residents.length}
               </Badge>
             </div>

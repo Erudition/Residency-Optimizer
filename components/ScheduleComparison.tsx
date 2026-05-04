@@ -44,7 +44,7 @@ interface Props {
 interface ScheduleMetrics {
   id: string;
   name: string;
-  regret: number;
+  score: number;
   avgFairness: number;
   pgy1Fairness: number;
   pgy2Fairness: number;
@@ -63,7 +63,7 @@ export const ScheduleComparison: React.FC<Props> = ({
   history
 }) => {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduleMetrics, direction: 'asc' | 'desc' }>({ key: 'regret', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduleMetrics, direction: 'asc' | 'desc' }>({ key: 'score', direction: 'desc' });
 
   const handleSort = (key: keyof ScheduleMetrics) => {
     setSortConfig(prev => ({
@@ -81,7 +81,7 @@ export const ScheduleComparison: React.FC<Props> = ({
     return schedules.filter(s => !s.isGenerating).map(s => {
       const yearGrid = s.data?.[activeYear] || {};
       const groups = calculateFairnessMetrics(residents, yearGrid);
-      const regret = calculateScheduleScore(residents, yearGrid, history);
+      const score = calculateScheduleScore(residents, yearGrid, history);
 
       const f1 = groups.find(g => g.level === 1)?.fairnessScore || 0;
       const f2 = groups.find(g => g.level === 2)?.fairnessScore || 0;
@@ -110,7 +110,7 @@ export const ScheduleComparison: React.FC<Props> = ({
       return {
         id: s.id,
         name: s.name,
-        regret,
+        score,
         avgFairness,
         pgy1Fairness: f1,
         pgy2Fairness: f2,
@@ -133,7 +133,7 @@ export const ScheduleComparison: React.FC<Props> = ({
 
   const ranges = useMemo(() => {
     const r = {
-      regret: { min: 0, max: 100000 },
+      score: { min: 0, max: 100000 },
       fairness: { min: 100, max: 0 },
       pgyFairness: { min: 100, max: 0 },
       totalNF: { min: 10000, max: 0 },
@@ -143,12 +143,12 @@ export const ScheduleComparison: React.FC<Props> = ({
 
     if (metrics.length === 0) return r;
 
-    r.regret.min = metrics[0].regret;
-    r.regret.max = metrics[0].regret;
+    r.score.min = metrics[0].score;
+    r.score.max = metrics[0].score;
 
     metrics.forEach(m => {
-      r.regret.min = Math.min(r.regret.min, m.regret);
-      r.regret.max = Math.max(r.regret.max, m.regret);
+      r.score.min = Math.min(r.score.min, m.score);
+      r.score.max = Math.max(r.score.max, m.score);
       r.fairness.min = Math.min(r.fairness.min, m.avgFairness);
       r.fairness.max = Math.max(r.fairness.max, m.avgFairness);
 
@@ -209,8 +209,8 @@ export const ScheduleComparison: React.FC<Props> = ({
                   <th className="py-4 px-6 text-left cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('name')}>
                     <div className="flex items-center">Schedule Name <SortIcon column="name" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('regret')}>
-                    <div className="flex items-center justify-center">Regret (Lower Better) <SortIcon column="regret" /></div>
+                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('score')}>
+                    <div className="flex items-center justify-center">Score (Higher Better) <SortIcon column="score" /></div>
                   </th>
                   <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('avgFairness')}>
                     <div className="flex items-center justify-center">AVG Fairness <SortIcon column="avgFairness" /></div>
@@ -272,8 +272,8 @@ export const ScheduleComparison: React.FC<Props> = ({
                         </div>
                       </td>
 
-                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.regret, ranges.regret.min, ranges.regret.max, false)}`}>
-                        {Math.round(m.regret)}
+                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.score, ranges.score.min, ranges.score.max, true)}`}>
+                        {Math.round(m.score)}
                       </td>
 
                       <td className={`py-4 px-6 text-center font-mono ${getColor(m.avgFairness, ranges.fairness.min, ranges.fairness.max, true)}`}>

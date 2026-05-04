@@ -1,3 +1,6 @@
+Note: for all "minimum" requirements, use the word "minimum" in the code, not "target". Same with maximum. "Target" should be reserved for ideals.
+
+
 ### Vacation Scheduling (Human-Only)
 *   **Hard Constraint**: Algorithms and automated generators are FORBIDDEN from scheduling "Vacation" weeks. 
 *   **Human Ownership**: Only human users may assign vacation time.

@@ -10,11 +10,11 @@ describe('Algorithm Diagnostic', () => {
         const cohortMap: Record<string, number> = {};
         residents.forEach((r, idx) => { cohortMap[r.id] = idx % 5; });
 
-        for (const algoId of ['experimental', 'stochastic', 'strict']) {
+        for (const algoId of ['experimental', 'exact', 'strict']) {
             const result = await generateSchedule(
                 2026, 1, {}, 
                 { residents, existing: {}, cohortAssignments: { 2026: cohortMap } },
-                { tries: 50, priority: CompetitionPriority.BEST_SCORE, topN: 1 },
+                { tries: 5, priority: CompetitionPriority.BEST_SCORE, topN: 1 },
                 [algoId], () => false, () => {}
             );
             const best = result.results[0];
@@ -28,7 +28,7 @@ describe('Algorithm Diagnostic', () => {
             // Group req violations by type
             const byType: Record<string, number> = {};
             reqV.forEach(v => {
-                const key = `${v.type} (need ${v.target}, have ${v.actual})`;
+                const key = `${v.type} (need ${v.minWeeks}, have ${v.actual})`;
                 byType[key] = (byType[key] || 0) + 1;
             });
             if (reqV.length > 0) {

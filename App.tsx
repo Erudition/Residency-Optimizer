@@ -285,6 +285,7 @@ const App: React.FC = () => {
   const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cohort'>(() =>
     loadState('rsp_sort_order', 'pgy')
   );
+  const [canEditHistory, setCanEditHistory] = useState(false);
 
   // Dynamic history detection
   const historicalYears = useMemo(() => 
@@ -346,7 +347,7 @@ const App: React.FC = () => {
     const loaded = loadState('rsp_comp_params_v1', {
       tries: 100,
       priority: CompetitionPriority.BEST_SCORE,
-      algorithmIds: ['stochastic', 'experimental', 'strict', 'exact'],
+      algorithmIds: ['stochastic', 'experimental', 'strict', 'greedy', 'exact'],
       topN: 10,
       multiYear: 3
     });
@@ -354,10 +355,10 @@ const App: React.FC = () => {
     const validIds = ['stochastic', 'experimental', 'strict', 'greedy', 'exact'];
     return {
       ...loaded,
+      priority: CompetitionPriority.BEST_SCORE,
+      multiYear: 3,
       topN: loaded.topN || 10,
-      multiYear: loaded.multiYear || 3,
-      algorithmIds: loaded.algorithmIds.filter(id => (validIds as string[]).includes(id))
-
+      algorithmIds: loaded.algorithmIds.length > 0 ? loaded.algorithmIds : validIds
     };
   });
 
@@ -830,7 +831,9 @@ const App: React.FC = () => {
       if (s.id !== activeScheduleId) return s;
 
       const updatedCohorts = { ...(s.cohortAssignments || {}) };
-      const yearMapping = { ...(updatedCohorts[activeYear] || {}) };
+      // BUG FIX: If the year mapping doesn't exist yet, we must initialize it with the CURRENT state
+      // otherwise, all other residents reset to cohort 0.
+      const yearMapping = { ...(updatedCohorts[activeYear] || activeYearCohorts) };
       yearMapping[residentId] = cohortIndex;
       updatedCohorts[activeYear] = yearMapping;
 
@@ -1011,6 +1014,37 @@ const App: React.FC = () => {
           ]))
         ]))
       })));
+    }
+  };
+
+  const handleToggleEditHistory = () => {
+    const newVal = !canEditHistory;
+    setCanEditHistory(newVal);
+
+    if (!newVal && activeScheduleId) {
+      // Auto-lock all history blocks when turning off edit mode
+      setSchedules(prev => prev.map(s => {
+        if (s.id !== activeScheduleId) return s;
+        
+        const updatedData = { ...s.data };
+        Object.keys(updatedData).forEach(yearStr => {
+          const year = parseInt(yearStr);
+          const grid = { ...(updatedData[year] || {}) };
+          const lockedUntil = getCurrentWeekForYear(year);
+
+          if (lockedUntil >= 0) {
+            Object.keys(grid).forEach(rid => {
+              grid[rid] = (grid[rid] || []).map((cell, idx) => ({
+                ...cell,
+                locked: idx <= lockedUntil ? true : cell.locked
+              }));
+            });
+            updatedData[year] = grid;
+          }
+        });
+
+        return { ...s, data: updatedData };
+      }));
     }
   };
 
@@ -1214,8 +1248,8 @@ const App: React.FC = () => {
           <NavButton id="workload" label="Workload" icon={BarChart3} />
           <NavButton id="coverage" label="Coverage" icon={Table} badgeCount={violations.constraints.length} />
           <NavButton id="acgme_requirements" label="ACGME Reqs" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).length} />
-          <NavButton id="mhs_requirements" label="MHS Reqs" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).length} />
           <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} badgeCount={violations.audit} />
+          <NavButton id="mhs_requirements" label="MHS Reqs" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).length} />
           <NavButton id="cohorts" label="Cohorts" icon={Users} />
           <NavButton id="coworking" label="Coworking" icon={Network} />
           <NavButton id="fairness" label="Fairness" icon={Scale} />
@@ -1324,26 +1358,42 @@ const App: React.FC = () => {
                   {/* Schedule Sub-header: Group By + Violations */}
                   <div className="px-6 py-3 bg-white border-b flex items-center justify-between shrink-0">
                     {/* Left: Group By */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
-                       <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
-                         <Button
-                           variant="ghost"
-                           onClick={() => setResidentSortOrder('pgy')}
-                           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                         >
-                           <LayoutGrid size={14} />
-                           PGY Level
-                         </Button>
-                         <Button
-                           variant="ghost"
-                           onClick={() => setResidentSortOrder('cohort')}
-                           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                         >
-                           <Users size={14} />
-                           Cohort
-                         </Button>
-                       </div>
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
+                        <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
+                          <Button
+                            variant="ghost"
+                            onClick={() => setResidentSortOrder('pgy')}
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                          >
+                            <LayoutGrid size={14} />
+                            PGY Level
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => setResidentSortOrder('cohort')}
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                          >
+                            <Users size={14} />
+                            Cohort
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-muted uppercase tracking-wider">History Editing</span>
+                        <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
+                          <Button
+                            variant="ghost"
+                            onClick={handleToggleEditHistory}
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${canEditHistory ? 'bg-white text-red shadow-sm border border-light-5 font-black' : 'text-muted hover:text-primary'}`}
+                          >
+                            <History size={14} />
+                            {canEditHistory ? 'Enabled' : 'Disabled'}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
 
                     <div />
@@ -1353,6 +1403,7 @@ const App: React.FC = () => {
                     schedule={currentGrid}
                     startYear={activeSchedule?.isHistory ? activeSchedule.startYear : activeYear}
                     cohortAssignments={activeYearCohorts}
+                    canEditHistory={canEditHistory}
                     onCellClick={handleCellClick}
                     onLockWeek={handleLockWeek}
                     onLockResident={handleLockResident}
@@ -1441,7 +1492,7 @@ const App: React.FC = () => {
         onResetResidents={handleResetResidents}
       />
 
-      {activeScheduleId !== 'settings' && (
+      {activeScheduleId !== 'settings' && !isHistoricalYear && (
         <div className="h-9 bg-light-3 flex items-stretch shrink-0 z-30 px-2 border-t border-light-4 relative">
           {/* Left: Future Schedules label */}
           <div

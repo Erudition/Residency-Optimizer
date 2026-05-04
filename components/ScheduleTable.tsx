@@ -8,6 +8,7 @@ interface Props {
   schedule: ScheduleGrid;
   startYear: number;
   cohortAssignments?: Record<string, number>;
+  canEditHistory?: boolean;
   onCellClick: (residentId: string, week: number, rect?: DOMRect) => void;
   onLockWeek: (weekIdx: number) => void;
   onLockResident: (residentId: string) => void;
@@ -44,6 +45,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   schedule,
   startYear,
   cohortAssignments,
+  canEditHistory = false,
   onCellClick,
   onLockWeek,
   onLockResident,
@@ -68,15 +70,20 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     };
   }, []);
 
-  const handleCellClick = (residentId: string, weekIdx: number, isLocked: boolean, rect?: DOMRect) => {
+  const handleCellClick = (residentId: string, weekIdx: number, isLocked: boolean, isPast: boolean, rect?: DOMRect) => {
     const key = `${residentId}-${weekIdx}`;
     if (clickTimeoutRef.current[key]) {
       clearTimeout(clickTimeoutRef.current[key]);
       delete clickTimeoutRef.current[key];
-      onToggleLock(residentId, weekIdx);
+      
+      // Allow toggle lock if it's not past OR if history editing is enabled
+      if (!isPast || canEditHistory) {
+        onToggleLock(residentId, weekIdx);
+      }
     } else {
       clickTimeoutRef.current[key] = window.setTimeout(() => {
-        if (!isLocked) {
+        // Allow edit if not locked AND (not past OR history editing enabled)
+        if (!isLocked && (!isPast || canEditHistory)) {
           onCellClick(residentId, weekIdx, rect);
         }
         delete clickTimeoutRef.current[key];
@@ -275,11 +282,11 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           style={{ '--slot-bg': bgHex } as React.CSSProperties}
                           onClick={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
-                            handleCellClick(resident.id, idx, !!cell?.locked, rect);
+                            handleCellClick(resident.id, idx, !!cell?.locked, isPast, rect);
                           }}
                           onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
                           onMouseLeave={handleMouseLeave}
-                          title="Click to edit, Double-click to toggle lock"
+                          title={isPast && !canEditHistory ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock"}
                         >
                           {assign ? (
                             <span className="truncate w-full block">

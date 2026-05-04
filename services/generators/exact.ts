@@ -19,7 +19,6 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
         const rng = new SeededRNG(42 + attemptIndex);
         
         // --- INTERRUPTION SUPPORT ---
-        // Accessing the shared promote flag from the worker scope if available
         const checkInterrupt = () => {
             if (typeof self !== 'undefined' && (self as any).isPromoteTriggered) return true;
             return false;
@@ -67,7 +66,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             const clinicCount = (interns[AssignmentType.CLINIC] || 0) + (seniors[AssignmentType.CLINIC] || 0) +
                                 (interns[AssignmentType.NIMA_CLINIC] || 0) + (seniors[AssignmentType.NIMA_CLINIC] || 0);
             if (clinicCount === 0) {
-                count += 50000; // Extreme penalty for clinic gaps
+                count += 50000; 
             }
 
             constrainedTypes.forEach(type => {
@@ -87,10 +86,12 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
         };
 
         const residentCounts: Record<string, Record<AssignmentType, number>> = {};
-        
+        const relevantReqTypes = new Set<AssignmentType>();
+        [1, 2, 3].forEach(l => (REQUIREMENTS[l] || []).forEach(r => relevantReqTypes.add(r.type)));
+
         const updateResidentCounts = (rId: string, level: number) => {
             residentCounts[rId] = {} as any;
-            Object.values(AssignmentType).forEach(t => {
+            relevantReqTypes.forEach(t => {
                 let count = 0;
                 if (historicalSchedules) {
                     Object.values(historicalSchedules).forEach(grid => {
@@ -118,7 +119,6 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             return p;
         };
 
-        //Tournament model provides its own restarts. 
         const currentSchedule = StaffingFirstGenerator.generate(residents, existingSchedule, attemptIndex, historicalSchedules, validCohortAssignments);
         
         for (let w = 0; w < TOTAL_WEEKS; w++) {
@@ -137,7 +137,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
                     else weekTypeCounts[w].seniors[a]++;
 
                     if (!(existingSchedule?.[r.id]?.[w]?.locked)) {
-                        Object.values(AssignmentType).forEach(t => {
+                        relevantReqTypes.forEach(t => {
                             if (fulfillsRequirement(a, t)) residentCounts[r.id][t]++;
                         });
                     }
@@ -151,14 +151,11 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
 
         if (totalPenalty === 0) return currentSchedule;
 
-        const maxSteps = 100000; // Optimized for tournament mode
+        const maxSteps = 100000; 
         let T = 1.0;
 
         for (let step = 0; step < maxSteps; step++) {
-            // Check for interruption every 1000 steps
-            if (step % 1000 === 0 && checkInterrupt()) {
-                break;
-            }
+            if (step % 1000 === 0 && checkInterrupt()) break;
 
             T *= 0.99995;
             const r = residents[Math.floor(rng.next() * residents.length)];
@@ -184,7 +181,8 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
 
                 if (r.level === 1) { weekTypeCounts[w1].interns[a1]--; weekTypeCounts[w1].interns[a2]++; }
                 else { weekTypeCounts[w1].seniors[a1]--; weekTypeCounts[w1].seniors[a2]++; }
-                Object.values(AssignmentType).forEach(t => {
+                
+                relevantReqTypes.forEach(t => {
                     if (fulfillsRequirement(a1, t)) residentCounts[r.id][t]--;
                     if (fulfillsRequirement(a2, t)) residentCounts[r.id][t]++;
                 });
@@ -199,7 +197,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
                 } else {
                     if (r.level === 1) { weekTypeCounts[w1].interns[a1]++; weekTypeCounts[w1].interns[a2]--; }
                     else { weekTypeCounts[w1].seniors[a1]++; weekTypeCounts[w1].seniors[a2]--; }
-                    Object.values(AssignmentType).forEach(t => {
+                    relevantReqTypes.forEach(t => {
                         if (fulfillsRequirement(a1, t)) residentCounts[r.id][t]++;
                         if (fulfillsRequirement(a2, t)) residentCounts[r.id][t]--;
                     });

@@ -253,7 +253,7 @@ export const getRequirementViolations = (residents: Resident[], schedule: Schedu
     reqs.forEach(req => {
       const count = getCumulativeRequirementCount(r.id, safeGrid[r.id] || [], req.type, filteredHistory);
       if (count < req.target) {
-        violations.push({ residentId: r.id, type: req.type, target: req.target, actual: count });
+        violations.push({ residentId: r.id, type: req.type, minWeeks: req.target, actual: count });
       }
     });
   });
@@ -303,12 +303,14 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
 
     residents.forEach(r => {
         let outpatient = 0;
+        let inpatient = 0;
+        let totalCriticalCare = 0;
         let criticalCareCore = 0;
         let nightFloat = 0;
 
         Object.entries(history).forEach(([yStr, grid]) => {
-            const y = parseInt(yStr);
-            if (activeYear !== undefined && y > activeYear) return;
+            const year = parseInt(yStr);
+            if (activeYear !== undefined && year > activeYear) return;
 
             const weeks = grid[r.id] || [];
             weeks.forEach(c => {
@@ -317,7 +319,9 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
                 if (!meta) return;
 
                 if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
+                if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
                 if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
+                    totalCriticalCare++;
                     if (c.assignment !== AssignmentType.AMCS_CONSULTS) {
                         criticalCareCore++;
                     }
@@ -326,8 +330,10 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
             });
         });
 
-        if (criticalCareCore > 18) violationCount++;
-        if (nightFloat > 12) violationCount++;
+        if (outpatient < 44) violationCount++;
+        if (inpatient + totalCriticalCare < 48) violationCount++;
+        if (criticalCareCore > 24) violationCount++;
+        if (nightFloat < 6) violationCount++;
     });
 
     return violationCount;

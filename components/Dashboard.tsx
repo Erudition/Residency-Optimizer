@@ -124,7 +124,6 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
                 cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
                 wrapperStyle={{ zIndex: 100 }}
               />
-              <Legend verticalAlign="bottom" height={36} />
               <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_RED} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_RED)} name="Wards Red" />
               <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_BLUE} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_BLUE)} name="Wards Blue" />
               <Bar isAnimationActive={false} dataKey={AssignmentType.MICU} stackId="a" fill={getHighChromaColor(AssignmentType.MICU)} name="ICU" />

@@ -23,7 +23,7 @@ const StackedProgressBar = ({
     isCap?: boolean
 }) => {
     // Violation if under target for minimums, or over target for caps
-    const isViolation = isCap ? totalValue > target : totalValue < target * 0.8; 
+    const isViolation = isCap ? totalValue > target : totalValue < target; 
 
     return (
         <div className="w-full flex flex-col gap-1">
@@ -68,10 +68,10 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
 
     const auditData = useMemo(() => {
         return residents.map(r => {
-            const pgyData: Record<number, { outpatient: number, inpatient: number, criticalCare: number, nightFloat: number }> = {
-                1: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
-                2: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
-                3: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 }
+            const pgyData: Record<number, { outpatient: number, inpatient: number, criticalCare: number, criticalCareCore: number, nightFloat: number }> = {
+                1: { outpatient: 0, inpatient: 0, criticalCare: 0, criticalCareCore: 0, nightFloat: 0 },
+                2: { outpatient: 0, inpatient: 0, criticalCare: 0, criticalCareCore: 0, nightFloat: 0 },
+                3: { outpatient: 0, inpatient: 0, criticalCare: 0, criticalCareCore: 0, nightFloat: 0 }
             };
 
             let totalOutpatient = 0;
@@ -103,6 +103,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                         pgyData[pgy].criticalCare++;
                         totalCriticalCare++;
                         if (c.assignment !== AssignmentType.AMCS_CONSULTS) {
+                            pgyData[pgy].criticalCareCore++;
                             totalCriticalCareCore++;
                         }
                     }
@@ -119,9 +120,12 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                 outpatient: totalOutpatient,
                 inpatient: totalInpatient,
                 criticalCare: totalCriticalCare,
+                criticalCareCore: totalCriticalCareCore,
                 nightFloat: totalNightFloat,
+                outpatientViolation: totalOutpatient < 44,
+                inpatientViolation: (totalInpatient + totalCriticalCare) < 48,
                 critCareViolation: totalCriticalCareCore > 24, // ACGME Cap is 6 months (24w)
-                nfViolation: totalNightFloat > 6 // MHS/ACGME target is 6 weeks total
+                nfViolation: totalNightFloat < 6 // MHS/ACGME target is 6 weeks total
             };
         });
     }, [residents, history]);
@@ -129,10 +133,10 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
     const globalStats = useMemo(() => {
         const total = auditData.length;
         return {
-            outpatientMet: auditData.filter(d => d.outpatient >= 44).length,
-            inpatientMet: auditData.filter(d => (d.inpatient + d.criticalCare) >= 48).length,
+            outpatientMet: auditData.filter(d => !d.outpatientViolation).length,
+            inpatientMet: auditData.filter(d => !d.inpatientViolation).length,
             critCareSafe: auditData.filter(d => !d.critCareViolation).length,
-            nfSafe: auditData.filter(d => d.nightFloat >= 6).length,
+            nfSafe: auditData.filter(d => !d.nfViolation).length,
             total
         };
     }, [auditData]);
@@ -219,10 +223,10 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                                     </td>
                                     <td className="px-6 py-4 w-1/4">
                                         <StackedProgressBar 
-                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).criticalCare]))} 
+                                            yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).criticalCareCore]))} 
                                             target={24} 
                                             colorClass="bg-purple"
-                                            totalValue={d.criticalCare}
+                                            totalValue={d.criticalCareCore}
                                             isCap={true}
                                         />
                                     </td>

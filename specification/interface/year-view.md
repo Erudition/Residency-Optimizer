@@ -1,3 +1,6 @@
+# Future candidate schedules tabs
+Tab bar along the bottom, excel spreadsheet-style, that is *only* visible when an acedemic year containing dates in the future is active.
+
 # Schedule Grid
 - slots should use posthog-lemon-style colored buttons in each cell, with locked cells having the depressed style (button disabled) and unlocked cells being normal pressable buttons
 - all lemon-slot borders and shadows should be derived from the slot background color using CSS relative colors (e.g., oklch(from var(--slot-bg) l c h)) for premium visual fidelity

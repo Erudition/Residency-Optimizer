@@ -334,16 +334,16 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                   </div>
                 </div>
 
-                {(meta.targetIntern !== undefined || meta.targetSenior !== undefined || meta.targetPGY2 !== undefined || meta.targetPGY3 !== undefined) && (
+                {(meta.minWeeksIntern !== undefined || meta.minWeeksSenior !== undefined || meta.minWeeksPGY2 !== undefined || meta.minWeeksPGY3 !== undefined) && (
                   <div className="bg-light-blue/20 p-2 rounded border border-light-blue/40">
-                    <div className="text-xs font-bold text-blue uppercase mb-1">Annual Targets</div>
-                    {meta.targetIntern !== undefined && <div>PGY-1: {meta.targetIntern} weeks</div>}
-                    {meta.targetPGY2 !== undefined ? (
-                      <div>PGY-2: {meta.targetPGY2} weeks</div>
+                    <div className="text-xs font-bold text-blue uppercase mb-1">Annual Minimums</div>
+                    {meta.minWeeksIntern !== undefined && <div>PGY-1: {meta.minWeeksIntern} weeks</div>}
+                    {meta.minWeeksPGY2 !== undefined ? (
+                      <div>PGY-2: {meta.minWeeksPGY2} weeks</div>
                     ) : (
-                      meta.targetSenior !== undefined && <div>Seniors: {meta.targetSenior} weeks</div>
+                      meta.minWeeksSenior !== undefined && <div>Seniors: {meta.minWeeksSenior} weeks</div>
                     )}
-                    {meta.targetPGY3 !== undefined && <div>PGY-3: {meta.targetPGY3} weeks</div>}
+                    {meta.minWeeksPGY3 !== undefined && <div>PGY-3: {meta.minWeeksPGY3} weeks</div>}
                   </div>
                 )}
               </div>
