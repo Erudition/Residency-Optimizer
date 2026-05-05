@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .gemini
 .omg/state/learn-watch.json
+
+# Agent scratchpad
+scratch/*

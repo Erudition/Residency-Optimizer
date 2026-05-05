@@ -39,3 +39,10 @@ To maintain year-independent data integrity, the application treats **Start Year
 *   **Cohort Independence**: Inpatient staffing is **NOT** cohort-aligned. A single rotation team (e.g., Wards Red) will frequently be staffed by residents from different cohorts simultaneously. When one resident leaves for their clinic week, another resident (from a cohort that just finished clinic) takes their place in a "relay race" model.
 *   **Algorithm Requirement**: Generators must prioritize weekly staffing coverage using the full available pool (12/15 residents) rather than trying to fit cohorts into rigid calendar-wide blocks.
 
+### Unified Multi-Year Architecture
+*   **Whole-schedule generation**: The scheduling engine must always operate on all future years at once (typically 3 years), not year-by-year. Year-by-year generation caused cross-year edge effects, front-loaded requirements, and continuity breaks at year boundaries.
+*   **`locked` cell semantics**: `locked: true` on a `ScheduleCell` means the cell must NOT be modified by any generator or healer. Generators must check `locked` before placing blocks. This is the universal mechanism for partial-schedule fills (e.g., years 1-2 locked, only year 3 mutable).
+*   **Continuity prefix**: When generating, the last 4 weeks of the year preceding the mutable window should be prepended as locked cells, so generators can maintain block continuity across the entry boundary.
+*   **Per-PGY-year requirements**: `minWeeksIntern`, `minWeeksPGY2`, `minWeeksPGY3` are per-PGY-year targets. A PGY-2's 12-week Wards target must be met in their PGY-2 year, regardless of Wards done in PGY-1. Historical counts inform sorting priority (who needs the rotation more) but do NOT satisfy current-year targets.
+
+

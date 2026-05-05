@@ -18,3 +18,9 @@ To ensure computational efficiency, each solver (algorithm) stops independently 
 When a solver is terminated, the line in the graph terminates at that iteration with an X marker. All other proceed to the right with circular markers.
 
 This logic ensures that solvers that struggle initially but eventually find a path to improvement are given enough time to explore, while efficient solvers that plateau early can stop quickly to save resources.
+
+## Two-Phase Generation Pipeline
+*   **Phase 1 (Competition)**: The 4 stateless generators (WeekByWeek, StaffingFirst, Stochastic, EducationFirst) compete to produce the best baseline schedule. This phase uses the exhaustion logic described above.
+*   **Phase 2 (Healing)**: A hill-climbing optimizer takes the Phase 1 winner and resolves remaining violations through block swaps (4-block → 2-block → 1-block). This phase also powers the "Heal" button for post-manual-edit repair.
+*   **ExactConstraintGenerator removal**: The "Annealed Core Constraint Solver" is removed from the Phase 1 competition loop — its role is fully replaced by Phase 2.
+
