@@ -389,8 +389,8 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       if (!meta) return;
 
       const assignees = residents.filter(r => safeGrid[r.id]?.[week]?.assignment === type);
-      const interns = assignees.filter(r => (r.level + Math.floor(week / 52)) === 1).length;
-      const seniors = assignees.filter(r => (r.level + Math.floor(week / 52)) > 1).length;
+      const interns = assignees.filter(r => (Number(r.level) + Math.floor(week / 52)) === 1).length;
+      const seniors = assignees.filter(r => (Number(r.level) + Math.floor(week / 52)) > 1).length;
 
       if (interns < meta.minInterns) {
         violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}`, year: Math.floor(week / 52) + (activeYear || 2026) });
@@ -417,7 +417,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       if (!cell || !cell.assignment) continue;
 
       const assign = cell.assignment;
-      const pgy = r.level + Math.floor(week / 52);
+      const pgy = Number(r.level) + Math.floor(week / 52);
 
       // T6.3: PGY-specific Clinic Sites
       if (pgy === 2 && assign === AssignmentType.CLINIC) {
@@ -495,7 +495,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   for (let week = 0; week < totalWeeks; week++) {
     let seniorFlexibleCount = 0;
     residents.forEach(r => {
-      const pgy = r.level + Math.floor(week / 52);
+      const pgy = Number(r.level) + Math.floor(week / 52);
       if (pgy > 1) { // Senior resident
         const cell = safeGrid[r.id]?.[week];
         if (cell && cell.assignment) {

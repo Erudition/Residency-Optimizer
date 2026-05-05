@@ -80,7 +80,7 @@ export const getAssignedCount = (schedule: ScheduleGrid, residents: { id: string
         const isMatch = cell.assignment === type;
         
         // Graduation aware level
-        const currentLevel = r.level + Math.floor(week / 52);
+        const currentLevel = Number(r.level) + Math.floor(week / 52);
 
         if (requestedLevel === 1) return currentLevel === 1 && isMatch;
         if (requestedLevel === 2) return currentLevel >= 2 && isMatch;

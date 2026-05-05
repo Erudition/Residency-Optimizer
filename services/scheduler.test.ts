@@ -38,7 +38,7 @@ describe('Schedule Generator', () => {
         console.error("PHASE 1 VIOLATIONS:", winner.totalViolations);
         
         // Phase 2: Healer (Simulate worker behavior)
-        const healedUnified = healSchedule(winner.unifiedSchedule!, result.unifiedResidents, 2026, 3000); 
+        const healedUnified = healSchedule(winner.unifiedSchedule!, result.unifiedResidents, 2026, 3000, {}, true); 
         const reqV = getRequirementViolations(result.unifiedResidents, healedUnified, {}, 2026).length;
         const weekV = getWeeklyViolations(result.unifiedResidents, healedUnified, 2026).length;
         

@@ -106,7 +106,7 @@ export const HealerConstraintGenerator: ScheduleGenerator = {
 
         const baseResidentCounts: Record<string, Record<number, Record<string, number>>> = {};
         residents.forEach(r => {
-            const startLvl = Number(r.level) || 1;
+            const startLvl = Math.max(1, Math.min(3, Number(r.level) || 1));
             baseResidentCounts[r.id] = {1: {}, 2: {}, 3: {}};
             relevantReqTypes.forEach(t => {
                 if (priorRequirementCounts?.[r.id]?.[t]) {
@@ -139,13 +139,26 @@ export const HealerConstraintGenerator: ScheduleGenerator = {
             });
             const tempWC: any[] = Array.from({ length: totalWeeks }, () => ({ interns: {}, seniors: {} }));
             residents.forEach(r => {
-                const startLvl = Number(r.level) || 1;
+                const startLvl = Math.max(1, Math.min(3, Number(r.level) || 1));
                 for (let w = 0; w < totalWeeks; w++) {
                     const a = sched[r.id][w]?.assignment;
                     if (a) {
                         const level = getLevel(startLvl, w);
-                        if (level === 1) tempWC[w].interns[a] = (tempWC[w].interns[a] || 0) + 1; else tempWC[w].seniors[a] = (tempWC[w].seniors[a] || 0) + 1;
-                        if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => tempRC[r.id][level][t] = (tempRC[r.id][level][t] || 0) + 1);
+                        if (!tempWC[w]) tempWC[w] = { interns: {}, seniors: {} };
+                        if (level === 1) {
+                            if (!tempWC[w].interns) tempWC[w].interns = {};
+                            tempWC[w].interns[a] = (tempWC[w].interns[a] || 0) + 1;
+                        } else {
+                            if (!tempWC[w].seniors) tempWC[w].seniors = {};
+                            tempWC[w].seniors[a] = (tempWC[w].seniors[a] || 0) + 1;
+                        }
+                        if (!tempRC[r.id]) tempRC[r.id] = { 1: {}, 2: {}, 3: {} };
+                        if (!tempRC[r.id][level]) tempRC[r.id][level] = {};
+                        if (!existingSchedule?.[r.id]?.[w]?.locked) {
+                            typeFulfillment[a]?.forEach(t => {
+                                tempRC[r.id][level][t] = (tempRC[r.id][level][t] || 0) + 1;
+                            });
+                        }
                     }
                 }
             });
@@ -165,20 +178,47 @@ export const HealerConstraintGenerator: ScheduleGenerator = {
         const resContCache: Record<string, number[]> = {};
 
         const syncState = () => {
-            for (let w = 0; w < totalWeeks; w++) { weekCounts[w].interns = {}; weekCounts[w].seniors = {}; }
+            for (let w = 0; w < totalWeeks; w++) {
+                if (!weekCounts[w]) weekCounts[w] = { interns: {}, seniors: {} };
+                weekCounts[w].interns = {};
+                weekCounts[w].seniors = {};
+            }
             residents.forEach(r => {
-                const startLvl = Number(r.level) || 1;
-                resCounts[r.id] = {1: {...baseResidentCounts[r.id][1]}, 2: {...baseResidentCounts[r.id][2]}, 3: {...baseResidentCounts[r.id][3]}};
+                const startLvl = Math.max(1, Math.min(3, Number(r.level) || 1));
+                resCounts[r.id] = {
+                    1: baseResidentCounts[r.id]?.[1] ? { ...baseResidentCounts[r.id][1] } : {},
+                    2: baseResidentCounts[r.id]?.[2] ? { ...baseResidentCounts[r.id][2] } : {},
+                    3: baseResidentCounts[r.id]?.[3] ? { ...baseResidentCounts[r.id][3] } : {}
+                };
                 resContCache[r.id] = [];
                 for (let w = 0; w < totalWeeks; w++) {
                     const a = currentSchedule[r.id][w]?.assignment;
                     if (a) {
                         const level = getLevel(startLvl, w);
-                        if (level === 1) weekCounts[w].interns[a] = (weekCounts[w].interns[a] || 0) + 1; else weekCounts[w].seniors[a] = (weekCounts[w].seniors[a] || 0) + 1;
-                        if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1);
+                        if (!weekCounts[w]) weekCounts[w] = { interns: {}, seniors: {} };
+                        if (level === 1) {
+                            if (!weekCounts[w].interns) weekCounts[w].interns = {};
+                            weekCounts[w].interns[a] = (weekCounts[w].interns[a] || 0) + 1;
+                        } else {
+                            if (!weekCounts[w].seniors) weekCounts[w].seniors = {};
+                            weekCounts[w].seniors[a] = (weekCounts[w].seniors[a] || 0) + 1;
+                        }
+                        if (!resCounts[r.id]) {
+                            resCounts[r.id] = { 1: {}, 2: {}, 3: {} };
+                        }
+                        if (!resCounts[r.id][level]) {
+                            resCounts[r.id][level] = {};
+                        }
+                        if (!existingSchedule?.[r.id]?.[w]?.locked) {
+                            typeFulfillment[a]?.forEach(t => {
+                                resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1;
+                            });
+                        }
                     }
                 }
-                for (let c = 0; c < TOTAL_CYCLES; c++) resContCache[r.id][c] = getCycleCont(r.id, currentSchedule, c); // BUG FIX: TOTAL_CYCLES
+                for (let c = 0; c < TOTAL_CYCLES; c++) {
+                    resContCache[r.id][c] = getCycleCont(r.id, currentSchedule, c);
+                }
             });
         };
         syncState();
@@ -237,24 +277,44 @@ export const HealerConstraintGenerator: ScheduleGenerator = {
             const r = residents[Math.floor(rng.next() * residents.length)], weeks = flexibleWeeks[r.id];
             if (weeks.length === 0) continue;
             const w = weeks[Math.floor(rng.next() * weeks.length)];
-            const startLvl = Number(r.level) || 1;
+            const startLvl = Math.max(1, Math.min(3, Number(r.level) || 1));
             const level = getLevel(startLvl, w);
             const a1 = currentSchedule[r.id][w].assignment!;
             const a2 = assignmentsByLevel[level][Math.floor(rng.next() * assignmentsByLevel[level].length)];
             if (a1 === a2) continue;
 
             const cycle = Math.floor(w / COHORT_COUNT), oldWP = weekPenaltyCache[w], oldRP = resReqPenaltyCache[r.id], oldCP = resContCache[r.id][cycle]; // BUG FIX: COHORT_COUNT
-            // BUG FIX: NaN guard on all increment/decrement operations
-            if (level === 1) { weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) - 1; weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) + 1; } else { weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) - 1; weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) + 1; }
-            typeFulfillment[a1]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) - 1); typeFulfillment[a2]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1);
+            if (level === 1) {
+                if (!weekCounts[w].interns) weekCounts[w].interns = {};
+                weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) - 1;
+                weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) + 1;
+            } else {
+                if (!weekCounts[w].seniors) weekCounts[w].seniors = {};
+                weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) - 1;
+                weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) + 1;
+            }
+            if (!resCounts[r.id]) resCounts[r.id] = { 1: {}, 2: {}, 3: {} };
+            if (!resCounts[r.id][level]) resCounts[r.id][level] = {};
+            typeFulfillment[a1]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) - 1);
+            typeFulfillment[a2]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1);
             currentSchedule[r.id][w].assignment = a2;
             const newWP = getWeekPenalty(w, weekCounts[w]), newRP = getResPenalty(r.id, resCounts[r.id]), newCP = getCycleCont(r.id, currentSchedule, cycle);
             const delta = (newWP + newRP + newCP) - (oldWP + oldRP + oldCP);
             if (delta < 0) { currentPenalty += delta; weekPenaltyCache[w] = newWP; resReqPenaltyCache[r.id] = newRP; resContCache[r.id][cycle] = newCP; if (currentPenalty === 0) break; }
             else {
-                // BUG FIX: NaN guard on revert
-                if (level === 1) { weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) - 1; weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) + 1; } else { weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) - 1; weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) + 1; }
-                typeFulfillment[a1]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1); typeFulfillment[a2]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) - 1);
+                if (level === 1) {
+                    if (!weekCounts[w].interns) weekCounts[w].interns = {};
+                    weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) - 1;
+                    weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) + 1;
+                } else {
+                    if (!weekCounts[w].seniors) weekCounts[w].seniors = {};
+                    weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) - 1;
+                    weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) + 1;
+                }
+                if (!resCounts[r.id]) resCounts[r.id] = { 1: {}, 2: {}, 3: {} };
+                if (!resCounts[r.id][level]) resCounts[r.id][level] = {};
+                typeFulfillment[a1]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1);
+                typeFulfillment[a2]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) - 1);
                 currentSchedule[r.id][w].assignment = a1;
             }
         }

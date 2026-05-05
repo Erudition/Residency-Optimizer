@@ -56,9 +56,15 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             for (let i = 0; i < dur; i++) {
                 const w = week + i;
                 if (w >= totalWeeks) continue;
+                if (!weekTypeCounts[w]) weekTypeCounts[w] = { interns: {}, seniors: {} };
                 const currentPgy = Math.min(3, Math.floor(w / 52) + baseLevel);
-                if (currentPgy === 1) weekTypeCounts[w].interns[type] = (weekTypeCounts[w].interns[type] || 0) + 1;
-                else weekTypeCounts[w].seniors[type] = (weekTypeCounts[w].seniors[type] || 0) + 1;
+                if (currentPgy === 1) {
+                    if (!weekTypeCounts[w].interns) weekTypeCounts[w].interns = {};
+                    weekTypeCounts[w].interns[type] = (weekTypeCounts[w].interns[type] || 0) + 1;
+                } else {
+                    if (!weekTypeCounts[w].seniors) weekTypeCounts[w].seniors = {};
+                    weekTypeCounts[w].seniors[type] = (weekTypeCounts[w].seniors[type] || 0) + 1;
+                }
             }
         };
 

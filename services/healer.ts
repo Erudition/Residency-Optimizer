@@ -39,7 +39,8 @@ export const healSchedule = (
     residents: Resident[],
     gridStartYear: number,
     maxIterations: number = 2000,
-    historicalSchedules: any = {}
+    historicalSchedules: any = {},
+    allowHeavyFallback: boolean = false
 ): ScheduleGrid => {
 
     let currentSchedule = JSON.parse(JSON.stringify(schedule));
@@ -159,7 +160,7 @@ export const healSchedule = (
         }
     }
 
-    if (currentStaffingGaps > 0) {
+    if (currentStaffingGaps > 0 && allowHeavyFallback) {
         const cohortAssignments: Record<string, number> = {};
         residents.forEach(r => {
             if (r.cohort !== undefined) {

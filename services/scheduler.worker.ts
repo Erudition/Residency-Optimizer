@@ -72,12 +72,11 @@ onmessage = async (e: MessageEvent) => {
       
       for (let idx = 0; idx < result.results.length; idx++) {
         const res = result.results[idx];
-        if (res.unifiedSchedule) {
+        if (res.unifiedSchedule && idx < 1) {
            // Run healer on the unified grid
-           // 1000 iterations per result
-           const healedUnified = healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, 1000);
+           // 150 iterations per result for fast execution
+           const healedUnified = healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, 1500, e.data.historicalSchedules, true);
            const reSliced = sliceIntoYears(healedUnified, e.data.year, totalYears);
-           
            healedResults.push({
              ...res,
              schedule: reSliced,
@@ -149,7 +148,9 @@ async function runHealLoop(
       currentBest, 
       residents, 
       startYear,
-      200
+      500,
+      historicalSchedules,
+      true
     );
     
     // Calculate violations for reporting
