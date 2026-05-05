@@ -87,7 +87,12 @@ export const StochasticGenerator: ScheduleGenerator = {
                 reqs.forEach(req => {
                     const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
                     
-                    seededShuffle(activeResidentsAtLevel).forEach(res => {
+                    const sortedResidents = seededShuffle(activeResidentsAtLevel).sort((a, b) => {
+                        const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type);
+                        const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd) + getPriorRequirementCount(historicalCounts[b.id] || {}, req.type);
+                        return countA - countB;
+                    });
+                    sortedResidents.forEach(res => {
                         const cohort = validCohortAssignments[res.id];
                         const resStart = res.activeWeekStart ?? 0;
                         const resEnd = res.activeWeekEnd ?? totalWeeks;
@@ -95,8 +100,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                         const effectiveEnd = Math.min(yearEnd, resEnd);
 
                         let safety = 0;
-                        while ((getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) + 
-                                (yIdx === 0 ? getPriorRequirementCount(historicalCounts[res.id] || {}, req.type) : 0)) < req.target && safety < 10) {
+                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) < req.target && safety < 10) {
                             safety++;
                             let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
                             const dur = ROTATION_METADATA[req.type]?.duration || 4;
@@ -171,8 +175,8 @@ export const StochasticGenerator: ScheduleGenerator = {
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
                                getAssignedCount(newSchedule, residents, w, type, 1) < (meta.maxInterns || 99);
-                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, yearStart, yearEnd) + (yIdx === 0 ? getPriorRequirementCount(historicalCounts[a.id] || {}, type) : 0)) - 
-                                     (getYearRequirementCount(newSchedule[b.id], type, yearStart, yearEnd) + (yIdx === 0 ? getPriorRequirementCount(historicalCounts[b.id] || {}, type) : 0)));
+                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(historicalCounts[a.id] || {}, type)) - 
+                                     (getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(historicalCounts[b.id] || {}, type)));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
@@ -192,8 +196,8 @@ export const StochasticGenerator: ScheduleGenerator = {
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
                                getAssignedCount(newSchedule, residents, w, type, 2) < (meta.maxSeniors || 99);
-                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, yearStart, yearEnd) + (yIdx === 0 ? getPriorRequirementCount(historicalCounts[a.id] || {}, type) : 0)) - 
-                                     (getYearRequirementCount(newSchedule[b.id], type, yearStart, yearEnd) + (yIdx === 0 ? getPriorRequirementCount(historicalCounts[b.id] || {}, type) : 0)));
+                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(historicalCounts[a.id] || {}, type)) - 
+                                     (getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(historicalCounts[b.id] || {}, type)));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);

@@ -82,6 +82,11 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             return getYearRequirementCount(newSchedule[rId], type, yearStart, yearEnd);
         };
 
+        const getReqCountCumulative = (rId: string, type: AssignmentType, week: number): number => {
+            return getYearRequirementCount(newSchedule[rId], type, 0, week) + getPriorRequirementCount(historicalCounts[rId] || {}, type);
+        };
+
+
         const isResidentActive = (r: Resident, w: number) => {
             if (r.activeWeekStart !== undefined && w < r.activeWeekStart) return false;
             if (r.activeWeekEnd !== undefined && w > r.activeWeekEnd) return false;
@@ -139,8 +144,8 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, validCohortAssignments[r.id], dur) &&
                                (weekTypeCounts[w].interns[type] || 0) < meta.maxInterns;
-                    })).sort((a, b) => getReqCountFast(a.id, type, w) - 
-                                     getReqCountFast(b.id, type, w));
+                    })).sort((a, b) => getReqCountCumulative(a.id, type, w) - 
+                                     getReqCountCumulative(b.id, type, w));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
@@ -156,8 +161,8 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, validCohortAssignments[r.id], dur) &&
                                (weekTypeCounts[w].seniors[type] || 0) < meta.maxSeniors;
-                    })).sort((a, b) => getReqCountFast(a.id, type, w) - 
-                                     getReqCountFast(b.id, type, w));
+                    })).sort((a, b) => getReqCountCumulative(a.id, type, w) - 
+                                     getReqCountCumulative(b.id, type, w));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);

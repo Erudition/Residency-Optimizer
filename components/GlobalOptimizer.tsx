@@ -17,7 +17,7 @@ interface Props {
   historySchedules: ScheduleHistory;
   activeSchedule: ScheduleSession | undefined;
   algoConfig: AlgorithmConfig[];
-  onComplete: (results: any[]) => void;
+  onComplete: (results: any[], unifiedResidents?: Resident[]) => void;
   onCancel: () => void;
 }
 
@@ -72,7 +72,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
     cohortAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
     signal?: AbortSignal
-  ): Promise<{ results: any[] }> => {
+  ): Promise<{ results: any[], unifiedResidents?: Resident[] }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('../services/scheduler.worker.ts', import.meta.url), { type: 'module' });
       activeWorkersRef.current.add(worker);
@@ -96,7 +96,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
           worker.terminate();
-          resolve({ results });
+          resolve({ results, unifiedResidents: e.data.unifiedResidents });
         } else if (type === 'error') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -149,7 +149,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
       convergenceBufferRef.current = [];
       lastUpdateRef.current = Date.now();
 
-      const { results } = await runGenerationTask(
+      const { results, unifiedResidents } = await runGenerationTask(
         activeYear,
         totalYears,
         residents,
@@ -186,7 +186,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
 
       setConvergenceData([...convergenceBufferRef.current]);
 
-      onComplete(results);
+      onComplete(results, unifiedResidents);
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.log('Generation canceled');

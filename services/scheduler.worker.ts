@@ -79,7 +79,7 @@ onmessage = async (e: MessageEvent) => {
         pendingProgress = null;
       }
 
-      postMessage({ type: 'success', results: result.results });
+      postMessage({ type: 'success', results: result.results, unifiedResidents: result.unifiedResidents });
     } catch (error) {
       postMessage({ type: 'error', error: error instanceof Error ? error.message : String(error) });
     }

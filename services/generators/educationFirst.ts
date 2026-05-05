@@ -1,7 +1,7 @@
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
 
-import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount } from './utils';
+import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount, getPriorRequirementCount } from './utils';
 
 
 class SeededRNG {
@@ -116,8 +116,8 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                         const end = r.activeWeekEnd ?? totalWeeks;
                         return currentLevel === level && start < yearEnd && end > yearStart;
                     })).sort((a, b) => {
-                        const countA = getCumulativeRequirementCount(a.id, newSchedule[a.id], req.type, priorRequirementCounts);
-                        const countB = getCumulativeRequirementCount(b.id, newSchedule[b.id], req.type, priorRequirementCounts);
+                        const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd) + getPriorRequirementCount(priorRequirementCounts?.[a.id] || {}, req.type);
+                        const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd) + getPriorRequirementCount(priorRequirementCounts?.[b.id] || {}, req.type);
                         return countA - countB;
                     }).forEach(res => {
                         const cohort = validCohortAssignments[res.id];
@@ -210,8 +210,8 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
                                getAssignedCount(newSchedule, residents, w, type, 1) < (meta.maxInterns || 99);
-                    })).sort((a, b) => getCumulativeRequirementCount(a.id, newSchedule[a.id], type, priorRequirementCounts) - 
-                                     getCumulativeRequirementCount(b.id, newSchedule[b.id], type, priorRequirementCounts));
+                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(priorRequirementCounts?.[a.id] || {}, type)) - 
+                                     (getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(priorRequirementCounts?.[b.id] || {}, type)));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
@@ -232,8 +232,8 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
                                getAssignedCount(newSchedule, residents, w, type, 2) < (meta.maxSeniors || 99);
-                    })).sort((a, b) => getCumulativeRequirementCount(a.id, newSchedule[a.id], type, priorRequirementCounts) - 
-                                     getCumulativeRequirementCount(b.id, newSchedule[b.id], type, priorRequirementCounts));
+                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(priorRequirementCounts?.[a.id] || {}, type)) - 
+                                     (getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(priorRequirementCounts?.[b.id] || {}, type)));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);

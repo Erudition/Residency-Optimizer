@@ -120,8 +120,8 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                                isAligned(w, cohort, dur) &&
                                getAssignedCount(newSchedule, residents, w, type, 1) < (meta.maxInterns || 99);
                     })).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, totalWeeks) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, totalWeeks) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
+                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
+                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
                         return countA - countB;
                     });
                     
@@ -142,8 +142,8 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                                isAligned(w, cohort, dur) &&
                                getAssignedCount(newSchedule, residents, w, type, 2) < (meta.maxSeniors || 99);
                     })).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, totalWeeks) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, totalWeeks) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
+                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
+                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
                         return countA - countB;
                     });
                     
@@ -168,7 +168,12 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     
                     const eligibleResidents = seededShuffle(residents.filter(r => {
                         return isActive(r, yearStart) && getPgy(r, yearStart) === level;
-                    }));
+                    })).sort((a, b) => {
+                        const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type);
+                        const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd) + getPriorRequirementCount(historicalCounts[b.id] || {}, req.type);
+                        return countA - countB;
+                    });
+
 
                     eligibleResidents.forEach(res => {
                         const cohort = validCohortAssignments[res.id];
