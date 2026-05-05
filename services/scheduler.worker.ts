@@ -5,13 +5,29 @@ let cancelledAlgorithmIds = new Set<string>();
 let isPromoteTriggered = false;
 let overallProgress = 0;
 
+let lastAttempts: number[] = [];
+let lastExhaustionPoints: number[] = [];
+let lastExhaustedCount = 0;
+
 // Throttled progress updates to avoid flooding the UI thread
 let lastUpdate = 0;
 let pendingProgress: any = null;
 
 const postProgress = (iteration: number, scores: (number | null)[], attempts: number[], exhaustionPoints: number[], exhaustedCount: number) => {
   const now = Date.now();
-  pendingProgress = { type: 'progress', iteration, overallProgress, bestScore: scores, attempts, exhaustionPoints, exhaustedCount };
+  lastAttempts = attempts;
+  lastExhaustionPoints = exhaustionPoints;
+  lastExhaustedCount = exhaustedCount;
+  
+  pendingProgress = { 
+    type: 'progress', 
+    iteration, 
+    overallProgress, 
+    bestScore: scores, 
+    attempts, 
+    exhaustionPoints, 
+    exhaustedCount 
+  };
   
   if (now - lastUpdate > 200) { // Throttled to 200ms
     postMessage(pendingProgress);
@@ -67,7 +83,15 @@ onmessage = async (e: MessageEvent) => {
         
         // Progress: Last 20% is healing
         overallProgress = 0.8 + (0.2 * ((idx + 1) / result.results.length));
-        postMessage({ type: 'progress', iteration: 2000, overallProgress, healerProgress: Math.round(((idx + 1) / result.results.length) * 100) });
+        postMessage({ 
+          type: 'progress', 
+          iteration: 2000, 
+          overallProgress, 
+          healerProgress: Math.round(((idx + 1) / result.results.length) * 100),
+          attempts: lastAttempts,
+          exhaustionPoints: lastExhaustionPoints,
+          exhaustedCount: lastExhaustedCount
+        });
       }
 
       result.results = healedResults;

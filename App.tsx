@@ -757,8 +757,8 @@ const App: React.FC = () => {
           }
           if (now - lastUpdateRef.current > 1000) {
             setGenProgress(Math.round(overallProgress * 100));
-            setAlgoAttempts(attempts);
-            setExhaustionPoints(exhPoints);
+            if (attempts) setAlgoAttempts(attempts);
+            if (exhPoints) setExhaustionPoints(exhPoints);
             setHealerProgress(hProgress);
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
             if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {

@@ -208,7 +208,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
                 {isWinner && <span className="text-[8px] text-blue font-black uppercase">Best</span>}
               </div>
               <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">
-                Attempt {attempts[i] || 0} / {exhaustionPoints[i] || '?'}
+                Attempt {(attempts || [])[i] || 0} / {(exhaustionPoints || [])[i] || '?'}
               </div>
             </div>
           );
