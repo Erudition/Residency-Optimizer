@@ -23,7 +23,16 @@ import {
   getAssignmentColor
 } from './constants';
 import historicalGridData from './specification/historical_schedules_grid_v2.json';
-import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations, getAuditViolations } from './services/scheduler';
+import { 
+  generateSchedule, 
+  calculateStats, 
+  calculateFairnessMetrics, 
+  calculateScheduleScore, 
+  getRequirementViolations, 
+  getWeeklyViolations, 
+  getAuditViolations,
+  sliceIntoYears 
+} from './services/scheduler';
 import { preloadHistoricalData } from './services/generators/historyPreloader';
 import { healSchedule } from './services/healer';
 import { ScheduleTable } from './components/ScheduleTable';
@@ -276,6 +285,10 @@ const App: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduleSession[]>(() =>
     loadState('rsp_schedules_v4', [])
   );
+  const [algoAttempts, setAlgoAttempts] = useState<number[]>([]);
+  const [exhaustionPoints, setExhaustionPoints] = useState<number[]>([]);
+  const [healerProgress, setHealerProgress] = useState<number | undefined>(undefined);
+
 
 
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(() =>
@@ -318,7 +331,7 @@ const App: React.FC = () => {
     { id: 'experimental', name: 'Staffing First', description: 'Staffing-centric optimization. Prioritizes 1-week slots to guarantee hospital minimums are met at all costs.', enabled: true, color: '#8b5cf6' },
     { id: 'strict', name: 'Education First', description: 'Objective-centric optimization. Prioritizes PGY educational targets with a residual capacity guard to ensure hospital coverage.', enabled: true, color: '#10b981' },
     { id: 'greedy', name: 'Week By Week', description: 'Staffing-centric generator. Iterates through each week and fills hospital gaps using first-available residents.', enabled: true, color: '#f59e0b' },
-    { id: 'exact', name: 'Annealed Core Constraint Solver', description: 'Holistic multi-year solver using Simulated Annealing. Prioritizes 0 violations.', enabled: true, color: '#ec4899' }
+
   ]);
 
   const [algoStats, setAlgoStats] = useState<AlgorithmStats[]>(() => {
@@ -327,8 +340,7 @@ const App: React.FC = () => {
   });
   
   const [convergenceData, setConvergenceData] = useState<(number | null)[][]>([]);
-  const [exhaustionPoints, setExhaustionPoints] = useState<number[]>([]);
-  const [algoAttempts, setAlgoAttempts] = useState<number[]>([]);
+
   const convergenceBufferRef = useRef<(number | null)[][]>([]);
   const lastUpdateRef = useRef<number>(0);
   const [canceledAlgoIds, setCanceledAlgoIds] = useState<Set<string>>(new Set());
@@ -338,7 +350,7 @@ const App: React.FC = () => {
   const [isCanceled, setIsCanceled] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [genProgress, setGenProgress] = useState(0);
-  const [genAttempts, setGenAttempts] = useState(0);
+
   const [genStatus, setGenStatus] = useState('');
   const isGeneratingRef = useRef(false);
 
@@ -348,12 +360,12 @@ const App: React.FC = () => {
     const loaded = loadState('rsp_comp_params_v1', {
       tries: 100,
       priority: CompetitionPriority.BEST_SCORE,
-      algorithmIds: ['stochastic', 'experimental', 'strict', 'greedy', 'exact'],
+      algorithmIds: ['stochastic', 'experimental', 'strict', 'greedy'],
       topN: 10,
       multiYear: 3
     });
 
-    const validIds = ['stochastic', 'experimental', 'strict', 'greedy', 'exact'];
+    const validIds = ['stochastic', 'experimental', 'strict', 'greedy'];
     return {
       ...loaded,
       priority: CompetitionPriority.BEST_SCORE,
@@ -582,12 +594,12 @@ const App: React.FC = () => {
     residents: Resident[], 
     existing: ScheduleGrid, 
     params: CompetitionParams, 
-    onProgress: (iteration: number, attempts: number[], scores: (number | null)[] | undefined, year: number, overallProgress: number, exhaustionPoints: number[], exhaustedCount: number) => void,
+    onProgress: (iteration: number, attempts: number[], scores: (number | null)[] | undefined, year: number, overallProgress: number, exhaustionPoints: number[], exhaustedCount: number, healerProgress?: number) => void,
     historicalSchedules: ScheduleHistory, 
     cohortAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
     signal?: AbortSignal
-  ): Promise<{ results: any[] }> => {
+  ): Promise<{ results: any[], unifiedResidents?: Resident[] }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
       activeWorkersRef.current.add(worker);
@@ -607,14 +619,14 @@ const App: React.FC = () => {
       }
 
       worker.onmessage = (e) => {
-        const { type, iteration, overallProgress, bestScore, attempts, exhaustionPoints, exhaustedCount, results, error } = e.data;
+        const { type, iteration, overallProgress, bestScore, attempts, exhaustionPoints, exhaustedCount, results, error, unifiedResidents, healerProgress } = e.data;
         if (type === 'progress') {
-          onProgress(iteration, attempts, bestScore, startYear, overallProgress, exhaustionPoints, exhaustedCount || 0);
+          onProgress(iteration, attempts, bestScore, startYear, overallProgress, exhaustionPoints, exhaustedCount || 0, healerProgress);
         } else if (type === 'success') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
           worker.terminate();
-          resolve({ results });
+          resolve({ results, unifiedResidents });
         } else if (type === 'error') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -709,7 +721,7 @@ const App: React.FC = () => {
     isGeneratingRef.current = true;
     setIsGenerating(true);
     setGenProgress(0);
-    setGenAttempts(0);
+    setAlgoAttempts([]);
     setGenStatus('Initializing...');
 
     setConvergenceData([]);
@@ -728,13 +740,13 @@ const App: React.FC = () => {
         lastUpdateRef.current = Date.now();
       });
 
-      const { results } = await runGenerationTask(
+      const { results, unifiedResidents } = await runGenerationTask(
         activeYear,
         totalYears,
         residents,
         {},
         compParams,
-        (iteration, attempts, scores, year, overallProgress, exhPoints, exhCount) => {
+        (iteration, attempts, scores, year, overallProgress, exhPoints, exhCount, hProgress) => {
           const now = Date.now();
           if (scores) {
             while (convergenceBufferRef.current.length < iteration) {
@@ -747,6 +759,7 @@ const App: React.FC = () => {
             setGenProgress(Math.round(overallProgress * 100));
             setAlgoAttempts(attempts);
             setExhaustionPoints(exhPoints);
+            setHealerProgress(hProgress);
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
             if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
               setConvergenceData([...convergenceBufferRef.current]);
@@ -760,6 +773,7 @@ const App: React.FC = () => {
         controller.signal
       );
 
+
       // Process results
       const resultSalt = Math.floor(Math.random() * 1000000);
       const newIds = results.map((_: any, idx: number) => `sched-${Date.now()}-${idx}-${resultSalt}`);
@@ -767,11 +781,22 @@ const App: React.FC = () => {
       setConvergenceData([...convergenceBufferRef.current]);
 
       startTransition(() => {
+        if (unifiedResidents) {
+          setResidents(prev => {
+            const updated = prev.map(r => {
+              const u = unifiedResidents.find(ur => ur.id === r.id);
+              return u ? { ...r, level: u.level } : r;
+            });
+            const newRes = unifiedResidents.filter(ur => !prev.some(r => r.id === ur.id));
+            return [...updated, ...newRes];
+          });
+        }
         setSchedules(prev => {
           const finalResults = results.map((res: any, idx: number) => ({
             id: newIds[idx],
             name: `${res.winnerName} (${idx === 0 ? 'Optimal' : `Rank ${idx + 1}`})`,
             data: res.schedule,
+            unifiedData: res.unifiedSchedule,
             metrics: res.metrics,
             createdAt: new Date(),
             isGenerating: false,
@@ -810,20 +835,34 @@ const App: React.FC = () => {
     setRenameModalOpen(false);
     setScheduleToRename(null);
   };
-
   const handleHeal = () => {
     if (!activeScheduleId) return;
     const activeSched = schedules.find(s => s.id === activeScheduleId);
-    if (!activeSched || !activeSched.data) return;
+    if (!activeSched) return;
 
-    const yearGrid = activeSched.data[activeYear];
-    if (!yearGrid) return;
+    const useUnified = !!activeSched.unifiedData;
+    const gridToHeal = useUnified ? activeSched.unifiedData! : activeSched.data[activeYear];
+    if (!gridToHeal) return;
     
     // Attempt healing with 2000 iterations
-    const healedGrid = healSchedule(yearGrid, activeResidents, 2000);
+    // If unified, we pass the base year of the grid. 
+    // If single year, we pass activeYear.
+    const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+    const healedGrid = healSchedule(gridToHeal, residents, startYear, 2000);
     
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
+      
+      if (useUnified) {
+        // Re-slice the healed unified grid
+        const newSliced = sliceIntoYears(healedGrid, startYear, 3);
+        return {
+          ...s,
+          data: newSliced,
+          unifiedData: healedGrid
+        };
+      }
+
       return {
         ...s,
         data: {
@@ -1154,7 +1193,7 @@ const App: React.FC = () => {
                 return { id, name: algo?.name || id, color: algo?.color || '#000' };
               })}
               canceledIds={canceledAlgoIds}
-              healerProgress={0}
+              healerProgress={healerProgress}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl shadow-xl border border-light-5">
@@ -1371,7 +1410,7 @@ const App: React.FC = () => {
                     return { id, name: algo?.name || id, color: algo?.color || '#000' };
                   })}
                   canceledIds={canceledAlgoIds}
-                  healerProgress={0}
+                  healerProgress={healerProgress}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl shadow-xl border border-light-5">

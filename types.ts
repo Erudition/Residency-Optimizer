@@ -20,6 +20,7 @@ export interface Resident {
   clinicType?: AssignmentType;
   transferInYear?: number; // First academic year they joined (if not PGY-1)
   transferOutYear?: number; // Last academic year they completed (if they left early)
+  cohort?: number; // 4+1 cycle assignment (0-4)
 }
 
 export enum AssignmentType {
@@ -132,12 +133,14 @@ export interface RequirementViolation {
   type: AssignmentType;
   minWeeks: number;
   actual: number;
+  year?: number;
 }
 
 export interface WeeklyViolation {
   week: number;
   type: AssignmentType;
   issue: string;
+  year?: number;
 }
 
 export interface AdaptationParams {
@@ -211,6 +214,7 @@ export interface ScheduleSession {
   id: string;
   name: string;
   data: ScheduleHistory;
+  unifiedData?: ScheduleGrid;
   createdAt: Date;
   isGenerating?: boolean;
   progress?: number;

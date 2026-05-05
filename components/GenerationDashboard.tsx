@@ -204,7 +204,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
                 )}
               </div>
               <div className="text-xl font-black text-primary leading-none flex items-baseline gap-1">
-                {(currentBest === -Infinity || currentBest === null) ? '---' : currentBest.toFixed(1)}
+                {(typeof currentBest === 'number' && currentBest !== -Infinity) ? currentBest.toFixed(1) : '---'}
                 {isWinner && <span className="text-[8px] text-blue font-black uppercase">Best</span>}
               </div>
               <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">

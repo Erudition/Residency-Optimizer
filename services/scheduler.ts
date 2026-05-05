@@ -5,7 +5,7 @@ import { WeekByWeekGenerator } from './generators/weekByWeek';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
 import { StochasticGenerator } from './generators/stochastic';
 import { EducationFirstGenerator } from './generators/educationFirst';
-import { ExactConstraintGenerator } from './generators/exact';
+
 
 /**
  * Main Scheduling Engine - Competition Mode (Async)
@@ -71,7 +71,7 @@ export const generateSchedule = async (
 
 
   // Helper to build unified residents with active range
-  const unifiedResidents: Resident[] = augmentedResidents.filter(r => {
+  const unifiedResidents: Resident[] = (augmentedResidents.filter(r => {
     const firstLevel = startYear - r.startYear + 1;
     const lastLevel = (startYear + totalYears - 1) - r.startYear + 1;
     return (firstLevel <= 3 && lastLevel >= 1);
@@ -80,10 +80,12 @@ export const generateSchedule = async (
     const relEnd = Math.min(totalSpanWeeks, (r.startYear + 3 - startYear) * WEEKS_PER_YEAR);
     return {
       ...r,
+      level: startYear - r.startYear + 1,
       activeWeekStart: relStart,
       activeWeekEnd: relEnd
     };
-  });
+  }) as any) as Resident[];
+
 
   // Base unified grid with existing/continuity
   const buildBaseUnifiedGrid = (): ScheduleGrid => {
@@ -130,7 +132,7 @@ export const generateSchedule = async (
     { id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' },
     { id: 'stochastic', generator: StochasticGenerator, name: 'Stochastic' },
     { id: 'strict', generator: EducationFirstGenerator, name: 'Education First' },
-    { id: 'exact', generator: ExactConstraintGenerator, name: 'Annealed Core Constraint Solver' },
+
   ];
 
   const selectedGenerators = algorithmIds.map(id => allGenerators.find(g => g.id === id)).filter(Boolean) as any[];
@@ -352,7 +354,7 @@ export const getRequirementViolations = (residents: Resident[], schedule: Schedu
             type: req.type, 
             minWeeks: req.target, 
             actual: count,
-            // year: relativeYear // Add year to violation if interface allows, but it doesn't currently
+            year: relativeYear
           });
         }
       });
@@ -362,7 +364,7 @@ export const getRequirementViolations = (residents: Resident[], schedule: Schedu
 };
 
 
-export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid): WeeklyViolation[] => {
+export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid, activeYear?: number): WeeklyViolation[] => {
   const violations: WeeklyViolation[] = [];
   const safeGrid = schedule || {};
   
@@ -372,7 +374,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
     const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC || a === AssignmentType.NIMA_CLINIC).length;
     if (clinicCount === 0) {
-      violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}` });
+      violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + (activeYear || 2026) });
     }
 
     Object.values(AssignmentType).forEach(type => {
@@ -384,16 +386,16 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       const seniors = assignees.filter(r => (r.level + Math.floor(week / 52)) > 1).length;
 
       if (interns < meta.minInterns) {
-        violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}` });
+        violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}`, year: Math.floor(week / 52) + (activeYear || 2026) });
       }
       if (interns > meta.maxInterns) {
-        violations.push({ week, type, issue: `Max Interns (${meta.maxInterns}) exceeded: ${interns}` });
+        violations.push({ week, type, issue: `Max Interns (${meta.maxInterns}) exceeded: ${interns}`, year: Math.floor(week / 52) + (activeYear || 2026) });
       }
       if (seniors < meta.minSeniors) {
-        violations.push({ week, type, issue: `Min Seniors (${meta.minSeniors}) unmet: ${seniors}` });
+        violations.push({ week, type, issue: `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`, year: Math.floor(week / 52) + (activeYear || 2026) });
       }
       if (seniors > meta.maxSeniors) {
-        violations.push({ week, type, issue: `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}` });
+        violations.push({ week, type, issue: `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`, year: Math.floor(week / 52) + (activeYear || 2026) });
       }
     });
   }
@@ -597,14 +599,32 @@ export const calculateScheduleScore = (residents: Resident[], schedule: Schedule
   const streakPenalty = streakSD * -1000;
 
   // 4. Continuity (Avoid "Salad" schedules)
+  // Downgraded to Ideal (soft bonus/penalty) to allow healer to prioritize hard constraints.
   let continuityPenalty = 0;
   residents.forEach(r => {
     const weeks = schedule[r.id] || [];
-    // Stagger blocks by cohort if possible, or just use standard 5-week cycle windows
-    // For simplicity and general score, we check all 4-week rolling windows or fixed cycles.
-    // Let's use fixed 5-week cycles (4 core + 1 clinic)
-    for (let cycle = 0; cycle < 10; cycle++) {
-      const start = cycle * 5;
+    const cohort = r.cohort || 0;
+    
+    // Check 4-week inpatient blocks, correctly offset by cohort clinic weeks.
+    // In a 4+1 system, there are 5 possible start offsets for a 4-week block.
+    // Cohort 0: Clinic at 4, 9, 14... Blocks at [0-3], [5-8], [10-13]
+    // Cohort 1: Clinic at 0, 5, 10... Blocks at [1-4], [6-9], [11-14]
+    // General rule: Clinic at week 'w' if (w % 5) === (4 - cohort) ?? 
+    // Wait, let's re-verify:
+    // Cohort 0: Clinic at 4, 9. (4%5=4). (4-0=4). OK.
+    // Cohort 1: Clinic at 3, 8. (3%5=3). (4-1=3). OK.
+    // Cohort 2: Clinic at 2, 7. (2%5=2). (4-2=2). OK.
+    // Cohort 3: Clinic at 1, 6. (1%5=1). (4-3=1). OK.
+    // Cohort 4: Clinic at 0, 5. (0%5=0). (4-4=0). OK.
+    // So Clinic week is (4 - cohort) % 5.
+    // Inpatient block starts at (4 - cohort + 1) % 5.
+    
+    const blockStartOffset = (5 - cohort) % 5; 
+    
+    for (let cycle = 0; cycle < Math.floor(weeks.length / 5); cycle++) {
+      const start = cycle * 5 + blockStartOffset;
+      if (start + 4 > weeks.length) continue;
+      
       const core = weeks.slice(start, start + 4).map(c => c?.assignment).filter(Boolean);
       if (core.length < 2) continue;
       
@@ -613,11 +633,9 @@ export const calculateScheduleScore = (residents: Resident[], schedule: Schedule
         if (core[i] !== core[i-1]) changes++;
       }
       
-      // 0 changes (4 weeks) = 0 penalty
-      // 1 change (2+2) = 10000 penalty (discouraged)
-      // 2+ changes (salad) = 50000+ penalty (strictly forbidden)
-      if (changes === 1) continuityPenalty += 10000;
-      else if (changes > 1) continuityPenalty += changes * 50000;
+      // Downgraded weights: 500 for a split block, 2000 for a "salad" block.
+      if (changes === 1) continuityPenalty += 500;
+      else if (changes > 1) continuityPenalty += changes * 1000;
     }
   });
 
