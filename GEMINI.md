@@ -6,7 +6,7 @@ The project is built to a Github pages site available at `https://erudition.gith
 
 After any code modification (code only, not documentation), you MUST run `npx tsc --noEmit` and confirm zero errors before claiming completion. Vite's dev server does not perform type checking—it only transpiles—so runtime ReferenceErrors and missing imports will not surface until the user hits them in the browser. Once the code compiles cleanly, and you have performed any relevant browser-based tasks, stop and ask me if the outcome is approved. If I approve, please commit your changes with a descriptive commit message. If there is a backlog of many files to commit, try to break them down into separate commits with related files grouped.
 
-All work should be done in short-lived feature branches. WHen you have a plan, create a branch, commit the changes in atomic batches, and if you are not the repository owner,open a pull request when done.
+All work should be done in short-lived feature branches. When you have a plan, create a branch, commit the changes in atomic batches, and if you are not the repository owner,open a pull request when done.
 
 If NTS tools are available, use them entirely for reads, edits, searches -- but you MUST use absolute paths for all file references in tool calls.
 
