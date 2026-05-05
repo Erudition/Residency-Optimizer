@@ -15,6 +15,8 @@ export interface Resident {
   level: PgyLevel; // Computed level for the active year context
   startYear: number; // The calendar year they started as a PGY-1 (e.g. 2026)
   avoidResidentIds: string[];
+  activeWeekStart?: number; // Index in unified grid where resident starts
+  activeWeekEnd?: number;   // Index in unified grid where resident ends
   clinicType?: AssignmentType;
   transferInYear?: number; // First academic year they joined (if not PGY-1)
   transferOutYear?: number; // Last academic year they completed (if they left early)
@@ -160,7 +162,8 @@ export interface AlgorithmStats {
 }
 
 export interface CompetitionResult {
-  schedule: ScheduleHistory;
+  schedule: ScheduleHistory; // Sliced into years for UI
+  unifiedSchedule?: ScheduleGrid; // Full span for healer/analysis
   winnerName: string;
   score: number;
   totalViolations: number;
@@ -200,7 +203,7 @@ export interface ScheduleGenerator {
     residents: Resident[],
     existing: ScheduleGrid,
     attemptIndex?: number,
-    historicalSchedules?: ScheduleHistory,
+    priorRequirementCounts?: Record<string, Record<string, number>>,  // replaces historicalSchedules
     cohortAssignments?: Record<string, number>
   ) => ScheduleGrid;
 }

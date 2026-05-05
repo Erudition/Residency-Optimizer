@@ -12,7 +12,9 @@ interface Props {
   onCancelAlgorithm: (id: string) => void;
   algorithms: { id: string, name: string, color: string }[];
   canceledIds: Set<string>;
+  healerProgress?: number;
 }
+
 
 const CustomizedXDot = (props: any) => {
   const { cx, cy, stroke, payload, dataKey, index, fullData } = props;
@@ -31,7 +33,7 @@ const CustomizedXDot = (props: any) => {
   return null;
 };
 
-export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustionPoints, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
+export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustionPoints, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds, healerProgress }) => {
   const [isPromoting, setIsPromoting] = React.useState(false);
   const startTimeRef = React.useRef<number>(Date.now());
   
@@ -85,6 +87,14 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
               <p className="text-muted text-sm font-medium">Holistic optimization across all academic years</p>
               <div className="h-1 w-1 rounded-full bg-light-6" />
               <p className="text-blue text-xs font-black uppercase tracking-widest">Est. {eta}</p>
+              <div className="h-1 w-1 rounded-full bg-light-6" />
+              <p className="text-blue text-xs font-black uppercase tracking-widest">Est. {eta}</p>
+              {healerProgress !== undefined && (
+                <>
+                  <div className="h-1 w-1 rounded-full bg-light-6" />
+                  <p className="text-green text-xs font-black uppercase tracking-widest">Healer: {healerProgress}%</p>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -25,6 +25,7 @@ import {
 import historicalGridData from './specification/historical_schedules_grid_v2.json';
 import { generateSchedule, calculateStats, calculateFairnessMetrics, calculateScheduleScore, getRequirementViolations, getWeeklyViolations, getAuditViolations } from './services/scheduler';
 import { preloadHistoricalData } from './services/generators/historyPreloader';
+import { healSchedule } from './services/healer';
 import { ScheduleTable } from './components/ScheduleTable';
 import { Dashboard } from './components/Dashboard';
 import { ResidentManager } from './components/ResidentManager';
@@ -378,21 +379,24 @@ const App: React.FC = () => {
     }
   };
 
-  const getCurrentWeekForYear = (startYear: number): number => {
+  const getCurrentWeekForYear = (startYear: number, totalWeeks: number = TOTAL_WEEKS): number => {
     const today = new Date();
     const ayStart = new Date(startYear, 6, 1); // July 1st
     if (today < ayStart) return -1;
     const diffMs = today.getTime() - ayStart.getTime();
     const weekIdx = Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000));
-    return Math.min(weekIdx, TOTAL_WEEKS - 1);
+    return Math.min(weekIdx, totalWeeks - 1);
   };
 
   const activeSchedule = useMemo(() => {
     if (isHistoricalYear) {
-      const lockedUntil = getCurrentWeekForYear(activeYear);
+      const baseHistory = historySchedules[activeYear] || {};
+      const firstRow = (Object.values(baseHistory)[0] as any) || [];
+      const totalWeeks = firstRow.length || TOTAL_WEEKS;
+      const lockedUntil = getCurrentWeekForYear(activeYear, totalWeeks);
       
       // Augment history with pre-locked flags
-      const baseHistory = historySchedules[activeYear] || {};
+
       const augmentedData: ScheduleGrid = {};
       
       Object.keys(baseHistory).forEach(resId => {
@@ -807,6 +811,29 @@ const App: React.FC = () => {
     setScheduleToRename(null);
   };
 
+  const handleHeal = () => {
+    if (!activeScheduleId) return;
+    const activeSched = schedules.find(s => s.id === activeScheduleId);
+    if (!activeSched || !activeSched.data) return;
+
+    const yearGrid = activeSched.data[activeYear];
+    if (!yearGrid) return;
+    
+    // Attempt healing with 2000 iterations
+    const healedGrid = healSchedule(yearGrid, activeResidents, 2000);
+    
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      return {
+        ...s,
+        data: {
+          ...s.data,
+          [activeYear]: healedGrid
+        }
+      };
+    }));
+  };
+
   const handleCellClick = (resId: string, week: number, rect?: DOMRect) => {
     setSelectedCell({ resId, week });
     if (rect) setAnchorRect(rect);
@@ -1040,7 +1067,9 @@ const App: React.FC = () => {
         Object.keys(updatedData).forEach(yearStr => {
           const year = parseInt(yearStr);
           const grid = { ...(updatedData[year] || {}) };
-          const lockedUntil = getCurrentWeekForYear(year);
+          const firstRow = (Object.values(grid)[0] as any) || [];
+          const totalWeeks = firstRow.length || TOTAL_WEEKS;
+          const lockedUntil = getCurrentWeekForYear(year, totalWeeks);
 
           if (lockedUntil >= 0) {
             Object.keys(grid).forEach(rid => {
@@ -1107,7 +1136,8 @@ const App: React.FC = () => {
               data={convergenceData}
               attempts={algoAttempts}
               exhaustionPoints={exhaustionPoints}
-              maxTries={2000}              onStop={stopGeneration}
+              maxTries={2000}
+              onStop={stopGeneration}
               onSelectWinners={() => {
                 if (currentWorkerRef.current) {
                   currentWorkerRef.current.postMessage({ type: 'promote' });
@@ -1124,6 +1154,7 @@ const App: React.FC = () => {
                 return { id, name: algo?.name || id, color: algo?.color || '#000' };
               })}
               canceledIds={canceledAlgoIds}
+              healerProgress={0}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl shadow-xl border border-light-5">
@@ -1340,6 +1371,7 @@ const App: React.FC = () => {
                     return { id, name: algo?.name || id, color: algo?.color || '#000' };
                   })}
                   canceledIds={canceledAlgoIds}
+                  healerProgress={0}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl shadow-xl border border-light-5">
@@ -1418,6 +1450,7 @@ const App: React.FC = () => {
                     onLockWeek={handleLockWeek}
                     onLockResident={handleLockResident}
                     onToggleLock={handleToggleLock}
+                    onHeal={handleHeal}
                   />
                 </div>
               )}

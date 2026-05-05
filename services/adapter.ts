@@ -41,6 +41,8 @@ export const adaptSchedule = (
     const failureReasons: string[] = [];
     const plannedChanges: string[] = [];
 
+    const totalWeeks = Object.values(currentSchedule)[0]?.length || TOTAL_WEEKS;
+    // 1. FIX MISSING REQUIREMENTS
     // 1. FIX MISSING REQUIREMENTS
     // Strategy: Look for modifiable weeks (Electives).
     // Preference: Later in the year (Week 51 -> 0)
@@ -54,7 +56,7 @@ export const adaptSchedule = (
                 if (missing > 0) {
                     let allocatedForReq = 0;
                     // Iterate backwards for "least disruptive/later" preference
-                    for (let w = TOTAL_WEEKS - 1; w >= 0 && missing > 0; w--) {
+                    for (let w = totalWeeks - 1; w >= 0 && missing > 0; w--) {
                         const cell = schedule[r.id]?.[w];
                         if (cell && isModifiable(cell, params)) {
                             // Check if target rotation has capacity this week
@@ -80,7 +82,7 @@ export const adaptSchedule = (
     // Find unlocked residents on Elective this week and move them to the service.
     // Preference: Lower level residents first (PGY1 > PGY2 > PGY3)
     if (params.fixUnderstaffing) {
-        for (let w = 0; w < TOTAL_WEEKS; w++) {
+        for (let w = 0; w < totalWeeks; w++) {
             const types = Object.values(AssignmentType);
             for (const type of types) {
                 const meta = ROTATION_METADATA[type];
@@ -144,7 +146,7 @@ export const adaptSchedule = (
     // Find unlocked residents on this service and move them to ELECTIVE.
     // Preference: Lower level residents first.
     if (params.fixOverstaffing) {
-        for (let w = 0; w < TOTAL_WEEKS; w++) {
+        for (let w = 0; w < totalWeeks; w++) {
             const types = Object.values(AssignmentType);
             for (const type of types) {
                 const meta = ROTATION_METADATA[type];

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
 import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS, ASSIGNMENT_HEX_COLORS, getAssignmentColor } from '../constants';
-import { User, Lock, Calendar } from 'lucide-react';
+import { User, Lock, Calendar, Sparkles } from 'lucide-react';
 
 interface Props {
   residents: Resident[];
@@ -13,9 +13,10 @@ interface Props {
   onLockWeek: (weekIdx: number) => void;
   onLockResident: (residentId: string) => void;
   onToggleLock: (residentId: string, weekIdx: number) => void;
+  onHeal?: () => void;
 }
 
-const WEEKS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
+// WEEKS will be derived from the schedule length
 
 const getDateForWeek = (weekNum: number, startYear: number) => {
   const start = new Date(startYear, 6, 1); // July 1st of the start year
@@ -35,6 +36,7 @@ interface TooltipData {
   x: number;
   y: number;
   assignmentName: string;
+  weekIdx: number;
   progress: string;
   peers: Resident[];
   anchorRect?: DOMRect;
@@ -49,8 +51,16 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   onCellClick,
   onLockWeek,
   onLockResident,
-  onToggleLock
+  onToggleLock,
+  onHeal
 }) => {
+  const totalWeeks = useMemo(() => {
+    const vals = Object.values(schedule);
+    return vals.length > 0 ? (vals[0] as any).length : TOTAL_WEEKS;
+  }, [schedule]);
+  
+  const WEEKS = useMemo(() => Array.from({ length: totalWeeks }, (_, i) => i + 1), [totalWeeks]);
+
   // Resizable Column State
   const [colWidth, setColWidth] = useState(160);
   const resizingRef = useRef(false);
@@ -155,7 +165,8 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
         x: rect.left + window.scrollX + rect.width / 2,
         y: rect.top + window.scrollY,
         assignmentName: ASSIGNMENT_LABELS[assignment],
-        progress: `Week ${currentWeekNum} of ${totalWeeks}`,
+
+        weekIdx: weekIdx,
         peers,
         anchorRect: rect
       });
@@ -218,7 +229,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                 style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
               >
                 <div className="flex items-center justify-between h-full px-2 relative">
-                  <span>Resident ({residents.length})</span>
+                  <div className="flex items-center gap-2">
+                    <span>Resident ({residents.length})</span>
+                    {onHeal && (
+                      <button onClick={onHeal} className="p-1 rounded bg-green/10 text-green hover:bg-green hover:text-white transition-colors" title="Heal Schedule">
+                        <Sparkles size={12} />
+                      </button>
+                    )}
+                  </div>
                   {/* Resize Handle */}
                   <div
                     className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-2 active:bg-blue transition-colors z-50"
@@ -333,7 +351,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               </div>
               <div className="flex flex-col gap-1.5">
                 {[1, 2, 3].map(pgy => {
-                  const pgyGroup = tooltip.peers.filter(r => r.level === pgy);
+                  const pgyGroup = tooltip.peers.filter(r => (r.level + Math.floor(tooltip.weekIdx / 52)) === pgy);
                   if (pgyGroup.length === 0) return null;
                   return (
                     <div key={pgy} className="flex gap-2 items-start">

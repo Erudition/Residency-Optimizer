@@ -1,6 +1,6 @@
 import { CompetitionParams, CompetitionPriority, Resident, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting } from '../types';
 import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS, fulfillsRequirement } from '../constants';
-import { getRequirementCount, getCumulativeRequirementCount } from './generators/utils';
+import { getRequirementCount, getCumulativeRequirementCount, getYearRequirementCount } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
 import { StochasticGenerator } from './generators/stochastic';
@@ -12,6 +12,24 @@ import { ExactConstraintGenerator } from './generators/exact';
  * Returns both the schedule and the name of the winning algorithm.
  */
 
+const WEEKS_PER_YEAR = 52;
+
+// Helper to slice unified grid into yearly grids
+export const sliceIntoYears = (unifiedGrid: ScheduleGrid, sYear: number, numYears: number): Record<number, ScheduleGrid> => {
+  const years: Record<number, ScheduleGrid> = {};
+  for (let y = 0; y < numYears; y++) {
+    const yearGrid: ScheduleGrid = {};
+    const yearStart = y * WEEKS_PER_YEAR;
+    const yearEnd = (y + 1) * WEEKS_PER_YEAR;
+    Object.entries(unifiedGrid).forEach(([rId, row]) => {
+      yearGrid[rId] = row.slice(yearStart, yearEnd);
+    });
+    years[sYear + y] = yearGrid;
+  }
+  return years;
+};
+
+
 export const generateSchedule = async (
   startYear: number,
   totalYears: number,
@@ -22,7 +40,8 @@ export const generateSchedule = async (
   isAlgorithmCanceled: (id: string) => boolean,
   onProgress: (iteration: number, scores: (number | null)[], attempts: number[], exhaustionPoints: number[], exhaustedCount: number) => void,
   isPromoted: () => boolean = () => false
-): Promise<{ results: CompetitionResult[] }> => {
+): Promise<{ results: CompetitionResult[], unifiedResidents: Resident[] }> => {
+
   const { residents, existing, cohortAssignments } = constraints;
 
   const getAugmentedResidents = (baseResidents: Resident[], maxYear: number): Resident[] => {
@@ -47,6 +66,64 @@ export const generateSchedule = async (
   };
 
   const augmentedResidents = getAugmentedResidents(residents, startYear + totalYears + 1);
+  const totalSpanWeeks = totalYears * WEEKS_PER_YEAR;
+
+
+
+  // Helper to build unified residents with active range
+  const unifiedResidents: Resident[] = augmentedResidents.filter(r => {
+    const firstLevel = startYear - r.startYear + 1;
+    const lastLevel = (startYear + totalYears - 1) - r.startYear + 1;
+    return (firstLevel <= 3 && lastLevel >= 1);
+  }).map(r => {
+    const relStart = Math.max(0, (r.startYear - startYear) * WEEKS_PER_YEAR);
+    const relEnd = Math.min(totalSpanWeeks, (r.startYear + 3 - startYear) * WEEKS_PER_YEAR);
+    return {
+      ...r,
+      activeWeekStart: relStart,
+      activeWeekEnd: relEnd
+    };
+  });
+
+  // Base unified grid with existing/continuity
+  const buildBaseUnifiedGrid = (): ScheduleGrid => {
+    const grid: ScheduleGrid = {};
+    unifiedResidents.forEach(r => {
+      grid[r.id] = Array.from({ length: totalSpanWeeks }, () => ({ assignment: null as any, locked: false }));
+      
+      // Fill existing
+      for (let y = startYear; y < startYear + totalYears; y++) {
+        const yearOffset = (y - startYear) * WEEKS_PER_YEAR;
+        if (existing[y] && existing[y][r.id]) {
+          existing[y][r.id].forEach((cell, w) => {
+            if (cell && cell.assignment) {
+              grid[r.id][yearOffset + w] = { ...cell };
+            }
+          });
+        }
+      }
+
+      // Prepend continuity prefix (last 4 weeks of prior year)
+      // This is Task 2.3
+      const firstActiveYear = Math.max(r.startYear, startYear);
+      if (firstActiveYear > r.startYear && historicalSchedules[firstActiveYear - 1]) {
+        const priorYearGrid = historicalSchedules[firstActiveYear - 1];
+        if (priorYearGrid[r.id]) {
+          const prefixStart = (firstActiveYear - startYear) * WEEKS_PER_YEAR;
+          // Only if within span
+          if (prefixStart < totalSpanWeeks) {
+             // In multi-year, we don't necessarily "prepend" outside the grid, 
+             // but ensure the first 4 weeks are locked to historical if available.
+             // Wait, if firstActiveYear == startYear, there's no prefix IN the unified grid.
+             // The generator should look at priorRequirementCounts for historical context.
+          }
+        }
+      }
+    });
+    return grid;
+  };
+
+  const baseUnifiedGrid = buildBaseUnifiedGrid();
 
   const allGenerators = [
     { id: 'greedy', generator: WeekByWeekGenerator, name: 'Week By Week' },
@@ -83,7 +160,7 @@ export const generateSchedule = async (
   console.log(`Starting Unified Multi-Year Competition (${totalYears} years)...`);
 
   let i = 0;
-  const HARD_CAP = 2000; // Safety cap
+  const HARD_CAP = params.tries || 2000; // Safety cap
 
   while (i < HARD_CAP) {
     if (isPromoted()) {
@@ -121,41 +198,43 @@ export const generateSchedule = async (
       try {
         let attemptTotalViolations = 0;
         let attemptUnderstaffing = 0;
-        let attemptFullData: Record<number, ScheduleGrid> = existing ? { ...existing } : {};
-        let runningHistory = { ...historicalSchedules };
         let totalScore = 0;
 
-        // Generate each year in sequence for this attempt
-        for (let y = startYear; y < startYear + totalYears; y++) {
-          const yearResidents = augmentedResidents.filter(r => {
-            const level = y - r.startYear + 1;
-            const isPgyInRange = level >= 1 && level <= 3;
-            const hasJoined = r.transferInYear === undefined || r.transferInYear <= y;
-            const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= y;
-            return isPgyInRange && hasJoined && hasNotLeft;
-          }).map(r => ({
-            ...r,
-            level: (y - r.startYear + 1) as 1 | 2 | 3,
-            clinicType: (y - r.startYear + 1) === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC
-          }));
+        const attemptSeed = i * selectedGenerators.length + idx;
+        
+        // Compute combined prior counts (Residency-wide up to startYear)
+        const combinedPriorCounts: Record<string, Record<string, number>> = {};
+        unifiedResidents.forEach(r => {
+          combinedPriorCounts[r.id] = {};
+          Object.entries(historicalSchedules).forEach(([yStr, grid]) => {
+            if (parseInt(yStr) < startYear && grid[r.id]) {
+              grid[r.id].forEach(c => {
+                if (c && c.assignment) {
+                  combinedPriorCounts[r.id][c.assignment] = (combinedPriorCounts[r.id][c.assignment] || 0) + 1;
+                }
+              });
+            }
+          });
+        });
 
-          const yearExisting = existing[y] || {};
-          const attemptSeed = i * selectedGenerators.length + idx;
-          const yearSchedule = yearResidents.length > 0 
-            ? g.generator.generate(yearResidents, yearExisting, attemptSeed, runningHistory, cohortAssignments[y])
-            : JSON.parse(JSON.stringify(yearExisting || {}));
-          
-          const yearScore = calculateScheduleScore(yearResidents, yearSchedule, runningHistory);
-          const reqViolations = getRequirementViolations(yearResidents, yearSchedule, runningHistory);
-          const weekViolations = getWeeklyViolations(yearResidents, yearSchedule);
-          
-          attemptTotalViolations += reqViolations.length + weekViolations.length;
-          attemptUnderstaffing += weekViolations.filter(v => v.issue.includes('Min')).length;
-          attemptFullData[y] = yearSchedule;
-          totalScore += yearScore;
-          
-          runningHistory[y] = yearSchedule;
-        }
+        // Call generator ONCE for the whole span
+        const unifiedSchedule = g.generator.generate(
+          unifiedResidents, 
+          JSON.parse(JSON.stringify(baseUnifiedGrid)), 
+          attemptSeed, 
+          combinedPriorCounts, 
+          cohortAssignments[startYear] // Note: cohort assignments might vary by year, but usually static per resident
+        );
+
+        // Score and validate unified grid
+        totalScore = calculateScheduleScore(unifiedResidents, unifiedSchedule, historicalSchedules);
+        const reqViolations = getRequirementViolations(unifiedResidents, unifiedSchedule, historicalSchedules, startYear);
+        const weekViolations = getWeeklyViolations(unifiedResidents, unifiedSchedule);
+
+        attemptTotalViolations = reqViolations.length + weekViolations.length;
+        attemptUnderstaffing = weekViolations.filter(v => v.issue.includes('Min')).length;
+        
+        const attemptFullData = sliceIntoYears(unifiedSchedule, startYear, totalYears);
         
         const score = totalScore;
 
@@ -178,6 +257,7 @@ export const generateSchedule = async (
         if (score >= currentWorstScore || results.length < (params.topN || 1)) {
           const result: CompetitionResult = {
             schedule: attemptFullData,
+            unifiedSchedule: unifiedSchedule,
             winnerName: g.name,
             score,
             totalViolations: attemptTotalViolations,
@@ -221,7 +301,7 @@ export const generateSchedule = async (
     i++;
   }
 
-  return { results };
+  return { results, unifiedResidents };
 };
 
 // --- Analysis Helpers (Kept for UI/Analysis) ---
@@ -251,14 +331,32 @@ export const getRequirementViolations = (residents: Resident[], schedule: Schedu
     });
   }
 
+  const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
+  const numYears = Math.ceil(totalWeeks / 52);
+
   residents.forEach(r => {
-    const reqs = REQUIREMENTS[r.level] || [];
-    reqs.forEach(req => {
-      const count = getCumulativeRequirementCount(r.id, safeGrid[r.id] || [], req.type, filteredHistory);
-      if (count < req.target) {
-        violations.push({ residentId: r.id, type: req.type, minWeeks: req.target, actual: count });
-      }
-    });
+    for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
+      const yearStart = yearIdx * 52;
+      const yearEnd = Math.min((yearIdx + 1) * 52, totalWeeks);
+      const relativeYear = activeYear !== undefined ? activeYear + yearIdx : r.startYear + yearIdx;
+      const pgyLevel = relativeYear - r.startYear + 1;
+      
+      if (pgyLevel < 1 || pgyLevel > 3) continue;
+
+      const reqs = REQUIREMENTS[pgyLevel] || [];
+      reqs.forEach(req => {
+        const count = getYearRequirementCount(safeGrid[r.id] || [], req.type, yearStart, yearEnd);
+        if (count < req.target) {
+          violations.push({ 
+            residentId: r.id, 
+            type: req.type, 
+            minWeeks: req.target, 
+            actual: count,
+            // year: relativeYear // Add year to violation if interface allows, but it doesn't currently
+          });
+        }
+      });
+    }
   });
   return violations;
 };
@@ -268,7 +366,9 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   const violations: WeeklyViolation[] = [];
   const safeGrid = schedule || {};
   
-  for (let week = 0; week < 52; week++) {
+  const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
+  
+  for (let week = 0; week < totalWeeks; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
     const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC || a === AssignmentType.NIMA_CLINIC).length;
     if (clinicCount === 0) {
@@ -280,8 +380,8 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       if (!meta) return;
 
       const assignees = residents.filter(r => safeGrid[r.id]?.[week]?.assignment === type);
-      const interns = assignees.filter(r => r.level === 1).length;
-      const seniors = assignees.filter(r => r.level > 1).length;
+      const interns = assignees.filter(r => (r.level + Math.floor(week / 52)) === 1).length;
+      const seniors = assignees.filter(r => (r.level + Math.floor(week / 52)) > 1).length;
 
       if (interns < meta.minInterns) {
         violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}` });

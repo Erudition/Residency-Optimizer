@@ -1,4 +1,5 @@
-import { generateSchedule } from './scheduler';
+import { generateSchedule, sliceIntoYears } from './scheduler';
+import { healSchedule } from './healer';
 
 let cancelledAlgorithmIds = new Set<string>();
 let isPromoteTriggered = false;
@@ -37,11 +38,39 @@ onmessage = async (e: MessageEvent) => {
         algorithmIds,
         (id) => cancelledAlgorithmIds.has(id),
         (iteration, scores, attempts, exhaustionPoints, exhaustedCount) => {
-          overallProgress = exhaustedCount / algorithmIds.length;
+          overallProgress = (exhaustedCount / algorithmIds.length) * 0.8; // 80% for generation
           postProgress(iteration, scores, attempts, exhaustionPoints, exhaustedCount);
         },
         () => isPromoteTriggered
       );
+
+      // Phase 2: Healer Phase (Off-thread)
+      const healedResults = [];
+      const unifiedResidents = result.unifiedResidents;
+      
+      for (let idx = 0; idx < result.results.length; idx++) {
+        const res = result.results[idx];
+        if (res.unifiedSchedule) {
+           // Run healer on the unified grid
+           // 1000 iterations per result
+           const healedUnified = healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, 1000);
+           const reSliced = sliceIntoYears(healedUnified, e.data.year, totalYears);
+           
+           healedResults.push({
+             ...res,
+             schedule: reSliced,
+             unifiedSchedule: healedUnified
+           });
+        } else {
+           healedResults.push(res);
+        }
+        
+        // Progress: Last 20% is healing
+        overallProgress = 0.8 + (0.2 * ((idx + 1) / result.results.length));
+        postMessage({ type: 'progress', iteration: 2000, overallProgress, healerProgress: Math.round(((idx + 1) / result.results.length) * 100) });
+      }
+
+      result.results = healedResults;
 
 
       // Flush any pending progress
@@ -50,7 +79,6 @@ onmessage = async (e: MessageEvent) => {
         pendingProgress = null;
       }
 
-      // result.results already contains CompetitionResult[] where .schedule is the full multi-year Record
       postMessage({ type: 'success', results: result.results });
     } catch (error) {
       postMessage({ type: 'error', error: error instanceof Error ? error.message : String(error) });

@@ -1,4 +1,4 @@
-import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory, ScheduleGenerator } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
 import { WeekByWeekGenerator } from './weekByWeek';
 
@@ -13,8 +13,10 @@ class SeededRNG {
 
 export const ExactConstraintGenerator: ScheduleGenerator = {
     name: "Annealed Core Constraint Solver",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
+
+        const totalWeeks = Object.values(existingSchedule)[0]?.length || TOTAL_WEEKS;
         const checkInterrupt = () => (typeof self !== 'undefined' && (self as any).isPromoteTriggered);
 
         let validCohortAssignments = { ...(cohortAssignments || {}) };
@@ -48,14 +50,14 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
         const isFlexible: Record<string, boolean[]> = {};
         residents.forEach(r => {
             const cohort = validCohortAssignments[r.id] ?? 0;
-            flexibleWeeks[r.id] = []; isFlexible[r.id] = Array(TOTAL_WEEKS).fill(false);
-            for (let w = 0; w < TOTAL_WEEKS; w++) { if (w % COHORT_COUNT !== cohort && !(existingSchedule?.[r.id]?.[w]?.locked)) { flexibleWeeks[r.id].push(w); isFlexible[r.id][w] = true; } } // BUG FIX: COHORT_COUNT
+            flexibleWeeks[r.id] = []; isFlexible[r.id] = Array(totalWeeks).fill(false);
+            for (let w = 0; w < totalWeeks; w++) { if (w % COHORT_COUNT !== cohort && !(existingSchedule?.[r.id]?.[w]?.locked)) { flexibleWeeks[r.id].push(w); isFlexible[r.id][w] = true; } } // BUG FIX: COHORT_COUNT
         });
 
         const W_STAFFING = 10000000, W_REQUIREMENT = 10000, W_CONTINUITY = 1000;
 
         // BUG FIX: TOTAL_CYCLES covers all 52 weeks including partial last cycle
-        const TOTAL_CYCLES = Math.floor((TOTAL_WEEKS - 1) / COHORT_COUNT) + 1;
+        const TOTAL_CYCLES = Math.floor((totalWeeks - 1) / COHORT_COUNT) + 1;
 
         const getTypeStaffingPenalty = (type: AssignmentType, interns: number, seniors: number): number => {
             const m = ROTATION_METADATA[type]!; let c = 0;
@@ -82,7 +84,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             let lastA: string | null = null, changes = 0, coreCount = 0;
             for (let i = 0; i < COHORT_COUNT; i++) { // BUG FIX: COHORT_COUNT
                 const w = start + i;
-                if (w >= TOTAL_WEEKS) continue; // BUG FIX: bounds check for partial last cycle
+                if (w >= totalWeeks) continue; // BUG FIX: bounds check for partial last cycle
                 if (w % COHORT_COUNT !== cohort) { const a = sched[rId][w]?.assignment; if (a) { coreCount++; if (lastA && a !== lastA) changes++; lastA = a; } } // BUG FIX: COHORT_COUNT
             }
             return (coreCount < 2) ? 0 : changes * W_CONTINUITY;
@@ -93,7 +95,9 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             baseResidentCounts[r.id] = {};
             relevantReqTypes.forEach(t => {
                 let count = 0;
-                if (historicalSchedules) Object.values(historicalSchedules).forEach(grid => grid[r.id]?.forEach(c => { if (c?.assignment && fulfillsRequirement(c.assignment, t)) count++; }));
+                if (priorRequirementCounts && priorRequirementCounts[r.id]) {
+                    count = priorRequirementCounts[r.id][t] || 0;
+                }
                 if (existingSchedule?.[r.id]) existingSchedule[r.id].forEach(c => { if (c?.locked && c.assignment && fulfillsRequirement(c.assignment, t)) count++; });
                 baseResidentCounts[r.id][t] = count;
             });
@@ -102,9 +106,9 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
         const calculateTotal = (sched: ScheduleGrid): number => {
             const tempRC: Record<string, Record<string, number>> = {};
             residents.forEach(r => tempRC[r.id] = { ...baseResidentCounts[r.id] });
-            const tempWC: any[] = Array.from({ length: TOTAL_WEEKS }, () => ({ interns: {}, seniors: {} }));
+            const tempWC: any[] = Array.from({ length: totalWeeks }, () => ({ interns: {}, seniors: {} }));
             residents.forEach(r => {
-                for (let w = 0; w < TOTAL_WEEKS; w++) {
+                for (let w = 0; w < totalWeeks; w++) {
                     const a = sched[r.id][w]?.assignment;
                     if (a) {
                         if (r.level === 1) tempWC[w].interns[a] = (tempWC[w].interns[a] || 0) + 1; else tempWC[w].seniors[a] = (tempWC[w].seniors[a] || 0) + 1;
@@ -112,26 +116,27 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
                     }
                 }
             });
-            let total = 0; for (let w = 0; w < TOTAL_WEEKS; w++) total += getWeekPenalty(w, tempWC[w]);
+            let total = 0; for (let w = 0; w < totalWeeks; w++) total += getWeekPenalty(w, tempWC[w]);
             residents.forEach(r => { total += getResPenalty(r.id, tempRC[r.id]); for (let c = 0; c < TOTAL_CYCLES; c++) total += getCycleCont(r.id, sched, c); }); // BUG FIX: TOTAL_CYCLES instead of hardcoded 10
             return total;
         };
 
         let currentSchedule: ScheduleGrid = {}, bestP = Infinity;
         for (let s = 0; s < 50; s++) {
-            const cand = WeekByWeekGenerator.generate(residents, existingSchedule, attemptIndex + s, historicalSchedules, validCohortAssignments);
+            const cand = WeekByWeekGenerator.generate(residents, existingSchedule, attemptIndex + s, priorRequirementCounts, validCohortAssignments);
             const p = calculateTotal(cand); if (p < bestP) { bestP = p; currentSchedule = cand; }
         }
 
-        const weekCounts: any[] = Array.from({ length: TOTAL_WEEKS }, () => ({ interns: {}, seniors: {} }));
+        const weekCounts: any[] = Array.from({ length: totalWeeks }, () => ({ interns: {}, seniors: {} }));
         const resCounts: Record<string, any> = {};
         const resContCache: Record<string, number[]> = {};
 
         const syncState = () => {
+            for (let w = 0; w < totalWeeks; w++) { weekCounts[w].interns = {}; weekCounts[w].seniors = {}; }
             for (let w = 0; w < TOTAL_WEEKS; w++) { weekCounts[w].interns = {}; weekCounts[w].seniors = {}; }
             residents.forEach(r => {
                 resCounts[r.id] = { ...baseResidentCounts[r.id] }; resContCache[r.id] = [];
-                for (let w = 0; w < TOTAL_WEEKS; w++) {
+                for (let w = 0; w < totalWeeks; w++) {
                     const a = currentSchedule[r.id][w]?.assignment;
                     if (a) {
                         if (r.level === 1) weekCounts[w].interns[a] = (weekCounts[w].interns[a] || 0) + 1; else weekCounts[w].seniors[a] = (weekCounts[w].seniors[a] || 0) + 1;
@@ -144,7 +149,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
         syncState();
 
         const staffingSweep = (aggressive: boolean = false) => {
-            for (let w = 0; w < TOTAL_WEEKS; w++) {
+            for (let w = 0; w < totalWeeks; w++) {
                 constrainedTypes.forEach(t => {
                     const m = ROTATION_METADATA[t]!;
                     while ((weekCounts[w].interns[t] || 0) < m.minInterns) {

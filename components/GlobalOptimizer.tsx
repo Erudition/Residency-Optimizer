@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { GenerationDashboard } from './GenerationDashboard';
 
+
 interface Props {
   activeYear: number;
   residents: Resident[];
@@ -37,7 +38,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
   const [convergenceData, setConvergenceData] = useState<number[][]>([]);
   const [canceledAlgoIds, setCanceledAlgoIds] = useState<Set<string>>(new Set());
   const [isCanceled, setIsCanceled] = useState(false);
-
+  const [healerProgress, setHealerProgress] = useState<number | undefined>(undefined);
   const activeWorkersRef = useRef<Set<Worker>>(new Set());
   const generationControllerRef = useRef<AbortController | null>(null);
   const convergenceBufferRef = useRef<number[][]>([]);
@@ -66,7 +67,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
     residents: Resident[], 
     existing: any, 
     params: CompetitionParams, 
-    onProgress: (iteration: number, attempts: number, scores: number[] | undefined, year: number, overallProgress: number) => void,
+    onProgress: (iteration: number, attempts: number, scores: number[] | undefined, year: number, overallProgress: number, healerProgress?: number) => void,
     historicalSchedules: ScheduleHistory, 
     cohortAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
@@ -88,9 +89,9 @@ export const GlobalOptimizer: React.FC<Props> = ({
       }
 
       worker.onmessage = (e) => {
-        const { type, iteration, overallProgress, bestScore, attempts, year, results, error } = e.data;
+        const { type, iteration, overallProgress, bestScore, attempts, year, results, error, healerProgress } = e.data;
         if (type === 'progress') {
-          onProgress(iteration, attempts, bestScore, year, overallProgress);
+          onProgress(iteration, attempts, bestScore, year, overallProgress, healerProgress);
         } else if (type === 'success') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -154,7 +155,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
         residents,
         {},
         compParams,
-        (iteration, attempts, scores, year, overallProgress) => {
+        (iteration, attempts, scores, year, overallProgress, hProgress) => {
           const now = Date.now();
           if (scores) {
             while (convergenceBufferRef.current.length < iteration) {
@@ -172,8 +173,11 @@ export const GlobalOptimizer: React.FC<Props> = ({
               setConvergenceData([...convergenceBufferRef.current]);
             }
             lastUpdateRef.current = now;
+            if (hProgress !== undefined) setHealerProgress(hProgress);
+            lastUpdateRef.current = now;
           }
         },
+
         historySchedules,
         activeSchedule?.cohortAssignments || {},
         compParams.algorithmIds || [],
@@ -181,6 +185,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
       );
 
       setConvergenceData([...convergenceBufferRef.current]);
+
       onComplete(results);
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -225,6 +230,9 @@ export const GlobalOptimizer: React.FC<Props> = ({
           onCancelAlgorithm={handleCancelAlgorithm}
           algorithms={algoConfig.filter(a => (compParams.algorithmIds || []).includes(a.id))}
           canceledIds={canceledAlgoIds}
+          attempts={[]}
+          exhaustionPoints={[]}
+          healerProgress={healerProgress}
         />
       </div>
     </div>
