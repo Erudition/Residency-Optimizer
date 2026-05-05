@@ -6,7 +6,7 @@ import { EducationFirstGenerator } from '../services/generators/educationFirst';
 import { StaffingFirstGenerator } from '../services/generators/staffingFirst';
 import { WeekByWeekGenerator } from '../services/generators/weekByWeek';
 import { StochasticGenerator } from '../services/generators/stochastic';
-import { ExactConstraintGenerator } from '../services/generators/exact';
+import { HealerConstraintGenerator } from '../services/generators/healerSolver';
 
 // CRITICAL RULE (Enforced by Connor):
 // Do NOT allow more than 0 violations in the algorithm stress tests.
@@ -74,7 +74,7 @@ describe('Algorithm Stress Tests', () => {
 
 
 
-    test('ExactConstraintGenerator produces 0 violations', () => {
+    test('HealerConstraintGenerator produces 0 violations', () => {
         const startYear = 2026;
         const residents = GENERATE_RESIDENTS_FOR_YEAR(startYear);
         const runningHistory: Record<number, ScheduleGrid> = {};
@@ -98,7 +98,7 @@ describe('Algorithm Stress Tests', () => {
                 });
             });
 
-            const yearSchedule = ExactConstraintGenerator.generate(yearResidents, {}, 0, priorCounts, cohortAssignments);
+            const yearSchedule = HealerConstraintGenerator.generate(yearResidents, {}, 0, priorCounts, cohortAssignments);
 
             const weeklyViolations = getWeeklyViolations(yearResidents, yearSchedule);
             if (year === 2026 && weeklyViolations.length > 0) {

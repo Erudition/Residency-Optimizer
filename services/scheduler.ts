@@ -5,7 +5,7 @@ import { WeekByWeekGenerator } from './generators/weekByWeek';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
 import { StochasticGenerator } from './generators/stochastic';
 import { EducationFirstGenerator } from './generators/educationFirst';
-import { ExactConstraintGenerator } from './generators/exact';
+
 
 
 /**
@@ -133,7 +133,7 @@ export const generateSchedule = async (
 
   const allGenerators = [
     { id: 'greedy', generator: WeekByWeekGenerator, name: 'Week By Week' },
-    { id: 'exact', generator: ExactConstraintGenerator, name: 'Core Constraint Solver' },
+
     { id: 'experimental', generator: StaffingFirstGenerator, name: 'Staffing First' },
     { id: 'stochastic', generator: StochasticGenerator, name: 'Stochastic' },
     { id: 'strict', generator: EducationFirstGenerator, name: 'Education First' },

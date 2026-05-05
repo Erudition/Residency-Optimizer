@@ -2,6 +2,7 @@ import { ScheduleGrid, AssignmentType, Resident, ScheduleCell } from '../types';
 import { ROTATION_METADATA, REQUIREMENTS } from '../constants';
 import { canFitBlock, getAssignedCount, getYearRequirementCount } from './generators/utils';
 import { getRequirementViolations, getWeeklyViolations } from './scheduler';
+import { HealerConstraintGenerator } from './generators/healerSolver';
 
 /**
  * Checks if the current schedule has any staffing violations at a given week.
@@ -156,6 +157,22 @@ export const healSchedule = (
                 currentSchedule[resident.id][w2 + d] = temp;
             }
         }
+    }
+
+    if (currentStaffingGaps > 0) {
+        const cohortAssignments: Record<string, number> = {};
+        residents.forEach(r => {
+            if (r.cohort !== undefined) {
+                cohortAssignments[r.id] = r.cohort;
+            }
+        });
+        currentSchedule = HealerConstraintGenerator.generate(
+            residents,
+            currentSchedule,
+            0,
+            historicalSchedules,
+            cohortAssignments
+        );
     }
 
     return currentSchedule;

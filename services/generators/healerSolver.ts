@@ -11,8 +11,8 @@ class SeededRNG {
     }
 }
 
-export const ExactConstraintGenerator: ScheduleGenerator = {
-    name: "Annealed Core Constraint Solver",
+export const HealerConstraintGenerator: ScheduleGenerator = {
+    name: "Annealing Healer Solver",
     generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
 
@@ -80,10 +80,14 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             return total;
         };
 
-        const getResPenalty = (rId: string, rc: Record<string, number>): number => {
-            let p = 0; const r = residentMap.get(rId)!;
-            const level = Math.max(1, Math.min(3, r.level));
-            (REQUIREMENTS[level] || []).forEach(req => { const c = rc[req.type] || 0; if (c < req.minWeeks) p += (req.minWeeks - c) * W_REQUIREMENT; });
+        const getResPenalty = (rId: string, rcByLvl: Record<number, Record<string, number>>): number => {
+            let p = 0;
+            [1, 2, 3].forEach(lvl => {
+                (REQUIREMENTS[lvl as 1|2|3] || []).forEach(req => {
+                    const c = rcByLvl[lvl][req.type] || 0;
+                    if (c < req.minWeeks) p += (req.minWeeks - c) * W_REQUIREMENT;
+                });
+            });
             return p;
         };
 
@@ -98,30 +102,50 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             return (coreCount < 2) ? 0 : changes * W_CONTINUITY;
         };
 
-        const baseResidentCounts: Record<string, Record<string, number>> = {};
+        const getLevel = (startLvl: number, w: number) => Math.max(1, Math.min(3, (startLvl || 1) + Math.floor(w / 52))) || 1;
+
+        const baseResidentCounts: Record<string, Record<number, Record<string, number>>> = {};
         residents.forEach(r => {
-            baseResidentCounts[r.id] = {};
+            const startLvl = Number(r.level) || 1;
+            baseResidentCounts[r.id] = {1: {}, 2: {}, 3: {}};
             relevantReqTypes.forEach(t => {
-                let count = 0;
-                if (priorRequirementCounts && priorRequirementCounts[r.id]) {
-                    count = priorRequirementCounts[r.id][t] || 0;
+                if (priorRequirementCounts?.[r.id]?.[t]) {
+                    baseResidentCounts[r.id][startLvl][t] = priorRequirementCounts[r.id][t];
+                } else {
+                    baseResidentCounts[r.id][startLvl][t] = 0;
                 }
-                if (existingSchedule?.[r.id]) existingSchedule[r.id].forEach(c => { if (c?.locked && c.assignment && fulfillsRequirement(c.assignment, t)) count++; });
-                baseResidentCounts[r.id][t] = count;
+                baseResidentCounts[r.id][1][t] = baseResidentCounts[r.id][1][t] || 0;
+                baseResidentCounts[r.id][2][t] = baseResidentCounts[r.id][2][t] || 0;
+                baseResidentCounts[r.id][3][t] = baseResidentCounts[r.id][3][t] || 0;
             });
+            if (existingSchedule?.[r.id]) {
+                existingSchedule[r.id].forEach((c, w) => {
+                    if (c?.locked && c.assignment) {
+                        const lvl = getLevel(startLvl, w);
+                        relevantReqTypes.forEach(t => {
+                            if (fulfillsRequirement(c.assignment!, t)) {
+                                baseResidentCounts[r.id][lvl][t] = (baseResidentCounts[r.id][lvl][t] || 0) + 1;
+                            }
+                        });
+                    }
+                });
+            }
         });
 
         const calculateTotal = (sched: ScheduleGrid): number => {
-            const tempRC: Record<string, Record<string, number>> = {};
-            residents.forEach(r => tempRC[r.id] = { ...baseResidentCounts[r.id] });
+            const tempRC: Record<string, Record<number, Record<string, number>>> = {};
+            residents.forEach(r => {
+                tempRC[r.id] = {1: {...baseResidentCounts[r.id][1]}, 2: {...baseResidentCounts[r.id][2]}, 3: {...baseResidentCounts[r.id][3]}};
+            });
             const tempWC: any[] = Array.from({ length: totalWeeks }, () => ({ interns: {}, seniors: {} }));
             residents.forEach(r => {
+                const startLvl = Number(r.level) || 1;
                 for (let w = 0; w < totalWeeks; w++) {
                     const a = sched[r.id][w]?.assignment;
                     if (a) {
-                        const level = Math.max(1, Math.min(3, r.level + Math.floor(w / 52)));
+                        const level = getLevel(startLvl, w);
                         if (level === 1) tempWC[w].interns[a] = (tempWC[w].interns[a] || 0) + 1; else tempWC[w].seniors[a] = (tempWC[w].seniors[a] || 0) + 1;
-                        if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => tempRC[r.id][t] = (tempRC[r.id][t] || 0) + 1);
+                        if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => tempRC[r.id][level][t] = (tempRC[r.id][level][t] || 0) + 1);
                     }
                 }
             });
@@ -137,20 +161,21 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
         }
 
         const weekCounts: any[] = Array.from({ length: totalWeeks }, () => ({ interns: {}, seniors: {} }));
-        const resCounts: Record<string, any> = {};
+        const resCounts: Record<string, Record<number, Record<string, number>>> = {};
         const resContCache: Record<string, number[]> = {};
 
         const syncState = () => {
             for (let w = 0; w < totalWeeks; w++) { weekCounts[w].interns = {}; weekCounts[w].seniors = {}; }
-            for (let w = 0; w < TOTAL_WEEKS; w++) { weekCounts[w].interns = {}; weekCounts[w].seniors = {}; }
             residents.forEach(r => {
-                resCounts[r.id] = { ...baseResidentCounts[r.id] }; resContCache[r.id] = [];
+                const startLvl = Number(r.level) || 1;
+                resCounts[r.id] = {1: {...baseResidentCounts[r.id][1]}, 2: {...baseResidentCounts[r.id][2]}, 3: {...baseResidentCounts[r.id][3]}};
+                resContCache[r.id] = [];
                 for (let w = 0; w < totalWeeks; w++) {
                     const a = currentSchedule[r.id][w]?.assignment;
                     if (a) {
-                        const level = Math.max(1, Math.min(3, r.level + Math.floor(w / 52)));
+                        const level = getLevel(startLvl, w);
                         if (level === 1) weekCounts[w].interns[a] = (weekCounts[w].interns[a] || 0) + 1; else weekCounts[w].seniors[a] = (weekCounts[w].seniors[a] || 0) + 1;
-                        if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) + 1);
+                        if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1);
                     }
                 }
                 for (let c = 0; c < TOTAL_CYCLES; c++) resContCache[r.id][c] = getCycleCont(r.id, currentSchedule, c); // BUG FIX: TOTAL_CYCLES
@@ -163,7 +188,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
                 constrainedTypes.forEach(t => {
                     const m = ROTATION_METADATA[t]!;
                     while ((weekCounts[w].interns[t] || 0) < m.minInterns) {
-                        const pool = residents.filter(res => res.level === 1 && isFlexible[res.id][w] && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
+                        const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) === 1 && isFlexible[res.id][w] && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
                         if (pool.length === 0) break;
                         const oldA = currentSchedule[pool[0].id][w].assignment!;
                         currentSchedule[pool[0].id][w].assignment = t;
@@ -171,7 +196,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
                         weekCounts[w].interns[t] = (weekCounts[w].interns[t] || 0) + 1; // BUG FIX: NaN guard
                     }
                     while ((weekCounts[w].seniors[t] || 0) < m.minSeniors) {
-                        const pool = residents.filter(res => res.level >= 2 && isFlexible[res.id][w] && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
+                        const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) >= 2 && isFlexible[res.id][w] && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
                         if (pool.length === 0) break;
                         const oldA = currentSchedule[pool[0].id][w].assignment!;
                         currentSchedule[pool[0].id][w].assignment = t;
@@ -179,14 +204,14 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
                         weekCounts[w].seniors[t] = (weekCounts[w].seniors[t] || 0) + 1; // BUG FIX: NaN guard
                     }
                     while ((weekCounts[w].interns[t] || 0) > m.maxInterns) {
-                        const pool = residents.filter(res => res.level === 1 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment === t);
+                        const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) === 1 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment === t);
                         if (pool.length === 0) break;
                         currentSchedule[pool[0].id][w].assignment = AssignmentType.ELECTIVE;
                         weekCounts[w].interns[t] = (weekCounts[w].interns[t] || 0) - 1; // BUG FIX: NaN guard
                         weekCounts[w].interns[AssignmentType.ELECTIVE] = (weekCounts[w].interns[AssignmentType.ELECTIVE] || 0) + 1; // BUG FIX: track elective increment
                     }
                     while ((weekCounts[w].seniors[t] || 0) > m.maxSeniors) {
-                        const pool = residents.filter(res => res.level >= 2 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment === t);
+                        const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) >= 2 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment === t);
                         if (pool.length === 0) break;
                         currentSchedule[pool[0].id][w].assignment = AssignmentType.ELECTIVE;
                         weekCounts[w].seniors[t] = (weekCounts[w].seniors[t] || 0) - 1; // BUG FIX: NaN guard
@@ -212,7 +237,8 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             const r = residents[Math.floor(rng.next() * residents.length)], weeks = flexibleWeeks[r.id];
             if (weeks.length === 0) continue;
             const w = weeks[Math.floor(rng.next() * weeks.length)];
-            const level = Math.max(1, Math.min(3, r.level + Math.floor(w / 52)));
+            const startLvl = Number(r.level) || 1;
+            const level = getLevel(startLvl, w);
             const a1 = currentSchedule[r.id][w].assignment!;
             const a2 = assignmentsByLevel[level][Math.floor(rng.next() * assignmentsByLevel[level].length)];
             if (a1 === a2) continue;
@@ -220,7 +246,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             const cycle = Math.floor(w / COHORT_COUNT), oldWP = weekPenaltyCache[w], oldRP = resReqPenaltyCache[r.id], oldCP = resContCache[r.id][cycle]; // BUG FIX: COHORT_COUNT
             // BUG FIX: NaN guard on all increment/decrement operations
             if (level === 1) { weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) - 1; weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) + 1; } else { weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) - 1; weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) + 1; }
-            typeFulfillment[a1]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) - 1); typeFulfillment[a2]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) + 1);
+            typeFulfillment[a1]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) - 1); typeFulfillment[a2]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1);
             currentSchedule[r.id][w].assignment = a2;
             const newWP = getWeekPenalty(w, weekCounts[w]), newRP = getResPenalty(r.id, resCounts[r.id]), newCP = getCycleCont(r.id, currentSchedule, cycle);
             const delta = (newWP + newRP + newCP) - (oldWP + oldRP + oldCP);
@@ -228,7 +254,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             else {
                 // BUG FIX: NaN guard on revert
                 if (level === 1) { weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) - 1; weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) + 1; } else { weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) - 1; weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) + 1; }
-                typeFulfillment[a1]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) + 1); typeFulfillment[a2]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) - 1);
+                typeFulfillment[a1]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1); typeFulfillment[a2]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) - 1);
                 currentSchedule[r.id][w].assignment = a1;
             }
         }

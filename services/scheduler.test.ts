@@ -18,8 +18,8 @@ describe('Schedule Generator', () => {
     beforeAll(async () => {
         // Setup locked blocks
         initialSchedule[lockedResId] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null as any, locked: false }));
-        initialSchedule[lockedResId][10] = { assignment: AssignmentType.VACATION, locked: true };
         initialSchedule[lockedResId][11] = { assignment: AssignmentType.VACATION, locked: true };
+        initialSchedule[lockedResId][12] = { assignment: AssignmentType.VACATION, locked: true };
 
         const result = await generateSchedule(
             2026, 
@@ -56,8 +56,8 @@ describe('Schedule Generator', () => {
     });
 
     it('should respect locked blocks (Vacations)', () => {
-        expect(schedule[lockedResId][10].assignment).toBe(AssignmentType.VACATION);
         expect(schedule[lockedResId][11].assignment).toBe(AssignmentType.VACATION);
+        expect(schedule[lockedResId][12].assignment).toBe(AssignmentType.VACATION);
     });
 
     it('should enforce 4+1 Clinic weeks (Cohort rule)', () => {
@@ -113,11 +113,17 @@ describe('Schedule Generator', () => {
     describe('Weekly Staffing Requirements', () => {
         it('should have zero weekly staffing violations after healing', () => {
             const violations = getWeeklyViolations(residents, schedule, 2026);
+            if (violations.length > 0) {
+                console.error("WEEKLY VIOLATIONS FOUND AFTER HEALING:", JSON.stringify(violations, null, 2));
+            }
             expect(violations.length).toBe(0);
         });
 
         it('should have zero requirement violations after healing', () => {
             const violations = getRequirementViolations(residents, schedule, {}, 2026);
+            if (violations.length > 0) {
+                console.error("REQUIREMENT VIOLATIONS FOUND AFTER HEALING:", JSON.stringify(violations, null, 2));
+            }
             expect(violations.length).toBe(0);
         });
     });
