@@ -75,7 +75,7 @@ onmessage = async (e: MessageEvent) => {
         if (res.unifiedSchedule && idx < 1) {
            // Run healer on the unified grid
            // 150 iterations per result for fast execution
-           const healedUnified = healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, 1500, e.data.historicalSchedules, true);
+           const healedUnified = healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, undefined, e.data.historicalSchedules);
            const reSliced = sliceIntoYears(healedUnified, e.data.year, totalYears);
            healedResults.push({
              ...res,
@@ -119,7 +119,7 @@ onmessage = async (e: MessageEvent) => {
   } else if (type === 'start-heal') {
     const { grid, residents, historicalSchedules, startYear, totalYears } = e.data;
     isHealingActive = true;
-    runHealLoop(grid, residents, historicalSchedules || {}, startYear, totalYears || 1);
+    runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1);
   } else if (type === 'stop-heal') {
     isHealingActive = false;
   } else if (type === 'cancel') {
@@ -132,7 +132,7 @@ onmessage = async (e: MessageEvent) => {
 
 let isHealingActive = false;
 
-async function runHealLoop(
+async function runHeal(
   grid: any, 
   residents: any, 
   historicalSchedules: any,
@@ -140,40 +140,26 @@ async function runHealLoop(
   totalYears: number
 ) {
   let currentBest = JSON.parse(JSON.stringify(grid));
-  let bestViolations = 999999;
-
-  while (isHealingActive) {
-    // Run a small batch of iterations
-    currentBest = healSchedule(
-      currentBest, 
-      residents, 
-      startYear,
-      500,
-      historicalSchedules,
-      true
-    );
+  currentBest = healSchedule(
+    currentBest, 
+    residents, 
+    startYear,
+    undefined,
+    historicalSchedules
+  );
     
     // Calculate violations for reporting
     const reqViolations = getRequirementViolations(residents, currentBest, historicalSchedules, startYear).length;
     const weeklyViolations = getWeeklyViolations(residents, currentBest, startYear).length;
     const total = reqViolations + weeklyViolations;
 
-    if (total < bestViolations) {
-      bestViolations = total;
-      postMessage({ 
-        type: 'heal-update', 
-        schedule: currentBest, 
-        violations: total 
-      });
-    } else {
-      // Periodic ping even if no improvement to show we're still alive
-      postMessage({ 
-        type: 'heal-ping', 
-        violations: bestViolations 
-      });
-    }
-
-    // Small delay to allow message processing and not hog the CPU 100%
-    await new Promise(r => setTimeout(r, 50));
-  }
+    postMessage({ 
+      type: 'heal-update', 
+      schedule: currentBest, 
+      violations: total 
+    });
+    
+    // Once complete, terminate the state
+    isHealingActive = false;
+    postMessage({ type: 'heal-complete' });
 }
