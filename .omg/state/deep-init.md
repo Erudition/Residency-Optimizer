@@ -1,0 +1,13 @@
+# Deep Init Summary: Residency Scheduler Pro V2
+- **Core Stack**: React 18 (TypeScript), Vite 6, Vitest 3.
+- **Architectural Boundary**: Centralized scheduler (`services/scheduler.ts`) with pluggable generator strategies (`services/generators/`).
+- **High-Risk Zones**:
+  - `services/scheduler.ts` (Core engine loop)
+  - `specification/` folder (Source of truth for constraints)
+  - `services/generators/` (Stochastic/greedy algorithms)
+  - `historical` data loaders in `services/generators/historyPreloader.ts`
+- **Known Constraints**:
+  - Must run tests via `pnpm test` (vitest).
+  - Must run `npx tsc --noEmit` after code changes.
+  - Work ONLY in feature branches.
+  - "Target" is a forbidden word; use "Minimum", "Maximum", "Limit", or "Ideal".

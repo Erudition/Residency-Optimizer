@@ -1,0 +1,27 @@
+{
+  "enabled": true,
+  "profile": "balanced",
+  "channels": {
+    "desktop": true,
+    "terminal-bell": true,
+    "file": true,
+    "webhook": false
+  },
+  "template": "compact",
+  "idle_watchdog_minutes": 15,
+  "events": {
+    "SessionEnd": ["terminal-bell", "file", "desktop"],
+    "agent-blocked": ["terminal-bell", "file", "desktop"],
+    "post-verify": ["file", "desktop"],
+    "blocker-raised": ["terminal-bell", "file", "desktop"],
+    "checkpoint-save": ["file", "desktop"],
+    "loop-stall": ["terminal-bell", "file", "desktop"],
+    "context-drift": ["file", "desktop"],
+    "risk-spike": ["terminal-bell", "file", "desktop"],
+    "idle-watchdog": []
+  },
+  "external_dispatch_requires_opt_in": true,
+  "worker_sessions_external_dispatch": false,
+  "updated_at": "2026-05-04T12:05:00Z",
+  "source": "omg:notify"
+}
