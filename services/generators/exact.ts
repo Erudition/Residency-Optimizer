@@ -119,7 +119,8 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
                 for (let w = 0; w < totalWeeks; w++) {
                     const a = sched[r.id][w]?.assignment;
                     if (a) {
-                        if (r.level === 1) tempWC[w].interns[a] = (tempWC[w].interns[a] || 0) + 1; else tempWC[w].seniors[a] = (tempWC[w].seniors[a] || 0) + 1;
+                        const level = Math.max(1, Math.min(3, r.level + Math.floor(w / 52)));
+                        if (level === 1) tempWC[w].interns[a] = (tempWC[w].interns[a] || 0) + 1; else tempWC[w].seniors[a] = (tempWC[w].seniors[a] || 0) + 1;
                         if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => tempRC[r.id][t] = (tempRC[r.id][t] || 0) + 1);
                     }
                 }
@@ -147,7 +148,8 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
                 for (let w = 0; w < totalWeeks; w++) {
                     const a = currentSchedule[r.id][w]?.assignment;
                     if (a) {
-                        if (r.level === 1) weekCounts[w].interns[a] = (weekCounts[w].interns[a] || 0) + 1; else weekCounts[w].seniors[a] = (weekCounts[w].seniors[a] || 0) + 1;
+                        const level = Math.max(1, Math.min(3, r.level + Math.floor(w / 52)));
+                        if (level === 1) weekCounts[w].interns[a] = (weekCounts[w].interns[a] || 0) + 1; else weekCounts[w].seniors[a] = (weekCounts[w].seniors[a] || 0) + 1;
                         if (!existingSchedule?.[r.id]?.[w]?.locked) typeFulfillment[a]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) + 1);
                     }
                 }

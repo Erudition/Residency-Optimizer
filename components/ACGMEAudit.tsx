@@ -42,8 +42,8 @@ const StackedProgressBar = ({
             <div className="flex flex-col gap-0.5">
                 {[1, 2, 3].map(pgy => {
                     const value = yearData[pgy] || 0;
-                    const yearlyTarget = minWeeks / 3;
-                    const width = Math.min(100, (value / yearlyTarget) * 100);
+                    const yearlyRequirement = minWeeks / 3;
+                    const width = Math.min(100, (value / yearlyRequirement) * 100);
                     const opacity = pgy === 1 ? 'opacity-40' : pgy === 2 ? 'opacity-70' : 'opacity-100';
                     
                     return (
@@ -51,7 +51,7 @@ const StackedProgressBar = ({
                             <div
                                 className={`h-full transition-all duration-500 ${isViolation ? 'bg-red' : colorClass} ${opacity}`}
                                 style={{ width: `${width}%` }}
-                                title={`PGY-${pgy}: ${value}w / ${yearlyTarget.toFixed(1)}w`}
+                                title={`PGY-${pgy}: ${value}w / ${yearlyRequirement.toFixed(1)}w`}
                             />
                         </div>
                     );
@@ -177,7 +177,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                     <div className={`p-4 rounded-xl shadow-sm border transition-all ${globalStats.nfSafe < globalStats.total ? 'bg-red/5 border-red/20' : 'bg-white border-light-5'}`}>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-creamsicle/30 rounded-lg text-orange"><ShieldCheck size={20} /></div>
-                            <div className="text-xs font-bold text-muted uppercase">Night Float Target</div>
+                            <div className="text-xs font-bold text-muted uppercase">Night Float Minimum</div>
                         </div>
                         <div className="text-2xl font-bold text-primary">{globalStats.nfSafe} / {globalStats.total}</div>
                         <div className="text-[10px] text-muted mt-1">Goal: 6 Weeks Total</div>

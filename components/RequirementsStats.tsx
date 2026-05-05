@@ -40,8 +40,8 @@ const StackedProgressBar = ({
             <div className="flex flex-col gap-0.5">
                 {[1, 2, 3].map(pgy => {
                     const value = yearData[pgy] || 0;
-                    const yearlyTarget = minWeeks / 3;
-                    const width = Math.min(100, (value / yearlyTarget) * 100);
+                    const yearlyRequirement = minWeeks / 3;
+                    const width = Math.min(100, (value / yearlyRequirement) * 100);
                     const opacity = pgy === 1 ? 'opacity-40' : pgy === 2 ? 'opacity-70' : 'opacity-100';
                     
                     return (
@@ -49,7 +49,7 @@ const StackedProgressBar = ({
                             <div
                                 className={`h-full transition-all duration-500 ${colorClass} ${opacity}`}
                                 style={{ width: `${width}%` }}
-                                title={`PGY-${pgy}: ${value}w / ${yearlyTarget.toFixed(1)}w`}
+                                title={`PGY-${pgy}: ${value}w / ${yearlyRequirement.toFixed(1)}w`}
                             />
                         </div>
                     );
@@ -215,7 +215,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
            `}>
                         PGY-{level}
                     </span>
-                    <h3 className="text-lg font-bold text-primary">{mode === 'acgme' ? 'ACGME' : 'MHS'} Graduation Targets</h3>
+                    <h3 className="text-lg font-bold text-primary">{mode === 'acgme' ? 'ACGME' : 'MHS'} Graduation Minimums</h3>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -299,7 +299,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                                 <p className="text-muted text-sm font-medium">
                                     {mode === 'acgme' 
                                         ? 'Core specialty and multidisciplinary mandates for national accreditation.' 
-                                        : 'Program-specific curricular goals, staffing targets, and institutional policies.'}
+                                        : 'Program-specific curricular goals, staffing requirements, and institutional policies.'}
                                 </p>
                             </div>
                         </div>
@@ -335,7 +335,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-creamsicle/30 rounded-lg text-orange"><ShieldCheck size={20} /></div>
-                                <div className="text-xs font-bold text-muted uppercase">Night Float Target</div>
+                                <div className="text-xs font-bold text-muted uppercase">Night Float Minimum</div>
                             </div>
                             <div className="text-2xl font-bold text-primary">{globalStats.nfSafe} / {globalStats.total}</div>
                             <div className="text-[10px] text-muted mt-1">Goal: 6 Weeks Total</div>

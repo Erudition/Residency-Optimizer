@@ -440,6 +440,7 @@ const App: React.FC = () => {
     return schedules.find(s => s.id === activeScheduleId);
   }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear]);
   
+  const [viewMode, setViewMode] = useState<'singleYear' | 'unified'>('singleYear');
   // Sync convergence data from buffer when switching back to dashboard
   useEffect(() => {
     if (activeTab === 'loading' && activeSchedule?.isGenerating && convergenceBufferRef.current.length > convergenceData.length) {
@@ -529,10 +530,37 @@ const App: React.FC = () => {
   const activeResidents = useMemo(() => getResidentsForYear(activeYear), [residents, activeYear, residentSortOrder, activeSchedule, historicalCohortsByYear, activeYearCohorts]);
 
   const currentGrid = useMemo(() => {
-    if (isHealing && bestHealGrid) return bestHealGrid;
+    if (isHealing && bestHealGrid && (!activeSchedule?.unifiedData || viewMode !== 'unified')) return bestHealGrid;
     if (activeScheduleId === 'all' && !isHistoricalYear) return {};
     return activeSchedule?.data?.[activeYear] || historySchedules[activeYear] || {};
-  }, [activeSchedule, activeYear, historySchedules, activeScheduleId, isHistoricalYear, isHealing, bestHealGrid]);
+  }, [activeSchedule, activeYear, historySchedules, activeScheduleId, isHistoricalYear, isHealing, bestHealGrid, viewMode]);
+
+  const displayGrid = useMemo(() => {
+    if (isHealing && bestHealGrid && activeSchedule?.unifiedData && viewMode === 'unified') return bestHealGrid;
+    if (viewMode === 'unified' && activeSchedule?.unifiedData) return activeSchedule.unifiedData;
+    return currentGrid;
+  }, [currentGrid, isHealing, bestHealGrid, viewMode, activeSchedule]);
+
+  const displayResidents = useMemo(() => {
+    if (viewMode === 'unified' && activeSchedule?.unifiedData) {
+       const startYear = activeSchedule.startYear || ACTIVE_START_YEAR;
+       return getUnifiedResidents(residents, startYear, 3).map(r => ({
+           ...r,
+           clinicType: r.level === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC,
+           cohort: (activeSchedule?.cohortAssignments?.[startYear] || historicalCohortsByYear[startYear] || {})[r.id] ?? 0
+       })).sort((a, b) => {
+           if (residentSortOrder === 'cohort') {
+               if (a.cohort !== b.cohort) return a.cohort - b.cohort;
+               if (a.level !== b.level) return a.level - b.level;
+               return a.name.localeCompare(b.name);
+           } else {
+               if (a.level !== b.level) return a.level - b.level;
+               return a.name.localeCompare(b.name);
+           }
+       });
+    }
+    return activeResidents;
+  }, [viewMode, activeSchedule, residents, activeResidents, residentSortOrder, historicalCohortsByYear]);
 
   const { stats, violations, fairness } = useMemo(() => {
     if ((!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') && !isHistoricalYear) {
@@ -1310,7 +1338,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Center: Academic Year Tabs */}
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center gap-2">
           <div className="flex bg-light-2 p-0.5 rounded-xl border border-light-5">
             {allAcademicYears.map(y => {
               const isActive = activeYear === y;
@@ -1343,6 +1371,21 @@ const App: React.FC = () => {
               );
             })}
           </div>
+          {activeSchedule?.unifiedData && (
+            <div className="flex bg-light-2 p-0.5 rounded-xl border border-light-5">
+              <Button
+                variant="ghost"
+                onClick={() => setViewMode(prev => prev === 'unified' ? 'singleYear' : 'unified')}
+                className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
+                  viewMode === 'unified'
+                    ? 'bg-white text-purple shadow-sm border border-light-5'
+                    : 'text-muted hover:text-purple'
+                }`}
+              >
+                3-Year Unified View
+              </Button>
+            </div>
+          )}
         </div>
         {/* Right: Settings Icons */}
         <div className="flex items-center gap-1">
@@ -1538,30 +1581,32 @@ const App: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <Button
-                        variant={isHealing ? 'ghost' : 'secondary'}
-                        size="sm"
-                        onClick={handleToggleHeal}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isHealing ? 'bg-light-3 text-primary shadow-inner' : 'text-muted hover:text-primary'}`}
-                      >
-                        {isHealing ? (
-                          <>
-                            <Loader2 size={14} className="animate-spin" />
-                            Heal {violations.reqs.length + violations.constraints.length}
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles size={14} />
-                            Heal {violations.reqs.length + violations.constraints.length}
-                          </>
-                        )}
-                      </Button>
+                      {(viewMode === 'unified' || !activeSchedule?.unifiedData) && (
+                        <Button
+                          variant={isHealing ? 'ghost' : 'secondary'}
+                          size="sm"
+                          onClick={handleToggleHeal}
+                          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isHealing ? 'bg-light-3 text-primary shadow-inner' : 'text-muted hover:text-primary'}`}
+                        >
+                          {isHealing ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              Heal {violations.reqs.length + violations.constraints.length}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={14} />
+                              Heal {violations.reqs.length + violations.constraints.length}
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
                           <ScheduleTable
-                    residents={activeResidents}
-                    schedule={currentGrid}
-                    startYear={activeSchedule?.isHistory ? activeSchedule.startYear : activeYear}
+                    residents={displayResidents}
+                    schedule={displayGrid}
+                    startYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
                     cohortAssignments={activeYearCohorts}
                     canEditHistory={canEditHistory}
                     onCellClick={handleCellClick}
