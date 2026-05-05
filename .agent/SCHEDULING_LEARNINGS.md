@@ -63,21 +63,7 @@
 
 ---
 
-## Approaches That Showed Promise (But Still Have Violations)
 
-### Week-First, Slot-Based, Separated Loops
-- **Phase 1**: Initialize empty schedule (NO clinic yet)
-- **Phase 2**: For each week 0-51, for each critical type:
-  - **Intern Loop**: While internCount < minInterns, find a free intern, assign single week
-  - **Senior Loop**: While seniorCount < minSeniors, find a free senior, assign single week
-- **Phase 3**: THEN add clinic weeks (only if slot is still free)
-- **Phase 4**: Fill educational requirements with blocks
-- **Phase 5**: Fill remaining with electives
-
-**Result**: 0 Weekly Violations, but ~75 Requirement Violations
-**Status**: NOT SOLVED - still has too many requirement violations
-
-**Key Insight**: Single-week slots for critical staffing are more flexible than 4-week blocks. Clinic can be deferred to after staffing is guaranteed.
 
 ---
 
@@ -94,11 +80,7 @@ The problem was finally solved (0 Requirement Violations) by flipping the logic 
 3. **Phase 3: Flexible Ward Distribution**: Treat `Wards-Red`, `Wards-Blue`, and `Met Wards` as interchangeable pools during requirement fulfillment to maximize placement flexibility.
 4. **Phase 4: Virtual Targets**: Assign virtual 4-week targets to PGY1s for `Night Float` to ensure it is always scheduled as a contiguous block rather than fragmented weeks.
 
-### The ICU Senior Bottleneck (Mathematical Limit)
-- **Demand**: 30 Seniors each need 4 weeks of ICU = **120 total ICU-senior weeks**.
-- **Normal Supply**: 2 Seniors per week × 52 weeks = **104 slots**.
-- **Conclusion**: It is **mathematically impossible** to meet all requirements without exceeding the "ideal" max staffing of 2 seniors on some weeks.
-- **Decision**: The "Education First" algorithm prioritizes the 120-week requirement, leading to ~16 weeks of "Max Seniors Exceeded" (3 instead of 2). This is the optimal trade-off.
+
 
 ---
 
@@ -125,6 +107,5 @@ The problem was finally solved (0 Requirement Violations) by flipping the logic 
 
 ## Future Directions (Refined)
 
-1. **Dynamic Max-Staffing Adjustments**: Allow the algorithm to explicitly "expand" ICU capacity to 3 seniors during peak holiday/vacation blocks rather than treating it as a violation.
-2. **Fairness-Driven Tie-Breaking**: When multiple residents can fit a block, choose the one with the lowest current "Intensity Score".
-3. **Multi-Constraint SMT**: While "Education First" works, a formal solver could potentially reduce the "Max Exceeded" count even further by finding more complex swaps.
+- **Fairness-Driven Tie-Breaking**: When multiple residents can fit a block, choose the one with the lowest current "Intensity Score".
+- **Multi-Constraint SMT**: While "Education First" works, a formal solver could potentially reduce the "Max Exceeded" count even further by finding more complex swaps.
