@@ -50,8 +50,15 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
         const isFlexible: Record<string, boolean[]> = {};
         residents.forEach(r => {
             const cohort = validCohortAssignments[r.id] ?? 0;
+            const start = r.activeWeekStart ?? 0;
+            const end = r.activeWeekEnd ?? totalWeeks;
             flexibleWeeks[r.id] = []; isFlexible[r.id] = Array(totalWeeks).fill(false);
-            for (let w = 0; w < totalWeeks; w++) { if (w % COHORT_COUNT !== cohort && !(existingSchedule?.[r.id]?.[w]?.locked)) { flexibleWeeks[r.id].push(w); isFlexible[r.id][w] = true; } } // BUG FIX: COHORT_COUNT
+            for (let w = 0; w < totalWeeks; w++) {
+                if (w >= start && w < end && w % COHORT_COUNT !== cohort && !(existingSchedule?.[r.id]?.[w]?.locked)) {
+                    flexibleWeeks[r.id].push(w);
+                    isFlexible[r.id][w] = true;
+                }
+            }
         });
 
         const W_STAFFING = 10000000, W_REQUIREMENT = 10000, W_CONTINUITY = 1000;
@@ -75,7 +82,8 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
 
         const getResPenalty = (rId: string, rc: Record<string, number>): number => {
             let p = 0; const r = residentMap.get(rId)!;
-            (REQUIREMENTS[r.level] || []).forEach(req => { const c = rc[req.type] || 0; if (c < req.target) p += (req.target - c) * W_REQUIREMENT; });
+            const level = Math.max(1, Math.min(3, r.level));
+            (REQUIREMENTS[level] || []).forEach(req => { const c = rc[req.type] || 0; if (c < req.minWeeks) p += (req.minWeeks - c) * W_REQUIREMENT; });
             return p;
         };
 
@@ -201,12 +209,15 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             if (step % 10000 === 0 && checkInterrupt()) break;
             const r = residents[Math.floor(rng.next() * residents.length)], weeks = flexibleWeeks[r.id];
             if (weeks.length === 0) continue;
-            const w = weeks[Math.floor(rng.next() * weeks.length)], a1 = currentSchedule[r.id][w].assignment!, a2 = assignmentsByLevel[r.level][Math.floor(rng.next() * assignmentsByLevel[r.level].length)];
+            const w = weeks[Math.floor(rng.next() * weeks.length)];
+            const level = Math.max(1, Math.min(3, r.level + Math.floor(w / 52)));
+            const a1 = currentSchedule[r.id][w].assignment!;
+            const a2 = assignmentsByLevel[level][Math.floor(rng.next() * assignmentsByLevel[level].length)];
             if (a1 === a2) continue;
 
             const cycle = Math.floor(w / COHORT_COUNT), oldWP = weekPenaltyCache[w], oldRP = resReqPenaltyCache[r.id], oldCP = resContCache[r.id][cycle]; // BUG FIX: COHORT_COUNT
             // BUG FIX: NaN guard on all increment/decrement operations
-            if (r.level === 1) { weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) - 1; weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) + 1; } else { weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) - 1; weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) + 1; }
+            if (level === 1) { weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) - 1; weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) + 1; } else { weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) - 1; weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) + 1; }
             typeFulfillment[a1]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) - 1); typeFulfillment[a2]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) + 1);
             currentSchedule[r.id][w].assignment = a2;
             const newWP = getWeekPenalty(w, weekCounts[w]), newRP = getResPenalty(r.id, resCounts[r.id]), newCP = getCycleCont(r.id, currentSchedule, cycle);
@@ -214,7 +225,7 @@ export const ExactConstraintGenerator: ScheduleGenerator = {
             if (delta < 0) { currentPenalty += delta; weekPenaltyCache[w] = newWP; resReqPenaltyCache[r.id] = newRP; resContCache[r.id][cycle] = newCP; if (currentPenalty === 0) break; }
             else {
                 // BUG FIX: NaN guard on revert
-                if (r.level === 1) { weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) - 1; weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) + 1; } else { weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) - 1; weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) + 1; }
+                if (level === 1) { weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) - 1; weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) + 1; } else { weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) - 1; weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) + 1; }
                 typeFulfillment[a1]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) + 1); typeFulfillment[a2]?.forEach(t => resCounts[r.id][t] = (resCounts[r.id][t] || 0) - 1);
                 currentSchedule[r.id][w].assignment = a1;
             }

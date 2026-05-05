@@ -102,7 +102,6 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             if (!newSchedule[r.id] || newSchedule[r.id].length !== totalWeeks) {
                 newSchedule[r.id] = Array(totalWeeks).fill(null).map(() => ({ assignment: null, locked: false }));
             }
-            const clinicType = r.clinicType || AssignmentType.CLINIC;
             const cohort = validCohortAssignments[r.id] ?? 0;
             const row = newSchedule[r.id];
             for (let w = 0; w < row.length; w++) {
@@ -110,8 +109,10 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
                     if (!row[w].assignment) {
-                        newSchedule[r.id][w] = { assignment: clinicType, locked: true };
-                        updateCounts(r.id, r.level, w, clinicType, 1);
+                        const pgy = getPgyAtWeek(r, w);
+                        const weeklyClinicType = (pgy === 2) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                        newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
+                        updateCounts(r.id, r.level, w, weeklyClinicType, 1);
                     }
                 }
             }
@@ -176,7 +177,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
                 const currentPgy = getPgyAtWeek(r, w);
                 const pendingReqs = seededShuffle(REQUIREMENTS[currentPgy] || []).filter(req => {
-                    return getReqCountFast(r.id, req.type, w) < req.target;
+                    return getReqCountFast(r.id, req.type, w) < req.minWeeks;
                 });
                 for (const req of pendingReqs) {
                     const dur = ROTATION_METADATA[req.type]?.duration || 4;

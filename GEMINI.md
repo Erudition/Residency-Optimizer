@@ -18,6 +18,7 @@ Do not use the word "target" in code, comments, specs, or conversation — it co
 *   **Maximum** — a hard ceiling. Exceeding a maximum is a violation (e.g., "maximum 6 months critical care across residency").
 *   **Limit** — umbrella term for either a minimum or maximum, when referencing both directions collectively.
 *   **Ideal** — a soft goal. Getting closer improves the schedule score, but not reaching it is NOT a violation. Milestones (e.g., cumulative progress checkpoints at PGY-year boundaries) are ideals.
+*   **Property Mapping** — Programmatically, minimum requirements are stored in the `minWeeks` property. The legacy `target` property has been deprecated and must not be used.
 
 # Specification
 The files found in the `specification/` folder are the authoritative sources of truth for the application code you write. Report, and then correct, any code that is out of sync with the spec.

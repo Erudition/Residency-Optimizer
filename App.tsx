@@ -31,7 +31,9 @@ import {
   getRequirementViolations, 
   getWeeklyViolations, 
   getAuditViolations,
-  sliceIntoYears 
+  sliceIntoYears,
+  getUnifiedResidents,
+  getAugmentedResidents
 } from './services/scheduler';
 import { preloadHistoricalData } from './services/generators/historyPreloader';
 import { healSchedule } from './services/healer';
@@ -329,8 +331,9 @@ const App: React.FC = () => {
   const [algoConfig, setAlgoConfig] = useState<AlgorithmConfig[]>([
     { id: 'stochastic', name: 'Stochastic', description: 'The tried-and-true generalist. Good at everything, master of none. Uses weighted randomness to explore valid slots.', enabled: true, color: '#3b82f6' },
     { id: 'experimental', name: 'Staffing First', description: 'Staffing-centric optimization. Prioritizes 1-week slots to guarantee hospital minimums are met at all costs.', enabled: true, color: '#8b5cf6' },
-    { id: 'strict', name: 'Education First', description: 'Objective-centric optimization. Prioritizes PGY educational targets with a residual capacity guard to ensure hospital coverage.', enabled: true, color: '#10b981' },
+    { id: 'strict', name: 'Education First', description: 'Objective-centric optimization. Prioritizes PGY educational minimums with a residual capacity guard to ensure hospital coverage.', enabled: true, color: '#10b981' },
     { id: 'greedy', name: 'Week By Week', description: 'Staffing-centric generator. Iterates through each week and fills hospital gaps using first-available residents.', enabled: true, color: '#f59e0b' },
+    { id: 'exact', name: 'Core Constraint Solver', description: 'Simulated annealing solver that strives for zero violations through stochastic hill-climbing on a core constraint graph.', enabled: true, color: '#ec4899' },
 
   ]);
 
@@ -354,18 +357,23 @@ const App: React.FC = () => {
   const [genStatus, setGenStatus] = useState('');
   const isGeneratingRef = useRef(false);
 
+  const [isHealing, setIsHealing] = useState(false);
+  const [bestHealCount, setBestHealCount] = useState<number | null>(null);
+  const [bestHealGrid, setBestHealGrid] = useState<ScheduleGrid | null>(null);
+  const healWorkerRef = useRef<Worker | null>(null);
+
 
 
   const [compParams, setCompParams] = useState<CompetitionParams>(() => {
     const loaded = loadState('rsp_comp_params_v1', {
       tries: 100,
       priority: CompetitionPriority.BEST_SCORE,
-      algorithmIds: ['stochastic', 'experimental', 'strict', 'greedy'],
+      algorithmIds: ['stochastic', 'experimental', 'strict', 'greedy', 'exact'],
       topN: 10,
       multiYear: 3
     });
 
-    const validIds = ['stochastic', 'experimental', 'strict', 'greedy'];
+    const validIds = ['stochastic', 'experimental', 'strict', 'greedy', 'exact'];
     return {
       ...loaded,
       priority: CompetitionPriority.BEST_SCORE,
@@ -440,26 +448,7 @@ const App: React.FC = () => {
   }, [activeTab, activeSchedule?.isGenerating, convergenceData.length]);
 
 
-  const getAugmentedResidents = (baseResidents: Resident[], maxYear: number): Resident[] => {
-    const minYear = Math.min(...baseResidents.map(r => r.startYear), activeYear);
-    const allResidents = [...baseResidents];
-    for (let currentY = minYear; currentY <= maxYear; currentY++) {
-      if (!allResidents.some(r => r.startYear === currentY)) {
-        const lastKnownYear = Math.max(...baseResidents.map(r => r.startYear));
-        const size = baseResidents.filter(r => r.startYear === lastKnownYear).length;
-        for (let i = 0; i < size; i++) {
-          allResidents.push({
-            id: `c${currentY}-${i+1}`,
-            name: `New ${currentY} Resident ${i+1}`,
-            startYear: currentY,
-            level: 1,
-            avoidResidentIds: [],
-          });
-        }
-      }
-    }
-    return allResidents;
-  };
+
 
   // Derive cohort assignments for the selected year
   const activeYearCohorts = useMemo(() => {
@@ -540,9 +529,10 @@ const App: React.FC = () => {
   const activeResidents = useMemo(() => getResidentsForYear(activeYear), [residents, activeYear, residentSortOrder, activeSchedule, historicalCohortsByYear, activeYearCohorts]);
 
   const currentGrid = useMemo(() => {
+    if (isHealing && bestHealGrid) return bestHealGrid;
     if (activeScheduleId === 'all' && !isHistoricalYear) return {};
     return activeSchedule?.data?.[activeYear] || historySchedules[activeYear] || {};
-  }, [activeSchedule, activeYear, historySchedules, activeScheduleId, isHistoricalYear]);
+  }, [activeSchedule, activeYear, historySchedules, activeScheduleId, isHistoricalYear, isHealing, bestHealGrid]);
 
   const { stats, violations, fairness } = useMemo(() => {
     if ((!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') && !isHistoricalYear) {
@@ -660,10 +650,11 @@ const App: React.FC = () => {
         type: 'generate', 
         year: startYear, 
         totalYears, 
-        historicalSchedules, 
-        constraints: { residents, existing, cohortAssignments }, 
-        params, 
-        algorithmIds 
+        residents,
+        historicalSchedules,
+        constraints: { existing, cohortAssignments },
+        params,
+        algorithmIds
       });
     });
   };
@@ -712,9 +703,41 @@ const App: React.FC = () => {
 
 
 
-  useEffect(() => { localStorage.setItem('rsp_residents_v4', JSON.stringify(residents)); }, [residents]);
-  useEffect(() => { localStorage.setItem('rsp_schedules_v4', JSON.stringify(schedules)); }, [schedules]);
-  useEffect(() => { if (activeScheduleId) localStorage.setItem('rsp_active_id', JSON.stringify(activeScheduleId)); }, [activeScheduleId]);
+  useEffect(() => { 
+    try {
+      localStorage.setItem('rsp_residents_v4', JSON.stringify(residents)); 
+    } catch (e) {
+      console.warn('Failed to save residents to localStorage:', e);
+    }
+  }, [residents]);
+
+  useEffect(() => { 
+    try {
+      const pruned = schedules.slice(-3).map(sch => {
+        if (!sch.metrics) return sch;
+        return {
+          ...sch,
+          metrics: {
+            ...sch.metrics,
+            violations: { reqs: [], constraints: [] }
+          }
+        };
+      });
+      localStorage.setItem('rsp_schedules_v4', JSON.stringify(pruned)); 
+    } catch (e) {
+      console.warn('Failed to save schedules to localStorage (likely quota exceeded):', e);
+    }
+  }, [schedules]);
+
+  useEffect(() => { 
+    if (activeScheduleId) {
+      try {
+        localStorage.setItem('rsp_active_id', JSON.stringify(activeScheduleId)); 
+      } catch (e) {
+        console.warn('Failed to save active ID to localStorage:', e);
+      }
+    }
+  }, [activeScheduleId]);
   const handleGenerate = async () => {
     if (isGeneratingRef.current) return;
     
@@ -835,42 +858,79 @@ const App: React.FC = () => {
     setRenameModalOpen(false);
     setScheduleToRename(null);
   };
-  const handleHeal = () => {
-    if (!activeScheduleId) return;
-    const activeSched = schedules.find(s => s.id === activeScheduleId);
-    if (!activeSched) return;
-
-    const useUnified = !!activeSched.unifiedData;
-    const gridToHeal = useUnified ? activeSched.unifiedData! : activeSched.data[activeYear];
-    if (!gridToHeal) return;
-    
-    // Attempt healing with 2000 iterations
-    // If unified, we pass the base year of the grid. 
-    // If single year, we pass activeYear.
-    const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
-    const healedGrid = healSchedule(gridToHeal, residents, startYear, 2000);
-    
-    setSchedules(prev => prev.map(s => {
-      if (s.id !== activeScheduleId) return s;
+  const handleToggleHeal = () => {
+    if (isHealing) {
+      // STOP
+      if (healWorkerRef.current) {
+        healWorkerRef.current.postMessage({ type: 'stop-heal' });
+        healWorkerRef.current.terminate();
+        healWorkerRef.current = null;
+      }
       
-      if (useUnified) {
-        // Re-slice the healed unified grid
-        const newSliced = sliceIntoYears(healedGrid, startYear, 3);
-        return {
-          ...s,
-          data: newSliced,
-          unifiedData: healedGrid
-        };
+      if (bestHealGrid && activeScheduleId) {
+        const activeSched = schedules.find(s => s.id === activeScheduleId);
+        const useUnified = activeSched?.unifiedData;
+        const startYear = useUnified ? (activeSched?.startYear || ACTIVE_START_YEAR) : activeYear;
+
+        setSchedules(prev => prev.map(s => {
+          if (s.id !== activeScheduleId) return s;
+          if (useUnified) {
+            const newSliced = sliceIntoYears(bestHealGrid, startYear, 3);
+            return { ...s, data: newSliced, unifiedData: bestHealGrid };
+          }
+          return { ...s, data: { ...s.data, [activeYear]: bestHealGrid } };
+        }));
       }
 
-      return {
-        ...s,
-        data: {
-          ...s.data,
-          [activeYear]: healedGrid
+      setIsHealing(false);
+      setBestHealGrid(null);
+      setBestHealCount(null);
+    } else {
+      // START
+      if (!activeScheduleId) return;
+      const activeSched = schedules.find(s => s.id === activeScheduleId);
+      if (!activeSched) return;
+
+      const useUnified = !!activeSched.unifiedData;
+      const gridToHeal = useUnified ? activeSched.unifiedData! : activeSched.data[activeYear];
+      if (!gridToHeal) return;
+
+      const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+      const totalYears = useUnified ? 3 : 1;
+      
+      const healingResidents = useUnified 
+        ? getUnifiedResidents(residents, startYear, totalYears)
+        : getResidentsForYear(startYear);
+
+      const initialCount = violations.reqs.length + violations.constraints.length;
+      setBestHealCount(initialCount);
+      setBestHealGrid(gridToHeal);
+
+      const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
+      healWorkerRef.current = worker;
+
+      worker.onmessage = (e) => {
+        const { type, schedule, violations: count } = e.data;
+        console.log('Heal worker message:', type, count);
+        if (type === 'heal-update') {
+          setBestHealGrid(schedule);
+          setBestHealCount(count);
+        } else if (type === 'heal-ping') {
+          setBestHealCount(count);
         }
       };
-    }));
+
+      worker.postMessage({
+        type: 'start-heal',
+        grid: gridToHeal,
+        residents: healingResidents,
+        historicalSchedules: historySchedules,
+        startYear,
+        totalYears
+      });
+
+      setIsHealing(true);
+    }
   };
 
   const handleCellClick = (resId: string, week: number, rect?: DOMRect) => {
@@ -1477,7 +1537,26 @@ const App: React.FC = () => {
                       </div>
                     </div>
 
-                    <div />
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant={isHealing ? 'ghost' : 'secondary'}
+                        size="sm"
+                        onClick={handleToggleHeal}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isHealing ? 'bg-light-3 text-primary shadow-inner' : 'text-muted hover:text-primary'}`}
+                      >
+                        {isHealing ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            Heal {violations.reqs.length + violations.constraints.length}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={14} />
+                            Heal {violations.reqs.length + violations.constraints.length}
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                           <ScheduleTable
                     residents={activeResidents}
@@ -1489,7 +1568,6 @@ const App: React.FC = () => {
                     onLockWeek={handleLockWeek}
                     onLockResident={handleLockResident}
                     onToggleLock={handleToggleLock}
-                    onHeal={handleHeal}
                   />
                 </div>
               )}
@@ -1526,7 +1604,7 @@ const App: React.FC = () => {
 
                       <div className="flex-1 space-y-4">
                         <div className="p-4 bg-light-1 rounded-lg border border-light-3">
-                          <div className="text-[10px] text-muted uppercase font-bold mb-1">Active Target:</div>
+                          <div className="text-[10px] text-muted uppercase font-bold mb-1">Active Schedule:</div>
                           <div className="text-sm font-bold text-primary truncate">
                             {activeSchedule?.name || 'No active schedule'}
                           </div>

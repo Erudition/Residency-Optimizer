@@ -116,10 +116,10 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
   };
 
   const handleDownloadTemplate = () => {
-    const csvContent = `Name,Level
-John Doe,1
-Jane Smith,2
-Robert Brown,3`;
+    const csvContent = `Name,StartYear,Cohort
+John Doe,${activeYear},0
+Jane Smith,${activeYear - 1},1
+Robert Brown,${activeYear - 2},2`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -151,7 +151,7 @@ Robert Brown,3`;
     // Check for header row
     let startIndex = 0;
     const firstLineLower = lines[0].trim().toLowerCase();
-    if (firstLineLower.startsWith('name') || firstLineLower.includes('level') || firstLineLower.includes('cohort')) {
+    if (firstLineLower.startsWith('name') || firstLineLower.includes('startyear') || firstLineLower.includes('level') || firstLineLower.includes('cohort')) {
         startIndex = 1;
     }
 
@@ -163,22 +163,24 @@ Robert Brown,3`;
         
         const parts = line.split(',').map(p => p.trim());
         
-        // Flexible format: Name, Level
         if (parts.length < 2) continue; 
 
         const name = parts[0];
         const cleanName = name.replace(/^"|"$/g, '');
         
-        const levelStr = parts[1];
-        const level = parseInt(levelStr) as PgyLevel;
+        const startYearStr = parts[1];
+        const startYear = parseInt(startYearStr);
         
-        if (!cleanName || isNaN(level) || ![1, 2, 3].includes(level)) continue;
+        if (!cleanName || isNaN(startYear)) continue;
+
+        const cohort = parts[2] ? parseInt(parts[2]) : undefined;
 
         newResidents.push({
             id: `imported-${Date.now()}-${idCounter++}`,
             name: cleanName,
             level: 1, // Placeholder
-            startYear: activeYear - level + 1,
+            startYear: startYear,
+            cohort: !isNaN(cohort as any) && cohort !== undefined ? cohort : undefined,
             avoidResidentIds: []
         });
     }
@@ -189,7 +191,7 @@ Robert Brown,3`;
             alert(`Imported ${newResidents.length} residents successfully.`);
         }
     } else {
-        alert("Import Failed: No valid residents found in the file.\n\nPlease ensure your CSV matches the template:\nName, Level (1-3), Cohort (0-4)");
+        alert("Import Failed: No valid residents found in the file.\n\nPlease ensure your CSV matches the template:\nName, StartYear, Cohort (0-4)");
     }
   };
 
@@ -223,26 +225,26 @@ Robert Brown,3`;
             </div>
         </div>
 
-        {/* Import Rules / Legend */}
-        <div className="bg-light-blue/20 border border-light-blue/40 rounded-md p-4 mb-6 text-sm text-navy-dark flex gap-3 items-start">
-             <Info className="w-5 h-5 text-blue shrink-0 mt-0.5" />
-             <div>
-                <div className="font-bold mb-1">CSV Format Guidelines:</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-navy/80 text-xs">
-                    <ul className="list-disc list-inside space-y-1">
-                        <li><strong>Column 1 (Name):</strong> Resident Full Name (Required).</li>
-                        <li><strong>Column 2 (Level):</strong> PGY Level for current year (Required).</li>
-                    </ul>
-                    <ul className="list-disc list-inside space-y-1">
-                        <li><strong>Column 3 (Cohort):</strong> 0-4 (Optional). 0=A, 1=B, etc.</li>
-                        <li>If cohort is blank, it will be auto-assigned.</li>
-                    </ul>
-                </div>
-                <div className="mt-2 text-xs font-mono bg-white/50 p-1.5 rounded border border-light-blue/40 inline-block text-blue-2-dark">
-                    Example: "Dr. Smith, 1, 0"
-                </div>
-             </div>
-        </div>
+	        {/* Import Rules / Legend */}
+	        <div className="bg-light-blue/20 border border-light-blue/40 rounded-md p-4 mb-6 text-sm text-navy-dark flex gap-3 items-start">
+	             <Info className="w-5 h-5 text-blue shrink-0 mt-0.5" />
+	             <div>
+	                <div className="font-bold mb-1">CSV Format Guidelines:</div>
+	                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-navy/80 text-xs">
+	                    <ul className="list-disc list-inside space-y-1">
+	                        <li><strong>Column 1 (Name):</strong> Resident Full Name (Required).</li>
+	                        <li><strong>Column 2 (StartYear):</strong> Start Year of residency (Required, e.g. {activeYear}).</li>
+	                    </ul>
+	                    <ul className="list-disc list-inside space-y-1">
+	                        <li><strong>Column 3 (Cohort):</strong> 0-4 (Optional). 0=A, 1=B, etc.</li>
+	                        <li>If cohort is blank, it will be auto-assigned.</li>
+	                    </ul>
+	                </div>
+	                <div className="mt-2 text-xs font-mono bg-white/50 p-1.5 rounded border border-light-blue/40 inline-block text-blue-2-dark">
+	                    Example: "Dr. Smith, {activeYear}, 0"
+	                </div>
+	             </div>
+	        </div>
         
         <div className="flex gap-4 items-end flex-wrap border-t border-light-5 pt-6">
           <div className="flex-1 min-w-[200px]">

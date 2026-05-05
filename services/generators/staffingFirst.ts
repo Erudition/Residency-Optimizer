@@ -68,7 +68,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
         residents.forEach(r => {
             const row = newSchedule[r.id];
             const cohort = validCohortAssignments[r.id] ?? 0;
-            const clinicType = r.clinicType || AssignmentType.CLINIC;
+
             
             for (let w = 0; w < totalWeeks; w++) {
                 if (!isActive(r, w)) {
@@ -79,7 +79,10 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 }
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
+                    const level = r.level + Math.floor(w / 52);
+                    const clinicType = (level === 2) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
+
                 }
             }
         });
@@ -180,7 +183,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                         const dur = ROTATION_METADATA[req.type]?.duration || 4;
 
                         let safety = 0;
-                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) < req.target && safety < 10) {
+                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) < req.minWeeks && safety < 100) {
                             safety++;
                             let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
 

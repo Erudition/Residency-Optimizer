@@ -4,8 +4,8 @@ import { ConvergenceDataPoint } from '../types';
 
 interface Props {
   data: (number | null)[][]; // Each element is an array of scores, one per algorithm
-  attempts: number[];
-  exhaustionPoints: number[];
+  attempts: Record<string, number>;
+  exhaustionPoints: Record<string, number>;
   maxTries: number;
   onStop: () => void;
   onSelectWinners: () => void;
@@ -70,7 +70,9 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
   const bestScore = useMemo(() => {
     if (data.length === 0) return 0;
     const lastRow = data[data.length - 1];
-    return Math.max(...lastRow);
+    const validScores = lastRow.filter((s): s is number => s !== null);
+    if (validScores.length === 0) return 0;
+    return Math.max(...validScores);
   }, [data]);
 
   return (
@@ -85,8 +87,6 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
             </h2>
             <div className="flex items-center gap-3">
               <p className="text-muted text-sm font-medium">Holistic optimization across all academic years</p>
-              <div className="h-1 w-1 rounded-full bg-light-6" />
-              <p className="text-blue text-xs font-black uppercase tracking-widest">Est. {eta}</p>
               <div className="h-1 w-1 rounded-full bg-light-6" />
               <p className="text-blue text-xs font-black uppercase tracking-widest">Est. {eta}</p>
               {healerProgress !== undefined && (
@@ -176,11 +176,13 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
           
           let currentBest: number | null = -Infinity;
           for (let d = data.length - 1; d >= 0; d--) {
-            if (data[d][i] !== null) {
-              currentBest = data[d][i];
+            const score = data[d]?.[i];
+            if (score !== undefined && score !== null) {
+              currentBest = score;
               break;
             }
           }
+
           
           const isWinner = currentBest === bestScore && currentBest !== -Infinity && currentBest !== null;
 
@@ -208,8 +210,9 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
                 {isWinner && <span className="text-[8px] text-blue font-black uppercase">Best</span>}
               </div>
               <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">
-                Attempt {(attempts || [])[i] || 0} / {(exhaustionPoints || [])[i] || '?'}
+                Attempt {(attempts as any)?.[algo.id] || 0} / {(exhaustionPoints as any)?.[algo.id] || '?'}
               </div>
+
             </div>
           );
         })}

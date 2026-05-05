@@ -70,14 +70,14 @@ export const StrictGenerator: ScheduleGenerator = {
 
             // Virtual Target: Ensure PGY1s get Night Float as blocks
             if (r.level === 1 && !reqs.find(rq => rq.type === AssignmentType.NIGHT_FLOAT)) {
-                reqs.push({ type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', target: 4 });
+                reqs.push({ type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', minWeeks: 4 });
             }
 
             reqs.forEach(req => {
                 const meta = ROTATION_METADATA[req.type];
                 if (!meta) return;
                 const count = getCumulativeRequirementCount(r.id, newSchedule[r.id], req.type, priorRequirementCounts);
-                let needed = req.target - count;
+                let needed = req.minWeeks - count;
 
                 const isStaffing = [
                     AssignmentType.MICU,

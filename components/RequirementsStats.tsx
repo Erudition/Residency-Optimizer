@@ -14,33 +14,33 @@ interface Props {
 
 const StackedProgressBar = ({ 
     yearData, 
-    target, 
+    minWeeks, 
     colorClass,
     totalValue,
     isCap = false
 }: { 
     yearData: Record<number, number>, 
-    target: number, 
+    minWeeks: number, 
     colorClass: string,
     totalValue: number,
     isCap?: boolean
 }) => {
-    const isViolation = isCap ? totalValue > target : totalValue < target * 0.8; 
+    const isViolation = isCap ? totalValue > minWeeks : totalValue < minWeeks * 0.8; 
 
     return (
         <div className="w-full flex flex-col gap-1">
             <div className="flex justify-between text-[10px] font-bold tracking-tight">
                 <span className="text-muted flex items-center gap-1">
                     <span className={`${isViolation ? 'text-red-600 font-black' : 'text-primary font-bold'} text-xs`}>{totalValue}</span>
-                    <span className="text-muted">/ {target}w</span>
+                    <span className="text-muted">/ {minWeeks}w</span>
                 </span>
-                {isCap && totalValue > target && <span className="text-red font-black text-[9px] animate-pulse">! OVER CAP</span>}
+                {isCap && totalValue > minWeeks && <span className="text-red font-black text-[9px] animate-pulse">! OVER CAP</span>}
             </div>
             
             <div className="flex flex-col gap-0.5">
                 {[1, 2, 3].map(pgy => {
                     const value = yearData[pgy] || 0;
-                    const yearlyTarget = target / 3;
+                    const yearlyTarget = minWeeks / 3;
                     const width = Math.min(100, (value / yearlyTarget) * 100);
                     const opacity = pgy === 1 ? 'opacity-40' : pgy === 2 ? 'opacity-70' : 'opacity-100';
                     
@@ -59,7 +59,7 @@ const StackedProgressBar = ({
             <div className="h-2 w-full bg-light-2 rounded-full overflow-hidden border border-light-5 mt-1">
                 <div
                     className={`h-full transition-all duration-500 ${colorClass}`}
-                    style={{ width: `${Math.min(100, (totalValue / target) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (totalValue / minWeeks) * 100)}%` }}
                 />
             </div>
         </div>
@@ -242,19 +242,19 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                                         </td>
                                         {reqs.map(req => {
                                             const count = getResidentCount(r.id, req.type);
-                                            const isMet = count >= req.target;
+                                            const isMet = count >= req.minWeeks;
                                             if (!isMet) metAll = false;
 
                                             return (
                                                 <td key={req.type} className="py-2 px-2 text-center border-r border-gray-50/50">
                                                     <div className="flex flex-col items-center justify-center">
                                                         <span className={`font-mono font-bold text-xs ${isMet ? 'text-green-dark' : 'text-red'}`}>
-                                                            {count} / {req.target}
+                                                            {count} / {req.minWeeks}
                                                         </span>
                                                         <div className="w-12 h-1 bg-light-4 rounded-full mt-1 overflow-hidden">
                                                             <div 
                                                                 className={`h-full transition-all duration-500 ${isMet ? 'bg-green' : 'bg-red'}`} 
-                                                                style={{ width: `${Math.min(100, (count / req.target) * 100)}%` }}
+                                                                style={{ width: `${Math.min(100, (count / req.minWeeks) * 100)}%` }}
                                                             />
                                                         </div>
                                                     </div>
@@ -378,7 +378,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                                             <td className="px-6 py-4 w-1/4">
                                                 <StackedProgressBar 
                                                     yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).outpatient]))} 
-                                                    target={44} 
+                                                    minWeeks={44} 
                                                     colorClass="bg-blue"
                                                     totalValue={d.outpatient}
                                                 />
@@ -386,7 +386,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                                             <td className="px-6 py-4 w-1/4">
                                                 <StackedProgressBar 
                                                     yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).inpatient + (data as any).criticalCare]))} 
-                                                    target={48} 
+                                                    minWeeks={48} 
                                                     colorClass="bg-green-2"
                                                     totalValue={d.inpatient + d.criticalCare}
                                                 />
@@ -394,7 +394,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                                             <td className="px-6 py-4 w-1/4">
                                                 <StackedProgressBar 
                                                     yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).criticalCare]))} 
-                                                    target={24} 
+                                                    minWeeks={24} 
                                                     colorClass="bg-purple"
                                                     totalValue={d.criticalCare}
                                                     isCap={true}
@@ -403,7 +403,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                                             <td className="px-6 py-4 w-1/4">
                                                 <StackedProgressBar 
                                                     yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).nightFloat]))} 
-                                                    target={6} 
+                                                    minWeeks={6} 
                                                     colorClass="bg-orange"
                                                     totalValue={d.nightFloat}
                                                 />

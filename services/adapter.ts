@@ -51,7 +51,7 @@ export const adaptSchedule = (
             const reqs = REQUIREMENTS[r.level] || [];
             reqs.forEach(req => {
                 const currentCount = schedule[r.id]?.filter(c => c.assignment === req.type).length || 0;
-                let missing = req.target - currentCount;
+                let missing = req.minWeeks - currentCount;
                 
                 if (missing > 0) {
                     let allocatedForReq = 0;

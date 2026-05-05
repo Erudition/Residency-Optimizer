@@ -1,11 +1,11 @@
 {
-  "strategy": "balanced",
+  "strategy": "custom",
   "lane_models": {
     "planning": "gemini-3.1-pro-preview",
-    "execution": "gemini-3-flash-preview",
-    "quick_edit": "gemini-3.1-flash-lite-preview",
+    "execution": "gemini-3.1-pro-preview",
+    "quick_edit": "gemini-2.5-pro",
     "review_verify": "gemini-3.1-pro-preview"
   },
-  "updated_at": "2026-05-04T12:15:00Z",
+  "updated_at": "2026-05-05T12:00:00Z",
   "source": "omg:model"
 }

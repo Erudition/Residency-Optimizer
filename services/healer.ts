@@ -37,20 +37,46 @@ export const healSchedule = (
     schedule: ScheduleGrid,
     residents: Resident[],
     gridStartYear: number,
-    maxIterations: number = 2000
+    maxIterations: number = 2000,
+    historicalSchedules: any = {}
 ): ScheduleGrid => {
 
     let currentSchedule = JSON.parse(JSON.stringify(schedule));
-    let currentViolations = getRequirementViolations(residents, currentSchedule, {}, gridStartYear).length;
+    let currentViolations = getRequirementViolations(residents, currentSchedule, historicalSchedules, gridStartYear).length;
     let currentStaffingGaps = getWeeklyViolations(residents, currentSchedule, gridStartYear).length;
 
     const totalWeeks = (Object.values(currentSchedule)[0] as any)?.length || 52;
+
+    // T6.5: Deficit Recovery for split blocks (NEURO, GI, PULM)
+    residents.forEach(r => {
+        const rViolations = getRequirementViolations(residents, currentSchedule, historicalSchedules, gridStartYear)
+            .filter(v => v.residentId === r.id && [AssignmentType.NEURO, AssignmentType.GI, AssignmentType.PULM].includes(v.type));
+        
+        rViolations.forEach(v => {
+            const deficit = v.minWeeks - v.actual;
+            let recovered = 0;
+            const start = r.activeWeekStart ?? 0;
+            const end = r.activeWeekEnd ?? totalWeeks;
+            
+            for (let w = start; w < end && recovered < deficit; w++) {
+                const cell = currentSchedule[r.id]?.[w];
+                if (cell && cell.assignment === AssignmentType.ELECTIVE && !cell.locked) {
+                    cell.assignment = v.type;
+                    recovered++;
+                }
+            }
+        });
+    });
+
+    // Recompute current metrics after deficit recovery
+    currentViolations = getRequirementViolations(residents, currentSchedule, historicalSchedules, gridStartYear).length;
+    currentStaffingGaps = getWeeklyViolations(residents, currentSchedule, gridStartYear).length;
 
     for (let i = 0; i < maxIterations; i++) {
         // Targeted selection: pick a resident with at least one violation 50% of the time
         let resident = residents[Math.floor(Math.random() * residents.length)];
         if (Math.random() < 0.5) {
-            const violations = getRequirementViolations(residents, currentSchedule, {}, gridStartYear);
+            const violations = getRequirementViolations(residents, currentSchedule, historicalSchedules, gridStartYear);
             if (violations.length > 0) {
                 const targetId = violations[Math.floor(Math.random() * violations.length)].residentId;
                 resident = residents.find(r => r.id === targetId) || resident;
@@ -64,9 +90,13 @@ export const healSchedule = (
         const rand = Math.random();
         const duration = rand < 0.6 ? 4 : (rand < 0.9 ? 2 : 1);
         
-        // Pick two random start weeks
-        const w1 = Math.floor(Math.random() * (totalWeeks - duration));
-        const w2 = Math.floor(Math.random() * (totalWeeks - duration));
+        const start = resident.activeWeekStart ?? 0;
+        const end = resident.activeWeekEnd ?? totalWeeks;
+        if (end - start <= duration) continue;
+
+        // Pick two random start weeks within active range
+        const w1 = start + Math.floor(Math.random() * (end - start - duration));
+        const w2 = start + Math.floor(Math.random() * (end - start - duration));
         
         if (Math.abs(w1 - w2) < duration) continue;
 
@@ -114,7 +144,7 @@ export const healSchedule = (
         }
 
         // Validate Requirements (Hill-climbing: only keep if improvement or same)
-        const newViolations = getRequirementViolations(residents, currentSchedule, {}, gridStartYear).length;
+        const newViolations = getRequirementViolations(residents, currentSchedule, historicalSchedules, gridStartYear).length;
         if (newViolations <= currentViolations) {
             currentViolations = newViolations;
             currentStaffingGaps = newStaffingGaps;

@@ -51,7 +51,6 @@ export const StochasticGenerator: ScheduleGenerator = {
             if (!newSchedule[r.id] || newSchedule[r.id].length !== totalWeeks) {
                 newSchedule[r.id] = Array(totalWeeks).fill(null).map(() => ({ assignment: null, locked: false }));
             }
-            const clinicType = r.clinicType || AssignmentType.CLINIC;
             const cohort = validCohortAssignments[r.id] ?? 0;
             const row = newSchedule[r.id];
             
@@ -61,7 +60,9 @@ export const StochasticGenerator: ScheduleGenerator = {
             for (let w = start; w < end; w++) {
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
-                    newSchedule[r.id][w] = { assignment: clinicType, locked: true };
+                    const pgy = Math.min(3, r.level + Math.floor(w / 52));
+                    const weeklyClinicType = (pgy === 2) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                    newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }
         });
@@ -100,7 +101,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                         const effectiveEnd = Math.min(yearEnd, resEnd);
 
                         let safety = 0;
-                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) < req.target && safety < 10) {
+                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) < req.minWeeks && safety < 100) {
                             safety++;
                             let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
                             const dur = ROTATION_METADATA[req.type]?.duration || 4;

@@ -13,7 +13,6 @@ interface Props {
   onLockWeek: (weekIdx: number) => void;
   onLockResident: (residentId: string) => void;
   onToggleLock: (residentId: string, weekIdx: number) => void;
-  onHeal?: () => void;
 }
 
 // WEEKS will be derived from the schedule length
@@ -51,8 +50,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   onCellClick,
   onLockWeek,
   onLockResident,
-  onToggleLock,
-  onHeal
+  onToggleLock
 }) => {
   const totalWeeks = useMemo(() => {
     const vals = Object.values(schedule);
@@ -231,11 +229,6 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                 <div className="flex items-center justify-between h-full px-2 relative">
                   <div className="flex items-center gap-2">
                     <span>Resident ({residents.length})</span>
-                    {onHeal && (
-                      <button onClick={onHeal} className="p-1 rounded bg-green/10 text-green hover:bg-green hover:text-white transition-colors" title="Heal Schedule">
-                        <Sparkles size={12} />
-                      </button>
-                    )}
                   </div>
                   {/* Resize Handle */}
                   <div

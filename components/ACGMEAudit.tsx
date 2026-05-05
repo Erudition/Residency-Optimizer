@@ -11,30 +11,30 @@ interface Props {
 
 const StackedProgressBar = ({ 
     yearData, 
-    target, 
+    minWeeks, 
     colorClass,
     totalValue,
     isCap = false
 }: { 
     yearData: Record<number, number>, 
-    target: number, 
+    minWeeks: number, 
     colorClass: string,
     totalValue: number,
     isCap?: boolean
 }) => {
-    // Violation if under target for minimums, or over target for caps
-    const isViolation = isCap ? totalValue > target : totalValue < target; 
+    // Violation if under minWeeks for minimums, or over minWeeks for caps
+    const isViolation = isCap ? totalValue > minWeeks : totalValue < minWeeks; 
 
     return (
         <div className={`w-full flex flex-col gap-1 p-2 rounded-xl transition-all border ${isViolation ? 'bg-red/5 border-red/20 shadow-sm' : 'border-transparent hover:bg-light-2/40'}`}>
             <div className="flex justify-between items-center text-[10px] font-bold tracking-tight">
                 <span className="text-muted flex items-center gap-1">
                     <span className={`${isViolation ? 'text-red font-black' : 'text-primary font-bold'} text-xs`}>{totalValue}</span>
-                    <span className="text-muted">/ {target}w</span>
+                    <span className="text-muted">/ {minWeeks}w</span>
                 </span>
                 {isViolation && (
                     <span className="text-red font-black text-[9px] animate-pulse flex items-center gap-0.5">
-                        <AlertTriangle size={10} className="shrink-0" /> {isCap ? 'OVER CAP' : 'UNDER TARGET'}
+                        <AlertTriangle size={10} className="shrink-0" /> {isCap ? 'OVER CAP' : 'UNDER MINIMUM'}
                     </span>
                 )}
             </div>
@@ -42,7 +42,7 @@ const StackedProgressBar = ({
             <div className="flex flex-col gap-0.5">
                 {[1, 2, 3].map(pgy => {
                     const value = yearData[pgy] || 0;
-                    const yearlyTarget = target / 3;
+                    const yearlyTarget = minWeeks / 3;
                     const width = Math.min(100, (value / yearlyTarget) * 100);
                     const opacity = pgy === 1 ? 'opacity-40' : pgy === 2 ? 'opacity-70' : 'opacity-100';
                     
@@ -61,7 +61,7 @@ const StackedProgressBar = ({
             <div className="h-2 w-full bg-light-2 rounded-full overflow-hidden border border-light-5 mt-1">
                 <div
                     className={`h-full transition-all duration-500 ${isViolation ? 'bg-red' : colorClass}`}
-                    style={{ width: `${Math.min(100, (totalValue / target) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (totalValue / minWeeks) * 100)}%` }}
                 />
             </div>
         </div>
@@ -129,7 +129,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                 outpatientViolation: totalOutpatient < 44,
                 inpatientViolation: (totalInpatient + totalCriticalCare) < 48,
                 critCareViolation: totalCriticalCareCore > 24, // ACGME Cap is 6 months (24w)
-                nfViolation: totalNightFloat < 6 // MHS/ACGME target is 6 weeks total
+                nfViolation: totalNightFloat < 6 // MHS/ACGME min is 6 weeks total
             };
         });
     }, [residents, history]);
@@ -222,7 +222,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                                         <td className="px-6 py-4 w-1/4">
                                             <StackedProgressBar 
                                                 yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).outpatient]))} 
-                                                target={44} 
+                                                minWeeks={44} 
                                                 colorClass="bg-blue"
                                                 totalValue={d.outpatient}
                                             />
@@ -230,7 +230,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                                         <td className="px-6 py-4 w-1/4">
                                             <StackedProgressBar 
                                                 yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).inpatient + (data as any).criticalCare]))} 
-                                                target={48} 
+                                                minWeeks={48} 
                                                 colorClass="bg-green-2"
                                                 totalValue={d.inpatient + d.criticalCare}
                                             />
@@ -238,7 +238,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                                         <td className="px-6 py-4 w-1/4">
                                             <StackedProgressBar 
                                                 yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).criticalCareCore]))} 
-                                                target={24} 
+                                                minWeeks={24} 
                                                 colorClass="bg-purple"
                                                 totalValue={d.criticalCareCore}
                                                 isCap={true}
@@ -247,7 +247,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                                         <td className="px-6 py-4 w-1/4">
                                             <StackedProgressBar 
                                                 yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).nightFloat]))} 
-                                                target={6} 
+                                                minWeeks={6} 
                                                 colorClass="bg-orange"
                                                 totalValue={d.nightFloat}
                                             />

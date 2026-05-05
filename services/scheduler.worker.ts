@@ -1,19 +1,24 @@
 import { generateSchedule, sliceIntoYears } from './scheduler';
+import { 
+  getRequirementViolations, 
+  getWeeklyViolations, 
+  getAuditViolations 
+} from './scheduler';
 import { healSchedule } from './healer';
 
 let cancelledAlgorithmIds = new Set<string>();
 let isPromoteTriggered = false;
 let overallProgress = 0;
 
-let lastAttempts: number[] = [];
-let lastExhaustionPoints: number[] = [];
+let lastAttempts: Record<string, number> = {};
+let lastExhaustionPoints: Record<string, number> = {};
 let lastExhaustedCount = 0;
 
 // Throttled progress updates to avoid flooding the UI thread
 let lastUpdate = 0;
 let pendingProgress: any = null;
 
-const postProgress = (iteration: number, scores: (number | null)[], attempts: number[], exhaustionPoints: number[], exhaustedCount: number) => {
+const postProgress = (iteration: number, scores: (number | null)[], attempts: Record<string, number>, exhaustionPoints: Record<string, number>, exhaustedCount: number) => {
   const now = Date.now();
   lastAttempts = attempts;
   lastExhaustionPoints = exhaustionPoints;
@@ -37,7 +42,7 @@ const postProgress = (iteration: number, scores: (number | null)[], attempts: nu
 };
 
 onmessage = async (e: MessageEvent) => {
-  const { type, totalYears, historicalSchedules, constraints, params, algorithmIds } = e.data;
+  const { type, totalYears, residents, historicalSchedules, constraints, params, algorithmIds } = e.data;
 
   if (type === 'generate') {
     cancelledAlgorithmIds.clear();
@@ -48,6 +53,7 @@ onmessage = async (e: MessageEvent) => {
       const result = await generateSchedule(
         e.data.year,
         totalYears,
+        residents,
         historicalSchedules,
         constraints,
         params,
@@ -111,9 +117,62 @@ onmessage = async (e: MessageEvent) => {
     isPromoteTriggered = true;
   } else if (type === 'cancelAlgorithm') {
     cancelledAlgorithmIds.add(e.data.algoId);
+  } else if (type === 'start-heal') {
+    const { grid, residents, historicalSchedules, startYear, totalYears } = e.data;
+    isHealingActive = true;
+    runHealLoop(grid, residents, historicalSchedules || {}, startYear, totalYears || 1);
+  } else if (type === 'stop-heal') {
+    isHealingActive = false;
   } else if (type === 'cancel') {
+    isHealingActive = false;
     // Abort is handled by the main thread terminating the worker, 
     // but we can also use a flag if we wanted more graceful exit
   }
 
 };
+
+let isHealingActive = false;
+
+async function runHealLoop(
+  grid: any, 
+  residents: any, 
+  historicalSchedules: any,
+  startYear: number,
+  totalYears: number
+) {
+  let currentBest = JSON.parse(JSON.stringify(grid));
+  let bestViolations = 999999;
+
+  while (isHealingActive) {
+    // Run a small batch of iterations
+    currentBest = healSchedule(
+      currentBest, 
+      residents, 
+      startYear,
+      200
+    );
+    
+    // Calculate violations for reporting
+    const reqViolations = getRequirementViolations(residents, currentBest, historicalSchedules, startYear).length;
+    const weeklyViolations = getWeeklyViolations(residents, currentBest, startYear).length;
+    const total = reqViolations + weeklyViolations;
+
+    if (total < bestViolations) {
+      bestViolations = total;
+      postMessage({ 
+        type: 'heal-update', 
+        schedule: currentBest, 
+        violations: total 
+      });
+    } else {
+      // Periodic ping even if no improvement to show we're still alive
+      postMessage({ 
+        type: 'heal-ping', 
+        violations: bestViolations 
+      });
+    }
+
+    // Small delay to allow message processing and not hog the CPU 100%
+    await new Promise(r => setTimeout(r, 50));
+  }
+}

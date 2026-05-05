@@ -63,7 +63,7 @@ export const GreedyGenerator: ScheduleGenerator = {
                 const duration = meta.duration || 4;
 
                 let safety = 0;
-                while (safety < 10) {
+                while (safety < 100) {
                     const currentlyAssigned = residents.filter(r => newSchedule[r.id]?.[w]?.assignment === type);
                     let interns = currentlyAssigned.filter(r => r.level === 1).length;
                     let seniors = currentlyAssigned.filter(r => r.level > 1).length;
@@ -106,7 +106,7 @@ export const GreedyGenerator: ScheduleGenerator = {
                         ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE]
                         : [req.type];
 
-                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, priorRequirementCounts) < req.target) {
+                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, priorRequirementCounts) < req.minWeeks) {
                         const best = findBestBalancedWindow(res.id, typesToTry, duration);
                         if (best.start === -1) break;
 

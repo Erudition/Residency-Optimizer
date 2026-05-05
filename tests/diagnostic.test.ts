@@ -12,8 +12,8 @@ describe('Algorithm Diagnostic', () => {
 
         for (const algoId of ['exact']) {
             const result = await generateSchedule(
-                2026, 1, {}, 
-                { residents, existing: {}, cohortAssignments: { 2026: cohortMap } },
+                2026, 1, residents, {},
+                { existing: {}, cohortAssignments: { 2026: cohortMap } },
                 { tries: 1, priority: CompetitionPriority.BEST_SCORE, topN: 1 },
                 [algoId], () => false, () => {}
             );
