@@ -39,7 +39,8 @@ export const healSchedule = (
     residents: Resident[],
     gridStartYear: number,
     maxIterations?: number,
-    historicalSchedules: any = {}
+    historicalSchedules: any = {},
+    onProgress?: (step: number, maxSteps: number) => void
 ): ScheduleGrid => {
 
     let currentSchedule = JSON.parse(JSON.stringify(schedule));
@@ -85,7 +86,8 @@ export const healSchedule = (
         currentSchedule,
         0,
         historicalSchedules,
-        cohortAssignments
+        cohortAssignments,
+        onProgress
     );
     return currentSchedule;
 };

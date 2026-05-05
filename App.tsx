@@ -912,6 +912,7 @@ const App: React.FC = () => {
       setIsHealing(false);
       setBestHealGrid(null);
       setBestHealCount(null);
+      setHealerProgress(undefined);
     } else {
       // START
       if (!activeScheduleId) return;
@@ -937,13 +938,18 @@ const App: React.FC = () => {
       healWorkerRef.current = worker;
 
       worker.onmessage = (e) => {
-        const { type, schedule, violations: count } = e.data;
+        const { type, schedule, violations: count, healerProgress } = e.data;
         console.log('Heal worker message:', type, count);
         if (type === 'heal-update') {
           setBestHealGrid(schedule);
           setBestHealCount(count);
+          if (healerProgress !== undefined) setHealerProgress(healerProgress);
+
         } else if (type === 'heal-ping') {
           setBestHealCount(count);
+          if (healerProgress !== undefined) setHealerProgress(healerProgress);
+        } else if (type === 'heal-complete') {
+          handleToggleHeal();
         }
       };
 
@@ -1590,7 +1596,7 @@ const App: React.FC = () => {
                           {isHealing ? (
                             <>
                               <Loader2 size={14} className="animate-spin" />
-                              Heal {violations.reqs.length + violations.constraints.length}
+                              Heal {violations.reqs.length + violations.constraints.length} {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
                             </>
                           ) : (
                             <>

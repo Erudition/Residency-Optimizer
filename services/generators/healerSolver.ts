@@ -13,7 +13,7 @@ class SeededRNG {
 
 export const HealerConstraintGenerator: ScheduleGenerator = {
     name: "Annealing Healer Solver",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>, onProgress?: (step: number, maxSteps: number) => void): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
 
         const totalWeeks = Object.values(existingSchedule)[0]?.length || TOTAL_WEEKS;
@@ -269,11 +269,15 @@ export const HealerConstraintGenerator: ScheduleGenerator = {
         let currentPenalty = 0; weekPenaltyCache.forEach(p => currentPenalty += p);
         residents.forEach(r => { currentPenalty += resReqPenaltyCache[r.id]; resContCache[r.id].forEach(p => currentPenalty += p); });
 
-        if (currentPenalty === 0) return currentSchedule;
+        if (currentPenalty === 0) {
+            if (onProgress) onProgress(200000, 200000);
+            return currentSchedule;
+        }
 
         const maxSteps = 200000;
         for (let step = 0; step < maxSteps; step++) {
             if (step % 10000 === 0 && checkInterrupt()) break;
+            if (step % 2000 === 0 && onProgress) onProgress(step, maxSteps);
             const r = residents[Math.floor(rng.next() * residents.length)], weeks = flexibleWeeks[r.id];
             if (weeks.length === 0) continue;
             const w = weeks[Math.floor(rng.next() * weeks.length)];

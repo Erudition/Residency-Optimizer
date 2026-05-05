@@ -207,7 +207,8 @@ export interface ScheduleGenerator {
     existing: ScheduleGrid,
     attemptIndex?: number,
     priorRequirementCounts?: Record<string, Record<string, number>>,  // replaces historicalSchedules
-    cohortAssignments?: Record<string, number>
+    cohortAssignments?: Record<string, number>,
+    onProgress?: (step: number, maxSteps: number) => void
   ) => ScheduleGrid;
 }
 export interface ScheduleSession {

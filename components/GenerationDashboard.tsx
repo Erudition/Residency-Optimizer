@@ -116,7 +116,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
             {isPromoting ? (
               <>
                 <div className="w-4 h-4 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
-                Promoting Best...
+                Promoting Best... {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
               </>
             ) : (
               'Promote Best Now'
