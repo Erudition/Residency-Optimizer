@@ -49,8 +49,10 @@ export const EducationFirstGenerator: ScheduleGenerator = {
             }
             const clinicType = r.clinicType || AssignmentType.CLINIC;
             const cohort = validCohortAssignments[r.id] ?? 0;
-            for (let w = 0; w < TOTAL_WEEKS; w++) {
+            const row = newSchedule[r.id];
+            for (let w = 0; w < row.length; w++) {
                 if (w % COHORT_COUNT === cohort) {
+                    if (row[w].locked) continue;
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
                 }
             }

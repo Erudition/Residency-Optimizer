@@ -49,8 +49,10 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
             }
             const clinicType = r.clinicType || AssignmentType.CLINIC;
             const cohort = validCohortAssignments[r.id] ?? 0;
-            for (let w = 0; w < TOTAL_WEEKS; w++) {
+            const row = newSchedule[r.id];
+            for (let w = 0; w < row.length; w++) {
                 if (w % COHORT_COUNT === cohort) {
+                    if (row[w].locked) continue;
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
                 }
             }
@@ -77,7 +79,6 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
             const dur = meta.duration || 4;
 
             for (let w = 0; w < TOTAL_WEEKS; w++) {
-                // Interns
                 let safetyI = 0;
                 while (getAssignedCount(newSchedule, residents, w, type, 1) < (meta.minInterns || 0) && safetyI < 10) {
                     safetyI++;
@@ -169,7 +170,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         // 4. Final Elective Fill
         residents.forEach(r => {
-            for (let w = 0; w < TOTAL_WEEKS; w++) {
+            const row = newSchedule[r.id]; for (let w = 0; w < row.length; w++) { if (row[w].locked) continue;
                 if (!newSchedule[r.id][w]?.assignment) {
                     newSchedule[r.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
                 }

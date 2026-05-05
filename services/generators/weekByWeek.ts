@@ -105,9 +105,11 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             }
             const clinicType = r.clinicType || AssignmentType.CLINIC;
             const cohort = validCohortAssignments[r.id] ?? 0;
-            for (let w = 0; w < TOTAL_WEEKS; w++) {
+            const row = newSchedule[r.id];
+            for (let w = 0; w < row.length; w++) {
                 if (w % COHORT_COUNT === cohort) {
-                    if (!newSchedule[r.id][w]?.assignment) {
+                    if (row[w].locked) continue;
+                    if (!row[w].assignment) {
                         newSchedule[r.id][w] = { assignment: clinicType, locked: true };
                         updateCounts(r.id, r.level, w, clinicType, 1);
                     }

@@ -6,9 +6,9 @@ export const canFitBlock = (schedule: ScheduleGrid, residentId: string, start: n
     if (!row) return false;
     for (let i = 0; i < duration; i++) {
         const week = start + i;
-        if (week < 0 || week >= TOTAL_WEEKS) continue;
+        if (week < 0 || week >= row.length) continue;
         const cell = row[week];
-        if (cell && cell.assignment !== null) return false;
+        if (cell && (cell.assignment !== null || cell.locked)) return false;
     }
     return true;
 };
@@ -17,9 +17,11 @@ export const placeBlock = (schedule: ScheduleGrid, residentId: string, start: nu
     if (!schedule[residentId]) {
         schedule[residentId] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null, locked: false }));
     }
+    const row = schedule[residentId];
     for (let i = 0; i < duration; i++) {
         const week = start + i;
-        if (week < 0 || week >= TOTAL_WEEKS) continue;
+        if (week < 0 || week >= row.length) continue;
+        if (row[week].locked) continue;
         schedule[residentId][week] = { assignment: type, locked: false };
     }
 };
