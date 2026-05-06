@@ -1583,9 +1583,9 @@ const App: React.FC = () => {
 
       {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
-          <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
+          <NavButton id="schedule" label={viewMode === 'unified' ? "Schedule 3yr" : "Schedule"} icon={LayoutGrid} />
           {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
-          <NavButton id="coverage" label="Coverage" icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
+          <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
           {viewMode === 'unified' ? (
             <>
               <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
@@ -1600,7 +1600,7 @@ const App: React.FC = () => {
               <NavButton id="fairness" label="Fairness" icon={Scale} />
             </>
           )}
-          <NavButton id="export" label="Export" icon={FileSpreadsheet} />
+          <NavButton id="export" label={viewMode === 'unified' ? "Export 3yr" : "Export"} icon={FileSpreadsheet} />
         </div>
       ) : null}
 
