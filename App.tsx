@@ -313,7 +313,7 @@ const sanitizeScheduleGrid = (
     }
     
     let start = resident.activeWeekStart ?? 0;
-    let end = resident.activeWeekEnd ?? (row.length * 3);
+    let end = resident.activeWeekEnd ?? row.length;
     
     if (year !== undefined) {
       const yearOffset = year - startYear;
