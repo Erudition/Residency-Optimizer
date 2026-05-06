@@ -45,13 +45,13 @@ export const StochasticGenerator: ScheduleGenerator = {
             if (!newSchedule[r.id] || newSchedule[r.id].length !== totalWeeks) {
                 newSchedule[r.id] = Array(totalWeeks).fill(null).map(() => ({ assignment: null, locked: false }));
             }
-            const cohort = validCohortAssignments[r.id] ?? 0;
             const row = newSchedule[r.id];
             
             const start = r.activeWeekStart ?? 0;
             const end = r.activeWeekEnd ?? totalWeeks;
 
             for (let w = start; w < end; w++) {
+                const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
@@ -88,11 +88,11 @@ export const StochasticGenerator: ScheduleGenerator = {
                         return countA - countB;
                     });
                     sortedResidents.forEach(res => {
-                        const cohort = validCohortAssignments[res.id];
                         const resStart = res.activeWeekStart ?? 0;
                         const resEnd = res.activeWeekEnd ?? totalWeeks;
                         const effectiveStart = Math.max(yearStart, resStart);
                         const effectiveEnd = Math.min(yearEnd, resEnd);
+                        const cohort = getCohortAtWeek(res, effectiveStart, validCohortAssignments);
 
                         let safety = 0;
                         while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) < req.minWeeks && safety < 100) {

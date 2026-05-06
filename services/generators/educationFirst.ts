@@ -1,7 +1,7 @@
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
 
-import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount, getPriorRequirementCount, getStandardCohortMap } from './utils';
+import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount, getPriorRequirementCount, getStandardCohortMap, getCohortAtWeek } from './utils';
 
 
 class SeededRNG {
@@ -49,9 +49,9 @@ export const EducationFirstGenerator: ScheduleGenerator = {
             const start = r.activeWeekStart ?? 0;
             const end = r.activeWeekEnd ?? totalWeeks;
 
-            const cohort = validCohortAssignments[r.id] ?? 0;
             const row = newSchedule[r.id];
             for (let w = start; w < end; w++) {
+                const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
@@ -124,12 +124,11 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                         const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd) + getPriorRequirementCount(priorRequirementCounts?.[b.id] || {}, req.type);
                         return countA - countB;
                     }).forEach(res => {
-                        const cohort = validCohortAssignments[res.id];
                         const start = res.activeWeekStart ?? 0;
                         const end = res.activeWeekEnd ?? totalWeeks;
-                        
                         const rYearStart = Math.max(yearStart, start);
                         const rYearEnd = Math.min(yearEnd, end);
+                        const cohort = getCohortAtWeek(res, rYearStart, validCohortAssignments);
 
                         let safety = 0;
                         while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) < req.minWeeks && safety < 100) {
@@ -204,7 +203,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 while (getAssignedCount(newSchedule, residents, w, type, 1) < (meta.minInterns || 0) && safetyI < 10) {
                     safetyI++;
                     const pool = seededShuffle(residents.filter(r => {
-                        const cohort = validCohortAssignments[r.id];
+                        const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                         const currentLevel = r.level + Math.floor(w / 52);
                         const start = r.activeWeekStart ?? 0;
                         const end = r.activeWeekEnd ?? totalWeeks;
@@ -226,7 +225,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 while (getAssignedCount(newSchedule, residents, w, type, 2) < (meta.minSeniors || 0) && safetyS < 10) {
                     safetyS++;
                     const pool = seededShuffle(residents.filter(r => {
-                        const cohort = validCohortAssignments[r.id];
+                        const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                         const currentLevel = r.level + Math.floor(w / 52);
                         const start = r.activeWeekStart ?? 0;
                         const end = r.activeWeekEnd ?? totalWeeks;

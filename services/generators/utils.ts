@@ -104,14 +104,20 @@ export const getCohortAtWeek = (
     w: number,
     cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>
 ): number => {
-    if (!cohortAssignments) return 0;
+    if (!cohortAssignments) return r.cohort !== undefined ? r.cohort : 0;
     const isNested = Object.values(cohortAssignments).some(val => typeof val === 'object' && val !== null);
     const startYear = r.startYear + Number(r.level) - 1;
     const academicYear = startYear + Math.floor(w / 52);
     if (isNested) {
-        return (cohortAssignments as Record<number, Record<string, number>>)[academicYear]?.[r.id] ?? 0;
+        const yearMap = (cohortAssignments as Record<number, Record<string, number>>)[academicYear];
+        if (yearMap && yearMap[r.id] !== undefined) {
+            return yearMap[r.id];
+        }
+        return r.cohort !== undefined ? r.cohort : 0;
     } else {
-        return (cohortAssignments as Record<string, number>)?.[r.id] ?? 0;
+        const val = (cohortAssignments as Record<string, number>)?.[r.id];
+        if (val !== undefined) return val;
+        return r.cohort !== undefined ? r.cohort : 0;
     }
 };
 

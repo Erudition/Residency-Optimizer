@@ -62,10 +62,7 @@ describe('Multi-Year Cohort Regression Test', () => {
             const maxAllowedInClinic = Math.ceil(activeCount * maxAllowedClinicPercentage);
 
             weeklyClinicCounts.forEach((count, w) => {
-                expect(count).toBeLessThanOrEqual(
-                    maxAllowedInClinic,
-                    `Year ${y} Week ${w} has too many residents in clinic at once (${count}/${activeCount}). This means cohorts are clumped into the same week, triggering the cohort regression bug!`
-                );
+                expect(count).toBeLessThanOrEqual(maxAllowedInClinic);
             });
         }
     }, 60000);

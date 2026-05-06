@@ -59,11 +59,11 @@ export const healer: HealerSolver = {
         const flexibleWeeks: Record<string, number[]> = {};
         const isFlexible: Record<string, boolean[]> = {};
         residents.forEach(r => {
-            const cohort = validCohortAssignments[r.id] ?? 0;
             const start = r.activeWeekStart ?? 0;
             const end = r.activeWeekEnd ?? totalWeeks;
             flexibleWeeks[r.id] = []; isFlexible[r.id] = Array(totalWeeks).fill(false);
             for (let w = 0; w < totalWeeks; w++) {
+                const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                 if (w >= start && w < end && w % COHORT_COUNT !== cohort && !(existingSchedule?.[r.id]?.[w]?.locked)) {
                     flexibleWeeks[r.id].push(w);
                     isFlexible[r.id][w] = true;

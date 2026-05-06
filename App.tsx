@@ -948,6 +948,32 @@ const App: React.FC = () => {
         lastUpdateRef.current = Date.now();
       });
 
+      const fullCohortAssignments: Record<number, Record<string, number>> = {};
+      for (let y = activeYear; y < activeYear + totalYears; y++) {
+        let yearCohorts = y === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[y] || historicalCohortsByYear[y]);
+        if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
+          const augmented = getAugmentedResidents(residents, y + 1);
+          const activeResidents = augmented.filter(r => {
+            const level = y - r.startYear + 1;
+            const isPgyInRange = level >= 1 && level <= 3;
+            const hasJoined = r.transferInYear === undefined || r.transferInYear <= y;
+            const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= y;
+            return isPgyInRange && hasJoined && hasNotLeft;
+          }).sort((a, b) => {
+            const levelA = y - a.startYear + 1;
+            const levelB = y - b.startYear + 1;
+            if (levelA !== levelB) return levelA - levelB;
+            return a.name.localeCompare(b.name);
+          });
+          const defaultCohorts: Record<string, number> = {};
+          activeResidents.forEach((r, idx) => {
+            defaultCohorts[r.id] = idx % 5;
+          });
+          yearCohorts = defaultCohorts;
+        }
+        fullCohortAssignments[y] = yearCohorts;
+      }
+
       const { results, unifiedResidents } = await runGenerationTask(
         activeYear,
         totalYears,
@@ -976,10 +1002,7 @@ const App: React.FC = () => {
           }
         },
         historySchedules,
-        {
-          ...(activeSchedule?.cohortAssignments || {}),
-          [activeYear]: activeYearCohorts
-        },
+        fullCohortAssignments,
         compParams.algorithmIds || [],
         controller.signal
       );
@@ -1009,10 +1032,7 @@ const App: React.FC = () => {
             data: res.schedule,
             unifiedData: res.unifiedSchedule,
             metrics: res.metrics,
-            cohortAssignments: {
-              ...(activeSchedule?.cohortAssignments || {}),
-              [activeYear]: activeYearCohorts
-            },
+            cohortAssignments: fullCohortAssignments,
             startYear: activeYear,
             createdAt: new Date(),
             isGenerating: false,
