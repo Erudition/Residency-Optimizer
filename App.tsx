@@ -367,18 +367,18 @@ const App: React.FC = () => {
     const loaded = loadState('rsp_comp_params_v1', {
       tries: 100,
       priority: CompetitionPriority.BEST_SCORE,
-      algorithmIds: ['stochastic', 'experimental', 'strict', 'greedy'],
-      topN: 10,
+      algorithmIds: ['experimental'],
+      topN: 3,
       multiYear: 3
     });
 
-    const validIds = ['stochastic', 'experimental', 'strict', 'greedy'];
+    const defaultIds = ['experimental'];
     return {
       ...loaded,
       priority: CompetitionPriority.BEST_SCORE,
       multiYear: 3,
-      topN: loaded.topN || 10,
-      algorithmIds: loaded.algorithmIds.length > 0 ? loaded.algorithmIds : validIds
+      topN: loaded.topN || 3,
+      algorithmIds: loaded.algorithmIds && loaded.algorithmIds.length > 0 ? loaded.algorithmIds : defaultIds
     };
   });
 
@@ -509,7 +509,7 @@ const App: React.FC = () => {
       return isPgyInRange && hasJoined && hasNotLeft;
     }).map(r => {
       const level = (year - r.startYear + 1) as 1 | 2 | 3;
-      const clinicType = level === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+      const clinicType = r.startYear === 2025 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
       const cohort = yearCohorts[r.id] ?? 0;
       return { ...r, level, clinicType, cohort };
     }).sort((a, b) => {
@@ -545,7 +545,7 @@ const App: React.FC = () => {
        const startYear = activeSchedule.startYear || ACTIVE_START_YEAR;
        return getUnifiedResidents(residents, startYear, 3).map(r => ({
            ...r,
-           clinicType: r.level === 2 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC,
+           clinicType: r.startYear === 2025 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC,
            cohort: (activeSchedule?.cohortAssignments?.[startYear] || historicalCohortsByYear[startYear] || {})[r.id] ?? 0
        })).sort((a, b) => {
            if (residentSortOrder === 'cohort') {
