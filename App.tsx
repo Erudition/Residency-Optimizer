@@ -1770,7 +1770,14 @@ const App: React.FC = () => {
                 </div>
               )}
               {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
-              {activeTab === 'coverage' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'coverage' && (
+                <div className="flex-1 overflow-hidden">
+                  <AssignmentStats
+                    residents={viewMode === 'unified' ? displayResidents : activeResidents}
+                    schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                  />
+                </div>
+              )}
               {activeTab === 'acgme_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} /></div>}
               {activeTab === 'mhs_requirements' && (
                 <div className="flex-1 overflow-y-auto">
