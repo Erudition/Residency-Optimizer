@@ -142,8 +142,9 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
     const jeopardyGapWeeks = useMemo(() => {
         if (mode !== 'mhs' || activeYear === undefined) return [];
         const gaps: number[] = [];
+        const totalWeeks = Object.values(schedule)[0]?.length || 52;
 
-        for (let w = 0; w < 52; w++) {
+        for (let w = 0; w < totalWeeks; w++) {
             let pgy2Flexible = 0;
             let pgy3Flexible = 0;
 
@@ -188,7 +189,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                                 <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b w-1/4">Resident</th>
                                 {reqs.map(r => (
                                     <th key={r.type} className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center min-w-[100px]">
-                                        {r.label}
+                                        {r.label} <span className="text-[9px] font-black opacity-60">({r.minWeeks}w+)</span>
                                     </th>
                                 ))}
                             </tr>
@@ -248,7 +249,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
                             <div className="flex justify-between items-start">
-                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Outpatient (44w)</span>
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Outpatient (44w+)</span>
                                 <Building2 size={16} className="text-blue" />
                             </div>
                             <div className="text-2xl font-black text-primary">{globalStats.outpatientMet} / {globalStats.total}</div>
@@ -258,7 +259,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                         </div>
                         <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
                             <div className="flex justify-between items-start">
-                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Inpatient (48w)</span>
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Inpatient (48w+)</span>
                                 <Hospital size={16} className="text-lime-green" />
                             </div>
                             <div className="text-2xl font-black text-primary">{globalStats.inpatientMet} / {globalStats.total}</div>
@@ -278,7 +279,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                         </div>
                         <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
                             <div className="flex justify-between items-start">
-                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Night Float Met (6w)</span>
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Night Float Met (6w+)</span>
                                 <Clock size={16} className="text-navy" />
                             </div>
                             <div className="text-2xl font-black text-primary">{globalStats.nfSafe} / {globalStats.total}</div>
@@ -305,8 +306,8 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                             <thead>
                                 <tr className="bg-light-2">
                                     <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Resident</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Outpatient (44w)</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Inpatient (48w)</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Outpatient (44w+)</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Inpatient (48w+)</th>
                                     <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Crit Care (24w max)</th>
                                     <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Compliance</th>
                                 </tr>

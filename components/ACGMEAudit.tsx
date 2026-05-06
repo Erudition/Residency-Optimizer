@@ -195,10 +195,10 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                         <thead className="bg-light-2 text-[10px] uppercase font-bold text-secondary">
                             <tr>
                                 <th className="px-6 py-3 sticky left-0 bg-light-2 z-10 w-48 border-r border-light-5">Resident</th>
-                                <th className="px-6 py-3">Outpatient (44w)</th>
-                                <th className="px-6 py-3">Inpatient (48w)</th>
-                                <th className="px-6 py-3">Crit Care (Max 24w)</th>
-                                <th className="px-6 py-3">Night Float (6w)</th>
+                                <th className="px-6 py-3">Outpatient (44w+)</th>
+                                <th className="px-6 py-3">Inpatient (48w+)</th>
+                                <th className="px-6 py-3">Crit Care (24w max)</th>
+                                <th className="px-6 py-3">Night Float (6w+)</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
