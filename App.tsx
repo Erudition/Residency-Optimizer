@@ -425,7 +425,7 @@ const App: React.FC = () => {
     return preloadHistoricalData(Array.isArray(residents) ? residents : []);
   }, [residents]);
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts' | 'resident_assignments'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts' | 'totals'>('schedule');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'residents' | 'backup' | 'reset'>('residents');
   
@@ -1587,7 +1587,7 @@ const App: React.FC = () => {
           <NavButton id="schedule" label={viewMode === 'unified' ? "Schedule 3yr" : "Schedule"} icon={LayoutGrid} />
           {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
           <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
-          <NavButton id="resident_assignments" label={viewMode === 'unified' ? "Res Assignments 3yr" : "Res Assignments"} icon={Users} />
+          <NavButton id="totals" label={viewMode === 'unified' ? "Totals 3yr" : "Totals"} icon={Users} />
           {viewMode === 'unified' ? (
             <>
               <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
@@ -1780,7 +1780,7 @@ const App: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'resident_assignments' && (
+              {activeTab === 'totals' && (
                 <div className="flex-1 overflow-hidden">
                   <ResidentAssignmentsStats
                     residents={viewMode === 'unified' ? displayResidents : activeResidents}

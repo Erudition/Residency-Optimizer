@@ -151,7 +151,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
     <div className="h-full flex flex-col bg-white overflow-hidden relative">
       <div className="p-4 bg-light-1 border-b">
         <h2 className="text-lg font-bold text-primary flex items-center gap-2">
-          Resident Rotations Heatmap
+          Resident Rotation Totals
         </h2>
         <p className="text-sm text-muted">View annual rotation totals for each resident. Hover over cells to see exact assigned weeks.</p>
       </div>
