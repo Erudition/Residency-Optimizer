@@ -161,7 +161,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
           <thead className="sticky top-0 z-30 bg-light-1 text-xs text-muted font-semibold h-28 shadow-sm">
             <tr>
               <th
-                className="sticky left-0 z-40 bg-white/80 backdrop-blur-md border-b border-r p-0 text-left transition-all"
+                className="sticky left-0 z-40 bg-light-1/90 backdrop-blur-md border-b border-r p-0 text-left transition-all"
                 style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
               >
                 <div className="flex items-center justify-between h-full px-3 py-2 relative">
@@ -173,7 +173,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
                 </div>
               </th>
               {sortedResidents.map(r => (
-                <th key={r.id} className="border-b border-light-5 w-8 min-w-[32px] h-28 p-0 bg-white relative text-center">
+                <th key={r.id} className="border-b border-light-5 w-8 min-w-[32px] h-28 p-0 bg-light-1 relative text-center">
                   <div className="h-full flex items-end justify-center pb-3">
                     <span
                       className="text-[11px] font-bold text-primary select-none whitespace-nowrap"
@@ -191,7 +191,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
               return (
                 <tr key={type} className="hover:bg-light-1">
                   <td
-                    className="sticky left-0 z-20 bg-white/80 backdrop-blur-md border-b border-r px-3 py-1.5 font-medium text-primary whitespace-nowrap transition-all"
+                    className="sticky left-0 z-20 bg-light-1/90 backdrop-blur-md border-b border-r px-3 py-1.5 font-medium text-primary whitespace-nowrap transition-all"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
                   >
                     <span className="truncate">{ASSIGNMENT_LABELS[type]}</span>

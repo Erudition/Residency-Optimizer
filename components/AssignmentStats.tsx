@@ -188,7 +188,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
           <thead className="sticky top-0 z-30 bg-light-1 text-xs text-muted font-semibold h-10 shadow-sm">
             <tr>
               <th
-                className="sticky left-0 z-40 bg-white/80 backdrop-blur-md border-b border-r p-0 text-left transition-all"
+                className="sticky left-0 z-40 bg-light-1/90 backdrop-blur-md border-b border-r p-0 text-left transition-all"
                 style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
               >
                 <div className="flex items-center justify-between h-full px-3 py-2 relative">
@@ -223,7 +223,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
               return (
                 <tr key={type} className="hover:bg-light-1">
                   <td
-                    className="sticky left-0 z-20 bg-white/80 backdrop-blur-md border-b border-r px-3 py-1 font-medium text-primary whitespace-nowrap cursor-help group transition-all"
+                    className="sticky left-0 z-20 bg-light-1/90 backdrop-blur-md border-b border-r px-3 py-1 font-medium text-primary whitespace-nowrap cursor-help group transition-all"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
                     onMouseEnter={(e) => handleRowHeaderEnter(e, type)}
                     onMouseLeave={() => setRowTooltip(null)}
