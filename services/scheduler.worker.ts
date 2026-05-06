@@ -78,12 +78,13 @@ onmessage = async (e: MessageEvent) => {
            // Run healer on the unified grid
            // 150 iterations per result for fast execution
            console.log("Starting Healer phase for result", idx);
-           const healedUnified = healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, undefined, e.data.historicalSchedules, (step, max) => {
-             if (step % 10000 === 0) console.log("Healer progress:", step, "/", max);
+           const healedUnified = await healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, undefined, e.data.historicalSchedules, e.data.constraints?.cohortAssignments, (step, max, v) => {
+             if (step % 10000 === 0) console.log("Healer progress:", step, "/", max, "Violations:", v);
              postMessage({ 
                type: 'progress', 
                overallProgress: 0.8 + (0.2 * (step / max)),
-               healerProgress: Math.round((step / max) * 100)
+               healerProgress: Math.round((step / max) * 100),
+               violations: v
              });
            });
            console.log("Healer phase complete");
@@ -128,9 +129,9 @@ onmessage = async (e: MessageEvent) => {
   } else if (type === 'cancelAlgorithm') {
     cancelledAlgorithmIds.add(e.data.algoId);
   } else if (type === 'start-heal') {
-    const { grid, residents, historicalSchedules, startYear, totalYears } = e.data;
+    const { grid, residents, historicalSchedules, startYear, totalYears, cohortAssignments } = e.data;
     isHealingActive = true;
-    runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1);
+    runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1, cohortAssignments);
   } else if (type === 'stop-heal') {
     isHealingActive = false;
   } else if (type === 'cancel') {
@@ -148,19 +149,22 @@ async function runHeal(
   residents: any, 
   historicalSchedules: any,
   startYear: number,
-  totalYears: number
+  totalYears: number,
+  cohortAssignments?: any
 ) {
   let currentBest = JSON.parse(JSON.stringify(grid));
-  currentBest = healSchedule(
+  currentBest = await healSchedule(
     currentBest, 
     residents, 
     startYear,
     undefined,
     historicalSchedules,
-    (step, max) => {
+    cohortAssignments,
+    (step, max, v) => {
       postMessage({ 
         type: 'heal-ping', 
-        healerProgress: Math.round((step / max) * 100)
+        healerProgress: Math.round((step / max) * 100),
+        violations: v
       });
     }
   );

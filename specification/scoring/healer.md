@@ -1,10 +1,12 @@
 # Schedule Healer Logic
 
-The **Schedule Healer** acts as the Phase 2 post-generation optimization engine. It is designed to take an initial candidate schedule generated during Phase 1 (Stochastic or Staffing-First) and resolve remaining staffing gaps, cohort requirements, and continuity issues via localized, block-aware swaps and Simulated Annealing.
+The **Schedule Healer** corrects violations in a full "base schedule" - a raw generated schedule that may have some custom blocks locked - by performing swaps and substitutions without touching the locked blocks.
+
+It also acts as the "Phase 2" post-generation optimization step to improve the scores of generated base schedules, while still minimizing the breaking up of the 4+1 structure.
 
 ---
 
-## 1. Phase 2 Pre-Processing: Deficit Recovery
+## 1. Pre-Processing: Deficit Recovery
 Before starting simulated annealing, the healer runs a targeted **Deficit Recovery** step specifically designed for split blocks that are prone to fragmentation:
 *   **Target Rotations:** `NEURO`, `GI`, and `PULM`.
 *   **Mechanic:** For any resident identified by the [RequirementsEngine](file:///home/adroit/Projects/residency-optimizer/services/requirementsEngine.ts) as having a deficit in these target rotations, the healer replaces unlocked `ELECTIVE` weeks with the missing rotation until the deficit is recovered or no more flexible weeks exist.

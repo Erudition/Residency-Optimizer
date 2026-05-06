@@ -1,9 +1,9 @@
 import { test, expect } from 'vitest';
-import { HealerConstraintGenerator } from '../services/generators/healerSolver';
+import { healer } from '../services/healerSolver';
 import { WeekByWeekGenerator } from '../services/generators/weekByWeek';
 import { Resident, AssignmentType } from '../types';
 
-test('HealerConstraintGenerator performance check', () => {
+test('Healer performance check', () => {
     const residents: Resident[] = Array.from({ length: 45 }, (_, i) => ({
         id: `r${i}`,
         name: `Resident ${i}`,
@@ -23,7 +23,7 @@ test('HealerConstraintGenerator performance check', () => {
     console.log(`WeekByWeek (20 seeds) time: ${endWBW - startWBW}ms`);
 
     const start = Date.now();
-    const result = HealerConstraintGenerator.generate(residents, existingSchedule, 0, historicalSchedules);
+    const result = healer.solve(residents, existingSchedule, 0, historicalSchedules);
     const end = Date.now();
 
     console.log(`Execution time: ${end - start}ms`);

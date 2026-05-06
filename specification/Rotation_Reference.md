@@ -1,6 +1,6 @@
 # Internal Medicine Residency Rotation Reference
 
-This document serves as the single source of truth for the classification, staffing requirements, and ACGME compliance targets for all clinical experiences within the Internal Medicine Residency Program. This reference is designed to guide both the scheduling engine (AI/Residency-Optimizer) and human schedulers.
+This document serves as the single source of truth for the classification, staffing requirements, and ACGME compliance minimums for all clinical experiences within the Internal Medicine Residency Program. This reference is designed to guide both the scheduling engine (AI/Residency-Optimizer) and human schedulers.
 
 ---
 
@@ -16,7 +16,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 5
 *   **Total Min Acceptable Residents Concurrently Scheduled:** 3
 *   **Additional Notes:** Can take up to 1 Medical Student
-*   **Methodist scheduling information:** Combined Wards target of 12 weeks for Interns and 8 weeks for Seniors. Contributes to the core inpatient wards minimums. Interns may not be scheduled without supervision, seniors may be scheduled without interns.
+*   **Methodist scheduling information:** Combined Wards minimum of 12 weeks for Interns and 8 weeks for Seniors. Contributes to the core inpatient wards minimums. Interns may not be scheduled without supervision, seniors may be scheduled without interns.
 
 ### Wards Blue
 *   **Setting:** Inpatient

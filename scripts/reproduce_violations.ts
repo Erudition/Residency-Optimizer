@@ -13,7 +13,7 @@ const test = async () => {
             2026, 1, residents, {},
             { existing: {}, cohortAssignments: { 2026: mockCohortMap } },
             { tries: 1, priority: CompetitionPriority.BEST_SCORE, topN: 1 },
-            ['experimental'], () => false, () => {}
+            ['staffingFirst'], () => false, () => {}
         );
 
         

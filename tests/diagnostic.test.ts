@@ -10,7 +10,7 @@ describe('Algorithm Diagnostic', () => {
         const cohortMap: Record<string, number> = {};
         residents.forEach((r, idx) => { cohortMap[r.id] = idx % 5; });
 
-        for (const algoId of ['exact']) {
+        for (const algoId of ['staffingFirst', 'educationFirst', 'weekByWeek', 'stochastic']) {
             const result = await generateSchedule(
                 2026, 1, residents, {},
                 { existing: {}, cohortAssignments: { 2026: cohortMap } },

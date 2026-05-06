@@ -11,7 +11,7 @@ Tab bar along the bottom, excel spreadsheet-style, that is *only* visible when a
 - Must have a red badge next to tab label showing total number of violations - number must exactly match the total in that tab
 - Create table summarizing each requirement, the year, its type (PC, HC, II, etc.), and the status (Violated, Satisfied, N/A) with an appropriate color
 - Per-year requirements have just one progress bar for the current year, but requirements based on the full 3 years should have 3 stacked progress bars
-- In all cases where there is a "minimum" requirement and a "current" count, show in `current / target` format universally, even if greater than 100%; numerator should be bold and colored red when in violation
+- In all cases where there is a "minimum" requirement and a "current" count, show in `current / minimum` format universally, even if greater than 100%; numerator should be bold and colored red when in violation
 
 # Coverage tab
 - Must have a red badge next to tab label showing total number of violations - number must exactly match the total in that tab

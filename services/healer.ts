@@ -1,8 +1,9 @@
 import { ScheduleGrid, AssignmentType, Resident, ScheduleCell } from '../types';
 import { ROTATION_METADATA, REQUIREMENTS } from '../constants';
 import { canFitBlock, getAssignedCount, getYearRequirementCount } from './generators/utils';
-import { getRequirementViolations, getWeeklyViolations } from './scheduler';
-import { HealerConstraintGenerator } from './generators/healerSolver';
+import { getWeeklyViolations } from './scheduler';
+import { RequirementsEngine } from './requirementsEngine';
+import { healer } from './healerSolver';
 
 /**
  * Checks if the current schedule has any staffing violations at a given week.
@@ -34,24 +35,25 @@ const hasStaffingViolationInWindow = (schedule: ScheduleGrid, residents: Residen
  * Phase 2 Healer: Post-generation hill-climbing optimization.
  * Now performs block-aware swaps (4-week or 2-week) to fix requirement gaps.
  */
-export const healSchedule = (
+export const healSchedule = async (
     schedule: ScheduleGrid,
     residents: Resident[],
     gridStartYear: number,
     maxIterations?: number,
     historicalSchedules: any = {},
-    onProgress?: (step: number, maxSteps: number) => void
-): ScheduleGrid => {
+    cohortAssignmentsParam: any = {},
+    onProgress?: (step: number, maxSteps: number, violations?: number) => void
+): Promise<ScheduleGrid> => {
 
     let currentSchedule = JSON.parse(JSON.stringify(schedule));
-    let currentViolations = getRequirementViolations(residents, currentSchedule, historicalSchedules, gridStartYear).length;
+    let currentViolations = RequirementsEngine.getViolations(residents, currentSchedule, historicalSchedules, gridStartYear).length;
     let currentStaffingGaps = getWeeklyViolations(residents, currentSchedule, gridStartYear).length;
 
     const totalWeeks = (Object.values(currentSchedule)[0] as any)?.length || 52;
 
     // T6.5: Deficit Recovery for split blocks (NEURO, GI, PULM)
     residents.forEach(r => {
-        const rViolations = getRequirementViolations(residents, currentSchedule, historicalSchedules, gridStartYear)
+        const rViolations = RequirementsEngine.getViolations(residents, currentSchedule, historicalSchedules, gridStartYear)
             .filter(v => v.residentId === r.id && [AssignmentType.NEURO, AssignmentType.GI, AssignmentType.PULM].includes(v.type));
         
         rViolations.forEach(v => {
@@ -71,17 +73,24 @@ export const healSchedule = (
     });
 
     // Recompute current metrics after deficit recovery
-    currentViolations = getRequirementViolations(residents, currentSchedule, historicalSchedules, gridStartYear).length;
+    currentViolations = RequirementsEngine.getViolations(residents, currentSchedule, historicalSchedules, gridStartYear).length;
     currentStaffingGaps = getWeeklyViolations(residents, currentSchedule, gridStartYear).length;
+
+    const isNested = cohortAssignmentsParam && typeof Object.values(cohortAssignmentsParam)[0] === 'object';
+    const flatCohorts = isNested 
+        ? (cohortAssignmentsParam[gridStartYear] || {}) 
+        : (cohortAssignmentsParam || {});
 
     const cohortAssignments: Record<string, number> = {};
     residents.forEach(r => {
-        if (r.cohort !== undefined) {
+        if (flatCohorts[r.id] !== undefined) {
+            cohortAssignments[r.id] = flatCohorts[r.id];
+        } else if (r.cohort !== undefined) {
             cohortAssignments[r.id] = r.cohort;
         }
     });
 
-    currentSchedule = HealerConstraintGenerator.generate(
+    currentSchedule = await healer.solve(
         residents,
         currentSchedule,
         0,

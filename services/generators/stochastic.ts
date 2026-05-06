@@ -1,7 +1,7 @@
 import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory, ScheduleGenerator } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
 
-import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount } from './utils';
+import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
 
 
 class SeededRNG {
@@ -35,13 +35,7 @@ export const StochasticGenerator: ScheduleGenerator = {
 
         let validCohortAssignments = { ...(cohortAssignments || {}) };
         if (Object.keys(validCohortAssignments).length === 0) {
-            const sorted = [...residents].sort((a, b) => {
-                if (a.level !== b.level) return a.level - b.level;
-                return a.name.localeCompare(b.name);
-            });
-            sorted.forEach((r, idx) => {
-                validCohortAssignments[r.id] = idx % 5;
-            });
+            validCohortAssignments = getStandardCohortMap(residents);
         }
 
         const historicalCounts: Record<string, Record<string, number>> = priorRequirementCounts || {};
@@ -61,7 +55,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
-                    const weeklyClinicType = (pgy === 2) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                    const weeklyClinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }
@@ -109,6 +103,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                             const possibleWeeks = seededShuffle(Array.from({length: effectiveEnd - effectiveStart - dur + 1}, (_, i) => effectiveStart + i));
 
                             for (const w of possibleWeeks) {
+                                const cohort = getCohortAtWeek(res, w, validCohortAssignments);
                                 if (!isAligned(w, cohort, dur)) continue;
                                 if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
 
@@ -168,7 +163,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                     safetyI++;
                     const pool = seededShuffle(residents.filter(r => {
                         const level = r.level + Math.floor(w / 52);
-                        const cohort = validCohortAssignments[r.id];
+                        const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                         const start = r.activeWeekStart ?? 0;
                         const end = r.activeWeekEnd ?? totalWeeks;
                         return w >= start && w < end &&
@@ -189,7 +184,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                     safetyS++;
                     const pool = seededShuffle(residents.filter(r => {
                         const level = r.level + Math.floor(w / 52);
-                        const cohort = validCohortAssignments[r.id];
+                        const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                         const start = r.activeWeekStart ?? 0;
                         const end = r.activeWeekEnd ?? totalWeeks;
                         return w >= start && w < end &&
