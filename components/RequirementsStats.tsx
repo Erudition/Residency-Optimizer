@@ -266,7 +266,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
 
     if (mode === 'acgme') {
         return (
-            <div className="space-y-8">
+            <div className="space-y-8 p-6">
                 {/* Global Stats Summary */}
                 {globalStats && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -398,7 +398,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 p-6">
             {/* Jeopardy Monitoring */}
             {jeopardyGapWeeks.length > 0 && (
                 <div className="bg-red/5 border border-red/20 rounded-xl p-4 flex items-start gap-3">
