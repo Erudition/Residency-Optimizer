@@ -142,7 +142,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
     const jeopardyGapWeeks = useMemo(() => {
         if (mode !== 'mhs' || activeYear === undefined) return [];
         const gaps: number[] = [];
-        const totalWeeks = Object.values(schedule)[0]?.length || 52;
+        const totalWeeks = (Object.values(schedule)[0] as any[])?.length || 52;
 
         for (let w = 0; w < totalWeeks; w++) {
             let pgy2Flexible = 0;
