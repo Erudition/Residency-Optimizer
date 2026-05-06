@@ -1732,7 +1732,7 @@ const App: React.FC = () => {
 
 
                     <div className="flex items-center gap-3">
-                      {(viewMode === 'unified' || !activeSchedule?.unifiedData) && (
+                      {!activeSchedule?.isHistory && (
                         <Button
                           variant={isHealing ? 'ghost' : 'secondary'}
                           size="sm"
