@@ -1104,21 +1104,22 @@ const App: React.FC = () => {
     try {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Schedule');
-      const headers = ['Resident', 'PGY', 'Cohort', ...Array.from({ length: 52 }, (_, i) => `Week ${i + 1}`)];
+      const totalWeeksInGrid = (Object.values(displayGrid)[0] as any)?.length || 52;
+      const headers = ['Resident', 'PGY', 'Cohort', ...Array.from({ length: totalWeeksInGrid }, (_, i) => `Week ${i + 1}`)];
       const headerRow = worksheet.addRow(headers);
       headerRow.font = { bold: true };
 
-      residents.forEach(r => {
-        const rowData = [r.name, r.level, String.fromCharCode(65 + r.cohort)];
+      displayResidents.forEach(r => {
+        const rowData = [r.name, r.level, String.fromCharCode(65 + (r.cohort ?? 0))];
         const residentCells: string[] = [];
-        for (let i = 0; i < 52; i++) {
-          const cell = activeSchedule.data[r.id]?.[i];
+        for (let i = 0; i < totalWeeksInGrid; i++) {
+          const cell = displayGrid[r.id]?.[i];
           residentCells.push(cell?.assignment ? ASSIGNMENT_ABBREVIATIONS[cell.assignment] : "");
         }
         const row = worksheet.addRow([...rowData, ...residentCells]);
 
-        for (let i = 0; i < 52; i++) {
-          const cell = activeSchedule.data[r.id]?.[i];
+        for (let i = 0; i < totalWeeksInGrid; i++) {
+          const cell = displayGrid[r.id]?.[i];
           if (cell?.assignment) {
             const hex = ASSIGNMENT_HEX_COLORS[cell.assignment]?.replace('#', '') || 'CCCCCC';
             row.getCell(4 + i).fill = {
