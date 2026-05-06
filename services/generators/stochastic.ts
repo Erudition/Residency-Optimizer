@@ -106,6 +106,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                                 const cohort = getCohortAtWeek(res, w, validCohortAssignments);
                                 if (!isAligned(w, cohort, dur)) continue;
                                 if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
+                                if (w + dur > resEnd) continue;
 
                                 for (const type of compatibleTypes) {
                                     const meta = ROTATION_METADATA[type];
@@ -166,7 +167,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                         const start = r.activeWeekStart ?? 0;
                         const end = r.activeWeekEnd ?? totalWeeks;
-                        return w >= start && w < end &&
+                        return w >= start && w + dur <= end &&
                                level === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
@@ -187,7 +188,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                         const start = r.activeWeekStart ?? 0;
                         const end = r.activeWeekEnd ?? totalWeeks;
-                        return w >= start && w < end &&
+                        return w >= start && w + dur <= end &&
                                level >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&

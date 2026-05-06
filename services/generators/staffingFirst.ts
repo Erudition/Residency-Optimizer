@@ -37,10 +37,10 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         // Ensure all residents have rows and helper functions for PGY calculation
         const getPgy = (r: Resident, week: number) => r.level + Math.floor(week / 52);
-        const isActive = (r: Resident, week: number) => {
+        const isActive = (r: Resident, week: number, duration: number = 1) => {
             const start = r.activeWeekStart ?? 0;
             const end = r.activeWeekEnd ?? Infinity;
-            return week >= start && week < end;
+            return week >= start && week + duration <= end;
         };
 
         residents.forEach(r => {
@@ -111,7 +111,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     const pool = seededShuffle(residents.filter(r => {
                         const currentPgy = getPgy(r, w);
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                        return isActive(r, w) &&
+                        return isActive(r, w, dur) &&
                                currentPgy === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
@@ -133,7 +133,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     const pool = seededShuffle(residents.filter(r => {
                         const currentPgy = getPgy(r, w);
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                        return isActive(r, w) &&
+                        return isActive(r, w, dur) &&
                                currentPgy >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
@@ -190,6 +190,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                                 const cohort = getCohortAtWeek(res, w, validCohortAssignments);
                                 if (!isAligned(w, cohort, dur)) continue;
                                 if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
+                                if (!isActive(res, w, dur)) continue;
 
                                 for (const type of compatibleTypes) {
                                     const meta = ROTATION_METADATA[type];

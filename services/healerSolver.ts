@@ -93,7 +93,7 @@ export const healer: HealerSolver = {
             let pgy2Flexible = 0, pgy3Flexible = 0;
             residents.forEach(r => {
                 const pgy = getLevel(Number(r.level) || 1, w);
-                const a = sched[r.id][w]?.assignment;
+                const a = sched[r.id]?.[w]?.assignment;
                 if (a && flexibleAssigns.includes(a)) {
                     if (pgy === 2) pgy2Flexible++;
                     if (pgy === 3) pgy3Flexible++;
@@ -137,13 +137,18 @@ export const healer: HealerSolver = {
             for (let i = 0; i < COHORT_COUNT; i++) {
                 const w = start + i;
                 if (w >= totalWeeks) continue;
-                const a = sched[rId][w]?.assignment;
+                const a = sched[rId]?.[w]?.assignment;
                 if (a && a !== lastA) { changes++; lastA = a; }
             }
             return changes * W_CONTINUITY;
         };
 
         const currentSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
+        residents.forEach(r => {
+            if (!currentSchedule[r.id]) {
+                currentSchedule[r.id] = Array.from({ length: totalWeeks }, () => ({ assignment: null as any, locked: false }));
+            }
+        });
         const weekCounts: any[] = Array.from({ length: totalWeeks }, () => ({ interns: {}, seniors: {} }));
         const resCounts: Record<string, Record<number, Record<string, number>>> = {};
         const resContCache: Record<string, number[]> = {};
@@ -239,7 +244,7 @@ export const healer: HealerSolver = {
             const level = getLevel(startLvl, firstW);
             const a2 = assignmentsByLevel[level][Math.floor(rng.next() * assignmentsByLevel[level].length)];
 
-            const oldAssignments: AssignmentType[] = blockWeeks.map(w => currentSchedule[r.id][w].assignment!);
+            const oldAssignments: AssignmentType[] = blockWeeks.map(w => currentSchedule[r.id]?.[w]?.assignment!);
             if (oldAssignments.every(a => a === a2)) continue;
 
             const oldWPs = blockWeeks.map(w => weekPenaltyCache[w]);

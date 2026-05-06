@@ -96,7 +96,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
         const isResidentActive = (r: Resident, w: number) => {
             if (r.activeWeekStart !== undefined && w < r.activeWeekStart) return false;
-            if (r.activeWeekEnd !== undefined && w > r.activeWeekEnd) return false;
+            if (r.activeWeekEnd !== undefined && w >= r.activeWeekEnd) return false;
             return true;
         };
 
