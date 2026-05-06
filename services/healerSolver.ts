@@ -1,6 +1,6 @@
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT, ELECTIVE_TYPES, ACGME_TYPES } from '../constants';
-import { getStandardCohortMap } from './generators/utils';
+import { getStandardCohortMap, getCohortAtWeek } from './generators/utils';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
 
 class SeededRNG {
@@ -74,7 +74,15 @@ export const healer: HealerSolver = {
         const W_STAFFING = 10000000, W_JEOPARDY = 5000000, W_REQUIREMENT = 25000, W_CONTINUITY = 1000;
         const TOTAL_CYCLES = Math.floor((totalWeeks - 1) / COHORT_COUNT) + 1;
 
-        const getLevel = (startLvl: number, week: number): number => Math.min(3, startLvl + Math.floor(week / 52));
+        const firstRes = residents.find(res => res.startYear && res.startYear > 0);
+        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
+
+        const getPgyAtWeek = (res: Resident, week: number): number => {
+            if (res.startYear && res.startYear > 0) {
+                return Math.min(3, gridStartYear + Math.floor(week / 52) - res.startYear + 1);
+            }
+            return Math.min(3, (Number(res.level) || 1) + Math.floor(week / 52));
+        };
 
         const getTypeStaffingPenalty = (type: AssignmentType, interns: number, seniors: number): number => {
             const m = ROTATION_METADATA[type]!; let c = 0;
@@ -92,8 +100,8 @@ export const healer: HealerSolver = {
             
             let pgy2Flexible = 0, pgy3Flexible = 0;
             residents.forEach(r => {
-                const pgy = getLevel(Number(r.level) || 1, w);
-                const a = sched[r.id][w]?.assignment;
+                const pgy = getPgyAtWeek(r, w);
+                const a = sched[r.id]?.[w]?.assignment;
                 if (a && flexibleAssigns.includes(a)) {
                     if (pgy === 2) pgy2Flexible++;
                     if (pgy === 3) pgy3Flexible++;
@@ -106,9 +114,9 @@ export const healer: HealerSolver = {
 
         const getResPenalty = (rId: string, rcByLvl: Record<number, Record<string, number>>): number => {
             const r = residentMap.get(rId)!;
-            const startLvl = Math.max(1, Math.min(3, Number(r.level) || 1));
+            const startLvl = getPgyAtWeek(r, 0);
             const activeLevels = new Set<number>();
-            for (let w = 0; w < totalWeeks; w++) activeLevels.add(getLevel(startLvl, w));
+            for (let w = 0; w < totalWeeks; w++) activeLevels.add(getPgyAtWeek(r, w));
             let p = 0;
             activeLevels.forEach(lvl => {
                 (REQUIREMENTS[lvl as 1|2|3] || []).forEach(req => {
@@ -137,13 +145,29 @@ export const healer: HealerSolver = {
             for (let i = 0; i < COHORT_COUNT; i++) {
                 const w = start + i;
                 if (w >= totalWeeks) continue;
-                const a = sched[rId][w]?.assignment;
+                const a = sched[rId]?.[w]?.assignment;
                 if (a && a !== lastA) { changes++; lastA = a; }
             }
             return changes * W_CONTINUITY;
         };
 
         const currentSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
+        residents.forEach(r => {
+            if (!currentSchedule[r.id]) {
+                currentSchedule[r.id] = Array.from({ length: totalWeeks }, () => ({ assignment: null as any, locked: false }));
+            }
+            for (let w = 0; w < totalWeeks; w++) {
+                if (!currentSchedule[r.id][w] || currentSchedule[r.id][w].assignment === null) {
+                    const isClinic = w % COHORT_COUNT === getCohortAtWeek(r, w, validCohortAssignments);
+                    if (isClinic) {
+                        const clinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                        currentSchedule[r.id][w] = { assignment: clinicType, locked: true };
+                    } else {
+                        currentSchedule[r.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                    }
+                }
+            }
+        });
         const weekCounts: any[] = Array.from({ length: totalWeeks }, () => ({ interns: {}, seniors: {} }));
         const resCounts: Record<string, Record<number, Record<string, number>>> = {};
         const resContCache: Record<string, number[]> = {};
@@ -152,11 +176,10 @@ export const healer: HealerSolver = {
             residents.forEach(r => {
                 resCounts[r.id] = { 1: {}, 2: {}, 3: {} };
                 resContCache[r.id] = Array(TOTAL_CYCLES).fill(0);
-                const startLvl = Math.max(1, Math.min(3, Number(r.level) || 1));
                 for (let w = 0; w < totalWeeks; w++) {
                     const a = currentSchedule[r.id]?.[w]?.assignment;
                     if (a) {
-                        const level = getLevel(startLvl, w);
+                        const level = getPgyAtWeek(r, w);
                         if (level === 1) weekCounts[w].interns[a] = (weekCounts[w].interns[a] || 0) + 1;
                         else weekCounts[w].seniors[a] = (weekCounts[w].seniors[a] || 0) + 1;
                         if (!existingSchedule?.[r.id]?.[w]?.locked) {
@@ -235,11 +258,10 @@ export const healer: HealerSolver = {
             if (blockWeeks.length === 0) continue;
 
             const firstW = blockWeeks[0];
-            const startLvl = Math.max(1, Math.min(3, Number(r.level) || 1));
-            const level = getLevel(startLvl, firstW);
+            const level = getPgyAtWeek(r, firstW);
             const a2 = assignmentsByLevel[level][Math.floor(rng.next() * assignmentsByLevel[level].length)];
 
-            const oldAssignments: AssignmentType[] = blockWeeks.map(w => currentSchedule[r.id][w].assignment!);
+            const oldAssignments: AssignmentType[] = blockWeeks.map(w => currentSchedule[r.id]?.[w]?.assignment!);
             if (oldAssignments.every(a => a === a2)) continue;
 
             const oldWPs = blockWeeks.map(w => weekPenaltyCache[w]);
@@ -249,15 +271,16 @@ export const healer: HealerSolver = {
 
             blockWeeks.forEach((w, i) => {
                 const a1 = oldAssignments[i];
-                if (level === 1) {
+                const lvl = getPgyAtWeek(r, w);
+                if (lvl === 1) {
                     weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) - 1;
                     weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) + 1;
                 } else {
                     weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) - 1;
                     weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) + 1;
                 }
-                typeFulfillment[a1]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) - 1);
-                typeFulfillment[a2]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1);
+                typeFulfillment[a1]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) - 1);
+                typeFulfillment[a2]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) + 1);
                 currentSchedule[r.id][w].assignment = a2;
             });
 
@@ -284,15 +307,16 @@ export const healer: HealerSolver = {
             } else {
                 blockWeeks.forEach((w, i) => {
                     const a1 = oldAssignments[i];
-                    if (level === 1) {
+                    const lvl = getPgyAtWeek(r, w);
+                    if (lvl === 1) {
                         weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) - 1;
                         weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) + 1;
                     } else {
                         weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) - 1;
                         weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) + 1;
                     }
-                    typeFulfillment[a2]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) - 1);
-                    typeFulfillment[a1]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1);
+                    typeFulfillment[a2]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) - 1);
+                    typeFulfillment[a1]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) + 1);
                     currentSchedule[r.id][w].assignment = a1;
                 });
             }

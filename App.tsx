@@ -42,6 +42,7 @@ import { Dashboard } from './components/Dashboard';
 import { ResidentManager } from './components/ResidentManager';
 import { RelationshipStats } from './components/RelationshipStats';
 import { AssignmentStats } from './components/AssignmentStats';
+import { ResidentAssignmentsStats } from './components/ResidentAssignmentsStats';
 import { FairnessStats } from './components/FairnessStats';
 import { RequirementsStats } from './components/RequirementsStats';
 import { ScheduleComparison } from './components/ScheduleComparison';
@@ -280,14 +281,112 @@ const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
   );
 };
 
+const sanitizeScheduleGrid = (
+  grid: ScheduleGrid,
+  residentsList: Resident[],
+  year?: number,
+  startYear: number = 2026
+): ScheduleGrid => {
+  if (!grid || typeof grid !== 'object') return grid;
+  
+  const residentsMap = new Map<string, Resident>();
+  if (Array.isArray(residentsList)) {
+    residentsList.forEach(r => {
+      residentsMap.set(r.id, r);
+      residentsMap.set(r.name, r);
+    });
+  } else if (residentsList && typeof residentsList === 'object') {
+    Object.entries(residentsList).forEach(([name, data]: [string, any]) => {
+      const id = data.id || name;
+      const r = { id, name, ...data } as Resident;
+      residentsMap.set(id, r);
+      residentsMap.set(name, r);
+    });
+  }
+  
+  const sanitized: ScheduleGrid = {};
+  
+  Object.entries(grid).forEach(([rId, row]) => {
+    const resident = residentsMap.get(rId);
+    if (!resident || !Array.isArray(row)) {
+      sanitized[rId] = row;
+      return;
+    }
+    
+    // Compute bounds from transferInYear / transferOutYear and startYear
+    const residentFirstYear = resident.transferInYear ?? resident.startYear;
+    const residentLastYear = resident.transferOutYear ?? (resident.startYear + 2);
+    
+    let start: number;
+    let end: number;
+    
+    if (year !== undefined) {
+      // Single-year grid (52 weeks): compute if resident is active in this academic year
+      if (year < residentFirstYear || year > residentLastYear) {
+        // Resident is completely outside this academic year
+        start = 0;
+        end = 0;
+      } else {
+        start = 0;
+        end = 52;
+      }
+    } else {
+      // Unified grid: compute global week indices
+      const totalSpanWeeks = row.length;
+      start = Math.max(0, (residentFirstYear - startYear) * 52);
+      end = Math.min(totalSpanWeeks, (residentLastYear + 1 - startYear) * 52);
+    }
+    
+    sanitized[rId] = row.map((cell, idx) => {
+      if (idx < start || idx >= end) {
+        if (cell && cell.assignment !== null) {
+          return { ...cell, assignment: null };
+        }
+      }
+      return cell;
+    });
+  });
+  return sanitized;
+};
+
+const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): ScheduleSession => {
+  const data = s.data || s.schedule || {};
+  const id = s.id || `sched-imported-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+  const name = s.name || s.winnerName || 'Imported Schedule';
+  const startYear = s.startYear || 2026;
+
+  const sanitizedData: Record<string, ScheduleGrid> = {};
+  Object.entries(data).forEach(([yearStr, grid]) => {
+    sanitizedData[yearStr] = sanitizeScheduleGrid(grid as ScheduleGrid, residentsList, parseInt(yearStr), startYear);
+  });
+
+  const rawUnified = s.unifiedData || s.unifiedSchedule;
+  const sanitizedUnifiedData = rawUnified 
+    ? sanitizeScheduleGrid(rawUnified as ScheduleGrid, residentsList, undefined, startYear) 
+    : undefined;
+
+  return {
+    ...s,
+    id,
+    name,
+    data: sanitizedData,
+    unifiedData: sanitizedUnifiedData,
+    startYear,
+    createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
+    isGenerating: false
+  };
+};
+
 const App: React.FC = () => {
   const [residents, setResidents] = useState<Resident[]>(() =>
     loadState('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS())
   );
 
-  const [schedules, setSchedules] = useState<ScheduleSession[]>(() =>
-    loadState('rsp_schedules_v4', [])
-  );
+  const [schedules, setSchedules] = useState<ScheduleSession[]>(() => {
+    const rawSchedules = loadState<ScheduleSession[]>('rsp_schedules_v4', []);
+    const loadedResidents = loadState<Resident[]>('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS());
+    return rawSchedules.map((s: any) => normalizeAndSanitizeSchedule(s, loadedResidents));
+  });
   const [algoAttempts, setAlgoAttempts] = useState<number[]>([]);
   const [exhaustionPoints, setExhaustionPoints] = useState<number[]>([]);
   const [healerProgress, setHealerProgress] = useState<number | undefined>(undefined);
@@ -326,7 +425,7 @@ const App: React.FC = () => {
     return preloadHistoricalData(Array.isArray(residents) ? residents : []);
   }, [residents]);
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts' | 'totals'>('schedule');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'residents' | 'backup' | 'reset'>('residents');
   
@@ -450,6 +549,19 @@ const App: React.FC = () => {
   }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear]);
   
   const [viewMode, setViewMode] = useState<'singleYear' | 'unified'>('singleYear');
+
+  const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
+    setViewMode(mode);
+    if (mode === 'unified') {
+      if (['cohorts', 'coworking', 'fairness', 'acgme_requirements', 'workload'].includes(activeTab)) {
+        setActiveTab('schedule');
+      }
+    } else {
+      if (activeTab === 'audit') {
+        setActiveTab('schedule');
+      }
+    }
+  };
   // Sync convergence data from buffer when switching back to dashboard
   useEffect(() => {
     if (activeTab === 'loading' && activeSchedule?.isGenerating && convergenceBufferRef.current.length > convergenceData.length) {
@@ -620,15 +732,17 @@ const App: React.FC = () => {
       const y = startYear + offset;
       const yrResidents = getResidentsForYear(y);
       const yrGrid = useUnified ? (activeSchedule.data[y] || {}) : currentGrid;
-      const reqs = getRequirementViolations(yrResidents, yrGrid, fullHistory, y).length;
-      const constraints = getWeeklyViolations(yrResidents, yrGrid, y).length;
+      const reqsList = getRequirementViolations(yrResidents, yrGrid, fullHistory, y);
+      const reqs = reqsList.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0);
+      const constraintsList = getWeeklyViolations(yrResidents, yrGrid, y);
+      const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
       const audit = getAuditViolations(yrResidents, fullHistory, y);
       total += reqs + constraints + audit;
     }
     return total;
   }, [activeSchedule, historySchedules, activeScheduleId, activeYear, viewMode, currentGrid, residents]);
 
-  const hasViolations = violations.reqs.length > 0 || violations.constraints.length > 0;
+  const hasViolations = activeViolationsCount > 0;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -1102,12 +1216,12 @@ const App: React.FC = () => {
           throw new Error("Invalid backup format");
         }
 
-        const patchedSchedules = json.schedules.map((s: any) => ({
-          ...s,
-          createdAt: s.createdAt ? new Date(s.createdAt) : new Date()
-        }));
+        const residentsToUse = Array.isArray(json.residents) ? json.residents : residents;
+        const patchedSchedules = json.schedules.map((s: any) => normalizeAndSanitizeSchedule(s, residentsToUse));
 
-        setResidents(json.residents);
+        if (Array.isArray(json.residents)) {
+          setResidents(json.residents);
+        }
         setSchedules(patchedSchedules);
         setActiveScheduleId('all');
         alert("Backup imported successfully!");
@@ -1383,7 +1497,8 @@ const App: React.FC = () => {
         <div className="flex-1 flex items-center justify-center gap-2">
           <div className="flex bg-light-2 p-0.5 rounded-xl border border-light-5">
             {allAcademicYears.map(y => {
-              const isActive = activeYear === y;
+              const isUnifiedRelevant = viewMode === 'unified' && y >= (activeSchedule?.startYear || ACTIVE_START_YEAR) && y <= (activeSchedule?.startYear || ACTIVE_START_YEAR) + 2;
+              const isActive = viewMode === 'unified' ? isUnifiedRelevant : activeYear === y;
               return (
                 <Button
                   variant="ghost"
@@ -1391,6 +1506,7 @@ const App: React.FC = () => {
                   onClick={() => {
                     startTransition(() => {
                       setActiveYear(y);
+                      handleSetViewMode('singleYear');
                       if (activeScheduleId === 'settings') {
                         // keep settings open
                       } else if (y < ACTIVE_START_YEAR) {
@@ -1414,18 +1530,17 @@ const App: React.FC = () => {
             })}
           </div>
           {activeSchedule?.unifiedData && (
-            <div className="flex bg-light-2 p-0.5 rounded-xl border border-light-5">
-              <Button
-                variant="ghost"
-                onClick={() => setViewMode(prev => prev === 'unified' ? 'singleYear' : 'unified')}
-                className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
-                  viewMode === 'unified'
-                    ? 'bg-white text-purple shadow-sm border border-light-5'
-                    : 'text-muted hover:text-purple'
-                }`}
+            <div className="flex items-center gap-1.5 ml-4">
+              <span className="text-[9px] font-black text-muted uppercase tracking-wider">Scope</span>
+              <div 
+                onClick={() => handleSetViewMode(viewMode === 'unified' ? 'singleYear' : 'unified')}
+                className="rocker-toggle"
+                title="Toggle between single-year (1Y) and 3-year unified (3Y) views"
               >
-                3-Year Unified View
-              </Button>
+                <div className={`rocker-toggle-thumb ${viewMode === 'unified' ? 'unified' : ''}`} />
+                <div className={`rocker-toggle-option ${viewMode !== 'unified' ? 'active' : ''}`}>1Y</div>
+                <div className={`rocker-toggle-option ${viewMode === 'unified' ? 'active' : ''}`}>3Y</div>
+              </div>
             </div>
           )}
         </div>
@@ -1469,16 +1584,25 @@ const App: React.FC = () => {
 
       {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
-          <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
-          <NavButton id="workload" label="Workload" icon={BarChart3} />
-          <NavButton id="coverage" label="Coverage" icon={Table} badgeCount={violations.constraints.length} />
-          <NavButton id="acgme_requirements" label="ACGME Reqs" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).length} />
-          <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} badgeCount={violations.audit} />
-          <NavButton id="mhs_requirements" label="MHS Reqs" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).length} />
-          <NavButton id="cohorts" label="Cohorts" icon={Users} />
-          <NavButton id="coworking" label="Coworking" icon={Network} />
-          <NavButton id="fairness" label="Fairness" icon={Scale} />
-          <NavButton id="export" label="Export" icon={FileSpreadsheet} />
+          <NavButton id="schedule" label={viewMode === 'unified' ? "Schedule 3yr" : "Schedule"} icon={LayoutGrid} />
+          {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
+          <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
+          <NavButton id="totals" label={viewMode === 'unified' ? "Totals 3yr" : "Totals"} icon={Users} />
+          {viewMode === 'unified' ? (
+            <>
+              <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
+              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+            </>
+          ) : (
+            <>
+              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="cohorts" label="Cohorts" icon={Users} />
+              <NavButton id="coworking" label="Coworking" icon={Network} />
+              <NavButton id="fairness" label="Fairness" icon={Scale} />
+            </>
+          )}
+          <NavButton id="export" label={viewMode === 'unified' ? "Export 3yr" : "Export"} icon={FileSpreadsheet} />
         </div>
       ) : null}
 
@@ -1610,7 +1734,7 @@ const App: React.FC = () => {
 
 
                     <div className="flex items-center gap-3">
-                      {(viewMode === 'unified' || !activeSchedule?.unifiedData) && (
+                      {!activeSchedule?.isHistory && (
                         <Button
                           variant={isHealing ? 'ghost' : 'secondary'}
                           size="sm"
@@ -1648,9 +1772,42 @@ const App: React.FC = () => {
                 </div>
               )}
               {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
-              {activeTab === 'coverage' && <div className="flex-1 overflow-hidden"><AssignmentStats residents={activeResidents} schedule={currentGrid} /></div>}
-              {activeTab === 'acgme_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} /></div>}
-              {activeTab === 'mhs_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="mhs" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} /></div>}
+              {activeTab === 'coverage' && (
+                <div className="flex-1 overflow-hidden">
+                  <AssignmentStats
+                    residents={viewMode === 'unified' ? displayResidents : activeResidents}
+                    schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                  />
+                </div>
+              )}
+              {activeTab === 'totals' && (
+                <div className="flex-1 overflow-hidden">
+                  <ResidentAssignmentsStats
+                    residents={viewMode === 'unified' ? displayResidents : activeResidents}
+                    schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                  />
+                </div>
+              )}
+              {activeTab === 'acgme_requirements' && (
+                <div className="flex-1 overflow-y-auto p-6 bg-light-1">
+                  <div className="max-w-6xl mx-auto">
+                    <RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} />
+                  </div>
+                </div>
+              )}
+              {activeTab === 'mhs_requirements' && (
+                <div className="flex-1 overflow-y-auto p-6 bg-light-1">
+                  <div className="max-w-6xl mx-auto">
+                    <RequirementsStats
+                      mode="mhs"
+                      residents={viewMode === 'unified' ? displayResidents : activeResidents}
+                      schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                      history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
+                      activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
+                    />
+                  </div>
+                </div>
+              )}
               {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} /></div>}
               {activeTab === 'cohorts' && (
                 <div className="flex-1 overflow-hidden">

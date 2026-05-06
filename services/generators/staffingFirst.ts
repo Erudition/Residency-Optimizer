@@ -36,11 +36,18 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
         // Ensure all residents have rows and helper functions for PGY calculation
-        const getPgy = (r: Resident, week: number) => r.level + Math.floor(week / 52);
-        const isActive = (r: Resident, week: number) => {
+        const firstRes = residents.find(res => res.startYear && res.startYear > 0);
+        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
+        const getPgy = (res: Resident, week: number): number => {
+            if (res.startYear && res.startYear > 0) {
+                return Math.min(3, gridStartYear + Math.floor(week / 52) - res.startYear + 1);
+            }
+            return Math.min(3, (Number(res.level) || 1) + Math.floor(week / 52));
+        };
+        const isActive = (r: Resident, week: number, duration: number = 1) => {
             const start = r.activeWeekStart ?? 0;
             const end = r.activeWeekEnd ?? Infinity;
-            return week >= start && week < end;
+            return week >= start && week + duration <= end;
         };
 
         residents.forEach(r => {
@@ -61,8 +68,6 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
         // 1. Initialize & Clinic Lock
         residents.forEach(r => {
             const row = newSchedule[r.id];
-
-
             
             for (let w = 0; w < totalWeeks; w++) {
                 if (!isActive(r, w)) {
@@ -73,7 +78,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 }
                 if (w % COHORT_COUNT === getCohortAtWeek(r, w, validCohortAssignments)) {
                     if (row[w].locked) continue;
-                    const level = r.level + Math.floor(w / 52);
+                    const level = getPgy(r, w);
                     const clinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
 
@@ -111,7 +116,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     const pool = seededShuffle(residents.filter(r => {
                         const currentPgy = getPgy(r, w);
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                        return isActive(r, w) &&
+                        return isActive(r, w, dur) &&
                                currentPgy === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
@@ -133,7 +138,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     const pool = seededShuffle(residents.filter(r => {
                         const currentPgy = getPgy(r, w);
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                        return isActive(r, w) &&
+                        return isActive(r, w, dur) &&
                                currentPgy >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
                                isAligned(w, cohort, dur) &&
@@ -190,6 +195,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                                 const cohort = getCohortAtWeek(res, w, validCohortAssignments);
                                 if (!isAligned(w, cohort, dur)) continue;
                                 if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
+                                if (!isActive(res, w, dur)) continue;
 
                                 for (const type of compatibleTypes) {
                                     const meta = ROTATION_METADATA[type];

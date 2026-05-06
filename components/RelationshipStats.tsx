@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
 import { ArrowUpDown, Info, Network, Users, Handshake } from 'lucide-react';
@@ -21,7 +20,9 @@ type StatRow = {
 };
 
 export const RelationshipStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
-  const stats = useMemo(() => {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  const { rows, matrix } = useMemo(() => {
     const diversityScores = calculateDiversityStats(residents, schedule);
     const matrix: Record<string, Record<string, number>> = {};
     residents.forEach(r => matrix[r.id] = {});
@@ -89,14 +90,14 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
       };
     });
 
-    return rows;
+    return { rows, matrix };
   }, [residents, schedule]);
 
   const [sortField, setSortField] = useState<keyof StatRow>('percent');
   const [sortAsc, setSortAsc] = useState(false);
 
   const sortedStats = useMemo(() => {
-    return [...stats].sort((a, b) => {
+    return [...rows].sort((a, b) => {
       const valA = a[sortField];
       const valB = b[sortField];
 
@@ -108,7 +109,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
       if (valA > valB) return sortAsc ? 1 : -1;
       return 0;
     });
-  }, [stats, sortField, sortAsc]);
+  }, [rows, sortField, sortAsc]);
 
   const handleHeaderClick = (field: keyof StatRow) => {
     if (sortField === field) {
@@ -123,6 +124,92 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
     if (pct < 30) return 'text-red-2-dark bg-red/20 border-red/40';
     if (pct < 50) return 'text-orange-dark bg-creamsicle/50 border-creamsicle';
     return 'text-green-dark bg-lime-green/40 border-lime-green';
+  };
+
+  // Node Calculations for Circular Layout (Enlarged and ordered by Cohort)
+  const nodes = useMemo(() => {
+    const sortedResidentsByCohort = [...residents].sort((a, b) => {
+      const cohortA = a.cohort ?? 0;
+      const cohortB = b.cohort ?? 0;
+      if (cohortA !== cohortB) {
+        return cohortA - cohortB;
+      }
+      if (a.level !== b.level) {
+        return a.level - b.level;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    const n = sortedResidentsByCohort.length;
+    return sortedResidentsByCohort.map((r, i) => {
+      const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+      const radius = 220; // Increased radius for a significantly bigger layout
+      return {
+        id: r.id,
+        name: r.name.split(' ').slice(0, 2).join(' '), // keep name compact
+        level: r.level,
+        cohort: r.cohort ?? 0,
+        angle,
+        x: 350 + radius * Math.cos(angle), // Center is now at 350, 350
+        y: 350 + radius * Math.sin(angle)
+      };
+    });
+  }, [residents]);
+
+  // Link Calculations
+  const links = useMemo(() => {
+    const linkList: Array<{
+      sourceId: string;
+      targetId: string;
+      sourceX: number;
+      sourceY: number;
+      targetX: number;
+      targetY: number;
+      weeks: number;
+    }> = [];
+
+    const n = nodes.length;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const source = nodes[i];
+        const target = nodes[j];
+        const weeks = matrix[source.id]?.[target.id] || 0;
+        if (weeks > 0) {
+          linkList.push({
+            sourceId: source.id,
+            targetId: target.id,
+            sourceX: source.x,
+            sourceY: source.y,
+            targetX: target.x,
+            targetY: target.y,
+            weeks
+          });
+        }
+      }
+    }
+    return linkList;
+  }, [nodes, matrix]);
+
+  const getCohortBg = (cohort: number) => {
+    switch (cohort) {
+      case 0: return 'fill-blue';
+      case 1: return 'fill-purple';
+      case 2: return 'fill-green';
+      case 3: return 'fill-creamsicle';
+      case 4: return 'fill-red';
+      default: return 'fill-slate-400';
+    }
+  };
+
+  const getCohortBorder = (cohort: number) => {
+    switch (cohort) {
+      case 0: return 'stroke-blue-dark';
+      case 1: return 'stroke-purple-dark';
+      case 2: return 'stroke-green-dark';
+      case 3: return 'stroke-orange-dark';
+      case 4: return 'stroke-red-dark';
+      default: return 'stroke-slate-500';
+    }
   };
 
   return (
@@ -157,6 +244,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
           </div>
         </div>
 
+        {/* Table Report */}
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           <div className="p-4 border-b border-light-5 bg-light-1">
             <h2 className="text-lg font-bold text-primary">Co-Working Diversity Report</h2>
@@ -207,6 +295,196 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
             </tbody>
           </table>
         </div>
+
+        {/* Co-Working Network Visualization */}
+        <div className="bg-white rounded-lg shadow-sm border overflow-hidden p-6">
+          <div className="border-b border-light-5 pb-4 mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-purple/10 rounded-lg text-purple">
+                <Network size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-primary">Resident Co-working Network Map</h2>
+                <p className="text-xs text-muted">Nodes are grouped/colored by cohort and display their PGY level. Hover to highlight connections.</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue" /> <span className="text-slate-500">Cohort A</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple" /> <span className="text-slate-500">Cohort B</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-green" /> <span className="text-slate-500">Cohort C</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-creamsicle" /> <span className="text-slate-500">Cohort D</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red" /> <span className="text-slate-500">Cohort E</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* SVG Network Circle (Enlarged to max-w-[550px]) */}
+            <div className="lg:col-span-7 flex justify-center">
+              <div className="relative w-full max-w-[550px] aspect-square">
+                <svg viewBox="0 0 700 700" className="w-full h-full select-none overflow-visible">
+                  {/* Outer Circular Track Guideline */}
+                  <circle cx="350" cy="350" r="220" className="fill-none stroke-slate-100 stroke-1" />
+
+                  {/* Connections (Links) */}
+                  {links.map((link, idx) => {
+                    const isHovered = hoveredId !== null;
+                    const isConnectedToHovered = hoveredId === link.sourceId || hoveredId === link.targetId;
+                    
+                    const opacity = isHovered ? (isConnectedToHovered ? 0.95 : 0.04) : 0.28;
+                    const strokeColor = isHovered && isConnectedToHovered 
+                      ? 'stroke-purple' 
+                      : link.weeks > 8 ? 'stroke-red/80' : 'stroke-slate-300';
+                    
+                    return (
+                      <line
+                        key={`${link.sourceId}-${link.targetId}-${idx}`}
+                        x1={link.sourceX}
+                        y1={link.sourceY}
+                        x2={link.targetX}
+                        y2={link.targetY}
+                        strokeWidth={link.weeks * 0.8}
+                        className={`${strokeColor} transition-all duration-300 ease-out`}
+                        style={{ opacity }}
+                      />
+                    );
+                  })}
+
+                  {/* Nodes (Residents) */}
+                  {nodes.map((node) => {
+                    const isHovered = hoveredId !== null;
+                    const isSelfHovered = hoveredId === node.id;
+                    const isConnected = hoveredId !== null && (matrix[hoveredId]?.[node.id] > 0 || isSelfHovered);
+                    
+                    const opacity = isHovered ? (isSelfHovered || isConnected ? 1 : 0.15) : 1;
+                    const nodeBg = getCohortBg(node.cohort);
+                    const nodeBorder = getCohortBorder(node.cohort);
+                    
+                    const textX = 350 + (220 + 24) * Math.cos(node.angle);
+                    const textY = 350 + (220 + 24) * Math.sin(node.angle) + 4;
+                    const textAnchor = Math.cos(node.angle) > 0 ? 'start' : 'end';
+
+                    return (
+                      <g 
+                        key={node.id}
+                        className="cursor-pointer transition-all duration-300"
+                        style={{ opacity }}
+                        onMouseEnter={() => setHoveredId(node.id)}
+                        onMouseLeave={() => setHoveredId(null)}
+                      >
+                        {/* Interactive Area */}
+                        <circle cx={node.x} cy={node.y} r={22} className="fill-transparent" />
+                        
+                        {/* Visual Node circle */}
+                        <circle
+                          cx={node.x}
+                          cy={node.y}
+                          r={isSelfHovered ? 15 : 11}
+                          className={`${nodeBg} ${nodeBorder} stroke-2 transition-all duration-300 shadow-sm`}
+                        />
+                        {/* PGY Level Inside Circle */}
+                        <text
+                          x={node.x}
+                          y={node.y + 3.5}
+                          textAnchor="middle"
+                          className="fill-white font-extrabold text-[10px] select-none pointer-events-none"
+                        >
+                          {node.level}
+                        </text>
+                        {/* Name Label */}
+                        <text
+                          x={textX}
+                          y={textY}
+                          textAnchor={textAnchor}
+                          className={`text-[10px] ${isSelfHovered ? 'font-black fill-primary' : 'font-bold fill-slate-500'} transition-all duration-200`}
+                        >
+                          {node.name}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
+
+            {/* Sidebar with dynamic metrics */}
+            <div className="lg:col-span-5 h-full flex flex-col justify-center">
+              <div className="bg-light-1/40 p-5 rounded-xl border border-light-5 flex flex-col justify-center min-h-[300px]">
+                {hoveredId ? (() => {
+                  const resident = residents.find(r => r.id === hoveredId);
+                  const partnerStats = rows.find(r => r.id === hoveredId);
+                  if (!resident || !partnerStats) return null;
+                  
+                  const partners = Object.entries(matrix[hoveredId] || {})
+                    .map(([id, weeks]) => ({
+                      name: residents.find(r => r.id === id)?.name || 'Unknown',
+                      level: residents.find(r => r.id === id)?.level || 1,
+                      cohort: residents.find(r => r.id === id)?.cohort ?? 0,
+                      weeks: weeks as number
+                    }))
+                    .sort((a, b) => b.weeks - a.weeks);
+
+                  return (
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected Resident</div>
+                        <h3 className="font-extrabold text-lg text-primary mt-0.5">{resident.name}</h3>
+                        <div className="text-xs font-semibold text-muted">
+                          PGY-{resident.level} • Cohort {String.fromCharCode(65 + (resident.cohort ?? 0))} • {partnerStats.uniqueCount} Co-workers
+                        </div>
+                      </div>
+                      <div className="h-[1px] bg-light-5" />
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Team Diversity Score</div>
+                        <div className="flex items-end gap-1">
+                          <span className="text-3xl font-black text-primary">{partnerStats.percent.toFixed(0)}%</span>
+                          <span className="text-xs text-muted font-bold mb-1">/ 100%</span>
+                        </div>
+                      </div>
+                      <div className="h-[1px] bg-light-5" />
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Top Co-working Connections</div>
+                        <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                          {partners.slice(0, 4).map((p, idx) => (
+                            <div key={idx} className="flex justify-between items-center bg-white px-2.5 py-1.5 rounded border border-light-5">
+                              <div>
+                                <div className="text-xs font-bold text-slate-700">{p.name}</div>
+                                <div className="text-[10px] text-slate-400 font-semibold">
+                                  PGY-{p.level} • Cohort {String.fromCharCode(65 + p.cohort)}
+                                </div>
+                              </div>
+                              <span className="text-xs font-black text-purple-dark bg-purple/10 px-2.5 py-0.5 rounded-full">
+                                {p.weeks}w
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <div className="text-center text-slate-400 py-8">
+                    <Network size={36} className="mx-auto text-slate-300 mb-3" />
+                    <p className="text-sm font-bold text-slate-500">No Resident Selected</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-[220px] mx-auto">
+                      Hover over any node around the circle to explore their specific co-working connections.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

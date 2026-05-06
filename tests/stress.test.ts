@@ -46,7 +46,7 @@ describe('Algorithm Stress Tests', () => {
                 });
                 const yearSchedule = gen.generate(yearResidents, {}, 0, priorCounts, cohortAssignments);
 
-                const weeklyCount = getWeeklyViolations(yearResidents, yearSchedule).length;
+                const weeklyCount = getWeeklyViolations(yearResidents, yearSchedule, year).length;
                 const reqsCount = getRequirementViolations(yearResidents, yearSchedule, runningHistory, year).length;
 
                 totalWeekly += weeklyCount;
@@ -100,7 +100,7 @@ describe('Algorithm Stress Tests', () => {
 
             const yearSchedule = await healer.solve(yearResidents, {}, 0, priorCounts, cohortAssignments);
 
-            const weeklyViolations = getWeeklyViolations(yearResidents, yearSchedule);
+            const weeklyViolations = getWeeklyViolations(yearResidents, yearSchedule, year);
             if (year === 2026 && weeklyViolations.length > 0) {
                 require('fs').writeFileSync('weekly_violations_2026.json', JSON.stringify(weeklyViolations, null, 2));
             }

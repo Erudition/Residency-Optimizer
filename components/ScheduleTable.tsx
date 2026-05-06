@@ -245,6 +245,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   key={w}
                   onDoubleClick={() => !isReadOnly && onLockWeek(idx)}
                   className={`p-1 min-w-[80px] text-center bg-light-1 transition-colors ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
+                  style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                   title={isReadOnly ? undefined : "Double-click to toggle lock for this entire week"}
                 >
                   <div className="flex flex-col items-center">
@@ -285,28 +286,69 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     const isPast = isReadOnly || isPastWeek(w, startYear);
                     const bgHex = assign ? getAssignmentColor(assign, isPast) : '#ffffff';
 
+                    // Compute active bounds from startYear (always available),
+                    // not the transient activeWeekStart/activeWeekEnd properties
+                    const isUnified = totalWeeks > 52;
+                    let activeStart: number;
+                    let activeEnd: number;
+                    if (isUnified) {
+                      activeStart = Math.max(0, (resident.startYear - startYear) * 52);
+                      activeEnd = Math.min(totalWeeks, (resident.startYear + 3 - startYear) * 52);
+                    } else {
+                      // Single-year: resident is fully in-bounds only if this year
+                      // falls within their 3-year residency
+                      const resFirstYear = resident.startYear;
+                      const resLastYear = resident.startYear + 2;
+                      // startYear here is the academic year of this single-year grid
+                      if (startYear < resFirstYear || startYear > resLastYear) {
+                        activeStart = 0;
+                        activeEnd = 0;
+                      } else {
+                        activeStart = 0;
+                        activeEnd = 52;
+                      }
+                    }
+                    const isOutOfBounds = idx < activeStart || idx >= activeEnd;
+
                     return (
                       <td
                         key={`${resident.id}-${w}`}
                         className="p-1 text-center select-none relative"
+                        style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                       >
                         <button
-                          className={cell?.locked ? 'lemon-slot-locked' : 'lemon-slot'}
-                          style={{ '--slot-bg': bgHex } as React.CSSProperties}
+                          className={isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')}
+                          style={{ '--slot-bg': isOutOfBounds ? '#f1f5f9' : bgHex } as React.CSSProperties}
                           onClick={(e) => {
+                            if (isOutOfBounds) return;
                             const rect = e.currentTarget.getBoundingClientRect();
                             handleCellClick(resident.id, idx, !!cell?.locked, isPast, rect);
                           }}
-                          onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
+                          onMouseEnter={(e) => assign && !isOutOfBounds && handleMouseEnter(e, resident, idx, assign)}
                           onMouseLeave={handleMouseLeave}
-                          title={isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock")}
+                          title={isOutOfBounds ? "Outside residency period" : (isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock"))}
+                          disabled={isOutOfBounds}
                         >
-                          {assign ? (
+                          {assign && !isOutOfBounds ? (
                             <span className="truncate w-full block">
                               {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
                             </span>
                           ) : (
-                            <span className="text-light-5">-</span>
+                            <span className="text-light-5 select-none" style={{ filter: 'grayscale(100%)' }}>
+                              {(() => {
+                                if (idx < activeStart) {
+                                  if (resident.transferInYear !== undefined) return '🏥⇢';
+                                  return '⇢';
+                                }
+                                if (idx >= activeEnd) {
+                                  if ((resident as any).expelled) return '⦸';
+                                  if ((resident as any).dropout) return '⤵︎';
+                                  if (resident.transferOutYear !== undefined) return '⇠🏥';
+                                  return '🎓';
+                                }
+                                return '-';
+                              })()}
+                            </span>
                           )}
                         </button>
                       </td>
@@ -346,7 +388,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               </div>
               <div className="flex flex-col gap-1.5">
                 {[1, 2, 3].map(pgy => {
-                  const pgyGroup = tooltip.peers.filter(r => (r.level + Math.floor(tooltip.weekIdx / 52)) === pgy);
+                  const pgyGroup = tooltip.peers.filter(r => ((r.startYear > 0 ? (startYear - r.startYear + 1) : r.level) + Math.floor(tooltip.weekIdx / 52)) === pgy);
                   if (pgyGroup.length === 0) return null;
                   return (
                     <div key={pgy} className="flex gap-2 items-start">

@@ -141,6 +141,7 @@ export interface WeeklyViolation {
   type: AssignmentType;
   issue: string;
   year?: number;
+  instances?: number;
 }
 
 export interface AdaptationParams {
