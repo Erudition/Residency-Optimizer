@@ -75,6 +75,14 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
     return Math.max(...validScores);
   }, [data]);
 
+  const maxExhaustionPoint = useMemo(() => {
+    const points = Object.entries(exhaustionPoints)
+      .filter(([id]) => !canceledIds.has(id))
+      .map(([, pt]) => pt as number);
+    const maxPt = points.length === 0 ? maxTries : Math.max(...points);
+    return Math.max(maxPt, data.length);
+  }, [exhaustionPoints, canceledIds, maxTries, data.length]);
+
   return (
     <div className="bg-white rounded-3xl shadow-xl p-8 border border-light-5 flex flex-col gap-6 h-[650px]">
 
@@ -132,7 +140,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
             <XAxis 
               dataKey="round" 
               type="number" 
-              domain={['auto', 'auto']} 
+              domain={[0, maxExhaustionPoint]} 
               tick={{fontSize: 10, fontWeight: 700, fill: '#64748b'}}
               stroke="#e2e8f0"
             />
