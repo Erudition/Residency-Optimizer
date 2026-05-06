@@ -1778,16 +1778,24 @@ const App: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'acgme_requirements' && <div className="flex-1 overflow-y-auto"><RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} /></div>}
+              {activeTab === 'acgme_requirements' && (
+                <div className="flex-1 overflow-y-auto p-6 bg-light-1">
+                  <div className="max-w-6xl mx-auto">
+                    <RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} />
+                  </div>
+                </div>
+              )}
               {activeTab === 'mhs_requirements' && (
-                <div className="flex-1 overflow-y-auto">
-                  <RequirementsStats
-                    mode="mhs"
-                    residents={viewMode === 'unified' ? displayResidents : activeResidents}
-                    schedule={viewMode === 'unified' ? displayGrid : currentGrid}
-                    history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
-                    activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
-                  />
+                <div className="flex-1 overflow-y-auto p-6 bg-light-1">
+                  <div className="max-w-6xl mx-auto">
+                    <RequirementsStats
+                      mode="mhs"
+                      residents={viewMode === 'unified' ? displayResidents : activeResidents}
+                      schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                      history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
+                      activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
+                    />
+                  </div>
                 </div>
               )}
               {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} /></div>}
