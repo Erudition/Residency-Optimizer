@@ -126,19 +126,20 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
     return 'text-green-dark bg-lime-green/40 border-lime-green';
   };
 
-  // Node Calculations for Circular Layout
+  // Node Calculations for Circular Layout (Enlarged)
   const nodes = useMemo(() => {
     const n = residents.length;
     return residents.map((r, i) => {
       const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
-      const radius = 175;
+      const radius = 220; // Increased radius for a significantly bigger layout
       return {
         id: r.id,
         name: r.name.split(' ').slice(0, 2).join(' '), // keep name compact
         level: r.level,
+        cohort: r.cohort ?? 0,
         angle,
-        x: 300 + radius * Math.cos(angle),
-        y: 300 + radius * Math.sin(angle)
+        x: 350 + radius * Math.cos(angle), // Center is now at 350, 350
+        y: 350 + radius * Math.sin(angle)
       };
     });
   }, [residents]);
@@ -176,6 +177,28 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
     }
     return linkList;
   }, [nodes, matrix]);
+
+  const getCohortBg = (cohort: number) => {
+    switch (cohort) {
+      case 0: return 'fill-blue';
+      case 1: return 'fill-purple';
+      case 2: return 'fill-green';
+      case 3: return 'fill-creamsicle';
+      case 4: return 'fill-red';
+      default: return 'fill-slate-400';
+    }
+  };
+
+  const getCohortBorder = (cohort: number) => {
+    switch (cohort) {
+      case 0: return 'stroke-blue-dark';
+      case 1: return 'stroke-purple-dark';
+      case 2: return 'stroke-green-dark';
+      case 3: return 'stroke-orange-dark';
+      case 4: return 'stroke-red-dark';
+      default: return 'stroke-slate-500';
+    }
+  };
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-light-1">
@@ -263,36 +286,42 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
 
         {/* Co-Working Network Visualization */}
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden p-6">
-          <div className="border-b border-light-5 pb-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="border-b border-light-5 pb-4 mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-purple/10 rounded-lg text-purple">
                 <Network size={20} />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-primary">Resident Co-working Network Map</h2>
-                <p className="text-xs text-muted">Hover over any resident to highlight their shared weeks and connections</p>
+                <p className="text-xs text-muted">Nodes are grouped/colored by cohort and display their PGY level. Hover to highlight connections.</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 text-xs font-semibold">
+            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue" /> <span className="text-slate-500">PGY-1</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-blue" /> <span className="text-slate-500">Cohort A</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple" /> <span className="text-slate-500">PGY-2</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-purple" /> <span className="text-slate-500">Cohort B</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-green" /> <span className="text-slate-500">PGY-3</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-green" /> <span className="text-slate-500">Cohort C</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-creamsicle" /> <span className="text-slate-500">Cohort D</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red" /> <span className="text-slate-500">Cohort E</span>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* SVG Network Circle */}
+            {/* SVG Network Circle (Enlarged to max-w-[550px]) */}
             <div className="lg:col-span-7 flex justify-center">
-              <div className="relative w-full max-w-[480px] aspect-square">
-                <svg viewBox="0 0 600 600" className="w-full h-full select-none overflow-visible">
+              <div className="relative w-full max-w-[550px] aspect-square">
+                <svg viewBox="0 0 700 700" className="w-full h-full select-none overflow-visible">
                   {/* Outer Circular Track Guideline */}
-                  <circle cx="300" cy="300" r="175" className="fill-none stroke-slate-100 stroke-1" />
+                  <circle cx="350" cy="350" r="220" className="fill-none stroke-slate-100 stroke-1" />
 
                   {/* Connections (Links) */}
                   {links.map((link, idx) => {
@@ -325,11 +354,11 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
                     const isConnected = hoveredId !== null && (matrix[hoveredId]?.[node.id] > 0 || isSelfHovered);
                     
                     const opacity = isHovered ? (isSelfHovered || isConnected ? 1 : 0.15) : 1;
-                    const nodeBg = node.level === 1 ? 'fill-blue' : node.level === 2 ? 'fill-purple' : 'fill-green';
-                    const nodeBorder = node.level === 1 ? 'stroke-blue-dark' : node.level === 2 ? 'stroke-purple-dark' : 'stroke-green-dark';
+                    const nodeBg = getCohortBg(node.cohort);
+                    const nodeBorder = getCohortBorder(node.cohort);
                     
-                    const textX = 300 + (175 + 20) * Math.cos(node.angle);
-                    const textY = 300 + (175 + 20) * Math.sin(node.angle) + 4;
+                    const textX = 350 + (220 + 24) * Math.cos(node.angle);
+                    const textY = 350 + (220 + 24) * Math.sin(node.angle) + 4;
                     const textAnchor = Math.cos(node.angle) > 0 ? 'start' : 'end';
 
                     return (
@@ -341,15 +370,24 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
                         onMouseLeave={() => setHoveredId(null)}
                       >
                         {/* Interactive Area */}
-                        <circle cx={node.x} cy={node.y} r={16} className="fill-transparent" />
+                        <circle cx={node.x} cy={node.y} r={22} className="fill-transparent" />
                         
                         {/* Visual Node circle */}
                         <circle
                           cx={node.x}
                           cy={node.y}
-                          r={isSelfHovered ? 11 : 7}
-                          className={`${nodeBg} ${nodeBorder} stroke-2 transition-all duration-300`}
+                          r={isSelfHovered ? 15 : 11}
+                          className={`${nodeBg} ${nodeBorder} stroke-2 transition-all duration-300 shadow-sm`}
                         />
+                        {/* PGY Level Inside Circle */}
+                        <text
+                          x={node.x}
+                          y={node.y + 3.5}
+                          textAnchor="middle"
+                          className="fill-white font-extrabold text-[10px] select-none pointer-events-none"
+                        >
+                          {node.level}
+                        </text>
                         {/* Name Label */}
                         <text
                           x={textX}
@@ -368,7 +406,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
 
             {/* Sidebar with dynamic metrics */}
             <div className="lg:col-span-5 h-full flex flex-col justify-center">
-              <div className="bg-light-1/40 p-5 rounded-xl border border-light-5 flex flex-col justify-center min-h-[280px]">
+              <div className="bg-light-1/40 p-5 rounded-xl border border-light-5 flex flex-col justify-center min-h-[300px]">
                 {hoveredId ? (() => {
                   const resident = residents.find(r => r.id === hoveredId);
                   const partnerStats = rows.find(r => r.id === hoveredId);
@@ -378,6 +416,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
                     .map(([id, weeks]) => ({
                       name: residents.find(r => r.id === id)?.name || 'Unknown',
                       level: residents.find(r => r.id === id)?.level || 1,
+                      cohort: residents.find(r => r.id === id)?.cohort ?? 0,
                       weeks: weeks as number
                     }))
                     .sort((a, b) => b.weeks - a.weeks);
@@ -387,7 +426,9 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected Resident</div>
                         <h3 className="font-extrabold text-lg text-primary mt-0.5">{resident.name}</h3>
-                        <div className="text-xs font-semibold text-muted">PGY-{resident.level} • {partnerStats.uniqueCount} Co-workers</div>
+                        <div className="text-xs font-semibold text-muted">
+                          PGY-{resident.level} • Cohort {String.fromCharCode(65 + (resident.cohort ?? 0))} • {partnerStats.uniqueCount} Co-workers
+                        </div>
                       </div>
                       <div className="h-[1px] bg-light-5" />
                       <div>
@@ -405,7 +446,9 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
                             <div key={idx} className="flex justify-between items-center bg-white px-2.5 py-1.5 rounded border border-light-5">
                               <div>
                                 <div className="text-xs font-bold text-slate-700">{p.name}</div>
-                                <div className="text-[10px] text-slate-400 font-semibold">PGY-{p.level}</div>
+                                <div className="text-[10px] text-slate-400 font-semibold">
+                                  PGY-{p.level} • Cohort {String.fromCharCode(65 + p.cohort)}
+                                </div>
                               </div>
                               <span className="text-xs font-black text-purple-dark bg-purple/10 px-2.5 py-0.5 rounded-full">
                                 {p.weeks}w
