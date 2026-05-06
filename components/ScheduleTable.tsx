@@ -308,7 +308,23 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                               {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
                             </span>
                           ) : (
-                            <span className="text-light-5">-</span>
+                            <span className="text-light-5 select-none" style={{ filter: 'grayscale(100%)' }}>
+                              {(() => {
+                                const start = resident.activeWeekStart ?? 0;
+                                const end = resident.activeWeekEnd ?? 156;
+                                if (idx < start) {
+                                  if (resident.transferInYear !== undefined) return '🏥⇢';
+                                  return '⇢';
+                                }
+                                if (idx >= end) {
+                                  if ((resident as any).expelled) return '⦸';
+                                  if ((resident as any).dropout) return '⤵︎';
+                                  if (resident.transferOutYear !== undefined) return '⇠🏥';
+                                  return '🎓';
+                                }
+                                return '-';
+                              })()}
+                            </span>
                           )}
                         </button>
                       </td>
