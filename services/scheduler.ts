@@ -340,7 +340,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
     const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC || a === AssignmentType.NIMA_CLINIC).length;
     if (clinicCount === 0) {
-      violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + (activeYear || 2026) });
+      violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: 1 });
     }
 
     Object.values(AssignmentType).forEach(type => {
@@ -352,16 +352,16 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       const seniors = assignees.filter(r => (Number(r.level) + Math.floor(week / 52)) > 1).length;
 
       if (interns < meta.minInterns) {
-        violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}`, year: Math.floor(week / 52) + (activeYear || 2026) });
+        violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: meta.minInterns - interns });
       }
       if (interns > meta.maxInterns) {
-        violations.push({ week, type, issue: `Max Interns (${meta.maxInterns}) exceeded: ${interns}`, year: Math.floor(week / 52) + (activeYear || 2026) });
+        violations.push({ week, type, issue: `Max Interns (${meta.maxInterns}) exceeded: ${interns}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: interns - meta.maxInterns });
       }
       if (seniors < meta.minSeniors) {
-        violations.push({ week, type, issue: `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`, year: Math.floor(week / 52) + (activeYear || 2026) });
+        violations.push({ week, type, issue: `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: meta.minSeniors - seniors });
       }
       if (seniors > meta.maxSeniors) {
-        violations.push({ week, type, issue: `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`, year: Math.floor(week / 52) + (activeYear || 2026) });
+        violations.push({ week, type, issue: `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: seniors - meta.maxSeniors });
       }
     });
     // T6.2: Jeopardy Pool Monitoring
@@ -379,10 +379,10 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     }).length;
 
     if (jeopardyPgy2 < 1) {
-      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + (activeYear || 2026) });
+      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + (activeYear || 2026), instances: 1 });
     }
     if (jeopardyPgy3 < 1) {
-      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + (activeYear || 2026) });
+      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + (activeYear || 2026), instances: 1 });
     }
   }
 
@@ -526,10 +526,10 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
             });
         });
 
-        if (outpatient < 44) violationCount++;
-        if (inpatient + totalCriticalCare < 48) violationCount++;
-        if (criticalCareCore > 24) violationCount++;
-        if (nightFloat < 6) violationCount++;
+        if (outpatient < 44) violationCount += (44 - outpatient);
+        if (inpatient + totalCriticalCare < 48) violationCount += (48 - (inpatient + totalCriticalCare));
+        if (criticalCareCore > 24) violationCount += (criticalCareCore - 24);
+        if (nightFloat < 6) violationCount += (6 - nightFloat);
     });
 
     return violationCount;
