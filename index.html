@@ -648,6 +648,52 @@
     .vista-tooltip {
       animation: vista-fade-in 180ms ease-out;
     }
+
+    /* Rocker switch styles */
+    .rocker-toggle {
+      display: flex;
+      position: relative;
+      background-color: #EEEFE9;
+      border: 1px solid #C8CAC1;
+      border-radius: 9999px;
+      padding: 2px;
+      width: 90px;
+      height: 32px;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .rocker-toggle-thumb {
+      position: absolute;
+      top: 2px;
+      bottom: 2px;
+      left: 2px;
+      width: calc(50% - 2px);
+      background-color: #ffffff;
+      border-radius: 9999px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .rocker-toggle-thumb.unified {
+      transform: translateX(100%);
+    }
+
+    .rocker-toggle-option {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      z-index: 10;
+      color: #73756B;
+      transition: color 0.2s ease;
+    }
+
+    .rocker-toggle-option.active {
+      color: #23251D;
+    }
   </style>
   <script type="importmap">
 {

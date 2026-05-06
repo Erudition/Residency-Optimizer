@@ -245,6 +245,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   key={w}
                   onDoubleClick={() => !isReadOnly && onLockWeek(idx)}
                   className={`p-1 min-w-[80px] text-center bg-light-1 transition-colors ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
+                  style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                   title={isReadOnly ? undefined : "Double-click to toggle lock for this entire week"}
                 >
                   <div className="flex flex-col items-center">
@@ -289,6 +290,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                       <td
                         key={`${resident.id}-${w}`}
                         className="p-1 text-center select-none relative"
+                        style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                       >
                         <button
                           className={cell?.locked ? 'lemon-slot-locked' : 'lemon-slot'}
