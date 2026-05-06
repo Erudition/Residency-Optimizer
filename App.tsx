@@ -280,14 +280,45 @@ const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
   );
 };
 
+const sanitizeScheduleGrid = (grid: ScheduleGrid, residentsList: Resident[]): ScheduleGrid => {
+  if (!grid || typeof grid !== 'object') return grid;
+  const residentsMap = new Map(residentsList.map(r => [r.id, r]));
+  const sanitized: ScheduleGrid = {};
+  
+  Object.entries(grid).forEach(([rId, row]) => {
+    const resident = residentsMap.get(rId);
+    if (!resident || !Array.isArray(row)) {
+      sanitized[rId] = row;
+      return;
+    }
+    const start = resident.activeWeekStart ?? 0;
+    const end = resident.activeWeekEnd ?? row.length;
+    
+    sanitized[rId] = row.map((cell, idx) => {
+      if (idx < start || idx >= end) {
+        if (cell && cell.assignment !== null) {
+          return { ...cell, assignment: null };
+        }
+      }
+      return cell;
+    });
+  });
+  return sanitized;
+};
+
 const App: React.FC = () => {
   const [residents, setResidents] = useState<Resident[]>(() =>
     loadState('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS())
   );
 
-  const [schedules, setSchedules] = useState<ScheduleSession[]>(() =>
-    loadState('rsp_schedules_v4', [])
-  );
+  const [schedules, setSchedules] = useState<ScheduleSession[]>(() => {
+    const rawSchedules = loadState<ScheduleSession[]>('rsp_schedules_v4', []);
+    const loadedResidents = loadState<Resident[]>('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS());
+    return rawSchedules.map((s: any) => ({
+      ...s,
+      grid: sanitizeScheduleGrid(s.grid, loadedResidents)
+    }));
+  });
   const [algoAttempts, setAlgoAttempts] = useState<number[]>([]);
   const [exhaustionPoints, setExhaustionPoints] = useState<number[]>([]);
   const [healerProgress, setHealerProgress] = useState<number | undefined>(undefined);
@@ -1119,7 +1150,8 @@ const App: React.FC = () => {
 
         const patchedSchedules = json.schedules.map((s: any) => ({
           ...s,
-          createdAt: s.createdAt ? new Date(s.createdAt) : new Date()
+          createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
+          grid: sanitizeScheduleGrid(s.grid, json.residents)
         }));
 
         setResidents(json.residents);
