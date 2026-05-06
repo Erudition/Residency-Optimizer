@@ -607,6 +607,27 @@ const App: React.FC = () => {
     };
   }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId]);
 
+  const activeViolationsCount = useMemo(() => {
+    if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
+
+    const fullHistory = { ...historySchedules, ...(activeSchedule.data || {}) };
+    const useUnified = viewMode === 'unified' && !!activeSchedule.unifiedData;
+    const startYear = useUnified ? (activeSchedule.startYear || ACTIVE_START_YEAR) : activeYear;
+    const totalYears = useUnified ? 3 : 1;
+
+    let total = 0;
+    for (let offset = 0; offset < totalYears; offset++) {
+      const y = startYear + offset;
+      const yrResidents = getResidentsForYear(y);
+      const yrGrid = useUnified ? (activeSchedule.data[y] || {}) : currentGrid;
+      const reqs = getRequirementViolations(yrResidents, yrGrid, fullHistory, y).length;
+      const constraints = getWeeklyViolations(yrResidents, yrGrid, y).length;
+      const audit = getAuditViolations(yrResidents, fullHistory, y);
+      total += reqs + constraints + audit;
+    }
+    return total;
+  }, [activeSchedule, historySchedules, activeScheduleId, activeYear, viewMode, currentGrid, residents]);
+
   const hasViolations = violations.reqs.length > 0 || violations.constraints.length > 0;
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -961,7 +982,7 @@ const App: React.FC = () => {
         ? getUnifiedResidents(residents, startYear, totalYears)
         : getResidentsForYear(startYear);
 
-      const initialCount = violations.reqs.length + violations.constraints.length;
+      const initialCount = activeViolationsCount;
       setBestHealCount(initialCount);
       setBestHealGrid(gridToHeal);
 
@@ -1599,13 +1620,13 @@ const App: React.FC = () => {
                           {isHealing ? (
                             <>
                               <Loader2 size={14} className="animate-spin" />
-                              Heal {bestHealCount ?? (violations.reqs.length + violations.constraints.length)} {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
+                              Heal {bestHealCount ?? activeViolationsCount} {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
 
                             </>
                           ) : (
                             <>
                               <Sparkles size={14} />
-                              Heal {violations.reqs.length + violations.constraints.length}
+                              Heal {activeViolationsCount}
                             </>
                           )}
                         </Button>
