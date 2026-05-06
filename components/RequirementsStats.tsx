@@ -165,6 +165,11 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
         return gaps;
     }, [residents, schedule, activeYear, mode]);
 
+    const isUnified = useMemo(() => {
+        const vals = Object.values(schedule);
+        return vals.length > 0 ? (vals[0] as any).length > 52 : false;
+    }, [schedule]);
+
     const renderGroup = (level: number) => {
         const groupResidents = residents.filter(r => (activeYear! - r.startYear + 1) === level);
         const allReqs = REQUIREMENTS[level] || [];
@@ -180,18 +185,29 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
            `}>
                         PGY-{level}
                     </span>
-                    <h3 className="text-lg font-bold text-primary">{mode === 'acgme' ? 'ACGME' : 'MHS'} Graduation Minimums</h3>
+                    <h3 className="text-lg font-bold text-primary">{mode === 'acgme' ? 'ACGME' : 'MHS'} {isUnified ? '3-Year' : 'Annual'} Graduation Minimums</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-light-2">
                                 <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b w-1/4">Resident</th>
-                                {reqs.map(r => (
-                                    <th key={r.type} className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center min-w-[100px]">
-                                        {r.label} <span className="text-[9px] font-black opacity-60">({r.minWeeks}w+)</span>
-                                    </th>
-                                ))}
+                                {reqs.map(r => {
+                                    let headerMin = r.minWeeks;
+                                    if (isUnified) {
+                                        headerMin = 0;
+                                        for (let l = 1; l <= 3; l++) {
+                                            const levelReqs = REQUIREMENTS[l] || [];
+                                            const levelReq = levelReqs.find(rq => rq.type === r.type);
+                                            headerMin += levelReq ? levelReq.minWeeks : 0;
+                                        }
+                                    }
+                                    return (
+                                        <th key={r.type} className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center min-w-[100px]">
+                                            {r.label} <span className="text-[9px] font-black opacity-60">({headerMin}w+)</span>
+                                        </th>
+                                    );
+                                })}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-light-3">
@@ -204,16 +220,23 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                                         </td>
                                         {reqs.map(req => {
                                             const isACGME = ACGME_TYPES.includes(req.type);
-                                            const actual = RequirementsEngine.getActualWeeks(res, req.type, schedule, hist, activeYear!, activeYear!, isACGME);
+                                            const actual = RequirementsEngine.getActualWeeks(res, req.type, schedule, hist, activeYear!, isUnified ? (res.startYear + 2) : activeYear!, isACGME || isUnified);
                                             
                                             let minWeeks = req.minWeeks;
-                                            if (isACGME) {
-                                              minWeeks = 0;
-                                              for (let l = 1; l <= level; l++) {
-                                                const levelReqs = REQUIREMENTS[l] || [];
-                                                const levelReq = levelReqs.find(rq => rq.type === req.type);
-                                                minWeeks += levelReq ? levelReq.minWeeks : 0;
-                                              }
+                                            if (isUnified) {
+                                                minWeeks = 0;
+                                                for (let l = 1; l <= 3; l++) {
+                                                    const levelReqs = REQUIREMENTS[l] || [];
+                                                    const levelReq = levelReqs.find(rq => rq.type === req.type);
+                                                    minWeeks += levelReq ? levelReq.minWeeks : 0;
+                                                }
+                                            } else if (isACGME) {
+                                                minWeeks = 0;
+                                                for (let l = 1; l <= level; l++) {
+                                                    const levelReqs = REQUIREMENTS[l] || [];
+                                                    const levelReq = levelReqs.find(rq => rq.type === req.type);
+                                                    minWeeks += levelReq ? levelReq.minWeeks : 0;
+                                                }
                                             }
 
                                             const isViolated = actual < minWeeks;
@@ -405,7 +428,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
             <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden mt-8">
                 <div className="px-6 py-4 border-b border-light-3 bg-light-1/50 flex items-center gap-2">
                     <AlertCircle className="text-primary" size={20} />
-                    <h3 className="text-lg font-bold text-primary">Deficit Recovery Audit (Annual)</h3>
+                    <h3 className="text-lg font-bold text-primary">Deficit Recovery Audit ({isUnified ? '3-Year' : 'Annual'})</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
