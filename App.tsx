@@ -280,9 +280,29 @@ const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
   );
 };
 
-const sanitizeScheduleGrid = (grid: ScheduleGrid, residentsList: Resident[]): ScheduleGrid => {
+const sanitizeScheduleGrid = (
+  grid: ScheduleGrid,
+  residentsList: Resident[],
+  year?: number,
+  startYear: number = 2026
+): ScheduleGrid => {
   if (!grid || typeof grid !== 'object') return grid;
-  const residentsMap = new Map(residentsList.map(r => [r.id, r]));
+  
+  const residentsMap = new Map<string, Resident>();
+  if (Array.isArray(residentsList)) {
+    residentsList.forEach(r => {
+      residentsMap.set(r.id, r);
+      residentsMap.set(r.name, r);
+    });
+  } else if (residentsList && typeof residentsList === 'object') {
+    Object.entries(residentsList).forEach(([name, data]: [string, any]) => {
+      const id = data.id || name;
+      const r = { id, name, ...data } as Resident;
+      residentsMap.set(id, r);
+      residentsMap.set(name, r);
+    });
+  }
+  
   const sanitized: ScheduleGrid = {};
   
   Object.entries(grid).forEach(([rId, row]) => {
@@ -291,8 +311,27 @@ const sanitizeScheduleGrid = (grid: ScheduleGrid, residentsList: Resident[]): Sc
       sanitized[rId] = row;
       return;
     }
-    const start = resident.activeWeekStart ?? 0;
-    const end = resident.activeWeekEnd ?? row.length;
+    
+    let start = resident.activeWeekStart ?? 0;
+    let end = resident.activeWeekEnd ?? (row.length * 3);
+    
+    if (year !== undefined) {
+      const yearOffset = year - startYear;
+      const yearStartWeek = yearOffset * 52;
+      const yearEndWeek = (yearOffset + 1) * 52;
+      
+      start = Math.max(0, start - yearStartWeek);
+      end = Math.max(0, end - yearStartWeek);
+      
+      if (resident.activeWeekStart !== undefined && resident.activeWeekStart >= yearEndWeek) {
+        start = 52;
+        end = 52;
+      }
+      if (resident.activeWeekEnd !== undefined && resident.activeWeekEnd <= yearStartWeek) {
+        start = 0;
+        end = 0;
+      }
+    }
     
     sanitized[rId] = row.map((cell, idx) => {
       if (idx < start || idx >= end) {
@@ -306,6 +345,34 @@ const sanitizeScheduleGrid = (grid: ScheduleGrid, residentsList: Resident[]): Sc
   return sanitized;
 };
 
+const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): ScheduleSession => {
+  const data = s.data || s.schedule || {};
+  const id = s.id || `sched-imported-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+  const name = s.name || s.winnerName || 'Imported Schedule';
+  const startYear = s.startYear || 2026;
+
+  const sanitizedData: Record<string, ScheduleGrid> = {};
+  Object.entries(data).forEach(([yearStr, grid]) => {
+    sanitizedData[yearStr] = sanitizeScheduleGrid(grid as ScheduleGrid, residentsList, parseInt(yearStr), startYear);
+  });
+
+  const rawUnified = s.unifiedData || s.unifiedSchedule;
+  const sanitizedUnifiedData = rawUnified 
+    ? sanitizeScheduleGrid(rawUnified as ScheduleGrid, residentsList, undefined, startYear) 
+    : undefined;
+
+  return {
+    ...s,
+    id,
+    name,
+    data: sanitizedData,
+    unifiedData: sanitizedUnifiedData,
+    startYear,
+    createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
+    isGenerating: false
+  };
+};
+
 const App: React.FC = () => {
   const [residents, setResidents] = useState<Resident[]>(() =>
     loadState('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS())
@@ -314,10 +381,7 @@ const App: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduleSession[]>(() => {
     const rawSchedules = loadState<ScheduleSession[]>('rsp_schedules_v4', []);
     const loadedResidents = loadState<Resident[]>('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS());
-    return rawSchedules.map((s: any) => ({
-      ...s,
-      grid: sanitizeScheduleGrid(s.grid, loadedResidents)
-    }));
+    return rawSchedules.map((s: any) => normalizeAndSanitizeSchedule(s, loadedResidents));
   });
   const [algoAttempts, setAlgoAttempts] = useState<number[]>([]);
   const [exhaustionPoints, setExhaustionPoints] = useState<number[]>([]);
@@ -1148,13 +1212,12 @@ const App: React.FC = () => {
           throw new Error("Invalid backup format");
         }
 
-        const patchedSchedules = json.schedules.map((s: any) => ({
-          ...s,
-          createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
-          grid: sanitizeScheduleGrid(s.grid, json.residents)
-        }));
+        const residentsToUse = Array.isArray(json.residents) ? json.residents : residents;
+        const patchedSchedules = json.schedules.map((s: any) => normalizeAndSanitizeSchedule(s, residentsToUse));
 
-        setResidents(json.residents);
+        if (Array.isArray(json.residents)) {
+          setResidents(json.residents);
+        }
         setSchedules(patchedSchedules);
         setActiveScheduleId('all');
         alert("Backup imported successfully!");
