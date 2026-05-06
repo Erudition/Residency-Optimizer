@@ -1,4 +1,4 @@
-import { ScheduleGrid, AssignmentType, ScheduleCell } from '../../types';
+import { ScheduleGrid, AssignmentType, ScheduleCell, Resident } from '../../types';
 import { TOTAL_WEEKS, fulfillsRequirement, ROTATION_METADATA } from '../../constants';
 
 export const canFitBlock = (schedule: ScheduleGrid, residentId: string, start: number, duration: number): boolean => {
@@ -97,4 +97,33 @@ export const canPlaceWithoutViolation = (schedule: ScheduleGrid, residents: { id
         if (getAssignedCount(schedule, residents, start + i, type, level) >= max) return false;
     }
     return true;
+};
+
+export const getCohortAtWeek = (
+    r: Resident,
+    w: number,
+    cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>
+): number => {
+    if (!cohortAssignments) return 0;
+    const isNested = Object.values(cohortAssignments).some(val => typeof val === 'object' && val !== null);
+    const startYear = r.startYear + Number(r.level) - 1;
+    const academicYear = startYear + Math.floor(w / 52);
+    if (isNested) {
+        return (cohortAssignments as Record<number, Record<string, number>>)[academicYear]?.[r.id] ?? 0;
+    } else {
+        return (cohortAssignments as Record<string, number>)?.[r.id] ?? 0;
+    }
+};
+
+
+export const getStandardCohortMap = (residents: Resident[]): Record<string, number> => {
+    const sorted = [...residents].sort((a, b) => {
+        if (a.level !== b.level) return a.level - b.level;
+        return a.name.localeCompare(b.name);
+    });
+    const map: Record<string, number> = {};
+    sorted.forEach((r, idx) => {
+        map[r.id] = idx % 5;
+    });
+    return map;
 };

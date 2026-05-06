@@ -1,14 +1,14 @@
 import React, { useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting, ScheduleHistory } from '../types';
-import { ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, ACGME_TYPES, MHS_TYPES } from '../constants';
-import { CheckCircle2, XCircle, AlertCircle, ClipboardList, Info, ShieldCheck, ShieldAlert, Clock, AlertTriangle, Users, Calendar, Building2, Hospital } from 'lucide-react';
+import { ROTATION_METADATA, REQUIREMENTS, ACGME_TYPES, MHS_TYPES } from '../constants';
+import { CheckCircle2, XCircle, AlertCircle, ClipboardList, ShieldCheck, ShieldAlert, Clock, AlertTriangle, Users, Building2, Hospital } from 'lucide-react';
+import { RequirementsEngine } from '../services/requirementsEngine';
 
 interface Props {
     residents: Resident[];
     schedule: ScheduleGrid;
     history?: ScheduleHistory;
     activeYear?: number;
-    precalculatedViolations?: any[];
     mode: 'acgme' | 'mhs';
 }
 
@@ -25,119 +25,89 @@ const StackedProgressBar = ({
     totalValue: number,
     isCap?: boolean
 }) => {
-    const isViolation = isCap ? totalValue > minWeeks : totalValue < minWeeks * 0.8; 
-
     return (
-        <div className="w-full flex flex-col gap-1">
-            <div className="flex justify-between text-[10px] font-bold tracking-tight">
-                <span className="text-muted flex items-center gap-1">
-                    <span className={`${isViolation ? 'text-red-600 font-black' : 'text-primary font-bold'} text-xs`}>{totalValue}</span>
-                    <span className="text-muted">/ {minWeeks}w</span>
+        <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-end">
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${totalValue > minWeeks && isCap ? 'text-red' : 'text-slate-500'}`}>
+                    {totalValue} / {minWeeks}w
                 </span>
-                {isCap && totalValue > minWeeks && <span className="text-red font-black text-[9px] animate-pulse">! OVER CAP</span>}
+                {totalValue >= minWeeks && !isCap && <CheckCircle2 size={12} className="text-green mb-0.5" />}
+                {totalValue > minWeeks && isCap && <AlertTriangle size={12} className="text-red mb-0.5" />}
             </div>
-            
-            <div className="flex flex-col gap-0.5">
+            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner border border-slate-200/50">
                 {[1, 2, 3].map(pgy => {
                     const value = yearData[pgy] || 0;
-                    const yearlyRequirement = minWeeks / 3;
-                    const width = Math.min(100, (value / yearlyRequirement) * 100);
+                    if (value === 0) return null;
+                    const width = (value / Math.max(minWeeks, totalValue)) * 100;
                     const opacity = pgy === 1 ? 'opacity-40' : pgy === 2 ? 'opacity-70' : 'opacity-100';
-                    
                     return (
-                        <div key={pgy} className="h-1 w-full bg-light-3 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full transition-all duration-500 ${colorClass} ${opacity}`}
-                                style={{ width: `${width}%` }}
-                                title={`PGY-${pgy}: ${value}w / ${yearlyRequirement.toFixed(1)}w`}
-                            />
-                        </div>
+                        <div 
+                            key={pgy}
+                            className={`${colorClass} ${opacity} h-full transition-all duration-500`}
+                            style={{ width: `${width}%` }}
+                            title={`PGY-${pgy}: ${value}w / ${minWeeks}w`}
+                        />
                     );
                 })}
-            </div>
-
-            <div className="h-2 w-full bg-light-2 rounded-full overflow-hidden border border-light-5 mt-1">
-                <div
-                    className={`h-full transition-all duration-500 ${colorClass}`}
-                    style={{ width: `${Math.min(100, (totalValue / minWeeks) * 100)}%` }}
-                />
             </div>
         </div>
     );
 };
 
-export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear, precalculatedViolations, mode }) => {
-
-    const getResidentCount = (resId: string, type: AssignmentType) => {
-        let count = (schedule[resId] || []).filter(c => c && fulfillsRequirement(c.assignment, type)).length;
-        if (history && activeYear !== undefined) {
-            Object.entries(history).forEach(([yStr, grid]) => {
-                const y = parseInt(yStr);
-                if (y < activeYear) {
-                    const weeks = grid[resId] || [];
-                    count += weeks.filter(c => c && fulfillsRequirement(c.assignment, type)).length;
-                }
-            });
-        }
-        return count;
-    };
+export const RequirementsStats: React.FC<Props> = ({ residents, schedule, history, activeYear, mode }) => {
+    const hist = history || {};
 
     const auditData = useMemo(() => {
-        if (!history || activeYear === undefined) return [];
+        if (activeYear === undefined) return [];
+
         return residents.map(r => {
             const currentPgy = activeYear - r.startYear + 1;
-            const currentYearGrid = history[activeYear] || {};
-            const activeWeeks = currentYearGrid[r.id] || [];
-
+            const unifiedGrid = schedule[r.id] || [];
+            
             const pgyData: Record<number, { outpatient: number, inpatient: number, criticalCare: number, nightFloat: number }> = {
                 1: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
                 2: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
                 3: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 }
             };
 
-            let totalOutpatient = 0;
-            let totalInpatient = 0;
-            let totalCriticalCare = 0;
-            let totalCriticalCareCore = 0;
-            let totalNightFloat = 0;
+            for (let l = 1; l <= 3; l++) {
+                const year = r.startYear + l - 1;
+                let weeks: any[] = [];
+                
+                if (year < activeYear) {
+                    weeks = hist[year]?.[r.id] || [];
+                } else {
+                    const offset = (year - activeYear) * 52;
+                    weeks = unifiedGrid.slice(offset, offset + 52);
+                }
 
-            Object.entries(history).forEach(([yearStr, grid]) => {
-                const year = parseInt(yearStr);
-                const pgy = year - r.startYear + 1;
-                if (pgy < 1 || pgy > 3) return;
-
-                const weeks = grid[r.id] || [];
                 weeks.forEach(c => {
-                    if (!c || !c.assignment) return;
+                    if (!c?.assignment) return;
                     const meta = ROTATION_METADATA[c.assignment];
                     if (!meta) return;
-
-                    if (meta.setting === ClinicalSetting.OUTPATIENT) { pgyData[pgy].outpatient++; totalOutpatient++; }
-                    if (meta.setting === ClinicalSetting.INPATIENT) { pgyData[pgy].inpatient++; totalInpatient++; }
-                    if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
-                        pgyData[pgy].criticalCare++; totalCriticalCare++;
-                        if (c.assignment !== AssignmentType.AMCS_CONSULTS) totalCriticalCareCore++;
-                    }
-                    if (c.assignment === AssignmentType.NIGHT_FLOAT) { pgyData[pgy].nightFloat++; totalNightFloat++; }
+                    if (meta.setting === ClinicalSetting.OUTPATIENT) pgyData[l].outpatient++;
+                    if (meta.setting === ClinicalSetting.INPATIENT) pgyData[l].inpatient++;
+                    if (meta.setting === ClinicalSetting.CRITICAL_CARE) pgyData[l].criticalCare++;
+                    if (c.assignment === AssignmentType.NIGHT_FLOAT) pgyData[l].nightFloat++;
                 });
-            });
+            }
+
+            const totalOutpatient = pgyData[1].outpatient + pgyData[2].outpatient + pgyData[3].outpatient;
+            const totalInpatient = pgyData[1].inpatient + pgyData[2].inpatient + pgyData[3].inpatient;
+            const totalCriticalCare = pgyData[1].criticalCare + pgyData[2].criticalCare + pgyData[3].criticalCare;
+            const totalNightFloat = pgyData[1].nightFloat + pgyData[2].nightFloat + pgyData[3].nightFloat;
 
             // Policy Audit
-            const isPGY2 = currentPgy === 2;
-            const hasNIMA = activeWeeks.some(c => c && (c.assignment === AssignmentType.NIMA_BLOCK || c.assignment === AssignmentType.NIMA_CLINIC));
-            const hasCCIM = activeWeeks.some(c => c && c.assignment === AssignmentType.CLINIC);
-            const clinicValid = isPGY2 ? hasNIMA : hasCCIM;
-
+            const activeYearWeeks = unifiedGrid.slice(0, 52);
+            const clinicValid = activeYearWeeks.every(c => !c?.assignment || RequirementsEngine.isClinicSiteCorrect(r, c.assignment));
+            
             const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
-            const hasBlackoutVacation = activeWeeks.some((c, idx) => c && c.assignment === AssignmentType.VACATION && blackoutWeeks.includes(idx));
+            const hasBlackoutVacation = activeYearWeeks.some((c, idx) => c && c.assignment === AssignmentType.VACATION && blackoutWeeks.includes(idx));
 
-            const splitBlocks = [AssignmentType.NEURO, AssignmentType.GI, AssignmentType.PULM];
-            const hasSplitBlockDeficit = splitBlocks.some(st => {
-                const total = activeWeeks.filter(c => c && c.assignment === st).length;
-                return total === 1;
-            });
+            const hasSplitBlockDeficit = RequirementsEngine.getViolations([r], schedule, hist, activeYear)
+                .some(v => v.year === activeYear && [AssignmentType.NEURO, AssignmentType.GI, AssignmentType.PULM].includes(v.type));
 
-            const hasElectiveToOverwrite = activeWeeks.some(c => c && c.assignment === AssignmentType.ELECTIVE);
+            const hasElectiveToOverwrite = activeYearWeeks.some(c => c && c.assignment === AssignmentType.ELECTIVE);
 
             return {
                 ...r,
@@ -146,8 +116,8 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                 inpatient: totalInpatient,
                 criticalCare: totalCriticalCare,
                 nightFloat: totalNightFloat,
-                critCareViolation: totalCriticalCareCore > 24,
-                nfViolation: totalNightFloat > 6,
+                critCareViolation: totalCriticalCare > 24,
+                nfViolation: totalNightFloat < 6,
                 clinicValid,
                 hasBlackoutVacation,
                 hasSplitBlockDeficit,
@@ -155,7 +125,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                 pgy: currentPgy
             };
         });
-    }, [residents, history, activeYear]);
+    }, [residents, hist, schedule, activeYear]);
 
     const globalStats = useMemo(() => {
         if (mode !== 'acgme') return null;
@@ -170,26 +140,20 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     }, [auditData, mode]);
 
     const jeopardyGapWeeks = useMemo(() => {
-        if (mode !== 'mhs' || activeYear === undefined || !history) return [];
+        if (mode !== 'mhs' || activeYear === undefined) return [];
         const gaps: number[] = [];
-        const currentYearGrid = history[activeYear] || {};
 
         for (let w = 0; w < 52; w++) {
             let pgy2Flexible = 0;
             let pgy3Flexible = 0;
 
             residents.forEach(res => {
-                const pgy = activeYear - res.startYear + 1;
-                const cell = currentYearGrid[res.id]?.[w];
+                const currentYear = activeYear + Math.floor(w / 52);
+                const pgy = currentYear - res.startYear + 1;
+                const cell = schedule[res.id]?.[w];
                 if (!cell || !cell.assignment) return;
-                const assign = cell.assignment;
-                const isFlexible = assign === AssignmentType.ELECTIVE || [
-                    AssignmentType.CARDS, AssignmentType.ID, AssignmentType.NEPH, AssignmentType.PULM,
-                    AssignmentType.ONC, AssignmentType.NEURO, AssignmentType.RHEUM, AssignmentType.GI,
-                    AssignmentType.ADD_MED, AssignmentType.ENDO, AssignmentType.GERI, AssignmentType.PALLIATIVE
-                ].includes(assign);
-
-                if (isFlexible) {
+                
+                if (RequirementsEngine.isJeopardyBlock(cell.assignment)) {
                     if (pgy === 2) pgy2Flexible++;
                     if (pgy === 3) pgy3Flexible++;
                 }
@@ -198,7 +162,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             if (pgy2Flexible === 0 || pgy3Flexible === 0) gaps.push(w + 1);
         }
         return gaps;
-    }, [residents, history, activeYear, mode]);
+    }, [residents, schedule, activeYear, mode]);
 
     const renderGroup = (level: number) => {
         const groupResidents = residents.filter(r => (activeYear! - r.startYear + 1) === level);
@@ -208,7 +172,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
         if (reqs.length === 0 || groupResidents.length === 0) return null;
 
         return (
-            <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden mb-8">
+            <div key={level} className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden mb-8">
                 <div className="px-6 py-4 border-b border-light-3 bg-light-1/50 flex items-center gap-2">
                     <span className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide
               ${level === 1 ? 'bg-lime-green/40 text-green-dark' : level === 2 ? 'bg-light-blue text-navy' : 'bg-light-purple/50 text-purple-2'}
@@ -217,62 +181,55 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                     </span>
                     <h3 className="text-lg font-bold text-primary">{mode === 'acgme' ? 'ACGME' : 'MHS'} Graduation Minimums</h3>
                 </div>
-
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="text-xs text-muted bg-light-1 border-b border-light-3">
-                                <th className="text-left py-3 px-4 font-medium sticky left-0 bg-light-1 z-10">Resident</th>
-                                {reqs.map(req => (
-                                    <th key={req.type} className="text-center py-3 px-2 font-medium min-w-[100px]">
-                                        <div className="truncate max-w-[120px]" title={req.label}>{req.label}</div>
+                            <tr className="bg-light-2">
+                                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b w-1/4">Resident</th>
+                                {reqs.map(r => (
+                                    <th key={r.type} className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center min-w-[100px]">
+                                        {r.label}
                                     </th>
                                 ))}
-                                <th className="text-center py-3 px-4 font-medium">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {groupResidents.map(r => {
-                                let metAll = true;
-
+                        <tbody className="divide-y divide-light-3">
+                            {groupResidents.map(res => {
                                 return (
-                                    <tr key={r.id} className="hover:bg-light-1 transition-colors">
-                                        <td className="py-3 px-4 font-medium text-black sticky left-0 bg-white z-10 border-r border-light-3">
-                                            {r.name}
+                                    <tr key={res.id} className="hover:bg-light-1/30 transition-colors">
+                                        <td className="px-6 py-4 border-b">
+                                            <div className="font-bold text-primary">{res.name}</div>
+                                            <div className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">ID: {res.id}</div>
                                         </td>
                                         {reqs.map(req => {
-                                            const count = getResidentCount(r.id, req.type);
-                                            const isMet = count >= req.minWeeks;
-                                            if (!isMet) metAll = false;
+                                            const isACGME = ACGME_TYPES.includes(req.type);
+                                            const actual = RequirementsEngine.getActualWeeks(res, req.type, schedule, hist, activeYear!, activeYear!, isACGME);
+                                            
+                                            let minWeeks = req.minWeeks;
+                                            if (isACGME) {
+                                              minWeeks = 0;
+                                              for (let l = 1; l <= level; l++) {
+                                                const levelReqs = REQUIREMENTS[l] || [];
+                                                const levelReq = levelReqs.find(rq => rq.type === req.type);
+                                                minWeeks += levelReq ? levelReq.minWeeks : 0;
+                                              }
+                                            }
 
+                                            const isViolated = actual < minWeeks;
                                             return (
-                                                <td key={req.type} className="py-2 px-2 text-center border-r border-gray-50/50">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className={`font-mono font-bold text-xs ${isMet ? 'text-green-dark' : 'text-red'}`}>
-                                                            {count} / {req.minWeeks}
-                                                        </span>
-                                                        <div className="w-12 h-1 bg-light-4 rounded-full mt-1 overflow-hidden">
-                                                            <div 
-                                                                className={`h-full transition-all duration-500 ${isMet ? 'bg-green' : 'bg-red'}`} 
-                                                                style={{ width: `${Math.min(100, (count / req.minWeeks) * 100)}%` }}
-                                                            />
-                                                        </div>
+                                                <td key={req.type} className="px-4 py-4 border-b text-center">
+                                                    <div className={`text-sm font-bold ${isViolated ? 'text-red' : 'text-green-dark'}`}>
+                                                        {actual} / {minWeeks}
+                                                    </div>
+                                                    <div className="w-full bg-slate-100 h-1.5 rounded-full mt-1 overflow-hidden">
+                                                        <div 
+                                                            className={`h-full ${isViolated ? 'bg-red/60' : 'bg-green/60'}`} 
+                                                            style={{ width: `${Math.min(100, (actual / minWeeks) * 100)}%` }}
+                                                        />
                                                     </div>
                                                 </td>
                                             );
                                         })}
-
-                                        <td className="py-2 px-4 text-center">
-                                            {metAll ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-lime-green/20 text-green-dark border border-lime-green/40 uppercase">
-                                                    <CheckCircle2 size={10} /> Compliant
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-red/10 text-red-2-dark border border-red/20 uppercase">
-                                                    <AlertCircle size={10} /> Deficit
-                                                </span>
-                                            )}
-                                        </td>
                                     </tr>
                                 );
                             })}
@@ -283,256 +240,220 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
         );
     };
 
+    if (mode === 'acgme') {
+        return (
+            <div className="space-y-8">
+                {/* Global Stats Summary */}
+                {globalStats && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
+                            <div className="flex justify-between items-start">
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Outpatient (44w)</span>
+                                <Building2 size={16} className="text-blue" />
+                            </div>
+                            <div className="text-2xl font-black text-primary">{globalStats.outpatientMet} / {globalStats.total}</div>
+                            <div className="w-full bg-slate-100 h-1 rounded-full mt-1">
+                                <div className="bg-blue h-full rounded-full" style={{ width: `${(globalStats.outpatientMet / globalStats.total) * 100}%` }} />
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
+                            <div className="flex justify-between items-start">
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Inpatient (48w)</span>
+                                <Hospital size={16} className="text-lime-green" />
+                            </div>
+                            <div className="text-2xl font-black text-primary">{globalStats.inpatientMet} / {globalStats.total}</div>
+                            <div className="w-full bg-slate-100 h-1 rounded-full mt-1">
+                                <div className="bg-lime-green h-full rounded-full" style={{ width: `${(globalStats.inpatientMet / globalStats.total) * 100}%` }} />
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
+                            <div className="flex justify-between items-start">
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Crit Care Safe (24w max)</span>
+                                <AlertCircle size={16} className="text-purple" />
+                            </div>
+                            <div className="text-2xl font-black text-primary">{globalStats.critCareSafe} / {globalStats.total}</div>
+                            <div className="w-full bg-slate-100 h-1 rounded-full mt-1">
+                                <div className="bg-purple h-full rounded-full" style={{ width: `${(globalStats.critCareSafe / globalStats.total) * 100}%` }} />
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
+                            <div className="flex justify-between items-start">
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Night Float Met (6w)</span>
+                                <Clock size={16} className="text-navy" />
+                            </div>
+                            <div className="text-2xl font-black text-primary">{globalStats.nfSafe} / {globalStats.total}</div>
+                            <div className="w-full bg-slate-100 h-1 rounded-full mt-1">
+                                <div className="bg-navy h-full rounded-full" style={{ width: `${(globalStats.nfSafe / globalStats.total) * 100}%` }} />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ACGME Graduation Requirement Audit */}
+                <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-light-3 bg-light-1/50 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <ClipboardList className="text-primary" size={20} />
+                            <h3 className="text-lg font-bold text-primary">ACGME Graduation Requirement Audit</h3>
+                        </div>
+                        <div className="text-xs font-medium text-slate-400 italic">
+                            Cumulative tracking across all 3 years
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-light-2">
+                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Resident</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Outpatient (44w)</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Inpatient (48w)</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Crit Care (24w max)</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Compliance</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-light-3">
+                                {auditData.map(d => (
+                                    <tr key={d.id} className="hover:bg-light-1/30 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-primary">{d.name}</div>
+                                            <div className="text-xs text-slate-400">PGY-{d.pgy} (Started {d.startYear})</div>
+                                        </td>
+                                        <td className="px-6 py-4 w-1/4">
+                                            <StackedProgressBar 
+                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([k, v]) => [k, (v as { outpatient: number }).outpatient]))}
+                                                minWeeks={44} 
+                                                colorClass="bg-blue"
+                                                totalValue={d.outpatient}
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 w-1/4">
+                                            <StackedProgressBar 
+                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([k, v]) => [k, (v as { inpatient: number, criticalCare: number }).inpatient + (v as { inpatient: number, criticalCare: number }).criticalCare]))}
+                                                minWeeks={48} 
+                                                colorClass="bg-lime-green"
+                                                totalValue={d.inpatient + d.criticalCare}
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 w-1/4">
+                                            <StackedProgressBar 
+                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([k, v]) => [k, (v as { criticalCare: number }).criticalCare]))}
+                                                minWeeks={24} 
+                                                colorClass="bg-purple"
+                                                totalValue={d.criticalCare}
+                                                isCap={true}
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 w-1/4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    {d.clinicValid ? (
+                                                        <span className="text-green font-bold flex items-center gap-1">
+                                                            <ShieldCheck size={16} /> Valid {d.startYear === 2025 ? 'NIMA' : 'CCIM'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-red font-bold flex items-center gap-1 text-xs uppercase tracking-tighter">
+                                                            <ShieldAlert size={16} /> Site Mismatch
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {d.hasBlackoutVacation && (
+                                                    <div className="text-red font-bold text-[10px] flex items-center gap-1 bg-red/5 p-1 rounded border border-red/10">
+                                                        <AlertTriangle size={12} /> PTO during Blackout
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="h-full overflow-y-auto bg-light-1 p-6">
-            <div className="max-w-7xl mx-auto">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-light-5 mb-8">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-3 rounded-xl ${mode === 'acgme' ? 'bg-blue/10 text-blue' : 'bg-purple/10 text-purple-2'}`}>
-                                <ClipboardList size={28} />
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-black text-primary tracking-tight uppercase">
-                                    {mode === 'acgme' ? 'ACGME Requirements' : 'MHS Specific Requirements'}
-                                </h2>
-                                <p className="text-muted text-sm font-medium">
-                                    {mode === 'acgme' 
-                                        ? 'Core specialty and multidisciplinary mandates for national accreditation.' 
-                                        : 'Program-specific curricular goals, staffing requirements, and institutional policies.'}
-                                </p>
-                            </div>
+        <div className="space-y-8">
+            {/* Jeopardy Monitoring */}
+            {jeopardyGapWeeks.length > 0 && (
+                <div className="bg-red/5 border border-red/20 rounded-xl p-4 flex items-start gap-3">
+                    <div className="bg-red/10 p-2 rounded-lg text-red">
+                        <Users size={20} />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-red uppercase tracking-wide">Jeopardy Coverage Gaps Detected</h4>
+                        <p className="text-xs text-red/80 mt-1">
+                            The following weeks lack minimum senior backup (1 PGY-2 AND 1 PGY-3):
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                            {jeopardyGapWeeks.map(w => (
+                                <span key={w} className="px-2 py-0.5 bg-red text-white text-[10px] font-bold rounded shadow-sm">
+                                    Week {w}
+                                </span>
+                            ))}
                         </div>
                     </div>
                 </div>
+            )}
 
-                {/* ACGME Summary Charts */}
-                {mode === 'acgme' && globalStats && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-light-blue/20 rounded-lg text-blue"><Hospital size={20} /></div>
-                                <div className="text-xs font-bold text-muted uppercase">Outpatient Compliance</div>
-                            </div>
-                            <div className="text-2xl font-bold text-primary">{globalStats.outpatientMet} / {globalStats.total}</div>
-                            <div className="text-[10px] text-muted mt-1">Goal: 44 Weeks (11 Months)</div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-lime-green/20 rounded-lg text-green"><Building2 size={20} /></div>
-                                <div className="text-xs font-bold text-muted uppercase">Inpatient Compliance</div>
-                            </div>
-                            <div className="text-2xl font-bold text-primary">{globalStats.inpatientMet} / {globalStats.total}</div>
-                            <div className="text-[10px] text-muted mt-1">Goal: 48 Weeks (12 Months)</div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-light-purple/30 rounded-lg text-purple"><Clock size={20} /></div>
-                                <div className="text-2xl font-bold text-primary">{globalStats.critCareSafe} / {globalStats.total}</div>
-                                <div className="text-[10px] text-muted mt-1">Goal: Max 24 Weeks (6 Months)</div>
-                            </div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-light-5">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-creamsicle/30 rounded-lg text-orange"><ShieldCheck size={20} /></div>
-                                <div className="text-xs font-bold text-muted uppercase">Night Float Minimum</div>
-                            </div>
-                            <div className="text-2xl font-bold text-primary">{globalStats.nfSafe} / {globalStats.total}</div>
-                            <div className="text-[10px] text-muted mt-1">Goal: 6 Weeks Total</div>
-                        </div>
-                    </div>
-                )}
+            {/* MHS Annual Requirement Tables */}
+            {[1, 2, 3].map(renderGroup)}
 
-                {renderGroup(1)}
-                {renderGroup(2)}
-                {renderGroup(3)}
-
-                {mode === 'acgme' && (
-                    <div className="mt-8 bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
-                        <div className="px-6 py-4 border-b bg-light-1 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-primary flex items-center gap-2">
-                                <ShieldCheck className="text-green" size={20} /> ACGME Graduation Requirement Audit (Cumulative)
-                            </h2>
-                            <span className="text-xs text-muted italic">Tracking progress across all historical and current schedules.</span>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-light-2 text-[10px] uppercase font-bold text-secondary">
-                                    <tr>
-                                        <th className="px-6 py-3 sticky left-0 bg-light-2 z-10 w-48">Resident</th>
-                                        <th className="px-6 py-3">Outpatient (44w)</th>
-                                        <th className="px-6 py-3">Inpatient (48w)</th>
-                                        <th className="px-6 py-3">Crit Care (Max 24w)</th>
-                                        <th className="px-6 py-3">Night Float (6w)</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {auditData.map(d => (
-                                        <tr key={d.id} className="hover:bg-light-1">
-                                            <td className="px-6 py-4 font-medium sticky left-0 bg-white z-10 border-r">
-                                                <div className="flex flex-col">
-                                                    <span className="text-black">{d.name}</span>
-                                                    <span className="text-[10px] text-muted">PGY-{d.pgy} • Cohort {String.fromCharCode(65 + d.cohort)}</span>
+            {/* Deficit Recovery Audit */}
+            <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden mt-8">
+                <div className="px-6 py-4 border-b border-light-3 bg-light-1/50 flex items-center gap-2">
+                    <AlertCircle className="text-primary" size={20} />
+                    <h3 className="text-lg font-bold text-primary">Deficit Recovery Audit (Annual)</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-light-2">
+                                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Resident</th>
+                                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Deficit Recovery Flag</th>
+                                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-light-3">
+                            {auditData.map(d => (
+                                <tr key={d.id} className="hover:bg-light-1/30 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="font-bold text-primary">{d.name}</div>
+                                        <div className="text-xs text-slate-400">PGY-{d.pgy}</div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {d.hasSplitBlockDeficit ? (
+                                            <div className="flex items-center gap-2 text-red font-bold">
+                                                <AlertTriangle size={18} />
+                                                <span>Subspecialty Deficit Detected</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-green font-medium">
+                                                <CheckCircle2 size={18} />
+                                                <span>No Deficits</span>
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {d.hasSplitBlockDeficit && (
+                                            d.hasElectiveToOverwrite ? (
+                                                <div className="text-blue font-bold text-xs uppercase flex items-center gap-1.5">
+                                                    <Clock size={14} /> Auto-recovery scheduled
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4 w-1/4">
-                                                <StackedProgressBar 
-                                                    yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).outpatient]))} 
-                                                    minWeeks={44} 
-                                                    colorClass="bg-blue"
-                                                    totalValue={d.outpatient}
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 w-1/4">
-                                                <StackedProgressBar 
-                                                    yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).inpatient + (data as any).criticalCare]))} 
-                                                    minWeeks={48} 
-                                                    colorClass="bg-green-2"
-                                                    totalValue={d.inpatient + d.criticalCare}
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 w-1/4">
-                                                <StackedProgressBar 
-                                                    yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).criticalCare]))} 
-                                                    minWeeks={24} 
-                                                    colorClass="bg-purple"
-                                                    totalValue={d.criticalCare}
-                                                    isCap={true}
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 w-1/4">
-                                                <StackedProgressBar 
-                                                    yearData={Object.fromEntries(Object.entries(d.pgyData).map(([y, data]) => [y, (data as any).nightFloat]))} 
-                                                    minWeeks={6} 
-                                                    colorClass="bg-orange"
-                                                    totalValue={d.nightFloat}
-                                                />
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {mode === 'mhs' && auditData.length > 0 && (
-                    <div className="space-y-8 mt-12">
-                        <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
-                            <div className="px-6 py-4 border-b bg-light-1 flex items-center gap-3">
-                                <ShieldCheck className="text-blue" size={20} />
-                                <h2 className="text-lg font-bold text-primary uppercase tracking-tight">
-                                    Curriculum 2026 Policy Audit
-                                </h2>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-light-2 text-[10px] uppercase font-bold text-secondary">
-                                        <tr>
-                                            <th className="px-6 py-3 sticky left-0 bg-light-2 z-10 w-48">Resident</th>
-                                            <th className="px-6 py-3">Clinic Assignment</th>
-                                            <th className="px-6 py-3">Blackout Period Status</th>
-                                            <th className="px-6 py-3">Deficit Recovery Flag</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {auditData.map(d => (
-                                            <tr key={d.id} className="hover:bg-light-1">
-                                                <td className="px-6 py-4 font-medium sticky left-0 bg-white z-10 border-r">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-black font-bold">{d.name}</span>
-                                                        <span className="text-[10px] text-muted font-black uppercase">PGY-{d.pgy}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        {d.clinicValid ? (
-                                                            <span className="text-green font-bold flex items-center gap-1">
-                                                                <ShieldCheck size={16} /> Valid {d.pgy === 2 ? 'NIMA' : 'CCIM'}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-red font-bold flex items-center gap-1 text-xs uppercase tracking-tighter">
-                                                                <AlertTriangle size={16} /> Incorrect Location
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        {!d.hasBlackoutVacation ? (
-                                                            <span className="text-green font-bold flex items-center gap-1">
-                                                                <ShieldCheck size={16} /> No PTO Conflicts
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-red font-bold flex items-center gap-1 text-xs uppercase tracking-tighter">
-                                                                <AlertTriangle size={16} /> Blackout Conflict
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        {!d.hasSplitBlockDeficit ? (
-                                                            <span className="text-green font-bold flex items-center gap-1">
-                                                                <ShieldCheck size={16} /> Fully Met / On-Track
-                                                            </span>
-                                                        ) : d.hasElectiveToOverwrite ? (
-                                                            <span className="text-orange-600 font-bold flex items-center gap-1 text-xs uppercase tracking-tighter leading-tight max-w-[200px]">
-                                                                <AlertTriangle size={16} className="shrink-0" /> Elective Overwritten for Deficit
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-red font-bold flex items-center gap-1 text-xs uppercase tracking-tighter">
-                                                                <AlertTriangle size={16} /> Deficit (Override Needed)
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
-                            <div className="px-6 py-4 border-b bg-light-1 flex items-center gap-3">
-                                <Users className="text-purple" size={20} />
-                                <h2 className="text-lg font-bold text-primary uppercase tracking-tight">
-                                    Jeopardy & Backup Coverage Status
-                                </h2>
-                            </div>
-                            <div className="p-6 text-sm text-secondary space-y-4">
-                                <p className="text-navy-dark leading-relaxed font-medium">
-                                    Mandate: At least **one PGY-3 and one PGY-2** on a flexible block (Elective or Consult) per week to serve as a reliable Jeopardy pool.
-                                </p>
-
-                                <div className={`p-4 rounded-xl border ${jeopardyGapWeeks.length === 0 ? 'bg-green/10 border-green/30' : 'bg-red/10 border-red/30'}`}>
-                                    {jeopardyGapWeeks.length === 0 ? (
-                                        <div className="text-green-dark font-black flex items-center gap-3">
-                                            <ShieldCheck className="text-green" size={16} />
-                                            <span>All weeks have first and second line Jeopardy coverage fully staffed!</span>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            <div className="text-red-700 font-black flex items-center gap-3">
-                                                <AlertTriangle className="text-red" size={16} />
-                                                <span>Jeopardy Gaps detected in {jeopardyGapWeeks.length} weeks.</span>
-                                            </div>
-                                            <div className="flex gap-1.5 flex-wrap ml-9">
-                                                {jeopardyGapWeeks.map(w => (
-                                                    <span key={w} className="px-2.5 py-1 bg-white border border-red-200 text-red-700 text-xs font-black rounded-lg shadow-sm">
-                                                        Week {w}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                                            ) : (
+                                                <div className="text-red-dark font-black text-xs uppercase flex items-center gap-1.5">
+                                                    <XCircle size={14} /> Training Extension Likely
+                                                </div>
+                                            )
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
-});
+};

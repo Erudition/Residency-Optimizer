@@ -1,7 +1,7 @@
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
 
-import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount, getPriorRequirementCount } from './utils';
+import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount, getPriorRequirementCount, getStandardCohortMap } from './utils';
 
 
 class SeededRNG {
@@ -36,13 +36,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
 
         let validCohortAssignments = { ...(cohortAssignments || {}) };
         if (Object.keys(validCohortAssignments).length === 0) {
-            const sorted = [...residents].sort((a, b) => {
-                if (a.level !== b.level) return a.level - b.level;
-                return a.name.localeCompare(b.name);
-            });
-            sorted.forEach((r, idx) => {
-                validCohortAssignments[r.id] = idx % 5;
-            });
+            validCohortAssignments = getStandardCohortMap(residents);
         }
 
         // 1. Initialize & Clinic Lock
@@ -61,7 +55,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
-                    const weeklyClinicType = (pgy === 2) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                    const weeklyClinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }
@@ -87,7 +81,16 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                     AssignmentType.JR_HOSPITALIST,
                     AssignmentType.PALLIATIVE,
                     AssignmentType.ADD_MED,
-                    AssignmentType.NIMA_BLOCK
+                    AssignmentType.NIMA_BLOCK,
+                    AssignmentType.CARDS,
+                    AssignmentType.ID,
+                    AssignmentType.NEPH,
+                    AssignmentType.PULM,
+                    AssignmentType.ONC,
+                    AssignmentType.NEURO,
+                    AssignmentType.RHEUM,
+                    AssignmentType.GI,
+                    AssignmentType.ENDO
                 ];
 
                 reqs.sort((a, b) => {

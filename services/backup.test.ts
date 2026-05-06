@@ -1,33 +1,36 @@
-import { describe, it, expect } from 'vitest';
-import { Resident, ScheduleGrid } from '../types';
-import { GENERATE_INITIAL_RESIDENTS } from '../constants';
-
-// Local definition since ScheduleSession is defined in App.tsx
-interface ScheduleSession {
-    id: string;
-    name: string;
-    data: ScheduleGrid;
-    createdAt: Date;
-}
+import { describe, it, expect, beforeAll } from 'vitest';
+import { Resident, ScheduleSession, ScheduleHistory } from '../types';
+import { getScheduleFixture } from '../tests/fixtures/scheduleFixture';
 
 describe('Backup and Restore Integrity', () => {
-    it('should maintain data integrity across export and import cycle', () => {
-        // 1. Setup mock data
-        const mockResidents: Resident[] = GENERATE_INITIAL_RESIDENTS();
+    let residents: Resident[];
+    let mockCohortMap: Record<string, number>;
+    let schedule: ScheduleHistory;
+
+    beforeAll(async () => {
+        const fixture = await getScheduleFixture();
+        residents = fixture.residents;
+        mockCohortMap = fixture.mockCohortMap;
+        schedule = { 2026: fixture.schedule };
+    }, 300000);
+
+    it('should maintain data integrity across export and import cycle with real generated data', () => {
+        // 1. Setup real session data
         const mockSchedules: ScheduleSession[] = [
             {
-                id: 'test-1',
-                name: 'Test Schedule',
-                data: {
-                    'res1': [{ assignment: 'NIGHT_FLOAT', locked: true }]
-                } as any,
-                createdAt: new Date('2026-01-01T10:00:00Z')
+                id: 'real-schedule-AY26',
+                name: 'Realistic Generated Schedule',
+                data: schedule,
+                createdAt: new Date('2026-05-06T10:00:00Z'),
+                cohortAssignments: { 2026: mockCohortMap },
+                startYear: 2026,
+                isHistory: false
             }
         ];
 
         // 2. Simulate Export logic from App.tsx
         const exportData = {
-            residents: mockResidents,
+            residents: residents,
             schedules: mockSchedules,
             exportDate: new Date().toISOString(),
             version: "2.0"
@@ -48,15 +51,19 @@ describe('Backup and Restore Integrity', () => {
 
         // 4. Assertions
         // Deep equality check for residents
-        expect(restoredResidents).toEqual(mockResidents);
+        expect(restoredResidents).toEqual(residents);
 
-        // Core properties check for schedules
+        // Full deep equality check for schedules
         expect(restoredSchedules[0].id).toBe(mockSchedules[0].id);
         expect(restoredSchedules[0].name).toBe(mockSchedules[0].name);
         expect(restoredSchedules[0].data).toEqual(mockSchedules[0].data);
+        expect(restoredSchedules[0].cohortAssignments).toEqual(mockSchedules[0].cohortAssignments);
+        expect(restoredSchedules[0].startYear).toBe(mockSchedules[0].startYear);
+        expect(restoredSchedules[0].isHistory).toBe(mockSchedules[0].isHistory);
 
-        // Verify date restoration (critical for non-string types)
+        // Verify date restoration
         expect(restoredSchedules[0].createdAt.getTime()).toBe(mockSchedules[0].createdAt.getTime());
         expect(restoredSchedules[0].createdAt).toBeInstanceOf(Date);
     });
 });
+

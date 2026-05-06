@@ -26,8 +26,8 @@ The files found in the `specification/` folder are the authoritative sources of 
 
 Here are the rules that must govern the schedule generation:
 
-See @specification/MHS Curriculum Proposal.md
-> The MHS Curriculum Proposal.md serves as the absolute and final authority for all scheduling structures, rotation lengths, target PGY distributions, and curriculum logic. In the event of any disagreement or conflict between this document and other files (such as `constants.ts`, `Rotation_Reference.md`, or historical records), **this document supersedes them.** Schedule algorithms and programmatic definitions must be updated to match the rules established here.
+See @specification/MHS Curriculum.md
+> The MHS Curriculum.md serves as the absolute and final authority for all scheduling structures, rotation lengths, minimum PGY distributions, and curriculum logic. In the event of any disagreement or conflict between this document and other files (such as `constants.ts`, `Rotation_Reference.md`, or historical records), **this document supersedes them.** Schedule algorithms and programmatic definitions must be updated to match the rules established here.
 
 ## Engine Rules
 See:
@@ -65,6 +65,6 @@ For further UI presentation development, add items to interface.md, not GEMINI.m
 
 
 ## Unauthorized Constraint Modification
-*   **Hard Constraint**: The AI must NOT change staffing ratios (e.g., `minInterns`, `minSeniors`, `maxInterns`, `maxSeniors`) or educational requirement targets (e.g., `minWeeks`) without explicit human permission.
+*   **Hard Constraint**: The AI must NOT change staffing ratios (e.g., `minInterns`, `minSeniors`, `maxInterns`, `maxSeniors`) or educational requirement minimums (e.g., `minWeeks`) without explicit human permission.
 *   **Logical Guardrail (4+1 Availability)**: Under the 4+1 model, exactly **4/5ths** of the resident pool is available for inpatient service every week. For a class of 15, this means **12 residents** are always available. The AI must never assume that a service can only be staffed by a single cohort.
 *   **Impossibility Reporting**: If the existing constraints create a mathematical impossibility, the AI must report this as a bottleneck (see `bottlenecks_discovered.md`) but must attempt to generate the most compliant schedule possible under the *original* constraints. Never "fix" an algorithm failure by zeroing out a requirement.

@@ -8,7 +8,8 @@ interface Props {
   schedule: ScheduleGrid;
   startYear: number;
   cohortAssignments?: Record<string, number>;
-  canEditHistory?: boolean;
+  isReadOnly?: boolean;
+
   onCellClick: (residentId: string, week: number, rect?: DOMRect) => void;
   onLockWeek: (weekIdx: number) => void;
   onLockResident: (residentId: string) => void;
@@ -46,7 +47,8 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   schedule,
   startYear,
   cohortAssignments,
-  canEditHistory = false,
+  isReadOnly = false,
+
   onCellClick,
   onLockWeek,
   onLockResident,
@@ -84,14 +86,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       clearTimeout(clickTimeoutRef.current[key]);
       delete clickTimeoutRef.current[key];
       
-      // Allow toggle lock if it's not past OR if history editing is enabled
-      if (!isPast || canEditHistory) {
+      // Allow toggle lock if it's not past
+      if (!isPast) {
         onToggleLock(residentId, weekIdx);
       }
     } else {
       clickTimeoutRef.current[key] = window.setTimeout(() => {
-        // Allow edit if not locked AND (not past OR history editing enabled)
-        if (!isLocked && (!isPast || canEditHistory)) {
+        // Allow edit if not locked AND not past
+        if (!isLocked && !isPast) {
           onCellClick(residentId, weekIdx, rect);
         }
         delete clickTimeoutRef.current[key];
@@ -241,9 +243,9 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               {WEEKS.map((w, idx) => (
                 <th
                   key={w}
-                  onDoubleClick={() => onLockWeek(idx)}
-                  className="p-1 min-w-[80px] text-center bg-light-1 cursor-pointer hover:bg-light-blue/20 transition-colors"
-                  title="Double-click to toggle lock for this entire week"
+                  onDoubleClick={() => !isReadOnly && onLockWeek(idx)}
+                  className={`p-1 min-w-[80px] text-center bg-light-1 transition-colors ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
+                  title={isReadOnly ? undefined : "Double-click to toggle lock for this entire week"}
                 >
                   <div className="flex flex-col items-center">
                     <span>W{w}</span>
@@ -263,10 +265,10 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               return (
                 <tr key={resident.id} className="hover:bg-light-1 transition-colors">
                   <td
-                    className="sticky left-0 z-20 p-2 font-medium text-black group bg-white/80 backdrop-blur-md cursor-pointer hover:bg-light-blue/20 transition-colors"
+                    className={`sticky left-0 z-20 p-2 font-medium text-black group bg-white/80 backdrop-blur-md transition-colors ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
-                    onDoubleClick={() => onLockResident(resident.id)}
-                    title={`Double-click to toggle lock for ${resident.name}`}
+                    onDoubleClick={() => !isReadOnly && onLockResident(resident.id)}
+                    title={isReadOnly ? undefined : `Double-click to toggle lock for ${resident.name}`}
                   >
                     <div className="flex flex-col truncate">
                       <span className="flex items-center gap-2 truncate" title={resident.name}>
@@ -280,7 +282,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   {WEEKS.map((w, idx) => {
                     const cell = residentSchedule[idx];
                     const assign = cell?.assignment;
-                    const isPast = isPastWeek(w, startYear);
+                    const isPast = isReadOnly || isPastWeek(w, startYear);
                     const bgHex = assign ? getAssignmentColor(assign, isPast) : '#ffffff';
 
                     return (
@@ -297,7 +299,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           }}
                           onMouseEnter={(e) => assign && handleMouseEnter(e, resident, idx, assign)}
                           onMouseLeave={handleMouseLeave}
-                          title={isPast && !canEditHistory ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock"}
+                          title={isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock")}
                         >
                           {assign ? (
                             <span className="truncate w-full block">

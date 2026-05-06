@@ -1,4 +1,4 @@
-Note: for all "minimum" requirements, use the word "minimum" in the code, not "target". Same with maximum. "Target" should be reserved for ideals.
+Note: for all "minimum" requirements, use the word "minimum" in the code, not "target". Same with maximum. "Target" is forbidden; use "Ideal" for soft goals.
 
 
 ### Vacation Scheduling (Human-Only)
@@ -43,6 +43,15 @@ To maintain year-independent data integrity, the application treats **Start Year
 *   **Whole-schedule generation**: The scheduling engine must always operate on all future years at once (typically 3 years), not year-by-year. Year-by-year generation caused cross-year edge effects, front-loaded requirements, and continuity breaks at year boundaries.
 *   **`locked` cell semantics**: `locked: true` on a `ScheduleCell` means the cell must NOT be modified by any generator or healer. Generators must check `locked` before placing blocks. This is the universal mechanism for partial-schedule fills (e.g., years 1-2 locked, only year 3 mutable).
 *   **Continuity prefix**: When generating, the last 4 weeks of the year preceding the mutable window should be prepended as locked cells, so generators can maintain block continuity across the entry boundary.
-*   **Per-PGY-year requirements**: `minWeeksIntern`, `minWeeksPGY2`, `minWeeksPGY3` are per-PGY-year targets. A PGY-2's 12-week Wards target must be met in their PGY-2 year, regardless of Wards done in PGY-1. Historical counts inform sorting priority (who needs the rotation more) but do NOT satisfy current-year targets.
+*   **Per-PGY-year requirements**: `minWeeksIntern`, `minWeeksPGY2`, `minWeeksPGY3` are per-PGY-year minimums. A PGY-2's 12-week Wards minimum must be met in their PGY-2 year, regardless of Wards done in PGY-1. Historical counts inform sorting priority (who needs the rotation more) but do NOT satisfy current-year minimums.
+
+Note: in a 3-year view, a resident's cohort is not static! It may change at the year boundary, producing a non-4+1 period.
 
 
+### Healing Engine (Post-Processing)
+After a base schedule is created with one of the Generators, there may be some violations remaining. The healer performs 4-block swaps, if available, to try to find higher scoring schedules and eliminate violations. If 4-block swaps don't work, it will try 2-block swaps. Only when absolutely necessary, it will perform 1-block swaps as a last resort.
+
+The healer must not touch locked blocks.
+
+### Requirement Engine (Single Source of Truth)
+It's critical that the requirements used to calculate scores, count violations, and run tests be the same exact code used to display requirement stats in the UI. The `RequirementsEngine` class is the single source of truth for this information. It automatically distinguishes between **Cumulative (ACGME)** types (which sum history + session data) and **Annual (MHS)** types (which are year-bound).
