@@ -297,7 +297,7 @@ export const generateSchedule = async (
       
       currentBestScores.push(isActuallyExhausted ? null : (state.bestScore === -Infinity ? -1000000 : state.bestScore));
       attemptCounts[g.id] = state.totalAttempts;
-      exhaustionPoints[g.id] = state.lastBestIteration + (state.iterationsToFindBest * 10);
+      exhaustionPoints[g.id] = Math.min(state.lastBestIteration + (state.iterationsToFindBest * 10), HARD_CAP);
     });
 
     onProgress(i, currentBestScores, attemptCounts, exhaustionPoints, exhaustedCount);
