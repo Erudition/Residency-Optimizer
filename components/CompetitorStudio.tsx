@@ -71,7 +71,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                     {/* Cards Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {algorithms.map(algo => {
-                            const algoStats = stats[algo.id] || { bestScore: Infinity, worstScore: -Infinity, bestViolations: Infinity, worstViolations: -Infinity };
+                            const algoStats = stats[algo.id] || { bestScore: -Infinity, worstScore: Infinity, bestViolations: Infinity, worstViolations: -Infinity };
                             const isEnabled = params.algorithmIds.includes(algo.id);
 
                             return (
@@ -118,7 +118,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                                                 <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
                                                     <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Best Score</div>
                                                     <div className="text-sm font-black text-primary">
-                                                        {algoStats.bestScore === Infinity ? '—' : Math.round(algoStats.bestScore).toLocaleString()}
+                                                         {algoStats.bestScore === -Infinity ? '—' : Math.round(algoStats.bestScore).toLocaleString()}
                                                     </div>
                                                 </div>
                                                 <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
@@ -130,7 +130,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                                                 <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">
                                                     <div className="text-[10px] font-bold text-muted uppercase tracking-tighter mb-1">Worst Score</div>
                                                     <div className="text-sm font-black text-primary">
-                                                        {algoStats.worstScore === -Infinity ? '—' : Math.round(algoStats.worstScore).toLocaleString()}
+                                                         {algoStats.worstScore === Infinity ? '—' : Math.round(algoStats.worstScore).toLocaleString()}
                                                     </div>
                                                 </div>
                                                 <div className="bg-light-1 rounded-2xl p-3 border border-light-3 hover:border-light-5 transition-colors">

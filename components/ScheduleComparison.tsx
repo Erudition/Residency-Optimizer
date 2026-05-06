@@ -133,7 +133,7 @@ export const ScheduleComparison: React.FC<Props> = ({
 
   const ranges = useMemo(() => {
     const r = {
-      score: { min: 0, max: 100000 },
+      score: { min: 0, max: 100 },
       fairness: { min: 100, max: 0 },
       pgyFairness: { min: 100, max: 0 },
       totalNF: { min: 10000, max: 0 },
@@ -322,7 +322,7 @@ export const ScheduleComparison: React.FC<Props> = ({
           </div>
           <div className="flex items-center gap-2 border-l border-light-6 pl-8">
             <Info size={14} className="text-light-5" />
-            <span>Cost = (Violations × 10k) + (PGY3 Inequity) + (Streak Deviation)</span>
+            <span>Score = Weighted sum of Education (49%), Staffing (49%), Intensity, Streaks, Diversity, and Cohort Fairness</span>
           </div>
         </div>
         <img src="https://www.hcadam.com/api/public/content/349f5f94cafa4b168f99e74a262b8c24" alt="Residency Scheduler Pro" className="h-6 w-auto object-contain opacity-50 hover:opacity-100 transition-opacity" />

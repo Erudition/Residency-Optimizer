@@ -673,69 +673,331 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
 };
 
 export const calculateScheduleScore = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): number => {
-  const weeklyViolations = getWeeklyViolations(residents, schedule);
-  const reqViolations = RequirementsEngine.getViolations(residents, schedule, historicalSchedules || {}, ACTIVE_START_YEAR);
-  const fairness = calculateFairnessMetrics(residents, schedule);
+  const safeGrid = schedule || {};
+  const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
+  const numYears = Math.ceil(totalWeeks / 52);
 
-  // New Score Function (Higher is Better)
+  // Component 1: Education Requirements (Weight: 0.490)
+  let educationDenominator = 0;
+  let educationNumerator = 0;
 
-  // 1. Violations (Dominant Factor - negative impact)
-  const violationPenalty = (weeklyViolations.length + reqViolations.length) * -10000;
-
-  // 2. Fairness (PGY-3 Only)
-  const pgy3 = fairness.find(f => f.level === 3);
-  const pgy3FairnessScore = pgy3 ? pgy3.fairnessScore : 0;
-  const fairnessBonus = pgy3FairnessScore * 100;
-
-  // 3. Streak Equity (negative impact for higher standard deviation)
-  const allStreaks: number[] = [];
-  fairness.forEach(g => g.residents.forEach(r => allStreaks.push(r.maxIntensityStreak)));
-  const meanStreak = allStreaks.reduce((a, b) => a + b, 0) / (allStreaks.length || 1);
-  const streakSD = Math.sqrt(allStreaks.reduce((s, n) => s + Math.pow(n - meanStreak, 2), 0) / (allStreaks.length || 1));
-
-  const streakPenalty = streakSD * -1000;
-
-  // 4. Continuity (Avoid "Salad" schedules)
-  // Downgraded to Ideal (soft bonus/penalty) to allow healer to prioritize hard constraints.
-  let continuityPenalty = 0;
   residents.forEach(r => {
-    const weeks = schedule[r.id] || [];
-    const cohort = r.cohort || 0;
-    
-    // Check 4-week inpatient blocks, correctly offset by cohort clinic weeks.
-    // In a 4+1 system, there are 5 possible start offsets for a 4-week block.
-    // Cohort 0: Clinic at 4, 9, 14... Blocks at [0-3], [5-8], [10-13]
-    // Cohort 1: Clinic at 0, 5, 10... Blocks at [1-4], [6-9], [11-14]
-    // General rule: Clinic at week 'w' if (w % 5) === (4 - cohort) ?? 
-    // Wait, let's re-verify:
-    // Cohort 0: Clinic at 4, 9. (4%5=4). (4-0=4). OK.
-    // Cohort 1: Clinic at 3, 8. (3%5=3). (4-1=3). OK.
-    // Cohort 2: Clinic at 2, 7. (2%5=2). (4-2=2). OK.
-    // Cohort 3: Clinic at 1, 6. (1%5=1). (4-3=1). OK.
-    // Cohort 4: Clinic at 0, 5. (0%5=0). (4-4=0). OK.
-    // So Clinic week is (4 - cohort) % 5.
-    // Inpatient block starts at (4 - cohort + 1) % 5.
-    
-    const blockStartOffset = (cohort + 1) % 5;
-    
-    for (let cycle = 0; cycle < Math.floor(weeks.length / 5); cycle++) {
-      const start = cycle * 5 + blockStartOffset;
-      if (start + 4 > weeks.length) continue;
-      
-      const core = weeks.slice(start, start + 4).map(c => c?.assignment).filter(Boolean);
-      if (core.length < 2) continue;
-      
-      let changes = 0;
-      for (let i = 1; i < core.length; i++) {
-        if (core[i] !== core[i-1]) changes++;
-      }
-      
-      // Downgraded weights: 500 for a split block, 2000 for a "salad" block.
-      if (changes === 1) continuityPenalty += 500;
-      else if (changes > 1) continuityPenalty += changes * 1000;
+    for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
+      const currentYear = ACTIVE_START_YEAR + yearIdx;
+      const pgy = currentYear - r.startYear + 1;
+      if (pgy < 1 || pgy > 3) continue;
+
+      const pgyReqs = REQUIREMENTS[pgy] || [];
+      pgyReqs.forEach(req => {
+        const isACGME = ACGME_TYPES.includes(req.type);
+        let minWeeks = req.minWeeks;
+        let actual = 0;
+
+        if (isACGME) {
+          minWeeks = 0;
+          for (let l = 1; l <= pgy; l++) {
+            const levelReqs = REQUIREMENTS[l] || [];
+            const levelReq = levelReqs.find(rq => rq.type === req.type);
+            minWeeks += levelReq ? levelReq.minWeeks : 0;
+          }
+          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, historicalSchedules || {}, ACTIVE_START_YEAR, currentYear, true);
+        } else {
+          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, historicalSchedules || {}, ACTIVE_START_YEAR, currentYear, false);
+        }
+
+        educationDenominator += minWeeks;
+        educationNumerator += Math.min(minWeeks, actual);
+      });
     }
   });
 
-  // Total Score
-  return violationPenalty + fairnessBonus + streakPenalty - continuityPenalty;
+  const educationScore = educationDenominator > 0 ? (educationNumerator / educationDenominator) * 100 : 100;
+
+  // Component 2: Staffing Requirements (Weight: 0.490)
+  let staffingDenominator = 0;
+  let staffingNumerator = 0;
+
+  const cohortMap = getStandardCohortMap(residents);
+  const currentYear = ACTIVE_START_YEAR;
+
+  for (let week = 0; week < totalWeeks; week++) {
+    const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
+    const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC || a === AssignmentType.NIMA_CLINIC).length;
+    
+    staffingDenominator += 1;
+    staffingNumerator += clinicCount >= 1 ? 1 : 0;
+
+    Object.values(AssignmentType).forEach(type => {
+      const meta = ROTATION_METADATA[type];
+      if (!meta) return;
+
+      const assignees = residents.filter(r => safeGrid[r.id]?.[week]?.assignment === type);
+      const interns = assignees.filter(r => ((r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52)) === 1).length;
+      const seniors = assignees.filter(r => ((r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52)) > 1).length;
+
+      const activeInternsPool = residents.filter(r => ((r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52)) === 1).length;
+      const activeSeniorsPool = residents.filter(r => ((r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52)) > 1).length;
+
+      if (meta.minInterns > 0) {
+        staffingDenominator += meta.minInterns;
+        staffingNumerator += Math.min(meta.minInterns, interns);
+      }
+      if (meta.maxInterns < activeInternsPool) {
+        const diff = activeInternsPool - meta.maxInterns;
+        staffingDenominator += diff;
+        staffingNumerator += diff - Math.max(0, interns - meta.maxInterns);
+      }
+      if (meta.minSeniors > 0) {
+        staffingDenominator += meta.minSeniors;
+        staffingNumerator += Math.min(meta.minSeniors, seniors);
+      }
+      if (meta.maxSeniors < activeSeniorsPool) {
+        const diff = activeSeniorsPool - meta.maxSeniors;
+        staffingDenominator += diff;
+        staffingNumerator += diff - Math.max(0, seniors - meta.maxSeniors);
+      }
+    });
+
+    const jeopardyPgy2 = residents.filter(r => {
+      const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
+      const assign = safeGrid[r.id]?.[week]?.assignment;
+      return pgy === 2 && assign && RequirementsEngine.isJeopardyBlock(assign);
+    }).length;
+
+    const jeopardyPgy3 = residents.filter(r => {
+      const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
+      const assign = safeGrid[r.id]?.[week]?.assignment;
+      return pgy === 3 && assign && RequirementsEngine.isJeopardyBlock(assign);
+    }).length;
+
+    const seniorFlexibleCount = residents.filter(r => {
+      const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
+      if (pgy > 1) {
+        const assign = safeGrid[r.id]?.[week]?.assignment;
+        return assign && RequirementsEngine.isJeopardyBlock(assign);
+      }
+      return false;
+    }).length;
+
+    staffingDenominator += 1;
+    staffingNumerator += jeopardyPgy2 >= 1 ? 1 : 0;
+
+    staffingDenominator += 1;
+    staffingNumerator += jeopardyPgy3 >= 1 ? 1 : 0;
+
+    staffingDenominator += 1;
+    staffingNumerator += seniorFlexibleCount >= 1 ? 1 : 0;
+  }
+
+  residents.forEach(r => {
+    const cohort = cohortMap[r.id] ?? 0;
+    const blockStartOffset = (cohort + 1) % 5;
+
+    for (let week = 0; week < totalWeeks; week++) {
+      const cell = safeGrid[r.id]?.[week];
+      if (!cell || !cell.assignment) continue;
+
+      const assign = cell.assignment;
+
+      staffingDenominator += 1;
+      staffingNumerator += RequirementsEngine.isClinicSiteCorrect(r, assign) ? 1 : 0;
+
+      if (assign === AssignmentType.VACATION) {
+        staffingDenominator += 1;
+        staffingNumerator += (week % 5 !== cohort) ? 1 : 0;
+
+        const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
+        staffingDenominator += 1;
+        staffingNumerator += (!blackoutWeeks.includes(week % 52)) ? 1 : 0;
+      }
+    }
+
+    for (let cycle = 0; cycle < Math.floor(totalWeeks / 5); cycle++) {
+      const start = cycle * 5 + blockStartOffset;
+      if (start + 4 > totalWeeks) continue;
+
+      const blockWeeks = Array.from({ length: 4 }, (_, i) => start + i);
+      const assignmentsInBlock = blockWeeks.map(w => safeGrid[r.id]?.[w]?.assignment);
+
+      const hasVacation = assignmentsInBlock.includes(AssignmentType.VACATION);
+      const hasCore = assignmentsInBlock.some(a => a && [
+        AssignmentType.WARDS_RED,
+        AssignmentType.WARDS_BLUE,
+        AssignmentType.WARDS_METRO,
+        AssignmentType.MICU,
+        AssignmentType.METRO_ICU
+      ].includes(a));
+
+      if (hasCore) {
+        staffingDenominator += 1;
+        staffingNumerator += hasVacation ? 0 : 1;
+      }
+    }
+  });
+
+  const staffingScore = staffingDenominator > 0 ? (staffingNumerator / staffingDenominator) * 100 : 100;
+
+  // Component 3: Total Intensity (Weight: 0.006)
+  let actualTotalIntensity = 0;
+  let minPossibleIntensity = 0;
+  let maxPossibleIntensity = 0;
+
+  residents.forEach(r => {
+    for (let week = 0; week < totalWeeks; week++) {
+      const assign = safeGrid[r.id]?.[week]?.assignment;
+      if (!assign) continue;
+
+      const intensity = ROTATION_METADATA[assign]?.intensity || 0;
+      actualTotalIntensity += intensity;
+
+      if (assign === AssignmentType.CLINIC || assign === AssignmentType.NIMA_CLINIC || assign === AssignmentType.VACATION) {
+        minPossibleIntensity += intensity;
+        maxPossibleIntensity += intensity;
+      } else {
+        minPossibleIntensity += 1;
+        maxPossibleIntensity += 5;
+      }
+    }
+  });
+
+  const intensityDiff = maxPossibleIntensity - minPossibleIntensity;
+  const intensityScore = intensityDiff > 0 
+    ? Math.max(0, 100 - ((actualTotalIntensity - minPossibleIntensity) / intensityDiff) * 100) 
+    : 100;
+
+  // Component 4: Streak Equity (Weight: 0.004)
+  const maxStreaks = residents.map(r => {
+    const weeks = safeGrid[r.id] || [];
+    let currentStreak = 0;
+    let maxStreak = 0;
+    weeks.forEach(c => {
+      if (!c || !c.assignment) return;
+      const m = ROTATION_METADATA[c.assignment];
+      if (!m) return;
+      if (m.intensity >= 3) {
+        currentStreak++;
+        if (currentStreak > maxStreak) maxStreak = currentStreak;
+      } else if (m.intensity < 2) {
+        currentStreak = 0;
+      }
+    });
+    return maxStreak;
+  });
+
+  const meanStreak = maxStreaks.reduce((a, b) => a + b, 0) / (maxStreaks.length || 1);
+  const streakSD = Math.sqrt(maxStreaks.reduce((s, n) => s + Math.pow(n - meanStreak, 2), 0) / (maxStreaks.length || 1));
+  const worstCaseStreakSD = totalWeeks * Math.sqrt(residents.length - 1) / residents.length;
+  const streakScore = worstCaseStreakSD > 0 
+    ? Math.max(0, 100 - (streakSD / worstCaseStreakSD) * 100) 
+    : 100;
+
+  // Component 5: Coworking Diversity (Weight: 0.003)
+  let weightedActualDiversity = 0;
+  let weightedMaxDiversity = 0;
+
+  residents.forEach(r => {
+    const pgy = r.level || 1;
+    const weight = pgy === 1 ? 3 : pgy === 2 ? 2 : 1;
+
+    const partners = new Set<string>();
+    const clinicalTypes = [
+      AssignmentType.WARDS_RED,
+      AssignmentType.WARDS_BLUE,
+      AssignmentType.MICU,
+      AssignmentType.NIGHT_FLOAT,
+      AssignmentType.EM,
+      AssignmentType.WARDS_METRO,
+      AssignmentType.JR_HOSPITALIST
+    ];
+
+    for (let w = 0; w < totalWeeks; w++) {
+      const myAssign = safeGrid[r.id]?.[w]?.assignment;
+      if (myAssign && clinicalTypes.includes(myAssign)) {
+        residents.forEach(peer => {
+          if (peer.id !== r.id && safeGrid[peer.id]?.[w]?.assignment === myAssign) {
+            partners.add(peer.id);
+          }
+        });
+      }
+    }
+
+    weightedActualDiversity += weight * partners.size;
+    weightedMaxDiversity += weight * (residents.length - 1);
+  });
+
+  const diversityScore = weightedMaxDiversity > 0 
+    ? (weightedActualDiversity / weightedMaxDiversity) * 100 
+    : 100;
+
+  // Component 6: Jeopardy Pool Stability (Weight: 0.001)
+  const jeopardyPoolSizes: number[] = [];
+  for (let week = 0; week < totalWeeks; week++) {
+    let size = 0;
+    residents.forEach(r => {
+      const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
+      if (pgy > 1) {
+        const assign = safeGrid[r.id]?.[week]?.assignment;
+        if (assign && RequirementsEngine.isJeopardyBlock(assign)) {
+          size++;
+        }
+      }
+    });
+    jeopardyPoolSizes.push(size);
+  }
+
+  const totalJeopardyPoolSeniorsWeeks = jeopardyPoolSizes.reduce((a, b) => a + b, 0);
+  const jeopardyPoolMean = totalJeopardyPoolSeniorsWeeks / (totalWeeks || 1);
+  const jeopardyPoolSD = Math.sqrt(jeopardyPoolSizes.reduce((s, n) => s + Math.pow(n - jeopardyPoolMean, 2), 0) / (totalWeeks || 1));
+  const worstCaseJeopardyPoolSD = totalJeopardyPoolSeniorsWeeks * Math.sqrt(totalWeeks - 1) / totalWeeks;
+  const jeopardyPoolStabilityScore = worstCaseJeopardyPoolSD > 0 
+    ? Math.max(0, 100 - (jeopardyPoolSD / worstCaseJeopardyPoolSD) * 100) 
+    : 100;
+
+  // Components 7-9: Cohort Fairness (PGY-1/2/3 Weights: 0.001 / 0.002 / 0.003)
+  const cohortFairnessScores: Record<number, number> = {};
+
+  [1, 2, 3].forEach(level => {
+    const cohortResidents = residents.filter(r => r.level === level);
+    if (cohortResidents.length === 0) {
+      cohortFairnessScores[level] = 100;
+      return;
+    }
+
+    const desirabilities = cohortResidents.map(r => {
+      const weeks = safeGrid[r.id] || [];
+      let coreCount = 0;
+      let electiveCount = 0;
+      let vacationCount = 0;
+
+      weeks.forEach(c => {
+        if (!c || !c.assignment) return;
+        if (CORE_TYPES.includes(c.assignment)) coreCount++;
+        if (ELECTIVE_TYPES.includes(c.assignment)) electiveCount++;
+        if (c.assignment === AssignmentType.VACATION) vacationCount++;
+      });
+
+      return (electiveCount + vacationCount) - coreCount;
+    });
+
+    const desirabilityMean = desirabilities.reduce((a, b) => a + b, 0) / cohortResidents.length;
+    const desirabilitySD = Math.sqrt(desirabilities.reduce((s, n) => s + Math.pow(n - desirabilityMean, 2), 0) / cohortResidents.length);
+    const worstCaseDesirabilitySD = totalWeeks;
+    cohortFairnessScores[level] = worstCaseDesirabilitySD > 0 
+      ? Math.max(0, 100 - (desirabilitySD / worstCaseDesirabilitySD) * 100) 
+      : 100;
+  });
+
+  // Weighted sum out of 100
+  const finalScore = 
+    (educationScore * 0.490) +
+    (staffingScore * 0.490) +
+    (intensityScore * 0.006) +
+    (streakScore * 0.004) +
+    (diversityScore * 0.003) +
+    (jeopardyPoolStabilityScore * 0.001) +
+    (cohortFairnessScores[3] * 0.003) +
+    (cohortFairnessScores[2] * 0.002) +
+    (cohortFairnessScores[1] * 0.001);
+
+  return finalScore;
 };
