@@ -1,4 +1,4 @@
-import { ScheduleGrid, AssignmentType, ScheduleCell, ScheduleHistory } from '../../types';
+import { ScheduleGrid, AssignmentType, ScheduleCell } from '../../types';
 import { TOTAL_WEEKS, fulfillsRequirement, ROTATION_METADATA } from '../../constants';
 
 export const canFitBlock = (schedule: ScheduleGrid, residentId: string, start: number, duration: number): boolean => {
@@ -6,20 +6,23 @@ export const canFitBlock = (schedule: ScheduleGrid, residentId: string, start: n
     if (!row) return false;
     for (let i = 0; i < duration; i++) {
         const week = start + i;
-        if (week < 0 || week >= TOTAL_WEEKS) continue;
+        if (week < 0 || week >= row.length) continue;
         const cell = row[week];
-        if (cell && cell.assignment !== null) return false;
+        if (cell && (cell.assignment !== null || cell.locked)) return false;
     }
     return true;
 };
 
 export const placeBlock = (schedule: ScheduleGrid, residentId: string, start: number, duration: number, type: AssignmentType) => {
     if (!schedule[residentId]) {
-        schedule[residentId] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null, locked: false }));
+        const totalWeeks = Object.values(schedule)[0]?.length || TOTAL_WEEKS;
+        schedule[residentId] = Array(totalWeeks).fill(null).map(() => ({ assignment: null, locked: false }));
     }
+    const row = schedule[residentId];
     for (let i = 0; i < duration; i++) {
         const week = start + i;
-        if (week < 0 || week >= TOTAL_WEEKS) continue;
+        if (week < 0 || week >= row.length) continue;
+        if (row[week].locked) continue;
         schedule[residentId][week] = { assignment: type, locked: false };
     }
 };
@@ -30,19 +33,30 @@ export const getRequirementCount = (row: ScheduleCell[], type: AssignmentType): 
     return row.filter(c => c && fulfillsRequirement(c.assignment, type)).length;
 };
 
-export const getCumulativeRequirementCount = (residentId: string, currentYearRow: ScheduleCell[], type: AssignmentType, history?: ScheduleHistory): number => {
+export const getYearRequirementCount = (
+    row: ScheduleCell[],
+    type: AssignmentType,
+    yearStart: number,
+    yearEnd: number
+): number => {
+    return row.slice(yearStart, yearEnd)
+        .filter(c => c && fulfillsRequirement(c.assignment, type)).length;
+};
+
+export const getPriorRequirementCount = (
+    priorCounts: Record<string, number>,
+    type: AssignmentType
+): number => {
+    return priorCounts[type] || 0;
+};
+
+export const getCumulativeRequirementCount = (residentId: string, currentYearRow: ScheduleCell[], type: AssignmentType, priorRequirementCounts?: Record<string, Record<string, number>>): number => {
     let count = getRequirementCount(currentYearRow, type);
     if (type === AssignmentType.NIGHT_FLOAT) {
         return count;
     }
-    if (history) {
-        for (const year in history) {
-            const yearSchedule = history[year];
-            const row = yearSchedule[residentId];
-            if (row) {
-                count += getRequirementCount(row, type);
-            }
-        }
+    if (priorRequirementCounts && priorRequirementCounts[residentId]) {
+        count += priorRequirementCounts[residentId][type] || 0;
     }
     return count;
 };
@@ -57,7 +71,7 @@ export const isAligned = (w: number, cohort: number, dur: number): boolean => {
     return true;
 };
 
-export const getAssignedCount = (schedule: ScheduleGrid, residents: { id: string, level: number }[], week: number, type: AssignmentType, level?: number) => {
+export const getAssignedCount = (schedule: ScheduleGrid, residents: { id: string, level: number }[], week: number, type: AssignmentType, requestedLevel?: number) => {
     return residents.filter(r => {
         const cell = schedule[r.id]?.[week];
         if (!cell || !cell.assignment) return false;
@@ -65,8 +79,11 @@ export const getAssignedCount = (schedule: ScheduleGrid, residents: { id: string
         // Exact match check (as used by staffing logic)
         const isMatch = cell.assignment === type;
         
-        if (level === 1) return r.level === 1 && isMatch;
-        if (level === 2) return r.level >= 2 && isMatch;
+        // Graduation aware level
+        const currentLevel = Number(r.level) + Math.floor(week / 52);
+
+        if (requestedLevel === 1) return currentLevel === 1 && isMatch;
+        if (requestedLevel === 2) return currentLevel >= 2 && isMatch;
         return isMatch;
     }).length;
 };

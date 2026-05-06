@@ -4,15 +4,17 @@ import { ConvergenceDataPoint } from '../types';
 
 interface Props {
   data: (number | null)[][]; // Each element is an array of scores, one per algorithm
-  attempts: number[];
-  exhaustionPoints: number[];
+  attempts: Record<string, number>;
+  exhaustionPoints: Record<string, number>;
   maxTries: number;
   onStop: () => void;
   onSelectWinners: () => void;
   onCancelAlgorithm: (id: string) => void;
   algorithms: { id: string, name: string, color: string }[];
   canceledIds: Set<string>;
+  healerProgress?: number;
 }
+
 
 const CustomizedXDot = (props: any) => {
   const { cx, cy, stroke, payload, dataKey, index, fullData } = props;
@@ -31,7 +33,7 @@ const CustomizedXDot = (props: any) => {
   return null;
 };
 
-export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustionPoints, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds }) => {
+export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustionPoints, maxTries, onStop, onSelectWinners, onCancelAlgorithm, algorithms, canceledIds, healerProgress }) => {
   const [isPromoting, setIsPromoting] = React.useState(false);
   const startTimeRef = React.useRef<number>(Date.now());
   
@@ -68,7 +70,9 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
   const bestScore = useMemo(() => {
     if (data.length === 0) return 0;
     const lastRow = data[data.length - 1];
-    return Math.max(...lastRow);
+    const validScores = lastRow.filter((s): s is number => s !== null);
+    if (validScores.length === 0) return 0;
+    return Math.max(...validScores);
   }, [data]);
 
   return (
@@ -85,6 +89,12 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
               <p className="text-muted text-sm font-medium">Holistic optimization across all academic years</p>
               <div className="h-1 w-1 rounded-full bg-light-6" />
               <p className="text-blue text-xs font-black uppercase tracking-widest">Est. {eta}</p>
+              {healerProgress !== undefined && (
+                <>
+                  <div className="h-1 w-1 rounded-full bg-light-6" />
+                  <p className="text-green text-xs font-black uppercase tracking-widest">Healer: {healerProgress}%</p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -106,7 +116,7 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
             {isPromoting ? (
               <>
                 <div className="w-4 h-4 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
-                Promoting Best...
+                Promoting Best... {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
               </>
             ) : (
               'Promote Best Now'
@@ -166,11 +176,13 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
           
           let currentBest: number | null = -Infinity;
           for (let d = data.length - 1; d >= 0; d--) {
-            if (data[d][i] !== null) {
-              currentBest = data[d][i];
+            const score = data[d]?.[i];
+            if (score !== undefined && score !== null) {
+              currentBest = score;
               break;
             }
           }
+
           
           const isWinner = currentBest === bestScore && currentBest !== -Infinity && currentBest !== null;
 
@@ -194,12 +206,13 @@ export const GenerationDashboard: React.FC<Props> = ({ data, attempts, exhaustio
                 )}
               </div>
               <div className="text-xl font-black text-primary leading-none flex items-baseline gap-1">
-                {(currentBest === -Infinity || currentBest === null) ? '---' : currentBest.toFixed(1)}
+                {(typeof currentBest === 'number' && currentBest !== -Infinity) ? currentBest.toFixed(1) : '---'}
                 {isWinner && <span className="text-[8px] text-blue font-black uppercase">Best</span>}
               </div>
               <div className="text-[9px] font-bold text-muted mt-1 uppercase tracking-tight">
-                Attempt {attempts[i] || 0} / {exhaustionPoints[i] || '?'}
+                Attempt {(attempts as any)?.[algo.id] || 0} / {(exhaustionPoints as any)?.[algo.id] || '?'}
               </div>
+
             </div>
           );
         })}

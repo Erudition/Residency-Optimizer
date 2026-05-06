@@ -1,6 +1,6 @@
-import { Resident, ScheduleGrid, ScheduleHistory } from '../../types';
+import { Resident, ScheduleGrid } from '../../types';
 
 export interface ScheduleGenerator {
     name: string;
-    generate: (residents: Resident[], existing: ScheduleGrid, attemptIndex?: number, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>) => ScheduleGrid;
+    generate: (residents: Resident[], existing: ScheduleGrid, attemptIndex?: number, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>) => ScheduleGrid;
 }

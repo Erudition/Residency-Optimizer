@@ -1,12 +1,9 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { generateSchedule, getWeeklyViolations } from './scheduler';
+import { generateSchedule, getWeeklyViolations, getRequirementViolations } from './scheduler';
+import { healSchedule } from './healer';
 import { Resident, AssignmentType, ScheduleGrid, CompetitionPriority } from '../types';
 import { TOTAL_WEEKS, GENERATE_RESIDENTS_FOR_YEAR } from '../constants';
-
-/*
-const createMockResidents = (): Resident[] => {
-*/
 
 describe('Schedule Generator', () => {
     const residents = GENERATE_RESIDENTS_FOR_YEAR(2026);
@@ -14,23 +11,41 @@ describe('Schedule Generator', () => {
     let schedule: ScheduleGrid;
 
     const mockCohortMap: Record<string, number> = residents.reduce((acc, r, idx) => ({ ...acc, [r.id]: idx % 5 }), {});
+    
+    // Test case for locked blocks
+    const lockedResId = residents[0].id;
 
     beforeAll(async () => {
+        // Setup locked blocks
+        initialSchedule[lockedResId] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null as any, locked: false }));
+        initialSchedule[lockedResId][11] = { assignment: AssignmentType.VACATION, locked: true };
+        initialSchedule[lockedResId][12] = { assignment: AssignmentType.VACATION, locked: true };
+
         const result = await generateSchedule(
             2026, 
             1, 
+            residents, 
             {}, 
-            { residents, existing: { 2026: initialSchedule }, cohortAssignments: { 2026: mockCohortMap } }, 
-            { tries: 30, priority: CompetitionPriority.BEST_SCORE, topN: 1 },
-            ['greedy', 'experimental', 'stochastic', 'strict'], 
+            { existing: { 2026: initialSchedule }, cohortAssignments: { 2026: mockCohortMap } }, 
+            { tries: 50, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, 
+            ['greedy', 'experimental', 'stochastic', 'strict', 'exact'], 
             () => false, 
             () => {}
         );
-        console.error("WINNER OF COMPETITION:", result.results[0].winnerName);
-        console.error("BEST SCORE:", result.results[0].score);
-        console.error("TOTAL VIOLATIONS:", result.results[0].totalViolations);
-        schedule = result.results[0].schedule[2026];
-    }, 180000); // Increase timeout for competition iterations
+        
+        const winner = result.results[0];
+        console.error("WINNER OF COMPETITION:", winner.winnerName);
+        console.error("PHASE 1 VIOLATIONS:", winner.totalViolations);
+        
+        // Phase 2: Healer (Simulate worker behavior)
+        const healedUnified = healSchedule(winner.unifiedSchedule!, result.unifiedResidents, 2026, 3000, {}); 
+        const reqV = getRequirementViolations(result.unifiedResidents, healedUnified, {}, 2026).length;
+        const weekV = getWeeklyViolations(result.unifiedResidents, healedUnified, 2026).length;
+        
+        console.error("PHASE 2 VIOLATIONS (Req/Week):", reqV, weekV);
+        
+        schedule = healedUnified;
+    }, 300000); 
 
 
     it('should generate a schedule for every resident', () => {
@@ -40,6 +55,11 @@ describe('Schedule Generator', () => {
         });
     });
 
+    it('should respect locked blocks (Vacations)', () => {
+        expect(schedule[lockedResId][11].assignment).toBe(AssignmentType.VACATION);
+        expect(schedule[lockedResId][12].assignment).toBe(AssignmentType.VACATION);
+    });
+
     it('should enforce 4+1 Clinic weeks (Cohort rule)', () => {
         residents.forEach(r => {
             const weeks = schedule[r.id];
@@ -47,7 +67,7 @@ describe('Schedule Generator', () => {
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % 5 === cohort) {
                     const assignment = weeks[w].assignment;
-                    expect([AssignmentType.CLINIC, AssignmentType.NIMA_CLINIC]).toContain(assignment);
+                    expect([AssignmentType.CLINIC, AssignmentType.NIMA_CLINIC, AssignmentType.VACATION]).toContain(assignment);
                 }
             }
         });
@@ -65,8 +85,7 @@ describe('Schedule Generator', () => {
         const pgy1s = residents.filter(r => r.level === 1);
         pgy1s.forEach(r => {
             const assignments = schedule[r.id].map(w => w.assignment);
-            console.log(`Assignments for PGY1 ${r.name}:`, assignments.join(', '));
-
+            
             // Check for Cards (2 weeks)
             expect(assignments.filter(a => a === AssignmentType.CARDS).length).toBeGreaterThanOrEqual(2);
 
@@ -91,71 +110,31 @@ describe('Schedule Generator', () => {
         });
     });
 
-    it('should assign PGY2 required rotations', () => {
-        residents.filter(r => r.level === 2).forEach(r => {
-            const assignments = schedule[r.id].map(w => w.assignment);
-            expect(assignments.filter(a => a === AssignmentType.GERI).length).toBeGreaterThanOrEqual(4);
-            expect(assignments.filter(a => a === AssignmentType.EM).length).toBeGreaterThanOrEqual(2);
-            // Relax GI/Pulm/Neph to 0 or 2 depending on tightness
-            expect(assignments.filter(a => a === AssignmentType.WARDS_RED || a === AssignmentType.WARDS_BLUE || a === AssignmentType.WARDS_METRO).length).toBeGreaterThanOrEqual(4);
-        });
-    });
-
-    it('should assign PGY3 required electives', () => {
-        residents.filter(r => r.level === 3).forEach(r => {
-            const assignments = schedule[r.id].map(w => w.assignment);
-            expect(assignments.filter(a => a === AssignmentType.JR_HOSPITALIST).length).toBeGreaterThanOrEqual(4);
-            expect(assignments.filter(a => a === AssignmentType.PALLIATIVE).length).toBeGreaterThanOrEqual(4);
-            expect(assignments.filter(a => a === AssignmentType.ADD_MED).length).toBeGreaterThanOrEqual(4);
-            expect(assignments.filter(a => a === AssignmentType.NIMA_BLOCK).length).toBeGreaterThanOrEqual(4);
-        });
-    });
-
-    it('should assign correct block lengths for rotations', () => {
-        // Check Night Float is 2 week blocks if assigned (logic says duration 2 for NF in scheduler.ts)
-        // Actually scheduler.ts line 143 says duration = 2 for Night Float for PGY1/2 requirements?
-        // Let's check logic: duration is from metadata generally.
-
-        // Let's just spot check one resident to see if blocks are contiguous for Wards (4 weeks usually)
-        // This is a bit complex to test deterministically on a random schedule without parsing streaks.
-        // Skipping complex streak validation for now, relying on requirements counts.
-    });
-
     describe('Weekly Staffing Requirements', () => {
-        // We verify that for a generated schedule, constraints aren't violated GROSSLY.
-        // Since it's a random filler, it might not be perfect, but we can check bounds.
-
-        it('should have at least 1 intern on Night Float per week', () => {
-            for (let w = 0; w < TOTAL_WEEKS; w++) {
-            const onNF = residents.filter(r => schedule[r.id]?.[w]?.assignment === AssignmentType.NIGHT_FLOAT).length;
-            if (onNF < 1) console.warn(`Week ${w + 1}: NF Vacant`);
-            expect(onNF).toBeGreaterThanOrEqual(1);
-        }
+        it('should have zero weekly staffing violations after healing', () => {
+            const violations = getWeeklyViolations(residents, schedule, 2026);
+            if (violations.length > 0) {
+                console.error("WEEKLY VIOLATIONS FOUND AFTER HEALING:", JSON.stringify(violations, null, 2));
+            }
+            expect(violations.length).toBe(0);
         });
 
-        it('should have a reasonable number of weekly staffing violations', () => {
-            const violations = getWeeklyViolations(residents, schedule);
+        it('should have zero requirement violations after healing', () => {
+            const violations = getRequirementViolations(residents, schedule, {}, 2026);
             if (violations.length > 0) {
-                console.log("Weekly Violations Sample:", JSON.stringify(violations.slice(0, 10), null, 2));
-                console.log("Total Violations:", violations.length);
-                if (violations.length > 0) {
-                    console.log("First few violations:", JSON.stringify(violations.slice(0, 5), null, 2));
-                }
+                console.error("REQUIREMENT VIOLATIONS FOUND AFTER HEALING:", JSON.stringify(violations, null, 2));
             }
-            expect(violations.length).toBeLessThanOrEqual(250);
+            expect(violations.length).toBe(0);
         });
     });
 
     it('should produce non-deterministic (unique) schedules', { timeout: 300000 }, async () => {
-        const result1 = await generateSchedule(2026, 1, {}, { residents, existing: {}, cohortAssignments: {} }, { tries: 2, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['experimental', 'stochastic', 'strict'], () => false, () => {});
-        const result2 = await generateSchedule(2026, 1, {}, { residents: [...residents].reverse(), existing: {}, cohortAssignments: {} }, { tries: 2, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['experimental', 'stochastic', 'strict'], () => false, () => {});
+        const result1 = await generateSchedule(2026, 1, residents, {}, { existing: {}, cohortAssignments: {} }, { tries: 2, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['experimental', 'stochastic', 'strict'], () => false, () => {});
+        const result2 = await generateSchedule(2026, 1, [...residents].reverse(), {}, { existing: {}, cohortAssignments: {} }, { tries: 2, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['experimental', 'stochastic', 'strict'], () => false, () => {});
 
         const schedule1 = result1.results[0].schedule[2026];
         const schedule2 = result2.results[0].schedule[2026];
 
-        // Convert schedules to strings to compare them
-        // We check if the entire grid is different. 
-        // Note: There's a tiny probability they could be identical by chance, but with 300 attempts it's effectively 0.
         expect(JSON.stringify(schedule1)).not.toBe(JSON.stringify(schedule2));
     });
 });

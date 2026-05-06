@@ -550,7 +550,7 @@ export const REQUIREMENT_ORDER = [
 // DYNAMIC REQUIREMENTS GENERATION
 // Single source of truth: ROTATION_METADATA
 const generateRequirements = (level: number) => {
-    const reqs: Record<string, { type: AssignmentType, label: string, target: number }> = {};
+    const reqs: Record<string, { type: AssignmentType, label: string, minWeeks: number }> = {};
     
     Object.values(ROTATION_METADATA).forEach(m => {
         let minWeeks = 0;
@@ -564,8 +564,8 @@ const generateRequirements = (level: number) => {
             
             // If we already have a requirement for this category, keep the one with the higher minWeeks
             // or keep the first one found if minWeeks are same.
-            if (!reqs[key] || minWeeks > reqs[key].target) {
-                reqs[key] = { type: m.type, label, target: minWeeks };
+            if (!reqs[key] || minWeeks > reqs[key].minWeeks) {
+                reqs[key] = { type: m.type, label, minWeeks };
             }
         }
     });
@@ -573,11 +573,12 @@ const generateRequirements = (level: number) => {
     return Object.values(reqs);
 };
 
-export const REQUIREMENTS: Record<number, { type: AssignmentType, label: string, target: number }[]> = {
+export const REQUIREMENTS: Record<number, { type: AssignmentType, label: string, minWeeks: number }[]> = {
     1: generateRequirements(1),
     2: generateRequirements(2),
     3: generateRequirements(3),
 };
+
 
 // Sort requirements consistently for UI display
 [1, 2, 3].forEach(level => {

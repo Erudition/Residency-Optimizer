@@ -1,11 +1,11 @@
-import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement } from '../../constants';
 import { ScheduleGenerator } from './types';
 import { canFitBlock, placeBlock, shuffle, getCumulativeRequirementCount } from './utils';
 
 export const GreedyGenerator: ScheduleGenerator = {
     name: "Greedy (Legacy)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex?: number, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
         residents.forEach(r => {
@@ -63,7 +63,7 @@ export const GreedyGenerator: ScheduleGenerator = {
                 const duration = meta.duration || 4;
 
                 let safety = 0;
-                while (safety < 10) {
+                while (safety < 100) {
                     const currentlyAssigned = residents.filter(r => newSchedule[r.id]?.[w]?.assignment === type);
                     let interns = currentlyAssigned.filter(r => r.level === 1).length;
                     let seniors = currentlyAssigned.filter(r => r.level > 1).length;
@@ -96,7 +96,7 @@ export const GreedyGenerator: ScheduleGenerator = {
 
             pgyRequirements.forEach(req => {
                 shuffle(residents.filter(r => r.level === level)).forEach(res => {
-                    const current = getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules);
+                    const current = getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, priorRequirementCounts);
                     const meta = ROTATION_METADATA[req.type];
                     if (!meta) return;
 
@@ -106,7 +106,7 @@ export const GreedyGenerator: ScheduleGenerator = {
                         ? [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE]
                         : [req.type];
 
-                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target) {
+                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, priorRequirementCounts) < req.minWeeks) {
                         const best = findBestBalancedWindow(res.id, typesToTry, duration);
                         if (best.start === -1) break;
 

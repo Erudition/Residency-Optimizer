@@ -9,7 +9,8 @@ interface Props {
   schedule: ScheduleGrid;
 }
 
-const WEEKS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
+// WEEKS will be derived in the component
+
 
 const getBaseColorStyle = (assignment: AssignmentType, count: number, max: number): React.CSSProperties => {
   if (count === 0) return { backgroundColor: '#ffffff' };
@@ -25,6 +26,8 @@ const getBaseColorStyle = (assignment: AssignmentType, count: number, max: numbe
 };
 
 export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
+  const totalWeeks = useMemo(() => (Object.values(schedule)[0] as any)?.length || TOTAL_WEEKS, [schedule]);
+  const WEEKS = useMemo(() => Array.from({ length: totalWeeks }, (_, i) => i + 1), [totalWeeks]);
   // Resizable Column State - Reduced default width
   const [colWidth, setColWidth] = useState(150);
   const resizingRef = useRef(false);
@@ -90,10 +93,10 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
   const data: Record<AssignmentType, Resident[][]> = useMemo(() => {
     const d: Record<AssignmentType, Resident[][]> = {} as any;
     Object.values(AssignmentType).forEach(type => {
-      d[type] = Array(TOTAL_WEEKS).fill([]);
+      d[type] = Array(totalWeeks).fill([]);
     });
 
-    for (let w = 0; w < TOTAL_WEEKS; w++) {
+    for (let w = 0; w < totalWeeks; w++) {
       residents.forEach(r => {
         const type = schedule[r.id]?.[w]?.assignment;
         if (type) {
@@ -108,7 +111,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
     const m: Record<AssignmentType, number> = {} as any;
     Object.values(AssignmentType).forEach(type => {
       let max = 0;
-      for (let w = 0; w < TOTAL_WEEKS; w++) {
+      for (let w = 0; w < totalWeeks; w++) {
         if (data[type][w].length > max) max = data[type][w].length;
       }
       m[type] = max;
@@ -116,12 +119,12 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
     return m;
   }, [data]);
 
-  const checkConstraints = (type: AssignmentType, assignees: Resident[]) => {
+  const checkConstraints = (type: AssignmentType, assignees: Resident[], weekIdx: number) => {
     const meta = ROTATION_METADATA[type];
     if (!meta) return null;
 
-    const interns = assignees.filter(r => r.level === 1).length;
-    const seniors = assignees.filter(r => r.level > 1).length;
+    const interns = assignees.filter(r => (r.level + Math.floor(weekIdx / 52)) === 1).length;
+    const seniors = assignees.filter(r => (r.level + Math.floor(weekIdx / 52)) > 1).length;
 
     if (interns < meta.minInterns) return `Min Interns (${meta.minInterns}) unmet: ${interns}`;
     if (interns > meta.maxInterns) return `Max Interns (${meta.maxInterns}) exceeded: ${interns}`;
@@ -132,7 +135,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
 
   const handleCellEnter = (e: React.MouseEvent, type: AssignmentType, weekIdx: number) => {
     const assignees = data[type][weekIdx];
-    const error = checkConstraints(type, assignees);
+    const error = checkConstraints(type, assignees, weekIdx);
 
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setCellTooltip({
@@ -201,8 +204,8 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
 
               // Check if any week has a violation for this row
               let hasViolation = false;
-              for (let i = 0; i < TOTAL_WEEKS; i++) {
-                if (checkConstraints(type, data[type][i])) hasViolation = true;
+              for (let i = 0; i < totalWeeks; i++) {
+                if (checkConstraints(type, data[type][i], i)) hasViolation = true;
               }
 
               return (
@@ -229,7 +232,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                     const count = assignees.length;
                     const style = getBaseColorStyle(type, count, maxCounts[type]);
 
-                    const error = checkConstraints(type, assignees);
+                    const error = checkConstraints(type, assignees, i);
 
                     return (
                       <td

@@ -1,4 +1,4 @@
-import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, fulfillsRequirement, ELECTIVE_TYPES, REQUIRED_TYPES } from '../../constants';
 import { ScheduleGenerator } from './types';
 import { canFitBlock, placeBlock, getCumulativeRequirementCount, getRequirementCount } from './utils';
@@ -23,7 +23,7 @@ class SeededRNG {
  */
 export const ExperimentalGenerator: ScheduleGenerator = {
     name: "Staffing First (Week-First)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const rng = new SeededRNG(Date.now() + attemptIndex * 7);
         const seededShuffle = <T>(array: T[]): T[] => {
             const a = [...array];
@@ -63,11 +63,12 @@ export const ExperimentalGenerator: ScheduleGenerator = {
 
         // 2. FIXED BACKBONE: Add Clinic weeks (4+1 Rule)
         residents.forEach(r => {
-            const clinicType = r.clinicType || AssignmentType.CLINIC;
             const cohort = cohortAssignments ? cohortAssignments[r.id] : 0;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % COHORT_COUNT === cohort) {
-                    newSchedule[r.id][w] = { assignment: clinicType, locked: true };
+                    const pgy = Math.min(3, r.level + Math.floor(w / 52));
+                    const weeklyClinicType = (pgy === 2) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                    newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }
         });
@@ -125,7 +126,7 @@ export const ExperimentalGenerator: ScheduleGenerator = {
                     : [req.type];
 
                 seededShuffle(residents.filter(r => r.level === level)).forEach(res => {
-                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, historicalSchedules) < req.target) {
+                    while (getCumulativeRequirementCount(res.id, newSchedule[res.id], req.type, priorRequirementCounts) < req.minWeeks) {
                         // Find the best week to start a block of 'dur' or whatever fits
                         let bestW = -1;
                         let bestT: AssignmentType | null = null;

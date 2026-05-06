@@ -1,11 +1,11 @@
-import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, CORE_TYPES, fulfillsRequirement, ELECTIVE_TYPES, REQUIRED_TYPES } from '../../constants';
+import { Resident, ScheduleGrid, AssignmentType } from '../../types';
+import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, COHORT_COUNT, fulfillsRequirement, ELECTIVE_TYPES, REQUIRED_TYPES } from '../../constants';
 import { ScheduleGenerator } from './types';
 import { canFitBlock, placeBlock, getCumulativeRequirementCount, shuffle } from './utils';
 
 export const StrictGenerator: ScheduleGenerator = {
     name: "Education First",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>): ScheduleGrid => {
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
         // 1. Initialize empty schedule
@@ -70,14 +70,14 @@ export const StrictGenerator: ScheduleGenerator = {
 
             // Virtual Target: Ensure PGY1s get Night Float as blocks
             if (r.level === 1 && !reqs.find(rq => rq.type === AssignmentType.NIGHT_FLOAT)) {
-                reqs.push({ type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', target: 4 });
+                reqs.push({ type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', minWeeks: 4 });
             }
 
             reqs.forEach(req => {
                 const meta = ROTATION_METADATA[req.type];
                 if (!meta) return;
-                const count = getCumulativeRequirementCount(r.id, newSchedule[r.id], req.type, historicalSchedules);
-                let needed = req.target - count;
+                const count = getCumulativeRequirementCount(r.id, newSchedule[r.id], req.type, priorRequirementCounts);
+                let needed = req.minWeeks - count;
 
                 const isStaffing = [
                     AssignmentType.MICU,

@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { GenerationDashboard } from './GenerationDashboard';
 
+
 interface Props {
   activeYear: number;
   residents: Resident[];
@@ -16,7 +17,7 @@ interface Props {
   historySchedules: ScheduleHistory;
   activeSchedule: ScheduleSession | undefined;
   algoConfig: AlgorithmConfig[];
-  onComplete: (results: any[]) => void;
+  onComplete: (results: any[], unifiedResidents?: Resident[]) => void;
   onCancel: () => void;
 }
 
@@ -32,12 +33,13 @@ export const GlobalOptimizer: React.FC<Props> = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [genProgress, setGenProgress] = useState(0);
-  const [genAttempts, setGenAttempts] = useState(0);
+  const [genAttempts, setGenAttempts] = useState<Record<string, number>>({});
+  const [exhaustionPoints, setExhaustionPoints] = useState<Record<string, number>>({});
   const [genStatus, setGenStatus] = useState('');
   const [convergenceData, setConvergenceData] = useState<number[][]>([]);
   const [canceledAlgoIds, setCanceledAlgoIds] = useState<Set<string>>(new Set());
   const [isCanceled, setIsCanceled] = useState(false);
-
+  const [healerProgress, setHealerProgress] = useState<number | undefined>(undefined);
   const activeWorkersRef = useRef<Set<Worker>>(new Set());
   const generationControllerRef = useRef<AbortController | null>(null);
   const convergenceBufferRef = useRef<number[][]>([]);
@@ -66,12 +68,12 @@ export const GlobalOptimizer: React.FC<Props> = ({
     residents: Resident[], 
     existing: any, 
     params: CompetitionParams, 
-    onProgress: (iteration: number, attempts: number, scores: number[] | undefined, year: number, overallProgress: number) => void,
+    onProgress: (iteration: number, attempts: Record<string, number>, exhaustionPoints: Record<string, number>, scores: number[] | undefined, year: number, overallProgress: number, healerProgress?: number) => void,
     historicalSchedules: ScheduleHistory, 
     cohortAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
     signal?: AbortSignal
-  ): Promise<{ results: any[] }> => {
+  ): Promise<{ results: any[], unifiedResidents?: Resident[] }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('../services/scheduler.worker.ts', import.meta.url), { type: 'module' });
       activeWorkersRef.current.add(worker);
@@ -88,14 +90,14 @@ export const GlobalOptimizer: React.FC<Props> = ({
       }
 
       worker.onmessage = (e) => {
-        const { type, iteration, overallProgress, bestScore, attempts, year, results, error } = e.data;
+        const { type, iteration, overallProgress, bestScore, attempts, exhaustionPoints, year, results, error, healerProgress } = e.data;
         if (type === 'progress') {
-          onProgress(iteration, attempts, bestScore, year, overallProgress);
+          onProgress(iteration, attempts, exhaustionPoints, bestScore, year, overallProgress, healerProgress);
         } else if (type === 'success') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
           worker.terminate();
-          resolve({ results });
+          resolve({ results, unifiedResidents: e.data.unifiedResidents });
         } else if (type === 'error') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -148,13 +150,13 @@ export const GlobalOptimizer: React.FC<Props> = ({
       convergenceBufferRef.current = [];
       lastUpdateRef.current = Date.now();
 
-      const { results } = await runGenerationTask(
+      const { results, unifiedResidents } = await runGenerationTask(
         activeYear,
         totalYears,
         residents,
         {},
         compParams,
-        (iteration, attempts, scores, year, overallProgress) => {
+        (iteration, attempts, exPoints, scores, year, overallProgress, hProgress) => {
           const now = Date.now();
           if (scores) {
             while (convergenceBufferRef.current.length < iteration) {
@@ -166,14 +168,18 @@ export const GlobalOptimizer: React.FC<Props> = ({
           if (now - lastUpdateRef.current > 1000) {
             setGenProgress(Math.round(overallProgress * 100));
             setGenAttempts(attempts);
+            setExhaustionPoints(exPoints);
             setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
 
             if (scores) {
               setConvergenceData([...convergenceBufferRef.current]);
             }
             lastUpdateRef.current = now;
+            if (hProgress !== undefined) setHealerProgress(hProgress);
+            lastUpdateRef.current = now;
           }
         },
+
         historySchedules,
         activeSchedule?.cohortAssignments || {},
         compParams.algorithmIds || [],
@@ -181,7 +187,8 @@ export const GlobalOptimizer: React.FC<Props> = ({
       );
 
       setConvergenceData([...convergenceBufferRef.current]);
-      onComplete(results);
+
+      onComplete(results, unifiedResidents);
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.log('Generation canceled');
@@ -225,6 +232,9 @@ export const GlobalOptimizer: React.FC<Props> = ({
           onCancelAlgorithm={handleCancelAlgorithm}
           algorithms={algoConfig.filter(a => (compParams.algorithmIds || []).includes(a.id))}
           canceledIds={canceledAlgoIds}
+          attempts={genAttempts}
+          exhaustionPoints={exhaustionPoints}
+          healerProgress={healerProgress}
         />
       </div>
     </div>
