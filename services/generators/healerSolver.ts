@@ -227,35 +227,51 @@ export const HealerConstraintGenerator: ScheduleGenerator = {
             for (let w = 0; w < totalWeeks; w++) {
                 constrainedTypes.forEach(t => {
                     const m = ROTATION_METADATA[t]!;
-                    while ((weekCounts[w].interns[t] || 0) < m.minInterns) {
-                        const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) === 1 && isFlexible[res.id][w] && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
-                        if (pool.length === 0) break;
-                        const oldA = currentSchedule[pool[0].id][w].assignment!;
-                        currentSchedule[pool[0].id][w].assignment = t;
-                        weekCounts[w].interns[oldA] = (weekCounts[w].interns[oldA] || 0) - 1; // BUG FIX: NaN guard
-                        weekCounts[w].interns[t] = (weekCounts[w].interns[t] || 0) + 1; // BUG FIX: NaN guard
+                    
+                    // Interns Minimum
+                    let internsNeeded = m.minInterns - (weekCounts[w].interns[t] || 0);
+                    if (internsNeeded > 0) {
+                        const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) === 1 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment !== t && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
+                        pool.slice(0, internsNeeded).forEach(res => {
+                            const oldA = currentSchedule[res.id][w].assignment!;
+                            currentSchedule[res.id][w].assignment = t;
+                            weekCounts[w].interns[oldA] = (weekCounts[w].interns[oldA] || 0) - 1;
+                            weekCounts[w].interns[t] = (weekCounts[w].interns[t] || 0) + 1;
+                        });
                     }
-                    while ((weekCounts[w].seniors[t] || 0) < m.minSeniors) {
-                        const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) >= 2 && isFlexible[res.id][w] && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
-                        if (pool.length === 0) break;
-                        const oldA = currentSchedule[pool[0].id][w].assignment!;
-                        currentSchedule[pool[0].id][w].assignment = t;
-                        weekCounts[w].seniors[oldA] = (weekCounts[w].seniors[oldA] || 0) - 1; // BUG FIX: NaN guard
-                        weekCounts[w].seniors[t] = (weekCounts[w].seniors[t] || 0) + 1; // BUG FIX: NaN guard
+
+                    // Seniors Minimum
+                    let seniorsNeeded = m.minSeniors - (weekCounts[w].seniors[t] || 0);
+                    if (seniorsNeeded > 0) {
+                        const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) >= 2 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment !== t && (aggressive ? !superCriticalTypes.includes(currentSchedule[res.id][w].assignment!) : !constrainedTypes.includes(currentSchedule[res.id][w].assignment!)));
+                        pool.slice(0, seniorsNeeded).forEach(res => {
+                            const oldA = currentSchedule[res.id][w].assignment!;
+                            currentSchedule[res.id][w].assignment = t;
+                            weekCounts[w].seniors[oldA] = (weekCounts[w].seniors[oldA] || 0) - 1;
+                            weekCounts[w].seniors[t] = (weekCounts[w].seniors[t] || 0) + 1;
+                        });
                     }
-                    while ((weekCounts[w].interns[t] || 0) > m.maxInterns) {
+
+                    // Interns Maximum
+                    let internsExtra = (weekCounts[w].interns[t] || 0) - m.maxInterns;
+                    if (internsExtra > 0) {
                         const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) === 1 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment === t);
-                        if (pool.length === 0) break;
-                        currentSchedule[pool[0].id][w].assignment = AssignmentType.ELECTIVE;
-                        weekCounts[w].interns[t] = (weekCounts[w].interns[t] || 0) - 1; // BUG FIX: NaN guard
-                        weekCounts[w].interns[AssignmentType.ELECTIVE] = (weekCounts[w].interns[AssignmentType.ELECTIVE] || 0) + 1; // BUG FIX: track elective increment
+                        pool.slice(0, internsExtra).forEach(res => {
+                            currentSchedule[res.id][w].assignment = AssignmentType.ELECTIVE;
+                            weekCounts[w].interns[t] = (weekCounts[w].interns[t] || 0) - 1;
+                            weekCounts[w].interns[AssignmentType.ELECTIVE] = (weekCounts[w].interns[AssignmentType.ELECTIVE] || 0) + 1;
+                        });
                     }
-                    while ((weekCounts[w].seniors[t] || 0) > m.maxSeniors) {
+
+                    // Seniors Maximum
+                    let seniorsExtra = (weekCounts[w].seniors[t] || 0) - m.maxSeniors;
+                    if (seniorsExtra > 0) {
                         const pool = residents.filter(res => getLevel(Number(res.level) || 1, w) >= 2 && isFlexible[res.id][w] && currentSchedule[res.id][w].assignment === t);
-                        if (pool.length === 0) break;
-                        currentSchedule[pool[0].id][w].assignment = AssignmentType.ELECTIVE;
-                        weekCounts[w].seniors[t] = (weekCounts[w].seniors[t] || 0) - 1; // BUG FIX: NaN guard
-                        weekCounts[w].seniors[AssignmentType.ELECTIVE] = (weekCounts[w].seniors[AssignmentType.ELECTIVE] || 0) + 1; // BUG FIX: track elective increment
+                        pool.slice(0, seniorsExtra).forEach(res => {
+                            currentSchedule[res.id][w].assignment = AssignmentType.ELECTIVE;
+                            weekCounts[w].seniors[t] = (weekCounts[w].seniors[t] || 0) - 1;
+                            weekCounts[w].seniors[AssignmentType.ELECTIVE] = (weekCounts[w].seniors[AssignmentType.ELECTIVE] || 0) + 1;
+                        });
                     }
                 });
             }
@@ -277,7 +293,11 @@ export const HealerConstraintGenerator: ScheduleGenerator = {
         const maxSteps = 200000;
         for (let step = 0; step < maxSteps; step++) {
             if (step % 10000 === 0 && checkInterrupt()) break;
-            if (step % 2000 === 0 && onProgress) onProgress(step, maxSteps);
+            if (step % 2000 === 0 && onProgress) {
+                onProgress(step, maxSteps);
+                // No await here because generate is synchronous. 
+                // We'd need to make generate async and await yield here.
+            }
             const r = residents[Math.floor(rng.next() * residents.length)], weeks = flexibleWeeks[r.id];
             if (weeks.length === 0) continue;
             const w = weeks[Math.floor(rng.next() * weeks.length)];

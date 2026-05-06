@@ -65,7 +65,9 @@ onmessage = async (e: MessageEvent) => {
         },
         () => isPromoteTriggered
       );
-
+      // Reset promote flag before healer phase
+      isPromoteTriggered = false;
+      
       // Phase 2: Healer Phase (Off-thread)
       const healedResults = [];
       const unifiedResidents = result.unifiedResidents;
@@ -75,13 +77,16 @@ onmessage = async (e: MessageEvent) => {
         if (res.unifiedSchedule && idx < 1) {
            // Run healer on the unified grid
            // 150 iterations per result for fast execution
+           console.log("Starting Healer phase for result", idx);
            const healedUnified = healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, undefined, e.data.historicalSchedules, (step, max) => {
+             if (step % 10000 === 0) console.log("Healer progress:", step, "/", max);
              postMessage({ 
                type: 'progress', 
                overallProgress: 0.8 + (0.2 * (step / max)),
                healerProgress: Math.round((step / max) * 100)
              });
            });
+           console.log("Healer phase complete");
            const reSliced = sliceIntoYears(healedUnified, e.data.year, totalYears);
            healedResults.push({
              ...res,
