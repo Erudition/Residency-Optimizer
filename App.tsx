@@ -366,7 +366,7 @@ const App: React.FC = () => {
 
   const [compParams, setCompParams] = useState<CompetitionParams>(() => {
     const loaded = loadState('rsp_comp_params_v1', {
-      tries: 2000,
+      tries: 1000000,
       priority: CompetitionPriority.BEST_SCORE,
       algorithmIds: ['staffingFirst'],
       topN: 3,

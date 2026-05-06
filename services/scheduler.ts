@@ -180,7 +180,7 @@ export const generateSchedule = async (
   console.log(`Starting Unified Multi-Year Competition (${totalYears} years)...`);
 
   let i = 0;
-  const HARD_CAP = params.tries || 2000; // Safety cap
+  const HARD_CAP = params.tries || 1000000; // Safety cap
 
   while (i < HARD_CAP) {
     if (isPromoted()) {
