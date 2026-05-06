@@ -1,0 +1,366 @@
+[
+  {
+    "week": 0,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 1",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 1,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 2",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 2,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 3",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 3,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 4",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 4,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 5",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 5,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 6",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 6,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 7",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 7,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 8",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 8,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 9",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 9,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 10",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 10,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 11",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 11,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 12",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 12,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 13",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 13,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 14",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 14,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 15",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 15,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 16",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 16,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 17",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 17,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 18",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 18,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 19",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 19,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 20",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 20,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 21",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 21,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 22",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 22,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 23",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 23,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 24",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 24,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 25",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 25,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 26",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 26,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 27",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 27,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 28",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 28,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 29",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 29,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 30",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 30,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 31",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 31,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 32",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 32,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 33",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 33,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 34",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 34,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 35",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 35,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 36",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 36,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 37",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 37,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 38",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 38,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 39",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 39,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 40",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 40,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 41",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 41,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 42",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 42,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 43",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 43,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 44",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 44,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 45",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 45,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 46",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 46,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 47",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 47,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 48",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 48,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 49",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 49,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 50",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 50,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 51",
+    "year": 2026,
+    "instances": 1
+  },
+  {
+    "week": 51,
+    "type": "CCIM",
+    "issue": "No residents in clinic in week 52",
+    "year": 2026,
+    "instances": 1
+  }
+]
