@@ -552,7 +552,7 @@ const App: React.FC = () => {
   const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
     setViewMode(mode);
     if (mode === 'unified') {
-      if (['cohorts', 'coworking', 'fairness', 'acgme_requirements'].includes(activeTab)) {
+      if (['cohorts', 'coworking', 'fairness', 'acgme_requirements', 'workload'].includes(activeTab)) {
         setActiveTab('schedule');
       }
     } else {
@@ -1584,7 +1584,7 @@ const App: React.FC = () => {
       {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
-          <NavButton id="workload" label="Workload" icon={BarChart3} />
+          {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
           <NavButton id="coverage" label="Coverage" icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
           {viewMode === 'unified' ? (
             <>
@@ -1593,8 +1593,8 @@ const App: React.FC = () => {
             </>
           ) : (
             <>
-              <NavButton id="acgme_requirements" label="ACGME 1yr" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
-              <NavButton id="mhs_requirements" label="Curriculum 1yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
               <NavButton id="cohorts" label="Cohorts" icon={Users} />
               <NavButton id="coworking" label="Coworking" icon={Network} />
               <NavButton id="fairness" label="Fairness" icon={Scale} />

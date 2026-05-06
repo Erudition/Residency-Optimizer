@@ -69,10 +69,14 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
     const priorityOrder = [
       AssignmentType.WARDS_RED,
       AssignmentType.WARDS_BLUE,
+      AssignmentType.WARDS_METRO,
       AssignmentType.MICU,
+      AssignmentType.METRO_ICU,
+      AssignmentType.PULM,
       AssignmentType.NIGHT_FLOAT,
       AssignmentType.EM,
       AssignmentType.CLINIC,
+      AssignmentType.NIMA_CLINIC,
       AssignmentType.ELECTIVE,
       AssignmentType.VACATION,
     ];
