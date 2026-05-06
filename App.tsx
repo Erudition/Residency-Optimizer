@@ -450,6 +450,19 @@ const App: React.FC = () => {
   }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear]);
   
   const [viewMode, setViewMode] = useState<'singleYear' | 'unified'>('singleYear');
+
+  const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
+    setViewMode(mode);
+    if (mode === 'unified') {
+      if (['cohorts', 'coworking', 'fairness', 'acgme_requirements'].includes(activeTab)) {
+        setActiveTab('schedule');
+      }
+    } else {
+      if (activeTab === 'audit') {
+        setActiveTab('schedule');
+      }
+    }
+  };
   // Sync convergence data from buffer when switching back to dashboard
   useEffect(() => {
     if (activeTab === 'loading' && activeSchedule?.isGenerating && convergenceBufferRef.current.length > convergenceData.length) {
@@ -620,15 +633,17 @@ const App: React.FC = () => {
       const y = startYear + offset;
       const yrResidents = getResidentsForYear(y);
       const yrGrid = useUnified ? (activeSchedule.data[y] || {}) : currentGrid;
-      const reqs = getRequirementViolations(yrResidents, yrGrid, fullHistory, y).length;
-      const constraints = getWeeklyViolations(yrResidents, yrGrid, y).length;
+      const reqsList = getRequirementViolations(yrResidents, yrGrid, fullHistory, y);
+      const reqs = reqsList.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0);
+      const constraintsList = getWeeklyViolations(yrResidents, yrGrid, y);
+      const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
       const audit = getAuditViolations(yrResidents, fullHistory, y);
       total += reqs + constraints + audit;
     }
     return total;
   }, [activeSchedule, historySchedules, activeScheduleId, activeYear, viewMode, currentGrid, residents]);
 
-  const hasViolations = violations.reqs.length > 0 || violations.constraints.length > 0;
+  const hasViolations = activeViolationsCount > 0;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -1383,7 +1398,8 @@ const App: React.FC = () => {
         <div className="flex-1 flex items-center justify-center gap-2">
           <div className="flex bg-light-2 p-0.5 rounded-xl border border-light-5">
             {allAcademicYears.map(y => {
-              const isActive = activeYear === y;
+              const isUnifiedRelevant = viewMode === 'unified' && y >= (activeSchedule?.startYear || ACTIVE_START_YEAR) && y <= (activeSchedule?.startYear || ACTIVE_START_YEAR) + 2;
+              const isActive = viewMode === 'unified' ? isUnifiedRelevant : activeYear === y;
               return (
                 <Button
                   variant="ghost"
@@ -1391,6 +1407,7 @@ const App: React.FC = () => {
                   onClick={() => {
                     startTransition(() => {
                       setActiveYear(y);
+                      handleSetViewMode('singleYear');
                       if (activeScheduleId === 'settings') {
                         // keep settings open
                       } else if (y < ACTIVE_START_YEAR) {
@@ -1414,18 +1431,17 @@ const App: React.FC = () => {
             })}
           </div>
           {activeSchedule?.unifiedData && (
-            <div className="flex bg-light-2 p-0.5 rounded-xl border border-light-5">
-              <Button
-                variant="ghost"
-                onClick={() => setViewMode(prev => prev === 'unified' ? 'singleYear' : 'unified')}
-                className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
-                  viewMode === 'unified'
-                    ? 'bg-white text-purple shadow-sm border border-light-5'
-                    : 'text-muted hover:text-purple'
-                }`}
+            <div className="flex items-center gap-1.5 ml-4">
+              <span className="text-[9px] font-black text-muted uppercase tracking-wider">Scope</span>
+              <div 
+                onClick={() => handleSetViewMode(viewMode === 'unified' ? 'singleYear' : 'unified')}
+                className="rocker-toggle"
+                title="Toggle between single-year (1Y) and 3-year unified (3Y) views"
               >
-                3-Year Unified View
-              </Button>
+                <div className={`rocker-toggle-thumb ${viewMode === 'unified' ? 'unified' : ''}`} />
+                <div className={`rocker-toggle-option ${viewMode !== 'unified' ? 'active' : ''}`}>1Y</div>
+                <div className={`rocker-toggle-option ${viewMode === 'unified' ? 'active' : ''}`}>3Y</div>
+              </div>
             </div>
           )}
         </div>
@@ -1471,13 +1487,21 @@ const App: React.FC = () => {
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label="Schedule" icon={LayoutGrid} />
           <NavButton id="workload" label="Workload" icon={BarChart3} />
-          <NavButton id="coverage" label="Coverage" icon={Table} badgeCount={violations.constraints.length} />
-          <NavButton id="acgme_requirements" label="ACGME Reqs" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).length} />
-          <NavButton id="audit" label="ACGME Audit" icon={ShieldCheck} badgeCount={violations.audit} />
-          <NavButton id="mhs_requirements" label="MHS Reqs" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).length} />
-          <NavButton id="cohorts" label="Cohorts" icon={Users} />
-          <NavButton id="coworking" label="Coworking" icon={Network} />
-          <NavButton id="fairness" label="Fairness" icon={Scale} />
+          <NavButton id="coverage" label="Coverage" icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
+          {viewMode === 'unified' ? (
+            <>
+              <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
+              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+            </>
+          ) : (
+            <>
+              <NavButton id="acgme_requirements" label="ACGME 1yr" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="mhs_requirements" label="Curriculum 1yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="cohorts" label="Cohorts" icon={Users} />
+              <NavButton id="coworking" label="Coworking" icon={Network} />
+              <NavButton id="fairness" label="Fairness" icon={Scale} />
+            </>
+          )}
           <NavButton id="export" label="Export" icon={FileSpreadsheet} />
         </div>
       ) : null}
