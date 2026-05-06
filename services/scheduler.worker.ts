@@ -170,9 +170,30 @@ async function runHeal(
   );
     
     // Calculate violations for reporting
-    const reqViolations = getRequirementViolations(residents, currentBest, historicalSchedules, startYear).length;
-    const weeklyViolations = getWeeklyViolations(residents, currentBest, startYear).length;
-    const total = reqViolations + weeklyViolations;
+    let total = 0;
+    const fullHistory = { ...historicalSchedules };
+    if (totalYears === 3) {
+      const sliced = sliceIntoYears(currentBest, startYear, 3);
+      Object.assign(fullHistory, sliced);
+      
+      for (let offset = 0; offset < 3; offset++) {
+        const y = startYear + offset;
+        const yrResidents = residents.filter((r: any) => {
+          const level = y - r.startYear + 1;
+          return level >= 1 && level <= 3;
+        });
+        const yrGrid = sliced[y] || {};
+        const reqs = getRequirementViolations(yrResidents, yrGrid, fullHistory, y).length;
+        const constraints = getWeeklyViolations(yrResidents, yrGrid, y).length;
+        const audit = getAuditViolations(yrResidents, fullHistory, y);
+        total += reqs + constraints + audit;
+      }
+    } else {
+      const reqs = getRequirementViolations(residents, currentBest, fullHistory, startYear).length;
+      const constraints = getWeeklyViolations(residents, currentBest, startYear).length;
+      const audit = getAuditViolations(residents, fullHistory, startYear);
+      total = reqs + constraints + audit;
+    }
 
     postMessage({ 
       type: 'heal-update', 
