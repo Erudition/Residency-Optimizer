@@ -82,7 +82,8 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
-  History
+  History,
+  Copy
 } from 'lucide-react';
 
 
@@ -1149,6 +1150,21 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDuplicateSchedule = (sched: ScheduleSession) => {
+    const newId = Math.random().toString(36).substring(2, 9);
+    const duplicated: ScheduleSession = {
+      ...sched,
+      id: newId,
+      name: `${sched.name} (Copy)`,
+      data: JSON.parse(JSON.stringify(sched.data)),
+      unifiedData: sched.unifiedData ? JSON.parse(JSON.stringify(sched.unifiedData)) : undefined,
+      createdAt: new Date(),
+      cohortAssignments: sched.cohortAssignments ? JSON.parse(JSON.stringify(sched.cohortAssignments)) : undefined,
+    };
+    setSchedules(prev => [...prev, duplicated]);
+    setActiveScheduleId(newId);
+  };
+
   const handleToggleLock = (residentId: string, weekIdx: number) => {
     if (!activeScheduleId) return;
     setSchedules(prev => prev.map(s => {
@@ -1769,7 +1785,13 @@ const App: React.FC = () => {
                   >
                     <Identicon id={sched.id} />
                     <span className="truncate max-w-[120px]">{sched.name}</span>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                      <Button variant="ghost" size="sm" onClick={(e) => { 
+                        e.stopPropagation(); 
+                        handleDuplicateSchedule(sched);
+                      }} title="Duplicate Schedule" className="p-0.5 rounded text-muted hover:text-blue transition-colors">
+                        <Copy size={10} />
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={(e) => { 
                         e.stopPropagation(); 
                         setSchedules(s => s.filter(x => x.id !== sched.id)); 
