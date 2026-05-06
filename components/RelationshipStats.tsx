@@ -126,10 +126,22 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
     return 'text-green-dark bg-lime-green/40 border-lime-green';
   };
 
-  // Node Calculations for Circular Layout (Enlarged)
+  // Node Calculations for Circular Layout (Enlarged and ordered by Cohort)
   const nodes = useMemo(() => {
-    const n = residents.length;
-    return residents.map((r, i) => {
+    const sortedResidentsByCohort = [...residents].sort((a, b) => {
+      const cohortA = a.cohort ?? 0;
+      const cohortB = b.cohort ?? 0;
+      if (cohortA !== cohortB) {
+        return cohortA - cohortB;
+      }
+      if (a.level !== b.level) {
+        return a.level - b.level;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    const n = sortedResidentsByCohort.length;
+    return sortedResidentsByCohort.map((r, i) => {
       const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
       const radius = 220; // Increased radius for a significantly bigger layout
       return {
