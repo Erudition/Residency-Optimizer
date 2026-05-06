@@ -4,7 +4,7 @@ import { GENERATE_INITIAL_RESIDENTS, ACTIVE_START_YEAR } from '../constants';
 import { CompetitionParams, CompetitionPriority, AssignmentType } from '../types';
 
 describe('Multi-Year Cohort Regression Test', () => {
-    test('clinic assignments in Year 2 and Year 3 should be distributed across cohorts rather than clumped in a single week', async () => {
+    test('clinic assignments in all years should be distributed across cohorts rather than clumped in a single week', async () => {
         const residents = GENERATE_INITIAL_RESIDENTS();
         const startYear = ACTIVE_START_YEAR;
         const totalYears = 3;
@@ -36,8 +36,8 @@ describe('Multi-Year Cohort Regression Test', () => {
         expect(winner).toBeDefined();
         expect(winner.schedule).toBeDefined();
 
-        // Check Year 2 (startYear + 1) and Year 3 (startYear + 2)
-        for (let y = startYear + 1; y < startYear + totalYears; y++) {
+        // Check all years (startYear to startYear + totalYears - 1)
+        for (let y = startYear; y < startYear + totalYears; y++) {
             const yearSchedule = winner.schedule[y];
             expect(yearSchedule).toBeDefined();
 
