@@ -158,7 +158,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
 
       <div className="flex-1 overflow-auto spreadsheet-container">
         <table className="border-separate border-spacing-0 w-max">
-          <thead className="sticky top-0 z-30 bg-light-1 text-xs text-muted font-semibold h-12 shadow-sm">
+          <thead className="sticky top-0 z-30 bg-light-1 text-xs text-muted font-semibold h-28 shadow-sm">
             <tr>
               <th
                 className="sticky left-0 z-40 bg-white/80 backdrop-blur-md border-b border-r p-0 text-left transition-all"
@@ -173,10 +173,14 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
                 </div>
               </th>
               {sortedResidents.map(r => (
-                <th key={r.id} className="border-b border-light-5 min-w-[85px] text-center w-24 px-2 py-1.5 bg-white">
-                  <div className="truncate font-bold text-primary text-[11px]">{r.name.split(' ')[0]}</div>
-                  <div className="text-[9px] text-muted mt-0.5">
-                    PGY-{r.level} • Cohort {String.fromCharCode(65 + (r.cohort ?? 0))}
+                <th key={r.id} className="border-b border-light-5 w-8 min-w-[32px] h-28 p-0 bg-white relative text-center">
+                  <div className="h-full flex items-end justify-center pb-3">
+                    <span
+                      className="text-[11px] font-bold text-primary select-none whitespace-nowrap"
+                      style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                    >
+                      {r.name}
+                    </span>
                   </div>
                 </th>
               ))}
@@ -200,7 +204,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
                     return (
                       <td
                         key={r.id}
-                        className="border-b text-center cursor-default relative p-0 border-light-3"
+                        className="border-b text-center cursor-default relative p-0 border-light-3 w-8 min-w-[32px]"
                         onMouseEnter={(e) => handleCellEnter(e, r, type)}
                         onMouseLeave={() => setCellTooltip(null)}
                       >
