@@ -34,7 +34,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
-  const [cellTooltip, setCellTooltip] = useState<{ x: number, y: number, assignees: Resident[], type: string, error?: string } | null>(null);
+  const [cellTooltip, setCellTooltip] = useState<{ x: number, y: number, assignees: Resident[], type: string, weekIdx: number, error?: string } | null>(null);
   const [rowTooltip, setRowTooltip] = useState<{ x: number, y: number, type: AssignmentType } | null>(null);
 
   // Handle Resizing
@@ -123,8 +123,15 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
     const meta = ROTATION_METADATA[type];
     if (!meta) return null;
 
-    const interns = assignees.filter(r => (r.level + Math.floor(weekIdx / 52)) === 1).length;
-    const seniors = assignees.filter(r => (r.level + Math.floor(weekIdx / 52)) > 1).length;
+    const firstRes = residents.find(res => res.startYear && res.startYear > 0);
+    const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
+    const getPgy = (res: Resident) => {
+      const startYear = res.startYear > 0 ? res.startYear : gridStartYear - Number(res.level) + 1;
+      return gridStartYear - startYear + 1 + Math.floor(weekIdx / 52);
+    };
+
+    const interns = assignees.filter(r => getPgy(r) === 1).length;
+    const seniors = assignees.filter(r => getPgy(r) > 1).length;
 
     if (interns < meta.minInterns) return `Min Interns (${meta.minInterns}) unmet: ${interns}`;
     if (interns > meta.maxInterns) return `Max Interns (${meta.maxInterns}) exceeded: ${interns}`;
@@ -143,6 +150,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
       y: rect.top + window.scrollY,
       assignees,
       type: ASSIGNMENT_LABELS[type],
+      weekIdx,
       error: error || undefined
     });
   };
@@ -280,7 +288,13 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
 
           <div className="space-y-2">
             {[1, 2, 3].map(pgy => {
-              const pgyGroup = cellTooltip.assignees.filter(r => r.level === pgy);
+              const firstRes = residents.find(res => res.startYear && res.startYear > 0);
+              const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
+              const getPgy = (res: Resident) => {
+                const startYear = res.startYear > 0 ? res.startYear : gridStartYear - Number(res.level) + 1;
+                return gridStartYear - startYear + 1 + Math.floor(cellTooltip.weekIdx / 52);
+              };
+              const pgyGroup = cellTooltip.assignees.filter(r => getPgy(r) === pgy);
               if (pgyGroup.length === 0) return null;
               return (
                 <div key={pgy}>

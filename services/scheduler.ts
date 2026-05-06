@@ -56,12 +56,18 @@ export const getUnifiedResidents = (baseResidents: Resident[], startYear: number
   const totalSpanWeeks = totalYears * TOTAL_WEEKS;
 
   return augmented.filter(r => {
-    const firstLevel = startYear - r.startYear + 1;
-    const lastLevel = (startYear + totalYears - 1) - r.startYear + 1;
-    return (firstLevel <= 3 && lastLevel >= 1);
+    const startActiveYear = r.transferInYear ?? r.startYear;
+    const endActiveYear = r.transferOutYear ?? (r.startYear + 2);
+    if (endActiveYear < startYear || startActiveYear >= startYear + totalYears) return false;
+    
+    const relStart = Math.max(0, (startActiveYear - startYear) * TOTAL_WEEKS);
+    const relEnd = Math.min(totalSpanWeeks, (endActiveYear + 1 - startYear) * TOTAL_WEEKS);
+    return relStart < relEnd;
   }).map(r => {
-    const relStart = Math.max(0, (r.startYear - startYear) * TOTAL_WEEKS);
-    const relEnd = Math.min(totalSpanWeeks, (r.startYear + 3 - startYear) * TOTAL_WEEKS);
+    const startActiveYear = r.transferInYear ?? r.startYear;
+    const endActiveYear = r.transferOutYear ?? (r.startYear + 2);
+    const relStart = Math.max(0, (startActiveYear - startYear) * TOTAL_WEEKS);
+    const relEnd = Math.min(totalSpanWeeks, (endActiveYear + 1 - startYear) * TOTAL_WEEKS);
     return {
       ...r,
       level: (startYear - r.startYear + 1) as PgyLevel,
@@ -333,6 +339,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   const violations: WeeklyViolation[] = [];
   const cohortMap = getStandardCohortMap(residents);
   const safeGrid = schedule || {};
+  const currentYear = activeYear || 2026;
   
   const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
   
@@ -340,7 +347,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
     const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC || a === AssignmentType.NIMA_CLINIC).length;
     if (clinicCount === 0) {
-      violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: 1 });
+      violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
 
     Object.values(AssignmentType).forEach(type => {
@@ -348,41 +355,41 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       if (!meta) return;
 
       const assignees = residents.filter(r => safeGrid[r.id]?.[week]?.assignment === type);
-      const interns = assignees.filter(r => (Number(r.level) + Math.floor(week / 52)) === 1).length;
-      const seniors = assignees.filter(r => (Number(r.level) + Math.floor(week / 52)) > 1).length;
+      const interns = assignees.filter(r => ((r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52)) === 1).length;
+      const seniors = assignees.filter(r => ((r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52)) > 1).length;
 
       if (interns < meta.minInterns) {
-        violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: meta.minInterns - interns });
+        violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}`, year: Math.floor(week / 52) + currentYear, instances: meta.minInterns - interns });
       }
       if (interns > meta.maxInterns) {
-        violations.push({ week, type, issue: `Max Interns (${meta.maxInterns}) exceeded: ${interns}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: interns - meta.maxInterns });
+        violations.push({ week, type, issue: `Max Interns (${meta.maxInterns}) exceeded: ${interns}`, year: Math.floor(week / 52) + currentYear, instances: interns - meta.maxInterns });
       }
       if (seniors < meta.minSeniors) {
-        violations.push({ week, type, issue: `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: meta.minSeniors - seniors });
+        violations.push({ week, type, issue: `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`, year: Math.floor(week / 52) + currentYear, instances: meta.minSeniors - seniors });
       }
       if (seniors > meta.maxSeniors) {
-        violations.push({ week, type, issue: `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`, year: Math.floor(week / 52) + (activeYear || 2026), instances: seniors - meta.maxSeniors });
+        violations.push({ week, type, issue: `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`, year: Math.floor(week / 52) + currentYear, instances: seniors - meta.maxSeniors });
       }
     });
     // T6.2: Jeopardy Pool Monitoring
     const flexibleAssigns = [...ELECTIVE_TYPES, AssignmentType.AMCS_CONSULTS];
     const jeopardyPgy2 = residents.filter(r => {
-      const pgy = Number(r.level) + Math.floor(week / 52);
+      const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       const assign = safeGrid[r.id]?.[week]?.assignment;
       return pgy === 2 && assign && RequirementsEngine.isJeopardyBlock(assign);
     }).length;
 
     const jeopardyPgy3 = residents.filter(r => {
-      const pgy = Number(r.level) + Math.floor(week / 52);
+      const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       const assign = safeGrid[r.id]?.[week]?.assignment;
       return pgy === 3 && assign && RequirementsEngine.isJeopardyBlock(assign);
     }).length;
 
     if (jeopardyPgy2 < 1) {
-      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + (activeYear || 2026), instances: 1 });
+      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
     if (jeopardyPgy3 < 1) {
-      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + (activeYear || 2026), instances: 1 });
+      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
   }
 
@@ -396,7 +403,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       if (!cell || !cell.assignment) continue;
 
       const assign = cell.assignment;
-      const pgy = Number(r.level) + Math.floor(week / 52);
+      const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
 
       // T6.3: PGY-specific Clinic Sites
       if (!RequirementsEngine.isClinicSiteCorrect(r, assign)) {
@@ -404,7 +411,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
           week,
           type: AssignmentType.CLINIC,
           issue: `Clinic site mismatch for resident ${r.name}: assigned ${assign} but requires ${r.startYear === 2025 ? 'NIMA' : 'CCIM'}`,
-          year: Math.floor(week / 52) + (activeYear || 2026)
+          year: Math.floor(week / 52) + currentYear
         });
       }
 
@@ -416,7 +423,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
             week,
             type: AssignmentType.VACATION,
             issue: `Vacation Policy: Vacation prohibited during +1 clinic week for ${r.name}`,
-            year: Math.floor(week / 52) + (activeYear || 2026)
+            year: Math.floor(week / 52) + currentYear
           });
         }
 
@@ -427,7 +434,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
             week,
             type: AssignmentType.VACATION,
             issue: `Vacation Policy: Vacation prohibited during blackout week ${week % 52 + 1} for ${r.name}`,
-            year: Math.floor(week / 52) + (activeYear || 2026)
+            year: Math.floor(week / 52) + currentYear
           });
         }
       }
@@ -457,7 +464,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
           week: weekNum,
           type: AssignmentType.VACATION,
           issue: `Vacation Policy: Vacation prohibited inside core Wards/ICU block for ${r.name}`,
-          year: Math.floor(weekNum / 52) + (activeYear || 2026)
+          year: Math.floor(weekNum / 52) + currentYear
         });
       }
     }
@@ -467,7 +474,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   for (let week = 0; week < totalWeeks; week++) {
     let seniorFlexibleCount = 0;
     residents.forEach(r => {
-      const pgy = Number(r.level) + Math.floor(week / 52);
+      const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       if (pgy > 1) { // Senior resident
         const cell = safeGrid[r.id]?.[week];
         if (cell && cell.assignment) {
@@ -485,7 +492,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
         week,
         type: AssignmentType.ELECTIVE,
         issue: `Jeopardy Gap: No senior residents available on flexible time`,
-        year: Math.floor(week / 52) + (activeYear || 2026)
+        year: Math.floor(week / 52) + currentYear
       });
     }
   }

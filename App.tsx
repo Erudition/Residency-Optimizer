@@ -312,17 +312,15 @@ const sanitizeScheduleGrid = (
       return;
     }
     
-    // Compute bounds from startYear (always available) rather than
-    // activeWeekStart/activeWeekEnd (only set by getUnifiedResidents at
-    // generation time, absent on residents loaded from localStorage).
+    // Compute bounds from transferInYear / transferOutYear and startYear
+    const residentFirstYear = resident.transferInYear ?? resident.startYear;
+    const residentLastYear = resident.transferOutYear ?? (resident.startYear + 2);
+    
     let start: number;
     let end: number;
     
     if (year !== undefined) {
-      // Single-year grid (52 weeks): compute which local weeks this resident is active
-      const residentFirstYear = resident.startYear;
-      const residentLastYear = resident.startYear + 2; // 3-year residency
-      
+      // Single-year grid (52 weeks): compute if resident is active in this academic year
       if (year < residentFirstYear || year > residentLastYear) {
         // Resident is completely outside this academic year
         start = 0;
@@ -334,8 +332,8 @@ const sanitizeScheduleGrid = (
     } else {
       // Unified grid: compute global week indices
       const totalSpanWeeks = row.length;
-      start = Math.max(0, (resident.startYear - startYear) * 52);
-      end = Math.min(totalSpanWeeks, (resident.startYear + 3 - startYear) * 52);
+      start = Math.max(0, (residentFirstYear - startYear) * 52);
+      end = Math.min(totalSpanWeeks, (residentLastYear + 1 - startYear) * 52);
     }
     
     sanitized[rId] = row.map((cell, idx) => {

@@ -388,7 +388,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               </div>
               <div className="flex flex-col gap-1.5">
                 {[1, 2, 3].map(pgy => {
-                  const pgyGroup = tooltip.peers.filter(r => (r.level + Math.floor(tooltip.weekIdx / 52)) === pgy);
+                  const pgyGroup = tooltip.peers.filter(r => ((r.startYear > 0 ? (startYear - r.startYear + 1) : r.level) + Math.floor(tooltip.weekIdx / 52)) === pgy);
                   if (pgyGroup.length === 0) return null;
                   return (
                     <div key={pgy} className="flex gap-2 items-start">
