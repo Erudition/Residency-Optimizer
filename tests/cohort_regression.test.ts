@@ -20,12 +20,17 @@ describe('Multi-Year Cohort Regression Test', () => {
         const cohortMap: Record<string, number> = {};
         residents.forEach((r, idx) => { cohortMap[r.id] = idx % 5; });
 
+        const cohortAssignments: Record<number, Record<string, number>> = {};
+        for (let y = startYear; y < startYear + totalYears; y++) {
+            cohortAssignments[y] = cohortMap;
+        }
+
         const result = await generateSchedule(
             startYear,
             totalYears,
             residents,
             {}, // historicalSchedules
-            { existing: {}, cohortAssignments: { [startYear]: cohortMap } }, // Replicate frontend nested cohorts
+            { existing: {}, cohortAssignments }, // Replicate frontend nested cohorts
             params,
             ['stochastic'],
             () => false,

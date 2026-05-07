@@ -128,8 +128,9 @@ export const preloadHistoricalData = (residents: Resident[]): PreloadedHistory =
                 locked: isFullyCompleted
             }));
 
-            // Map cohort if available, fallback to 0
-            const cohort = HISTORICAL_COHORTS[year]?.[name] ?? 0;
+            // Map cohort if available (1-indexed in HISTORICAL_COHORTS, convert to 0-indexed), fallback to 0
+            const rawCohort = HISTORICAL_COHORTS[year]?.[name];
+            const cohort = rawCohort !== undefined ? Math.max(0, rawCohort - 1) : 0;
             cohortAssignments[year][id] = cohort;
         });
     });
