@@ -79,8 +79,8 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Night Float
 *   **Setting:** Inpatient
-*   **Duration:** 2 weeks consecutive (Cap limit is 2 weeks consecutive, max 6 weeks per residency)
-*   **Intensity Rating:** 4/5
+*   **Duration:** 4 weeks (2 blocks) (ACGME upper limit is 6 total scheduled months in residency)
+*   **Intensity Rating:** 3/5
 *   **MAX Staffing Requirements:** 2 Interns, 2 Seniors
 *   **MIN Staffing Requirements:** 1 Intern, 1 Senior
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
@@ -89,13 +89,13 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ---
 
-## 2. REQUIRED ELECTIVES
+## 2. REQUIRED ROTATIONS
 These are the ACGME-mandated subspecialty clinical rotations. They ensure residents receive a broad exposure to internal medicine subspecialties.
 
 ### Cardiology
 *   **Setting:** Inpatient/Outpatient
 *   **Duration:** 2 weeks consecutive
-*   **Intensity Rating:** 2/5
+*   **Intensity Rating:** 3/5
 *   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 3
 *   **Methodist scheduling information:** 2 weeks required for Interns; two weeks during PGY3. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
@@ -127,7 +127,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 ### Neurology
 *   **Setting:** Inpatient
 *   **Duration:** 2 weeks consecutive
-*   **Intensity Rating:** 1/5
+*   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
 *   **Methodist scheduling information:** 2 weeks required in PGY-2. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows. PGY1s may not be scheduled for this rotation.
@@ -166,11 +166,11 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Geriatrics
 *   **Setting:** Outpatient
-*   **Duration:** 4 weeks consecutive
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 4 weeks required in PGY-2. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
+*   **Methodist scheduling information:** 2 weeks required in PGY-2. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ### Palliative Care (HPC)
 *   **Setting:** Inpatient
@@ -244,7 +244,7 @@ These are highly individualized rotation experiences that residents can select t
 ### Heart Failure (HF)
 *   **Setting:** Inpatient
 *   **Duration:** 2 weeks consecutive
-*   **Intensity Rating:** 1/5
+*   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-2 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
 *   **Methodist scheduling information:** Additional weeks may be scheduled as an elective as long as staffing limits are respected. 
@@ -252,7 +252,7 @@ These are highly individualized rotation experiences that residents can select t
 ### Anaesthesia
 *   **Setting:** Inpatient
 *   **Duration:** 2 weeks 
-*   **Intensity Rating:** 3/5
+*   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-1 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 1
 *   **Methodist scheduling information:** Additional weeks may be scheduled as an elective as long as staffing limits are respected. 
