@@ -103,7 +103,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 ### Infectious Disease (ID)
 *   **Setting:** Inpatient
 *   **Duration:** 2 weeks consecutive
-*   **Intensity Rating:** 1/5
+*   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
 *   **Methodist scheduling information:** 2 weeks required for Interns. Additional weeks may be scheduled as an elective as long as staffing limits are respected. If not completed intern year, it must be completed during second or third years of residency.
