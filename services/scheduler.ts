@@ -1,5 +1,5 @@
 import { RequirementsEngine } from './requirementsEngine';
-import { CompetitionParams, CompetitionPriority, Resident, PgyLevel, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting } from '../types';
+import { CompetitionParams, CompetitionPriority, Resident, PgyLevel, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting, DetailedScore } from '../types';
 import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS, fulfillsRequirement, ACTIVE_START_YEAR, ACGME_TYPES } from '../constants';
 import { getRequirementCount, getCumulativeRequirementCount, getYearRequirementCount, getStandardCohortMap } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
@@ -673,6 +673,10 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
 };
 
 export const calculateScheduleScore = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): number => {
+  return calculateDetailedScheduleScore(residents, schedule, historicalSchedules).finalScore;
+};
+
+export const calculateDetailedScheduleScore = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): DetailedScore => {
   const safeGrid = schedule || {};
   const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
   const numYears = Math.ceil(totalWeeks / 52);
@@ -999,5 +1003,14 @@ export const calculateScheduleScore = (residents: Resident[], schedule: Schedule
     (cohortFairnessScores[2] * 0.002) +
     (cohortFairnessScores[1] * 0.001);
 
-  return finalScore;
+  return {
+    finalScore,
+    educationScore,
+    staffingScore,
+    intensityScore,
+    streakScore,
+    diversityScore,
+    jeopardyPoolStabilityScore,
+    cohortFairnessScores
+  };
 };

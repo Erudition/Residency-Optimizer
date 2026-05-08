@@ -236,3 +236,15 @@ export interface ScheduleSession {
   startYear?: number;
   lockedUntilWeek?: number;
 }
+
+export interface DetailedScore {
+  finalScore: number;
+  educationScore: number;
+  staffingScore: number;
+  intensityScore: number;
+  streakScore: number;
+  diversityScore: number;
+  jeopardyPoolStabilityScore: number;
+  cohortFairnessScores: Record<number, number>;
+}
+

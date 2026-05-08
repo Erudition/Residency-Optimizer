@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScheduleGrid, ScheduleHistory, Resident, AssignmentType, ScheduleCell, ScheduleSession } from '../types';
-import { calculateFairnessMetrics, calculateScheduleScore } from '../services/scheduler';
+import { calculateFairnessMetrics, calculateScheduleScore, calculateDetailedScheduleScore } from '../services/scheduler';
 import { Sparkles, Loader2, Info, Download, Users, Plus, ChevronUp, ChevronDown, ArrowUpDown, Pencil } from 'lucide-react';
 import { Button } from './ui/Button';
 
@@ -52,6 +52,12 @@ interface ScheduleMetrics {
   totalNF: number;
   streakSD: number;
   maxStreak: number;
+  educationScore: number;
+  staffingScore: number;
+  intensityScore: number;
+  streakScore: number;
+  diversityScore: number;
+  jeopardyScore: number;
 }
 
 export const ScheduleComparison: React.FC<Props> = ({
@@ -81,7 +87,8 @@ export const ScheduleComparison: React.FC<Props> = ({
     return schedules.filter(s => !s.isGenerating).map(s => {
       const yearGrid = s.data?.[activeYear] || {};
       const groups = calculateFairnessMetrics(residents, yearGrid);
-      const score = calculateScheduleScore(residents, yearGrid, history);
+      const detailed = calculateDetailedScheduleScore(residents, yearGrid, history);
+      const score = detailed.finalScore;
 
       const f1 = groups.find(g => g.level === 1)?.fairnessScore || 0;
       const f2 = groups.find(g => g.level === 2)?.fairnessScore || 0;
@@ -118,6 +125,12 @@ export const ScheduleComparison: React.FC<Props> = ({
         totalNF,
         streakSD,
         maxStreak,
+        educationScore: detailed.educationScore,
+        staffingScore: detailed.staffingScore,
+        intensityScore: detailed.intensityScore,
+        streakScore: detailed.streakScore,
+        diversityScore: detailed.diversityScore,
+        jeopardyScore: detailed.jeopardyPoolStabilityScore,
       };
     });
   }, [schedules, residents, activeScheduleId, history, activeYear]);
@@ -139,12 +152,32 @@ export const ScheduleComparison: React.FC<Props> = ({
       totalNF: { min: 10000, max: 0 },
       streakSD: { min: 100, max: 0 },
       streak: { min: 100, max: 0 },
+      education: { min: 100, max: 0 },
+      staffing: { min: 100, max: 0 },
+      intensity: { min: 100, max: 0 },
+      streakScore: { min: 100, max: 0 },
+      diversity: { min: 100, max: 0 },
+      jeopardy: { min: 100, max: 0 },
     };
 
     if (metrics.length === 0) return r;
 
     r.score.min = metrics[0].score;
     r.score.max = metrics[0].score;
+    r.fairness.min = metrics[0].avgFairness;
+    r.fairness.max = metrics[0].avgFairness;
+    r.education.min = metrics[0].educationScore;
+    r.education.max = metrics[0].educationScore;
+    r.staffing.min = metrics[0].staffingScore;
+    r.staffing.max = metrics[0].staffingScore;
+    r.intensity.min = metrics[0].intensityScore;
+    r.intensity.max = metrics[0].intensityScore;
+    r.streakScore.min = metrics[0].streakScore;
+    r.streakScore.max = metrics[0].streakScore;
+    r.diversity.min = metrics[0].diversityScore;
+    r.diversity.max = metrics[0].diversityScore;
+    r.jeopardy.min = metrics[0].jeopardyScore;
+    r.jeopardy.max = metrics[0].jeopardyScore;
 
     metrics.forEach(m => {
       r.score.min = Math.min(r.score.min, m.score);
@@ -163,6 +196,19 @@ export const ScheduleComparison: React.FC<Props> = ({
       r.streakSD.max = Math.max(r.streakSD.max, m.streakSD);
       r.streak.min = Math.min(r.streak.min, m.maxStreak);
       r.streak.max = Math.max(r.streak.max, m.maxStreak);
+
+      r.education.min = Math.min(r.education.min, m.educationScore);
+      r.education.max = Math.max(r.education.max, m.educationScore);
+      r.staffing.min = Math.min(r.staffing.min, m.staffingScore);
+      r.staffing.max = Math.max(r.staffing.max, m.staffingScore);
+      r.intensity.min = Math.min(r.intensity.min, m.intensityScore);
+      r.intensity.max = Math.max(r.intensity.max, m.intensityScore);
+      r.streakScore.min = Math.min(r.streakScore.min, m.streakScore);
+      r.streakScore.max = Math.max(r.streakScore.max, m.streakScore);
+      r.diversity.min = Math.min(r.diversity.min, m.diversityScore);
+      r.diversity.max = Math.max(r.diversity.max, m.diversityScore);
+      r.jeopardy.min = Math.min(r.jeopardy.min, m.jeopardyScore);
+      r.jeopardy.max = Math.max(r.jeopardy.max, m.jeopardyScore);
     });
     return r;
   }, [metrics]);
@@ -206,31 +252,49 @@ export const ScheduleComparison: React.FC<Props> = ({
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-light-2 border-b border-light-6 text-muted uppercase text-[10px] font-black tracking-widest">
-                  <th className="py-4 px-6 text-left cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('name')}>
+                  <th className="py-4 px-4 text-left cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('name')}>
                     <div className="flex items-center">Schedule Name <SortIcon column="name" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('score')}>
-                    <div className="flex items-center justify-center">Score (Higher Better) <SortIcon column="score" /></div>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('score')}>
+                    <div className="flex items-center justify-center">Score <SortIcon column="score" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('avgFairness')}>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('educationScore')}>
+                    <div className="flex items-center justify-center">Education (49%) <SortIcon column="educationScore" /></div>
+                  </th>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('staffingScore')}>
+                    <div className="flex items-center justify-center">Staffing (49%) <SortIcon column="staffingScore" /></div>
+                  </th>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('intensityScore')}>
+                    <div className="flex items-center justify-center">Intensity (0.6%) <SortIcon column="intensityScore" /></div>
+                  </th>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('streakScore')}>
+                    <div className="flex items-center justify-center">Streak (0.4%) <SortIcon column="streakScore" /></div>
+                  </th>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('diversityScore')}>
+                    <div className="flex items-center justify-center">Diversity (0.3%) <SortIcon column="diversityScore" /></div>
+                  </th>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors border-r-2 border-light-blue/40" onClick={() => handleSort('jeopardyScore')}>
+                    <div className="flex items-center justify-center">Jeopardy (0.1%) <SortIcon column="jeopardyScore" /></div>
+                  </th>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('avgFairness')}>
                     <div className="flex items-center justify-center">AVG Fairness <SortIcon column="avgFairness" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('pgy1Fairness')}>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('pgy1Fairness')}>
                     <div className="flex items-center justify-center">PGY-1 <SortIcon column="pgy1Fairness" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('pgy2Fairness')}>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('pgy2Fairness')}>
                     <div className="flex items-center justify-center">PGY-2 <SortIcon column="pgy2Fairness" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors border-r-2 border-light-blue/40" onClick={() => handleSort('pgy3Fairness')}>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors border-r-2 border-light-blue/40" onClick={() => handleSort('pgy3Fairness')}>
                     <div className="flex items-center justify-center">PGY-3 <SortIcon column="pgy3Fairness" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('totalNF')}>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('totalNF')}>
                     <div className="flex items-center justify-center">Night Shifts <SortIcon column="totalNF" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('streakSD')}>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('streakSD')}>
                     <div className="flex items-center justify-center">Streak SD <SortIcon column="streakSD" /></div>
                   </th>
-                  <th className="py-4 px-6 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('maxStreak')}>
+                  <th className="py-4 px-4 text-center cursor-pointer hover:bg-light-3 transition-colors" onClick={() => handleSort('maxStreak')}>
                     <div className="flex items-center justify-center">Max Streak <SortIcon column="maxStreak" /></div>
                   </th>
                 </tr>
@@ -238,13 +302,13 @@ export const ScheduleComparison: React.FC<Props> = ({
               <tbody>
                 {generatingSchedules.map(gs => (
                   <tr key={gs.id} className="border-b border-gray-50 animate-pulse bg-light-blue/20/20">
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
                         <Loader2 size={16} className="animate-spin text-blue-400" />
                         <span className="text-muted font-bold italic">{gs.name}...</span>
                       </div>
                     </td>
-                    <td colSpan={8} className="py-4 px-6">
+                    <td colSpan={14} className="py-4 px-4">
                       <div className="w-full bg-light-blue/50 h-2 rounded-full overflow-hidden">
                         <div className="h-full bg-blue-2/50 animate-pulse" style={{ width: '30%' }}></div>
                       </div>
@@ -255,7 +319,7 @@ export const ScheduleComparison: React.FC<Props> = ({
                   const isActive = m.id === activeScheduleId;
                   return (
                     <tr key={m.id} className={`border-b border-light-3 transition-colors hover:bg-light-1 ${isActive ? 'bg-light-blue/20/40' : ''}`}>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
                           <Identicon id={m.id} size={14} />
                           <div className="flex items-center gap-2 group/name cursor-pointer" onClick={() => onSelect(m.id)}>
@@ -272,33 +336,57 @@ export const ScheduleComparison: React.FC<Props> = ({
                         </div>
                       </td>
 
-                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.score, ranges.score.min, ranges.score.max, true)}`}>
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.score, ranges.score.min, ranges.score.max, true)}`}>
                         {Math.round(m.score)}
                       </td>
 
-                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.avgFairness, ranges.fairness.min, ranges.fairness.max, true)}`}>
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.educationScore, ranges.education.min, ranges.education.max, true)}`}>
+                        {Math.round(m.educationScore)}%
+                      </td>
+
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.staffingScore, ranges.staffing.min, ranges.staffing.max, true)}`}>
+                        {Math.round(m.staffingScore)}%
+                      </td>
+
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.intensityScore, ranges.intensity.min, ranges.intensity.max, true)}`}>
+                        {Math.round(m.intensityScore)}%
+                      </td>
+
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.streakScore, ranges.streakScore.min, ranges.streakScore.max, true)}`}>
+                        {Math.round(m.streakScore)}%
+                      </td>
+
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.diversityScore, ranges.diversity.min, ranges.diversity.max, true)}`}>
+                        {Math.round(m.diversityScore)}%
+                      </td>
+
+                      <td className={`py-4 px-4 text-center font-mono border-r-2 border-light-blue/40 ${getColor(m.jeopardyScore, ranges.jeopardy.min, ranges.jeopardy.max, true)}`}>
+                        {Math.round(m.jeopardyScore)}%
+                      </td>
+
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.avgFairness, ranges.fairness.min, ranges.fairness.max, true)}`}>
                         {m.avgFairness.toFixed(1)}%
                       </td>
 
-                      <td className={`py-4 px-6 text-center font-mono text-xs ${getColor(m.pgy1Fairness, ranges.pgyFairness.min, ranges.pgyFairness.max, true)}`}>
+                      <td className={`py-4 px-4 text-center font-mono text-xs ${getColor(m.pgy1Fairness, ranges.pgyFairness.min, ranges.pgyFairness.max, true)}`}>
                         {m.pgy1Fairness}%
                       </td>
-                      <td className={`py-4 px-6 text-center font-mono text-xs ${getColor(m.pgy2Fairness, ranges.pgyFairness.min, ranges.pgyFairness.max, true)}`}>
+                      <td className={`py-4 px-4 text-center font-mono text-xs ${getColor(m.pgy2Fairness, ranges.pgyFairness.min, ranges.pgyFairness.max, true)}`}>
                         {m.pgy2Fairness}%
                       </td>
-                      <td className={`py-4 px-6 text-center font-mono text-xs border-r-2 border-light-blue/40 ${getColor(m.pgy3Fairness, ranges.pgyFairness.min, ranges.pgyFairness.max, true)}`}>
+                      <td className={`py-4 px-4 text-center font-mono text-xs border-r-2 border-light-blue/40 ${getColor(m.pgy3Fairness, ranges.pgyFairness.min, ranges.pgyFairness.max, true)}`}>
                         {m.pgy3Fairness}%
                       </td>
 
-                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.totalNF, ranges.totalNF.min, ranges.totalNF.max, false)}`}>
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.totalNF, ranges.totalNF.min, ranges.totalNF.max, false)}`}>
                         {m.totalNF}
                       </td>
 
-                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.streakSD, ranges.streakSD.min, ranges.streakSD.max, false)}`}>
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.streakSD, ranges.streakSD.min, ranges.streakSD.max, false)}`}>
                         ± {m.streakSD.toFixed(2)}
                       </td>
 
-                      <td className={`py-4 px-6 text-center font-mono ${getColor(m.maxStreak, ranges.streak.min, ranges.streak.max, false)}`}>
+                      <td className={`py-4 px-4 text-center font-mono ${getColor(m.maxStreak, ranges.streak.min, ranges.streak.max, false)}`}>
                         {m.maxStreak}w
                       </td>
                     </tr>
