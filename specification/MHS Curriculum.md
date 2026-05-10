@@ -25,7 +25,7 @@ Interns focus heavily on direct inpatient management, primary care foundations, 
 | :---: | :--- | :--- |
 | **4** | **General Inpatient Wards** | Wards B, Wards R, Wards Metro |
 | **2** | **Critical Care (Main)** | ICU Main |
-| **1** | **Split: Night Float / Subspecialty** | 2 weeks Night Float (NF) + 2 weeks Subspecialty Elective |
+| **1** | **Night Float** | 4 weeks Night Float (NF) |
 | **1** | **Split: Cardiology / Pulmonology** | 2 weeks Inpatient Cardiology + 2 weeks Pulmonology Consult/Procedural |
 | **1** | **Split: Infectious Disease / Nephrology** | 2 weeks Infectious Disease + 2 weeks Nephrology |
 | **1** | **Pure Elective / Individualized** | Dedicated flexible time without jeopardy responsibilities for elective focus or mapping required vacation. |
@@ -42,8 +42,8 @@ The PGY-2 takes on team leadership on Wards and gains intensive triage exposure 
 | **3** | **Supervisory Wards** | Wards B, Wards R, Wards Metro |
 | **1** | **Critical Care Core** | ICU Main |
 | **1** | **Split: Emergency Medicine / Elective** | 2 weeks Emergency Medicine (EM) + 2 weeks Elective |
-| **1** | **Split: Night Float / Elective** | 2 weeks Supervisory Night Float (NF) + 2 weeks Elective (e.g., AMCS Consults) |
-| **1** | **Mandatory Geriatrics** | Geriatrics |
+| **1** | **Night Float** | 4 weeks Supervisory Night Float (NF) |
+| **1** | **Split: Geriatrics / Elective** | 2 weeks Geriatrics + 2 weeks Elective |
 | **1** | **Split: Mandatory Consults** | 2 weeks Neurology + 2 weeks Gastroenterology |
 | **1** | **Split: Pulmonology / Rheumatology** | 2 weeks Pulmonology + 2 weeks Rheumatology |
 | **1** | **Subspecialty / Elective / Vacation** | Additional Consults, Board Prep, Vacation |
@@ -66,7 +66,7 @@ Senior residents polish their ward management, engage with their final rigorous 
 | **1** | **Split: Heme-Onc / Emergency Med** | 2 weeks Hematology-Oncology + 2 weeks Emergency Medicine (EM) |
 | **1** | **Split: Endocrinology / Elective** | 2 weeks Outpatient Endocrinology + 2 weeks Elective |
 | **1** | **Subspecialty / Elective / Individualized** | Elective, Board Prep, or Research|
-| **1** | **Split: Night Float / Elective** | 2 weeks Night Float (NF) + 2 weeks Elective |
+| **1** | **Night Float** | 4 weeks Night Float (NF) |
 
 ---
 
@@ -102,7 +102,7 @@ If a resident takes PTO or extended leave during a **mandated** rotation (e.g., 
 *   **Total Wards + ICU**: ~ 12 months `[Min Required: 10]`
 *   **Total ICU**: 4 months exact (PGY1 = 2, PGY2 = 1, PGY3 = 1). `[Min 2, Max 6, evenly spread, avoiding PGY-1 exclusivity]`
 *   **Outpatient/Ambulatory**: 44 weeks (~11 months) derived from 30 weeks of +1 clinic, plus mandatory Geriatrics, Endocrinology, Rheumatology, Gastroenterology, and Addiction Medicine blocks. `[Meets Min 10 months requirement]`
-*   **Night Float**: 6 total weeks across residency (2 weeks per year in PGY1, PGY2, and PGY3).
+*   **Night Float**: 12 total weeks across residency (4 weeks per year in PGY1, PGY2, and PGY3).
 *   **Subspecialties**: All 9 IM ABIM subspecialties are explicitly mapped within the core block structure.
 *   **Mandatory Multi-disciplinary**: Geriatrics, Palliative, Addiction, EM, and Neurology are explicitly scheduled. EM is strictly limited to PGY2 and PGY3.
 *   **Individualized Educational Experiences**: Exactly 6 months (24 weeks). Derived from 20 weeks of true, post-vacation free elective time combined with the 4-week Senior Track Selection. `[Meets Min 6 months requirement]`

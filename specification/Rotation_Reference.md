@@ -79,7 +79,7 @@ Core rotations represent the foundational clinical experiences of the residency 
 
 ### Night Float
 *   **Setting:** Inpatient
-*   **Duration:** 2 weeks consecutive (Cap limit is 2 weeks consecutive, max 6 weeks per residency)
+*   **Duration:** 4 weeks (2 blocks) (ACGME upper limit is 6 total scheduled months in residency)
 *   **Intensity Rating:** 4/5
 *   **MAX Staffing Requirements:** 2 Interns, 2 Seniors
 *   **MIN Staffing Requirements:** 1 Intern, 1 Senior
@@ -166,11 +166,11 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Geriatrics
 *   **Setting:** Outpatient
-*   **Duration:** 4 weeks consecutive
+*   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
 *   **Total Max Acceptable Residents Concurrently Scheduled:** 2
-*   **Methodist scheduling information:** 4 weeks required in PGY-2. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
+*   **Methodist scheduling information:** 2 weeks required in PGY-2. Additional weeks may be scheduled as an elective as long as staffing limits are respected. Early completion of elective is allowed if staffing allows.
 
 ### Palliative Care (HPC)
 *   **Setting:** Inpatient
