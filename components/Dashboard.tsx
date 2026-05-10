@@ -98,6 +98,31 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
   const pgy2Data = React.useMemo(() => data.filter(d => d.pgy === 'PGY2'), [data]);
   const pgy3Data = React.useMemo(() => data.filter(d => d.pgy === 'PGY3'), [data]);
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const validPayload = payload.filter((entry: any) => entry.value > 0);
+      if (validPayload.length === 0) return null;
+
+      return (
+        <div className="bg-white border shadow-lg rounded-lg p-3 text-sm z-50">
+          <p className="font-bold text-primary mb-2 border-b pb-1">{label}</p>
+          <div className="flex flex-col gap-1">
+            {validPayload.map((entry: any, index: number) => (
+              <div key={index} className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
+                  <span className="text-muted font-medium">{entry.name}:</span>
+                </div>
+                <span className="font-bold text-primary">{entry.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   const ChartSection = ({ title, dataSet }: { title: string, dataSet: any[] }) => {
     // Dynamic height based on number of residents (35px per resident + padding)
     const chartHeight = Math.max(400, dataSet.length * 35 + 80);
@@ -121,6 +146,7 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
                 fontSize={11}
               />
               <Tooltip
+                content={<CustomTooltip />}
                 cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
                 wrapperStyle={{ zIndex: 100 }}
               />

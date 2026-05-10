@@ -158,6 +158,19 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                                         if (level === 1 && cI >= maxI) { possible = false; break; }
                                         if (level > 1 && cS >= maxS) { possible = false; break; }
                                         
+                                        // Ratio Preference: Interns >= Seniors for core inpatient services
+                                        const isInpatientService = [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE, AssignmentType.WARDS_METRO, AssignmentType.MICU, AssignmentType.METRO_ICU, AssignmentType.NIGHT_FLOAT].includes(type);
+                                        const newCI = cI + (level === 1 ? 1 : 0);
+                                        const newCS = cS + (level > 1 ? 1 : 0);
+                                        
+                                        if (isInpatientService) {
+                                            if (newCI < newCS) {
+                                                score += 10; // Penalty for inverted ratio
+                                            } else {
+                                                score -= 2;  // Reward for preferred ratio
+                                            }
+                                        }
+
                                         // Spreading score: prefer weeks with less staff (with random tiebreaker)
                                         score += (cI + cS) + rng.next() * 0.1;
                                     }

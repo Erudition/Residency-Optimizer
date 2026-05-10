@@ -18,9 +18,11 @@ export const CohortKanban: React.FC<Props> = ({
   onAssignCohort 
 }) => {
   const [dragOverCohort, setDragOverCohort] = React.useState<number | null>(null);
+  const [draggedResidentId, setDraggedResidentId] = React.useState<string | null>(null);
 
   const handleDragStart = (e: React.DragEvent, residentId: string) => {
-    e.dataTransfer.setData('residentId', residentId);
+    setDraggedResidentId(residentId);
+    e.dataTransfer.setData('text/plain', residentId);
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -33,13 +35,19 @@ export const CohortKanban: React.FC<Props> = ({
     setDragOverCohort(null);
   };
 
+  const handleDragEnd = () => {
+    setDragOverCohort(null);
+    setDraggedResidentId(null);
+  };
+
   const handleDrop = (e: React.DragEvent, cohortIndex: number) => {
     e.preventDefault();
     setDragOverCohort(null);
-    const residentId = e.dataTransfer.getData('residentId');
+    const residentId = draggedResidentId || e.dataTransfer.getData('text/plain');
     if (residentId) {
       onAssignCohort(residentId, cohortIndex);
     }
+    setDraggedResidentId(null);
   };
 
   const cohorts = useMemo(() => {
@@ -121,6 +129,7 @@ export const CohortKanban: React.FC<Props> = ({
                     key={resident.id} 
                     draggable
                     onDragStart={(e) => handleDragStart(e, resident.id)}
+                    onDragEnd={handleDragEnd}
                     className={`group bg-white border border-light-5 border-l-4 ${levelColors} rounded-xl p-3 shadow-sm hover:shadow-md active:scale-95 active:shadow-inner transition-all cursor-grab relative`}
                   >
                     <div className="flex items-center justify-between">

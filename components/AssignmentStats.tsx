@@ -64,33 +64,43 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
     document.body.style.cursor = '';
   };
 
+  // Define Row Order (Staffed first, then alphabetical)
   // Define Row Order
   const sortedAssignmentTypes = useMemo(() => {
-    const priorityOrder = [
+    const allTypes = Object.values(AssignmentType);
+    
+    // 1. Core / Staffed Inpatient + EM + Clinic
+    const topTier = [
       AssignmentType.WARDS_RED,
       AssignmentType.WARDS_BLUE,
       AssignmentType.WARDS_METRO,
       AssignmentType.MICU,
       AssignmentType.METRO_ICU,
-      AssignmentType.PULM,
       AssignmentType.NIGHT_FLOAT,
       AssignmentType.EM,
       AssignmentType.CLINIC,
       AssignmentType.NIMA_CLINIC,
-      AssignmentType.ELECTIVE,
-      AssignmentType.VACATION,
+      AssignmentType.JR_HOSPITALIST,
+      AssignmentType.AMCS_CONSULTS
     ];
 
-    const allTypes = Object.values(AssignmentType);
-    const remainingTypes = allTypes
-      .filter(type => !priorityOrder.includes(type))
-      .sort((a, b) => {
-        const labelA = ASSIGNMENT_LABELS[a] || '';
-        const labelB = ASSIGNMENT_LABELS[b] || '';
-        return labelA.localeCompare(labelB);
-      });
+    // 2. Pure Electives & Leave (Bottom Tier)
+    const bottomTier = [
+      AssignmentType.ELECTIVE,
+      AssignmentType.RESEARCH,
+      AssignmentType.VACATION
+    ];
 
-    return [...priorityOrder, ...remainingTypes];
+    // 3. Middle Tier: Required Experiences & Everything Else (Alphabetical)
+    const middleTier = allTypes.filter(type => !topTier.includes(type) && !bottomTier.includes(type));
+
+    middleTier.sort((a, b) => {
+      const labelA = ASSIGNMENT_LABELS[a] || '';
+      const labelB = ASSIGNMENT_LABELS[b] || '';
+      return labelA.localeCompare(labelB);
+    });
+
+    return [...topTier, ...middleTier, ...bottomTier];
   }, []);
 
   // Group data

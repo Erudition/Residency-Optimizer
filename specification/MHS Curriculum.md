@@ -43,14 +43,14 @@ The PGY-2 takes on team leadership on Wards and gains intensive triage exposure 
 | :---: | :--- | :--- |
 | **3** | **Supervisory Wards** | Wards B, Wards R, Wards Metro |
 | **1** | **Critical Care Core** | ICU Main |
-| **1** | **Split: Emergency Medicine / Elective** | 2 weeks Emergency Medicine (EM) + 2 weeks Elective |
 | **1** | **Night Float** | 4 weeks Supervisory Night Float (NF) |
+| **0.5** | **Emergency Medicine** | 2 weeks Emergency Medicine (EM) 
 | **0.5** | **Neurology** | Neurology |
 | **0.5** | **Gastroenterology** | Gastroenterology |
 | **0.5** | **Pulmonology** | 2 weeks Pulmonology Consult/Procedural |
 | **0.5** | **Rheumatology** | 2 weeks Rheumatology |
 | **0.5** | **Endocrinology** | 2 weeks Outpatient Endocrinology |
-| **1.5** | **Subspecialty / Elective / Vacation** | Additional Consults, Board Prep, Vacation |
+| **2.0** | **Subspecialty / Elective / Vacation** | Additional Consults, Board Prep, Vacation |
 
 ---
 

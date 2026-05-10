@@ -123,6 +123,19 @@ export const StochasticGenerator: ScheduleGenerator = {
                                         if (currentLevelAtW === 1 && cI >= maxI) { possible = false; break; }
                                         if (currentLevelAtW > 1 && cS >= maxS) { possible = false; break; }
                                         
+                                        // Ratio Preference: Interns >= Seniors for core inpatient services
+                                        const isInpatientService = [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE, AssignmentType.WARDS_METRO, AssignmentType.MICU, AssignmentType.METRO_ICU, AssignmentType.NIGHT_FLOAT].includes(type);
+                                        const newCI = cI + (currentLevelAtW === 1 ? 1 : 0);
+                                        const newCS = cS + (currentLevelAtW > 1 ? 1 : 0);
+                                        
+                                        if (isInpatientService) {
+                                            if (newCI < newCS) {
+                                                score += 10; // Penalty for inverted ratio
+                                            } else {
+                                                score -= 2;  // Reward for preferred ratio
+                                            }
+                                        }
+
                                         score += (cI + cS) + rng.next() * 5.0;
                                     }
 

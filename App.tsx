@@ -394,8 +394,9 @@ const App: React.FC = () => {
 
 
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(() =>
-    loadState('rsp_active_id', 'all')
+    loadState('rsp_active_id', 'draft')
   );
+  const [globalCohorts, setGlobalCohorts] = useState<Record<number, Record<string, number>>>({});
 
   const [activeYear, setActiveYear] = useState<number>(ACTIVE_START_YEAR);
   const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cohort'>(() =>
@@ -574,7 +575,7 @@ const App: React.FC = () => {
 
   // Derive cohort assignments for the selected year
   const activeYearCohorts = useMemo(() => {
-    let yearCohorts = activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear];
+    let yearCohorts = activeSchedule?.cohortAssignments?.[activeYear] || globalCohorts[activeYear] || historicalCohortsByYear[activeYear];
     if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
       const augmented = getAugmentedResidents(residents, activeYear + 1);
       const activeResidentsForDefault = augmented.filter(r => {
@@ -596,7 +597,7 @@ const App: React.FC = () => {
       yearCohorts = defaultCohorts;
     }
     return yearCohorts;
-  }, [activeSchedule, activeYear, historicalCohortsByYear, residents]);
+  }, [activeSchedule, activeYear, historicalCohortsByYear, residents, globalCohorts]);
 
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
@@ -950,7 +951,7 @@ const App: React.FC = () => {
 
       const fullCohortAssignments: Record<number, Record<string, number>> = {};
       for (let y = activeYear; y < activeYear + totalYears; y++) {
-        let yearCohorts = y === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[y] || historicalCohortsByYear[y]);
+        let yearCohorts = y === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[y] || globalCohorts[y] || historicalCohortsByYear[y]);
         if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
           const augmented = getAugmentedResidents(residents, y + 1);
           const activeResidents = augmented.filter(r => {
@@ -1182,7 +1183,17 @@ const App: React.FC = () => {
   };
 
   const handleAssignCohort = (residentId: string, cohortIndex: number) => {
-    if (!activeScheduleId) return;
+    if (!activeScheduleId || activeScheduleId === 'draft' || activeScheduleId === 'all' || activeScheduleId === 'settings') {
+      setGlobalCohorts(prev => ({
+        ...prev,
+        [activeYear]: {
+          ...(prev[activeYear] || activeYearCohorts),
+          [residentId]: cohortIndex
+        }
+      }));
+      return;
+    }
+
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
 
@@ -1605,9 +1616,8 @@ const App: React.FC = () => {
       {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label={viewMode === 'unified' ? "Schedule 3yr" : "Schedule"} icon={LayoutGrid} />
-          {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
           <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
-          <NavButton id="totals" label={viewMode === 'unified' ? "Totals 3yr" : "Totals"} icon={Users} />
+          {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
           {viewMode === 'unified' ? (
             <>
               <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
@@ -1795,18 +1805,20 @@ const App: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
+              {activeTab === 'workload' && (
+                <div className="flex-1 overflow-y-auto flex flex-col gap-6 bg-light-1">
+                  <Dashboard residents={activeResidents} stats={stats} />
+                  <div className="px-6 pb-6 h-[600px] shrink-0">
+                    <ResidentAssignmentsStats
+                      residents={viewMode === 'unified' ? displayResidents : activeResidents}
+                      schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                    />
+                  </div>
+                </div>
+              )}
               {activeTab === 'coverage' && (
                 <div className="flex-1 overflow-hidden">
                   <AssignmentStats
-                    residents={viewMode === 'unified' ? displayResidents : activeResidents}
-                    schedule={viewMode === 'unified' ? displayGrid : currentGrid}
-                  />
-                </div>
-              )}
-              {activeTab === 'totals' && (
-                <div className="flex-1 overflow-hidden">
-                  <ResidentAssignmentsStats
                     residents={viewMode === 'unified' ? displayResidents : activeResidents}
                     schedule={viewMode === 'unified' ? displayGrid : currentGrid}
                   />
