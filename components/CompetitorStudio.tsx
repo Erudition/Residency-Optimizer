@@ -4,6 +4,8 @@ import { AlgorithmConfig, AlgorithmStats, CompetitionParams, CompetitionPriority
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
+import { CohortKanban } from './CohortKanban';
+import { Resident } from '../types';
 
 interface Props {
     algorithms: AlgorithmConfig[];
@@ -13,6 +15,10 @@ interface Props {
     onToggleAlgorithm: (id: string) => void;
     onCompete: () => void;
     onClearStats: () => void;
+    residents: Resident[];
+    activeYear: number;
+    cohortAssignments: Record<string, number>;
+    onAssignCohort: (residentId: string, cohortIndex: number) => void;
 }
 
 export const CompetitorStudio: React.FC<Props> = ({
@@ -22,7 +28,11 @@ export const CompetitorStudio: React.FC<Props> = ({
     onParamsChange,
     onToggleAlgorithm,
     onCompete,
-    onClearStats
+    onClearStats,
+    residents,
+    activeYear,
+    cohortAssignments,
+    onAssignCohort
 }) => {
     return (
         <div className="flex flex-col h-full bg-light-1">
@@ -68,8 +78,33 @@ export const CompetitorStudio: React.FC<Props> = ({
             <div className="flex-1 overflow-y-auto p-8">
                 <div className="max-w-7xl mx-auto flex flex-col gap-10">
 
-                    {/* Cards Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Step 1: Cohort Configuration */}
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-blue text-white flex items-center justify-center font-black">1</div>
+                            <h2 className="text-xl font-black text-primary tracking-tight">Configure Cohorts</h2>
+                        </div>
+                        <p className="text-muted text-sm font-medium -mt-2 ml-10">
+                            Drag and drop residents to balance cohorts before generation.
+                        </p>
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-light-5 ml-10">
+                            <CohortKanban
+                                residents={residents}
+                                activeYear={activeYear}
+                                cohortAssignments={cohortAssignments}
+                                onAssignCohort={onAssignCohort}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Step 2: Algorithm Selection */}
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-blue text-white flex items-center justify-center font-black">2</div>
+                            <h2 className="text-xl font-black text-primary tracking-tight">Select Algorithms</h2>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ml-10">
                         {algorithms.map(algo => {
                             const algoStats = stats[algo.id] || { bestScore: -Infinity, worstScore: Infinity, bestViolations: Infinity, worstViolations: -Infinity };
                             const isEnabled = params.algorithmIds.includes(algo.id);
@@ -148,6 +183,7 @@ export const CompetitorStudio: React.FC<Props> = ({
                                 </div>
                             );
                         })}
+                    </div>
                     </div>
 
                 </div>

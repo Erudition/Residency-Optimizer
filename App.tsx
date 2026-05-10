@@ -1645,6 +1645,10 @@ const App: React.FC = () => {
                 }}
                 onCompete={handleGenerate}
                 onClearStats={() => setAlgoStats([])}
+                residents={activeResidents}
+                activeYear={activeYear}
+                cohortAssignments={activeYearCohorts}
+                onAssignCohort={handleAssignCohort}
               />
             )
           ) : (activeScheduleId === 'all' && !isHistoricalYear) ? (
