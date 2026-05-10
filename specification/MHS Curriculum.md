@@ -19,23 +19,25 @@ In addition to the 5th-week clinic, residents will cycle through dedicated month
 ## PGY-1: Intern Year
 **Theme: Foundational Patient Care & Skill Acquisition**
 Interns focus heavily on direct inpatient management, primary care foundations, and initial triage skills. *Note: Emergency Medicine is strictly limited to PGY2/3.*
-**True Schedulable Elective Time:** 4 weeks (after 2 weeks required vacation).
+**True Schedulable Elective Time:** 4 weeks.
 
 | Blocks (4-weeks each) | Rotation Types | Specific Rotations Used |
 | :---: | :--- | :--- |
 | **4** | **General Inpatient Wards** | Wards B, Wards R, Wards Metro |
 | **2** | **Critical Care (Main)** | ICU Main |
-| **1** | **Night Float** | 4 weeks Night Float (NF) |
-| **1** | **Split: Cardiology / Pulmonology** | 2 weeks Inpatient Cardiology + 2 weeks Pulmonology Consult/Procedural |
-| **1** | **Split: Infectious Disease / Nephrology** | 2 weeks Infectious Disease + 2 weeks Nephrology |
-| **1** | **Pure Elective / Individualized** | Dedicated flexible time without jeopardy responsibilities for elective focus or mapping required vacation. |
+| **1** | **Night Float ** | 4 weeks Night Float (NF)
+| **0.5** | **Cardiology** | 2 weeks Inpatient Cardiology |
+| **0.5** | ** Pulmonology** | 2 weeks Pulmonology Consult/Procedural |
+| **0.5** | **Infectious Disease ** | 2 weeks Infectious Disease |
+| **0.5** | **Nephrology** | 2 weeks Nephrology |
+| **1** | **Pure Elective / Individualized** | 4 weeks of Elective |
 
 ---
 
 ## PGY-2: Junior Resident Year
 **Theme: Supervisory Roles, Advanced Triage, & Ambulatory Immersion**
-The PGY-2 takes on team leadership on Wards and gains intensive triage exposure via Emergency Medicine. *Note: Advanced Mechanical Circulatory Support (AMCS) Consults and NIMA are available strictly as electives, whereas Metro ICU can be actively assigned as a core rotation.*
-**True Schedulable Elective Time:** 6 weeks (after 2 weeks required vacation).
+The PGY-2 takes on team leadership on Wards and gains intensive triage exposure via Emergency Medicine. *Note: Advanced Mechanical Circulatory Support (AMCS) Consults and NIMA are available strictly as electives, whereas Metro ICU can be actively assigned as a core rotation if ICU is at capacity.*
+**True Schedulable Elective Time:** 8 weeks.
 
 | Blocks (4-weeks each) | Rotation Types | Specific Rotations Used |
 | :---: | :--- | :--- |
@@ -43,30 +45,33 @@ The PGY-2 takes on team leadership on Wards and gains intensive triage exposure 
 | **1** | **Critical Care Core** | ICU Main |
 | **1** | **Split: Emergency Medicine / Elective** | 2 weeks Emergency Medicine (EM) + 2 weeks Elective |
 | **1** | **Night Float** | 4 weeks Supervisory Night Float (NF) |
-| **1** | **Split: Geriatrics / Elective** | 2 weeks Geriatrics + 2 weeks Elective |
-| **1** | **Split: Mandatory Consults** | 2 weeks Neurology + 2 weeks Gastroenterology |
-| **1** | **Split: Pulmonology / Rheumatology** | 2 weeks Pulmonology + 2 weeks Rheumatology |
-| **1** | **Subspecialty / Elective / Vacation** | Additional Consults, Board Prep, Vacation |
+| **0.5** | **Neurology** | Neurology |
+| **0.5** | **Gastroenterology** | Gastroenterology |
+| **0.5** | **Pulmonology** | 2 weeks Pulmonology Consult/Procedural |
+| **0.5** | **Rheumatology** | 2 weeks Rheumatology |
+| **0.5** | **Endocrinology** | 2 weeks Outpatient Endocrinology |
+| **1.5** | **Subspecialty / Elective / Vacation** | Additional Consults, Board Prep, Vacation |
 
 ---
 
 ## PGY-3: Senior Resident Year
 **Theme: Autonomy, Efficiency, & Individualized Education**
 Senior residents polish their ward management, engage with their final rigorous critical care duties (one mandatory 4-week ICU block), and pursue individualized rotations preparing for their specific career path.
-**True Schedulable Elective Time:** 10 weeks (after 2 weeks required vacation).
+**True Schedulable Elective Time:** 12 weeks.
 
 | Blocks (4-weeks each) | Rotation Types | Specific Rotations Used |
 | :---: | :--- | :--- |
-| **1** | **Senior Supervisory Wards** | Wards B, Wards R, Wards Metro |
+| **2** | **Senior Supervisory Wards** | Wards B, Wards R, Wards Metro |
 | **1** | **Senior Track Selection** | Junior Hospitalist (Inpatient) OR Primary Care Experience (Outpatient) OR Admitting (Inpatient) |
 | **1** | **Critical Care Core** | ICU Main or ICU Metro (Resident's Choice) |
-| **1** | **Split: Cardiology / Procedural** | 2 weeks Cardiology (Consults OR Clinic) + 2 weeks Procedural Teaching/Supervision (Overseeing PGY-1s on Pulm Consults or in ICU) |
-| **1** | **Hospice & Palliative Care** | Hospice and Palliative Care |
-| **1** | **Addiction Medicine** | Addiction Medicine |
-| **1** | **Split: Heme-Onc / Emergency Med** | 2 weeks Hematology-Oncology + 2 weeks Emergency Medicine (EM) |
-| **1** | **Split: Endocrinology / Elective** | 2 weeks Outpatient Endocrinology + 2 weeks Elective |
-| **1** | **Subspecialty / Elective / Individualized** | Elective, Board Prep, or Research|
 | **1** | **Night Float** | 4 weeks Night Float (NF) |
+| **0.5** | **Cardiology** | 2 weeks Cardiology (Consults OR Clinic) |
+| **0.5** | **Hospice & Palliative Care** | Hospice and Palliative Care |
+| **0.5** | **Geriatrics** | Geriatrics |
+| **0.5** | **Addiction Medicine** | Addiction Medicine |
+| **0.5** | **Hematology-Oncology** | 2 weeks Hematology-Oncology |
+| **0.5** | **Emergency Medicine (EM)** | 2 weeks Emergency Medicine (EM) |
+| **2** | **Subspecialty / Elective / Individualized** | Elective, Board Prep, or Research|
 
 ---
 
@@ -105,4 +110,4 @@ If a resident takes PTO or extended leave during a **mandated** rotation (e.g., 
 *   **Night Float**: 12 total weeks across residency (4 weeks per year in PGY1, PGY2, and PGY3).
 *   **Subspecialties**: All 9 IM ABIM subspecialties are explicitly mapped within the core block structure.
 *   **Mandatory Multi-disciplinary**: Geriatrics, Palliative, Addiction, EM, and Neurology are explicitly scheduled. EM is strictly limited to PGY2 and PGY3.
-*   **Individualized Educational Experiences**: Exactly 6 months (24 weeks). Derived from 20 weeks of true, post-vacation free elective time combined with the 4-week Senior Track Selection. `[Meets Min 6 months requirement]`
+*   **Individualized Educational Experiences**: Exactly 24 weeks (6 months). Derived from 20 weeks of free elective time combined with the 4-week Senior Track Selection. `[Meets Min 6 months requirement]`
