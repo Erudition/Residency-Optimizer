@@ -357,7 +357,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', category: 'Night Float',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 1, maxInterns: 2, minSeniors: 1, maxSeniors: 2,
-        minWeeksIntern: 2, minWeeksPGY2: 2, minWeeksPGY3: 2 // 2 weeks per year per proposal
+        minWeeksIntern: 4, minWeeksPGY2: 4, minWeeksPGY3: 4 // 4 weeks per year per proposal
     },
     [AssignmentType.EM]: {
         type: AssignmentType.EM, label: 'Emergency', category: 'Emergency',
@@ -437,9 +437,9 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.GERI]: {
         type: AssignmentType.GERI, label: 'Geriatrics', category: 'Geriatrics',
-        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 4,
+        intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        minWeeksPGY2: 4,
+        minWeeksPGY2: 2,
     },
     [AssignmentType.PALLIATIVE]: {
         type: AssignmentType.PALLIATIVE, label: 'Palliative Care', category: 'Palliative Care',
