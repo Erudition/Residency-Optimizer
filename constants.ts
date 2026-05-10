@@ -346,7 +346,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
         type: AssignmentType.WARDS_RED, label: 'Wards', category: 'Wards',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 1, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
-        minWeeksIntern: 16, minWeeksPGY2: 12, minWeeksPGY3: 4 // PGY1: 16w, PGY2: 12w, PGY3: 4w
+        minWeeksIntern: 16, minWeeksPGY2: 12, minWeeksPGY3: 8 // PGY1: 16w, PGY2: 12w, PGY3: 8w
     },
     [AssignmentType.WARDS_BLUE]: {
         type: AssignmentType.WARDS_BLUE, label: 'Wards Blue', category: 'Wards',
@@ -425,27 +425,27 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.ADD_MED]: {
         type: AssignmentType.ADD_MED, label: 'Addiction Med', category: 'Addiction Medicine',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4, 
+        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2, 
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        minWeeksPGY3: 4,
+        minWeeksPGY3: 2,
     },
     [AssignmentType.ENDO]: {
         type: AssignmentType.ENDO, label: 'Endocrinology', category: 'Endocrinology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2, 
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        minWeeksPGY3: 2,
+        minWeeksPGY2: 2,
     },
     [AssignmentType.GERI]: {
         type: AssignmentType.GERI, label: 'Geriatrics', category: 'Geriatrics',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        minWeeksPGY2: 2,
+        minWeeksPGY3: 2,
     },
     [AssignmentType.PALLIATIVE]: {
         type: AssignmentType.PALLIATIVE, label: 'Palliative Care', category: 'Palliative Care',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 4, // Corrected to 4
+        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2, 
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
-        minWeeksPGY3: 4,
+        minWeeksPGY3: 2,
     },
     [AssignmentType.METRO_ICU]: {
         type: AssignmentType.METRO_ICU, label: 'Metro ICU', category: 'ICU',
