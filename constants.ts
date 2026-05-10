@@ -377,13 +377,13 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.CARDS]: {
         type: AssignmentType.CARDS, label: 'Cardiology', category: 'Cardiology',
-        intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
+        intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 1, minSeniors: 0, maxSeniors: 1,
         minWeeksIntern: 2, minWeeksPGY3: 2
     },
     [AssignmentType.ID]: {
         type: AssignmentType.ID, label: 'Infectious Disease', category: 'Infectious Disease',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
+        intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 1,
         minWeeksIntern: 2,
     },
@@ -407,7 +407,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.NEURO]: {
         type: AssignmentType.NEURO, label: 'Neurology', category: 'Neurology',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
+        intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
         minWeeksPGY2: 2, // 2 weeks in PGY2
     },
@@ -470,7 +470,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.HF]: {
         type: AssignmentType.HF, label: 'Heart Failure',
-        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
+        intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
     },
     [AssignmentType.ENT]: {
@@ -485,7 +485,7 @@ export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
     },
     [AssignmentType.ANAESTHESIA]: {
         type: AssignmentType.ANAESTHESIA, label: 'Anaesthesia',
-        intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 2,
+        intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 1, minSeniors: 0, maxSeniors: 1,
     },
     [AssignmentType.RESEARCH]: {
