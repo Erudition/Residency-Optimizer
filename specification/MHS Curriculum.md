@@ -25,10 +25,10 @@ Interns focus heavily on direct inpatient management, primary care foundations, 
 | :---: | :--- | :--- |
 | **4** | **General Inpatient Wards** | Wards B, Wards R, Wards Metro |
 | **2** | **Critical Care (Main)** | ICU Main |
-| **1** | **Night Float ** | 4 weeks Night Float (NF)
+| **1** | **Night Float** | 4 weeks Night Float (NF)
 | **0.5** | **Cardiology** | 2 weeks Inpatient Cardiology |
-| **0.5** | ** Pulmonology** | 2 weeks Pulmonology Consult/Procedural |
-| **0.5** | **Infectious Disease ** | 2 weeks Infectious Disease |
+| **0.5** | **Pulmonology** | 2 weeks Pulmonology Consult/Procedural |
+| **0.5** | **Infectious Disease** | 2 weeks Infectious Disease |
 | **0.5** | **Nephrology** | 2 weeks Nephrology |
 | **1** | **Pure Elective / Individualized** | 4 weeks of Elective |
 

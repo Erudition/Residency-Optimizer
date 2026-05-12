@@ -397,6 +397,17 @@ const App: React.FC = () => {
     loadState('rsp_active_id', 'draft')
   );
   const [globalCohorts, setGlobalCohorts] = useState<Record<number, Record<string, number>>>({});
+  const [draftScheduleData, setDraftScheduleData] = useState<ScheduleHistory>(() => 
+    loadState('rsp_draft_schedule_v4', {})
+  );
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rsp_draft_schedule_v4', JSON.stringify(draftScheduleData));
+    } catch (e) {
+      console.warn('Failed to save draft schedule to localStorage:', e);
+    }
+  }, [draftScheduleData]);
 
   const [activeYear, setActiveYear] = useState<number>(ACTIVE_START_YEAR);
   const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cohort'>(() =>
@@ -601,28 +612,37 @@ const App: React.FC = () => {
 
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
-    let yearCohorts = year === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year]);
+    let yearCohorts = year === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[year] || globalCohorts[year] || historicalCohortsByYear[year] || {});
     const augmented = getAugmentedResidents(residents, year + 1);
 
-    if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
-      const activeResidents = augmented.filter(r => {
-        const level = year - r.startYear + 1;
-        const isPgyInRange = level >= 1 && level <= 3;
-        const hasJoined = r.transferInYear === undefined || r.transferInYear <= year;
-        const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= year;
-        return isPgyInRange && hasJoined && hasNotLeft;
-      }).sort((a, b) => {
-        const levelA = year - a.startYear + 1;
-        const levelB = year - b.startYear + 1;
-        if (levelA !== levelB) return levelA - levelB;
-        return a.name.localeCompare(b.name);
-      });
-      const defaultCohorts: Record<string, number> = {};
-      activeResidents.forEach((r, idx) => {
-        defaultCohorts[r.id] = idx % 5;
-      });
-      yearCohorts = defaultCohorts;
-    }
+    const activeResidents = augmented.filter(r => {
+      const level = year - r.startYear + 1;
+      const isPgyInRange = level >= 1 && level <= 3;
+      const hasJoined = r.transferInYear === undefined || r.transferInYear <= year;
+      const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= year;
+      return isPgyInRange && hasJoined && hasNotLeft;
+    }).sort((a, b) => {
+      const levelA = year - a.startYear + 1;
+      const levelB = year - b.startYear + 1;
+      if (levelA !== levelB) return levelA - levelB;
+      return a.name.localeCompare(b.name);
+    });
+
+    const finalCohorts = { ...yearCohorts };
+    const prevYearCohorts = year > activeYear ? (activeSchedule?.cohortAssignments?.[year - 1] || globalCohorts[year - 1] || activeYearCohorts || historicalCohortsByYear[year - 1] || {}) : {};
+
+    activeResidents.forEach((r, idx) => {
+      if (finalCohorts[r.id] === undefined) {
+        if (prevYearCohorts[r.id] !== undefined) {
+          finalCohorts[r.id] = prevYearCohorts[r.id];
+        } else if (activeYearCohorts && activeYearCohorts[r.id] !== undefined) {
+          finalCohorts[r.id] = activeYearCohorts[r.id];
+        } else {
+          finalCohorts[r.id] = idx % 5;
+        }
+      }
+    });
+    yearCohorts = finalCohorts;
 
     return augmented.filter(r => {
       const level = year - r.startYear + 1;
@@ -665,8 +685,9 @@ const App: React.FC = () => {
       return bestHealGrid;
     }
     if (activeScheduleId === 'all' && !isHistoricalYear) return {};
+    if (activeScheduleId === 'draft') return draftScheduleData[activeYear] || {};
     return activeSchedule?.data?.[activeYear] || historySchedules[activeYear] || {};
-  }, [activeSchedule, activeYear, historySchedules, activeScheduleId, isHistoricalYear, isHealing, bestHealGrid, viewMode]);
+  }, [activeSchedule, activeYear, historySchedules, activeScheduleId, isHistoricalYear, isHealing, bestHealGrid, viewMode, draftScheduleData]);
 
 
 
@@ -768,7 +789,7 @@ const App: React.FC = () => {
     startYear: number,
     totalYears: number,
     residents: Resident[], 
-    existing: ScheduleGrid, 
+    existing: ScheduleHistory, 
     params: CompetitionParams, 
     onProgress: (iteration: number, attempts: number[], scores: (number | null)[] | undefined, year: number, overallProgress: number, exhaustionPoints: number[], exhaustedCount: number, healerProgress?: number) => void,
     historicalSchedules: ScheduleHistory, 
@@ -951,35 +972,45 @@ const App: React.FC = () => {
 
       const fullCohortAssignments: Record<number, Record<string, number>> = {};
       for (let y = activeYear; y < activeYear + totalYears; y++) {
-        let yearCohorts = y === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[y] || globalCohorts[y] || historicalCohortsByYear[y]);
-        if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
-          const augmented = getAugmentedResidents(residents, y + 1);
-          const activeResidents = augmented.filter(r => {
-            const level = y - r.startYear + 1;
-            const isPgyInRange = level >= 1 && level <= 3;
-            const hasJoined = r.transferInYear === undefined || r.transferInYear <= y;
-            const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= y;
-            return isPgyInRange && hasJoined && hasNotLeft;
-          }).sort((a, b) => {
-            const levelA = y - a.startYear + 1;
-            const levelB = y - b.startYear + 1;
-            if (levelA !== levelB) return levelA - levelB;
-            return a.name.localeCompare(b.name);
-          });
-          const defaultCohorts: Record<string, number> = {};
-          activeResidents.forEach((r, idx) => {
-            defaultCohorts[r.id] = idx % 5;
-          });
-          yearCohorts = defaultCohorts;
-        }
-        fullCohortAssignments[y] = yearCohorts;
+        let yearCohorts = y === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[y] || globalCohorts[y] || historicalCohortsByYear[y] || {});
+        
+        const prevYearCohorts = fullCohortAssignments[y - 1] || {};
+        const finalCohorts = { ...yearCohorts };
+
+        const augmented = getAugmentedResidents(residents, y + 1);
+        const activeResidents = augmented.filter(r => {
+          const level = y - r.startYear + 1;
+          const isPgyInRange = level >= 1 && level <= 3;
+          const hasJoined = r.transferInYear === undefined || r.transferInYear <= y;
+          const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= y;
+          return isPgyInRange && hasJoined && hasNotLeft;
+        }).sort((a, b) => {
+          const levelA = y - a.startYear + 1;
+          const levelB = y - b.startYear + 1;
+          if (levelA !== levelB) return levelA - levelB;
+          return a.name.localeCompare(b.name);
+        });
+
+        activeResidents.forEach((r, idx) => {
+          if (finalCohorts[r.id] === undefined) {
+            if (prevYearCohorts[r.id] !== undefined) {
+              finalCohorts[r.id] = prevYearCohorts[r.id];
+            } else if (fullCohortAssignments[activeYear] && fullCohortAssignments[activeYear][r.id] !== undefined) {
+              finalCohorts[r.id] = fullCohortAssignments[activeYear][r.id];
+            } else {
+              finalCohorts[r.id] = idx % 5;
+            }
+          }
+        });
+        
+        fullCohortAssignments[y] = finalCohorts;
       }
 
       const { results, unifiedResidents } = await runGenerationTask(
         activeYear,
         totalYears,
         residents,
-        {},
+        draftScheduleData,
         compParams,
         (iteration, attempts, scores, year, overallProgress, exhPoints, exhCount, hProgress) => {
           const now = Date.now();
@@ -1161,7 +1192,21 @@ const App: React.FC = () => {
   };
 
   const handleAssignmentSave = (type: AssignmentType | null) => {
-    if (selectedCell && activeScheduleId) {
+    if (!selectedCell) return;
+    
+    if (activeScheduleId === 'draft') {
+      setDraftScheduleData(prev => {
+        const yearGrid = prev[activeYear] || {};
+        const yearCopy = { ...yearGrid };
+        if (!yearCopy[selectedCell.resId]) {
+          yearCopy[selectedCell.resId] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null as any, locked: false }));
+        }
+        const updatedRow = [...yearCopy[selectedCell.resId]];
+        updatedRow[selectedCell.week] = { assignment: type as any, locked: true };
+        yearCopy[selectedCell.resId] = updatedRow;
+        return { ...prev, [activeYear]: yearCopy };
+      });
+    } else if (activeScheduleId) {
       setSchedules(prev => prev.map(s => {
         if (s.id !== activeScheduleId) return s;
         const yearGrid = s.data?.[activeYear] || {};
