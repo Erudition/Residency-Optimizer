@@ -24,11 +24,12 @@ The system must ensure a guaranteed backup pool exists every week to handle call
 *   **Minimum Pool Size**: The engine should prioritize maintaining at least **one PGY-3 and one PGY-2** on a flexible block per week to serve as 1st and 2nd line jeopardy.
 *   **Auditing**: A "Jeopardy Gap" violation must be flagged if a week has zero senior residents available on flexible time.
 
-### Start Year vs PGY Level Logic
-To maintain year-independent data integrity, the application treats **Start Year** as the primary source of truth for a resident's seniority.
-*   **Storage**: The `Resident` object persists `startYear` (the calendar year they started PGY-1).
+### Matriculation Year vs PGY Level Logic
+To maintain year-independent data integrity, the application treats **Matriculation Year** (the academic year the resident entered PGY-1) as the primary source of truth for a resident's seniority.
+*   **Storage**: The `Resident` object persists `startYear` — the matriculation year (calendar year they began PGY-1).
 *   **Derivation**: PGY Level is calculated on-the-fly relative to the `activeYear` context (Formula: `activeYear - startYear + 1`).
-*   **UI Constraint**: Resident management interfaces must expose and allow editing of `startYear` rather than static PGY levels to ensure consistency when navigating historical or future academic years.
+*   **Requirement Anchoring**: Graduation requirements are resolved against the resident's matriculation year, not the schedule year. See `specification/effective_dating.md`.
+*   **UI Constraint**: Resident management interfaces must expose and allow editing of `startYear` (matriculation year) rather than static PGY levels to ensure consistency when navigating historical or future academic years.
 
 ### Dynamic Academic Year Labeling
 *   **Constraint**: The "Current" academic year label must be determined dynamically based on the current calendar date, using **July 1st** as the transition point.
@@ -54,4 +55,4 @@ After a base schedule is created with one of the Generators, there may be some v
 The healer must not touch locked blocks.
 
 ### Requirement Engine (Single Source of Truth)
-It's critical that the requirements used to calculate scores, count violations, and run tests be the same exact code used to display requirement stats in the UI. The `RequirementsEngine` class is the single source of truth for this information. It automatically distinguishes between **Cumulative (ACGME)** types (which sum history + session data) and **Annual (MHS)** types (which are year-bound).
+It's critical that the requirements used to calculate scores, count violations, and run tests be the same exact code used to display requirement stats in the UI. The `RequirementsEngine` class is the single source of truth for this information. It automatically distinguishes between **Cumulative (ACGME)** types (which sum history + session data, frozen at the resident's matriculation year) and **Annual (MHS)** types (which are year-bound and effective for the schedule year). See `specification/effective_dating.md` for the full effective-dating semantics.

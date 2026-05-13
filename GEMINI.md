@@ -2,6 +2,9 @@
 # Residency Optimizer App
 This project is a collaboration between Github users @Erudition (developer) and @AHWright (Medical Resident). It's developed within a shared Antigravity workspace. You should always update this GEMINI.md (and the files it embeds) with context about the requirements given to you during conversation, especially when you're not specifically asked to put it in a specific file. Keep this document up to date with as much domain knowledge as possible.
 
+## Backend
+A Payload CMS backend lives in a sibling repo at `/home/adroit/Projects/residency-backend/` (GitHub: `Erudition/dency`). It stores program configuration (rotations, tags, requirements, staffing preferences, residents) in PostgreSQL with multi-tenant support. See `data_model.md` in this repo for the Directus-era prototype and the Payload collections in `residency-backend/src/collections/` for the current implementation. The frontend (`constants.ts`) is not yet wired to fetch from the backend — that's a future phase.
+
 The project is built to a Github pages site available at `https://erudition.github.io/Residency-Optimizer/`, built from the main branch. Make sure I am always working in a dedicated feature branch when making changes. 
 
 After any code modification (code only, not documentation), you MUST run `npx tsc --noEmit` and confirm zero errors before claiming completion. Vite's dev server does not perform type checking—it only transpiles—so runtime ReferenceErrors and missing imports will not surface until the user hits them in the browser. Once the code compiles cleanly, and you have performed any relevant browser-based tasks, stop and ask me if the outcome is approved. If I approve, please commit your changes with a descriptive commit message. If there is a backlog of many files to commit, try to break them down into separate commits with related files grouped.
@@ -19,6 +22,7 @@ Do not use the word "target" in code, comments, specs, or conversation — it co
 *   **Limit** — umbrella term for either a minimum or maximum, when referencing both directions collectively.
 *   **Ideal** — a soft goal. Getting closer improves the schedule score, but not reaching it is NOT a violation. Milestones (e.g., cumulative progress checkpoints at PGY-year boundaries) are ideals.
 *   **Property Mapping** — Programmatically, minimum requirements are stored in the `minWeeks` property. The legacy `target` property has been deprecated and must not be used.
+*   **Matriculation Year** — The academic year a resident entered PGY-1 (stored as `startYear`). Graduation requirements are resolved against this year. Prefer "matriculation year" in documentation and specs; `startYear` remains the code-level field name for brevity.
 
 # Specification
 The files found in the `specification/` folder are the authoritative sources of truth for the application code you write. Report, and then correct, any code that is out of sync with the spec.
@@ -35,6 +39,13 @@ See:
 @specification/engine.md
 
 For further engine rule development, add items to engine.md, not GEMINI.md.
+
+## Effective Dating of Requirements
+See:
+
+@specification/effective_dating.md
+
+For further effective-dating rule development, add items to effective_dating.md, not GEMINI.md.
 
 ## Clinic Faculty Ratios
 See:

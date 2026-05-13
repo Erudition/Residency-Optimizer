@@ -13,7 +13,7 @@ export interface Resident {
   id: string;
   name: string;
   level: PgyLevel; // Computed level for the active year context
-  startYear: number; // The calendar year they started as a PGY-1 (e.g. 2026)
+  startYear: number; // Matriculation year: the calendar year they entered PGY-1 (e.g. 2026)
   avoidResidentIds: string[];
   activeWeekStart?: number; // Index in unified grid where resident starts
   activeWeekEnd?: number;   // Index in unified grid where resident ends
