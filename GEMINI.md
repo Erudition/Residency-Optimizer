@@ -3,7 +3,24 @@
 This project is a collaboration between Github users @Erudition (developer) and @AHWright (Medical Resident). It's developed within a shared Antigravity workspace. You should always update this GEMINI.md (and the files it embeds) with context about the requirements given to you during conversation, especially when you're not specifically asked to put it in a specific file. Keep this document up to date with as much domain knowledge as possible.
 
 ## Backend
-A Payload CMS backend lives in a sibling repo at `/home/adroit/Projects/residency-backend/` (GitHub: `Erudition/dency`). It stores program configuration (rotations, tags, requirements, staffing preferences, residents) in PostgreSQL with multi-tenant support. See `data_model.md` in this repo for the Directus-era prototype and the Payload collections in `residency-backend/src/collections/` for the current implementation. The frontend (`constants.ts`) is not yet wired to fetch from the backend — that's a future phase.
+A Payload CMS backend lives in a sibling repo at `/home/adroit/Projects/residency-backend/` (GitHub: `Erudition/dency`). It stores program configuration (rotations, tags, requirements, staffing preferences, residents) in PostgreSQL with multi-tenant support. See `data_model.md` in this repo for the Directus-era prototype and the Payload collections in `residency-backend/src/collections/` for the current implementation.
+
+### API Integration
+The frontend communicates with the backend via **GraphQL** (Payload's built-in endpoint at `/api/graphql`). TypeScript types are auto-generated from the Payload schema using `graphql-codegen`. **No hardcoded program data in the frontend** — all rotations, residents, requirements, staffing preferences, and cycle configurations come from the API. CORS is configured to allow `https://erudition.github.io` and `localhost:5173`.
+
+### Rotation Identity
+The `codename` field on Rotations is the universal identifier used across both repos. It serves as both the schedule grid label and the primary key for lookups. The frontend's `AssignmentType` enum is being replaced with runtime strings matching these codenames.
+
+### Placeholder Rotations
+Rotations with `isPlaceholder: true` (e.g., unspecified Elective, unspecified Clinic) are scheduled by the engine as proxies. The admin or resident resolves them to a specific rotation afterward. The frontend should visually distinguish placeholder cells from finalized assignments.
+
+### X+Y Clinic Cycle Model
+Clinic scheduling uses an X+Y model stored in `ClinicCycles` (cohort documents) and `AcademicYears.clinicWeeksPerCycle` (Y):
+*   **Z** (total cycle length) = number of ClinicCycle docs × Y
+*   **X** (inpatient block length) = Z - Y
+*   Clinic week formula: `Math.floor((week % Z) / Y) === cohortIndex`
+*   Standard 4+1: 5 cycle docs, Y=1. Programs using 4+2: 3 cycle docs, Y=2.
+*   Residents are assigned directly to ClinicCycle documents for a given AY.
 
 The project is built to a Github pages site available at `https://erudition.github.io/Residency-Optimizer/`, built from the main branch. Make sure I am always working in a dedicated feature branch when making changes. 
 
@@ -79,7 +96,7 @@ For further UI presentation development, add items to interface.md, not GEMINI.m
 
 ## Unauthorized Constraint Modification
 *   **Hard Constraint**: The AI must NOT change staffing ratios (e.g., `minInterns`, `minSeniors`, `maxInterns`, `maxSeniors`) or educational requirement minimums (e.g., `minWeeks`) without explicit human permission.
-*   **Logical Guardrail (4+1 Availability)**: Under the 4+1 model, exactly **4/5ths** of the resident pool is available for inpatient service every week. For a class of 15, this means **12 residents** are always available. The AI must never assume that a service can only be staffed by a single cohort.
+*   **Logical Guardrail (X+Y Availability)**: Under the X+Y model, exactly **X/Z** of the resident pool is available for inpatient service every week (where Z = X+Y is the total cycle length). For a 4+1 program with 15 residents, this means **12 residents** are always available. The AI must never assume that a service can only be staffed by a single cohort.
 *   **Impossibility Reporting**: If the existing constraints create a mathematical impossibility, the AI must report this as a bottleneck (see `bottlenecks_discovered.md`) but must attempt to generate the most compliant schedule possible under the *original* constraints. Never "fix" an algorithm failure by zeroing out a requirement.
 
 ## Year-Boundary & Resident State Constraints
