@@ -8,10 +8,13 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "validate-history": "tsx scripts/validateHistory.ts"
+    "validate-history": "tsx scripts/validateHistory.ts",
+    "codegen": "graphql-codegen --config codegen.ts"
   },
   "dependencies": {
     "exceljs": "4.4.0",
+    "graphql": "^16.14.0",
+    "graphql-request": "^7.4.0",
     "lucide-react": "0.460.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -19,6 +22,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^7.0.0",
+    "@graphql-codegen/typescript": "^6.0.1",
+    "@graphql-codegen/typescript-graphql-request": "^7.0.1",
+    "@graphql-codegen/typescript-operations": "^6.0.2",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",

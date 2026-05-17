@@ -1,0 +1,345 @@
+/**
+ * API Client for the Payload CMS backend.
+ *
+ * Fetches all program configuration via GraphQL and transforms
+ * the response into the shapes consumed by the scheduling engine.
+ *
+ * No hardcoded program data — everything comes from the API.
+ */
+
+import { GraphQLClient } from 'graphql-request'
+import {
+  ROTATIONS_QUERY,
+  RESIDENTS_QUERY,
+  CLINIC_CYCLES_QUERY,
+  ACADEMIC_YEAR_QUERY,
+  GRAD_REQUIREMENTS_QUERY,
+  AVOIDANCE_RULES_QUERY,
+  TAGS_QUERY,
+} from './queries'
+import type { RotationConfig, Resident, PgyLevel } from '../../types'
+
+// ── Client Setup ──
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const GRAPHQL_ENDPOINT = `${API_URL}/api/graphql`
+
+const client = new GraphQLClient(GRAPHQL_ENDPOINT, {
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// ── Response Types (raw GraphQL shapes) ──
+// These mirror the Payload schema. When graphql-codegen is hooked up
+// to a running server, these will be auto-generated.
+
+interface GqlAcademicYear {
+  id: number
+  startingYear: number
+  clinicWeeksPerCycle?: number
+}
+
+interface GqlTag {
+  id: number
+  title: string
+}
+
+interface GqlStaffingPreference {
+  internCount: number
+  seniorCount: number
+}
+
+interface GqlStaffingConfig {
+  since: GqlAcademicYear
+  preferences: GqlStaffingPreference[]
+}
+
+interface GqlRotation {
+  id: number
+  title: string
+  codename: string
+  intensity: number
+  outpatientPercentage: number
+  color: string | null
+  isFlexible: boolean
+  isPlaceholder: boolean
+  tags: GqlTag[]
+  staffingConfigurations: GqlStaffingConfig[]
+}
+
+interface GqlResident {
+  id: number
+  firstName: string
+  lastName: string
+  displayName: string
+  startYear: GqlAcademicYear
+  pgy3Year?: GqlAcademicYear | null
+  joinDate?: string | null
+  leaveDate?: string | null
+  leaveReason?: string | null
+}
+
+interface GqlClinicCycle {
+  id: number
+  number: number
+  label: string
+  academicYear: GqlAcademicYear
+  residents: Array<{ id: number; displayName: string }>
+}
+
+interface GqlGradRequirement {
+  id: number
+  tag: GqlTag
+  source: string
+  minimum: number
+  maximum?: number | null
+  ideal?: number | null
+  pgy1Ideal?: number | null
+  pgy2Ideal?: number | null
+  pgy3Ideal?: number | null
+  academicYear: GqlAcademicYear
+}
+
+interface GqlAvoidanceRule {
+  id: number
+  resident: { id: number }
+  avoidResident: { id: number }
+  reason?: string
+}
+
+// ── Cycle Config ──
+
+export interface CycleConfig {
+  /** Number of cohorts (= number of ClinicCycle documents) */
+  cohortCount: number
+  /** Y: consecutive clinic weeks per cycle */
+  Y: number
+  /** Z = cohortCount × Y: total cycle length in weeks */
+  Z: number
+  /** X = Z - Y: inpatient block length */
+  X: number
+  /** Map of residentId → cohort number (1-based) */
+  assignments: Map<string, number>
+}
+
+// ── Program Data (everything the engine needs) ──
+
+export interface ProgramData {
+  rotations: Map<string, RotationConfig>
+  residents: Resident[]
+  cycleConfig: CycleConfig
+  gradRequirements: GqlGradRequirement[]
+  avoidanceRules: GqlAvoidanceRule[]
+  tags: GqlTag[]
+  /** Hue values keyed by codename */
+  hueMap: Map<string, number>
+  /** Tag titles per rotation codename (for requirement fulfillment) */
+  rotationTags: Map<string, string[]>
+  /** Set of codenames that are placeholder rotations */
+  placeholderCodenames: Set<string>
+  /** Set of codenames that are flexible (jeopardy-eligible) */
+  flexibleCodenames: Set<string>
+}
+
+// ── Data Fetching ──
+
+/**
+ * Loads all program data for a given academic year from the backend.
+ * This is the single entry point for all engine configuration.
+ */
+export async function loadProgramData(academicYear: number): Promise<ProgramData> {
+  // Fetch everything in parallel
+  const [
+    rotationsRes,
+    residentsRes,
+    cyclesRes,
+    ayRes,
+    gradReqsRes,
+    avoidanceRes,
+    tagsRes,
+  ] = await Promise.all([
+    client.request<{ Rotations: { docs: GqlRotation[] } }>(ROTATIONS_QUERY, {
+      where: {
+        'availableSince.startingYear': { less_than_equal: academicYear },
+        or: [
+          { availableUntil: { exists: false } },
+          { 'availableUntil.startingYear': { greater_than_equal: academicYear } },
+        ],
+      },
+    }),
+    client.request<{ Residents: { docs: GqlResident[] } }>(RESIDENTS_QUERY, {
+      where: {
+        'startYear.startingYear': { less_than_equal: academicYear },
+        'pgy3Year.startingYear': { greater_than_equal: academicYear },
+      },
+    }),
+    client.request<{ ClinicCycles: { docs: GqlClinicCycle[] } }>(CLINIC_CYCLES_QUERY, {
+      where: { 'academicYear.startingYear': { equals: academicYear } },
+    }),
+    client.request<{ AcademicYears: { docs: GqlAcademicYear[] } }>(ACADEMIC_YEAR_QUERY, {
+      where: { startingYear: { equals: academicYear } },
+    }),
+    client.request<{ GradRequirements: { docs: GqlGradRequirement[] } }>(GRAD_REQUIREMENTS_QUERY, {
+      where: { 'academicYear.startingYear': { equals: academicYear } },
+    }),
+    client.request<{ AvoidanceRules: { docs: GqlAvoidanceRule[] } }>(AVOIDANCE_RULES_QUERY),
+    client.request<{ Tags: { docs: GqlTag[] } }>(TAGS_QUERY),
+  ])
+
+  const gqlRotations = rotationsRes.Rotations.docs
+  const gqlResidents = residentsRes.Residents.docs
+  const gqlCycles = cyclesRes.ClinicCycles.docs
+  const ay = ayRes.AcademicYears.docs[0]
+  const gqlGradReqs = gradReqsRes.GradRequirements.docs
+  const gqlAvoidance = avoidanceRes.AvoidanceRules.docs
+  const tags = tagsRes.Tags.docs
+
+  if (!ay) {
+    throw new Error(`Academic year ${academicYear} not found in the backend`)
+  }
+
+  // ── Transform Rotations ──
+  const rotations = new Map<string, RotationConfig>()
+  const hueMap = new Map<string, number>()
+  const rotationTags = new Map<string, string[]>()
+  const placeholderCodenames = new Set<string>()
+  const flexibleCodenames = new Set<string>()
+
+  for (const r of gqlRotations) {
+    // Find the staffing config effective for this year
+    const staffing = getEffectiveStaffing(r.staffingConfigurations, academicYear)
+
+    const config: RotationConfig = {
+      type: r.codename as RotationConfig['type'],
+      label: r.title,
+      category: r.tags[0]?.title,
+      intensity: r.intensity,
+      duration: 4, // Default block length; will be replaced by X from cycle config
+      setting: deriveSettingFromPercentage(r.outpatientPercentage),
+      minInterns: staffing?.preferences[0]?.internCount ?? 0,
+      maxInterns: staffing?.preferences[staffing.preferences.length - 1]?.internCount ?? 0,
+      minSeniors: staffing?.preferences[0]?.seniorCount ?? 0,
+      maxSeniors: staffing?.preferences[staffing.preferences.length - 1]?.seniorCount ?? 0,
+    }
+
+    rotations.set(r.codename, config)
+
+    if (r.color) {
+      hueMap.set(r.codename, parseInt(r.color, 10))
+    }
+
+    rotationTags.set(r.codename, r.tags.map(t => t.title))
+
+    if (r.isPlaceholder) placeholderCodenames.add(r.codename)
+    if (r.isFlexible) flexibleCodenames.add(r.codename)
+  }
+
+  // ── Transform Residents ──
+  // Build avoidance map: residentBackendId → set of avoidBackendIds
+  const avoidMap = new Map<number, Set<number>>()
+  for (const rule of gqlAvoidance) {
+    if (!avoidMap.has(rule.resident.id)) avoidMap.set(rule.resident.id, new Set())
+    avoidMap.get(rule.resident.id)!.add(rule.avoidResident.id)
+  }
+
+  // Map backend IDs to frontend string IDs
+  const backendIdToFrontendId = new Map<number, string>()
+
+  const residents: Resident[] = gqlResidents.map(r => {
+    const frontendId = `${r.id}`
+    backendIdToFrontendId.set(r.id, frontendId)
+
+    const pgyLevel = Math.min(3, Math.max(1, academicYear - r.startYear.startingYear + 1)) as PgyLevel
+
+    // Compute transferOutYear from leaveDate
+    let transferOutYear: number | undefined
+    if (r.leaveDate) {
+      const leaveYearNum = new Date(r.leaveDate).getFullYear()
+      // If they leave before July, it's the prior academic year
+      const leaveMonth = new Date(r.leaveDate).getMonth()
+      transferOutYear = leaveMonth < 6 ? leaveYearNum - 1 : leaveYearNum
+    }
+
+    return {
+      id: frontendId,
+      name: r.displayName,
+      level: pgyLevel,
+      startYear: r.startYear.startingYear,
+      avoidResidentIds: [], // Will be populated after all residents are created
+      transferOutYear,
+    }
+  })
+
+  // Now populate avoidResidentIds using the backend→frontend ID mapping
+  for (const resident of residents) {
+    const backendId = parseInt(resident.id, 10)
+    const avoids = avoidMap.get(backendId)
+    if (avoids) {
+      resident.avoidResidentIds = Array.from(avoids)
+        .map(id => backendIdToFrontendId.get(id))
+        .filter((id): id is string => id !== undefined)
+    }
+  }
+
+  // ── Build Cycle Config ──
+  const Y = ay.clinicWeeksPerCycle ?? 1
+  const cohortCount = gqlCycles.length
+  const Z = cohortCount * Y
+  const X = Z - Y
+
+  const cycleAssignments = new Map<string, number>()
+  for (const cycle of gqlCycles) {
+    for (const resident of cycle.residents) {
+      cycleAssignments.set(`${resident.id}`, cycle.number)
+    }
+  }
+
+  const cycleConfig: CycleConfig = {
+    cohortCount,
+    Y,
+    Z,
+    X,
+    assignments: cycleAssignments,
+  }
+
+  return {
+    rotations,
+    residents,
+    cycleConfig,
+    gradRequirements: gqlGradReqs,
+    avoidanceRules: gqlAvoidance,
+    tags,
+    hueMap,
+    rotationTags,
+    placeholderCodenames,
+    flexibleCodenames,
+  }
+}
+
+// ── Helpers ──
+
+/**
+ * Finds the effective staffing configuration for a given academic year.
+ * Returns the config with the highest `since` year that is <= the given year.
+ */
+function getEffectiveStaffing(
+  configs: GqlStaffingConfig[],
+  year: number,
+): GqlStaffingConfig | undefined {
+  const applicable = configs
+    .filter(c => c.since.startingYear <= year)
+    .sort((a, b) => b.since.startingYear - a.since.startingYear)
+  return applicable[0]
+}
+
+/**
+ * Derives a ClinicalSetting-like value from outpatient percentage.
+ * This is a bridge for backward compatibility with the frontend's
+ * ClinicalSetting enum during the migration.
+ */
+function deriveSettingFromPercentage(outpatientPct: number): RotationConfig['setting'] {
+  if (outpatientPct >= 80) return 'Outpatient' as any
+  if (outpatientPct === 0) return 'Inpatient' as any
+  return 'Inpatient' as any // Default; the engine uses intensity, not setting
+}
