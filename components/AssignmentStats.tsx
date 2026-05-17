@@ -1,32 +1,35 @@
-
 import React, { useState, useRef, useMemo } from 'react';
-import { Resident, ScheduleGrid, AssignmentType, CODENAMES } from '../types';
-import { TOTAL_WEEKS, ASSIGNMENT_LABELS, ROTATION_METADATA, ASSIGNMENT_HEX_COLORS } from '../constants';
+import { Resident, ScheduleGrid, AssignmentType } from '../types';
 import { AlertTriangle } from 'lucide-react';
+import { useProgramData } from '../contexts/ProgramDataContext';
+import { oklchToHex } from '../utils/colorUtils';
 
 interface Props {
   residents: Resident[];
   schedule: ScheduleGrid;
 }
 
-// WEEKS will be derived in the component
-
-
-const getBaseColorStyle = (assignment: AssignmentType, count: number, max: number): React.CSSProperties => {
+const getBaseColorStyle = (assignment: string, count: number, max: number, hueMap: Map<string, number>, intensity: number): React.CSSProperties => {
   if (count === 0) return { backgroundColor: '#ffffff' };
 
-  const baseHex = ASSIGNMENT_HEX_COLORS[assignment] || '#ccc';
-  const intensity = Math.min(1, 0.3 + (count / Math.max(1, max)) * 0.7);
+  const hue = hueMap.get(assignment) ?? 180;
+  const chroma = intensity === 0 ? 0.015 : 0.01 + intensity * 0.038;
+  const baseHex = oklchToHex(0.84, chroma, hue);
+
+  const opacityIntensity = Math.min(1, 0.3 + (count / Math.max(1, max)) * 0.7);
 
   return {
     backgroundColor: baseHex,
-    opacity: intensity,
+    opacity: opacityIntensity,
     color: '#1f2937'
   };
 };
 
 export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
-  const totalWeeks = useMemo(() => (Object.values(schedule)[0] as any)?.length || TOTAL_WEEKS, [schedule]);
+  const programData = useProgramData();
+  const { rotations, hueMap } = programData;
+
+  const totalWeeks = useMemo(() => (Object.values(schedule)[0] as any)?.length || 52, [schedule]);
   const WEEKS = useMemo(() => Array.from({ length: totalWeeks }, (_, i) => i + 1), [totalWeeks]);
   // Resizable Column State - Reduced default width
   const [colWidth, setColWidth] = useState(150);
@@ -35,7 +38,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
   const startWidthRef = useRef(0);
 
   const [cellTooltip, setCellTooltip] = useState<{ x: number, y: number, assignees: Resident[], type: string, weekIdx: number, error?: string } | null>(null);
-  const [rowTooltip, setRowTooltip] = useState<{ x: number, y: number, type: AssignmentType } | null>(null);
+  const [rowTooltip, setRowTooltip] = useState<{ x: number, y: number, type: string } | null>(null);
 
   // Handle Resizing
   const startResize = (e: React.MouseEvent) => {
@@ -81,39 +84,39 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
       'VAC',
     ];
 
-    const allTypes = Object.values(CODENAMES);
+    const allTypes = Array.from(rotations.keys());
     const remainingTypes = allTypes
       .filter(type => !priorityOrder.includes(type))
       .sort((a, b) => {
-        const labelA = ASSIGNMENT_LABELS[a] || '';
-        const labelB = ASSIGNMENT_LABELS[b] || '';
+        const labelA = rotations.get(a)?.label || '';
+        const labelB = rotations.get(b)?.label || '';
         return labelA.localeCompare(labelB);
       });
 
-    return [...priorityOrder, ...remainingTypes];
-  }, []);
+    return [...priorityOrder.filter(t => rotations.has(t)), ...remainingTypes];
+  }, [rotations]);
 
   // Group data
-  const data: Record<AssignmentType, Resident[][]> = useMemo(() => {
-    const d: Record<AssignmentType, Resident[][]> = {} as any;
-    Object.values(CODENAMES).forEach(type => {
+  const data: Record<string, Resident[][]> = useMemo(() => {
+    const d: Record<string, Resident[][]> = {} as any;
+    Array.from(rotations.keys()).forEach(type => {
       d[type] = Array(totalWeeks).fill([]);
     });
 
     for (let w = 0; w < totalWeeks; w++) {
       residents.forEach(r => {
         const type = schedule[r.id]?.[w]?.assignment;
-        if (type) {
+        if (type && d[type]) {
           d[type][w] = [...(d[type][w] || []), r];
         }
       });
     }
     return d;
-  }, [residents, schedule]);
+  }, [residents, schedule, rotations, totalWeeks]);
 
-  const maxCounts: Record<AssignmentType, number> = useMemo(() => {
-    const m: Record<AssignmentType, number> = {} as any;
-    Object.values(CODENAMES).forEach(type => {
+  const maxCounts: Record<string, number> = useMemo(() => {
+    const m: Record<string, number> = {} as any;
+    Array.from(rotations.keys()).forEach(type => {
       let max = 0;
       for (let w = 0; w < totalWeeks; w++) {
         if (data[type][w].length > max) max = data[type][w].length;
@@ -121,10 +124,10 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
       m[type] = max;
     });
     return m;
-  }, [data]);
+  }, [data, rotations, totalWeeks]);
 
-  const checkConstraints = (type: AssignmentType, assignees: Resident[], weekIdx: number) => {
-    const meta = ROTATION_METADATA[type];
+  const checkConstraints = (type: string, assignees: Resident[], weekIdx: number) => {
+    const meta = rotations.get(type);
     if (!meta) return null;
 
     const firstRes = residents.find(res => res.startYear && res.startYear > 0);
@@ -144,22 +147,23 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
     return null;
   };
 
-  const handleCellEnter = (e: React.MouseEvent, type: AssignmentType, weekIdx: number) => {
+  const handleCellEnter = (e: React.MouseEvent, type: string, weekIdx: number) => {
     const assignees = data[type][weekIdx];
     const error = checkConstraints(type, assignees, weekIdx);
+    const label = rotations.get(type)?.label || type;
 
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setCellTooltip({
       x: rect.left + window.scrollX + rect.width / 2,
       y: rect.top + window.scrollY,
       assignees,
-      type: ASSIGNMENT_LABELS[type],
+      type: label,
       weekIdx,
       error: error || undefined
     });
   };
 
-  const handleRowHeaderEnter = (e: React.MouseEvent, type: AssignmentType) => {
+  const handleRowHeaderEnter = (e: React.MouseEvent, type: string) => {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setRowTooltip({
       x: rect.right + window.scrollX + 10,
@@ -193,7 +197,6 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
               >
                 <div className="flex items-center justify-between h-full px-3 py-2 relative">
                   <span className="truncate pr-2">Assignment</span>
-                  {/* Resize Handle */}
                   <div
                     className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-2 active:bg-blue transition-colors z-50"
                     onMouseDown={startResize}
@@ -209,7 +212,9 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
           </thead>
           <tbody className="text-xs">
             {sortedAssignmentTypes.map(type => {
-              const meta = ROTATION_METADATA[type];
+              const meta = rotations.get(type);
+              if (!meta) return null;
+              
               const totalMin = meta.minInterns + meta.minSeniors;
               const totalMax = meta.maxInterns + meta.maxSeniors;
               const rangeLabel = formatMinMax(totalMin, totalMax);
@@ -230,7 +235,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                   >
                     <div className="flex items-center justify-between overflow-hidden">
                       <span className={`truncate ${hasViolation ? 'text-red font-bold' : ''}`}>
-                        {ASSIGNMENT_LABELS[type]}
+                        {meta.label}
                       </span>
                       {rangeLabel && (
                         <span className={`text-[10px] ml-1 font-mono shrink-0 ${hasViolation ? 'text-red' : 'text-muted'}`}>
@@ -242,7 +247,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                   {WEEKS.map((w, i) => {
                     const assignees = data[type][i];
                     const count = assignees.length;
-                    const style = getBaseColorStyle(type, count, maxCounts[type]);
+                    const style = getBaseColorStyle(type, count, maxCounts[type], hueMap, meta.intensity);
 
                     const error = checkConstraints(type, assignees, i);
 
@@ -259,7 +264,6 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                           </div>
                         ) : (
                           error ? (
-                            // Only show error background if 0 counts is actually an error (min > 0)
                             <div className="w-full h-8 bg-red/10"></div>
                           ) : null
                         )}
@@ -273,7 +277,6 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
         </table>
       </div>
 
-      {/* Cell Tooltip (Assignees) */}
       {cellTooltip && (
         <div
           className="fixed z-[200] bg-black text-white text-xs rounded-lg py-3 px-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-8px] min-w-[200px]"
@@ -305,7 +308,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                   <div className="text-[10px] uppercase text-muted font-bold mb-0.5">PGY-{pgy} ({pgyGroup.length})</div>
                   <div className="flex flex-wrap gap-1">
                     {pgyGroup.map(r => (
-                      <span key={r.id} className="bg-light-9 px-1.5 py-0.5 rounded text-[10px]">
+                      <span key={r.id} className="bg-light-9 px-1.5 py-0.5 rounded text-[10px] text-black">
                         {r.name}
                       </span>
                     ))}
@@ -318,18 +321,18 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
         </div>
       )}
 
-      {/* Row Tooltip (Metadata Constraints) */}
       {rowTooltip && (
         <div
           className="fixed z-[200] bg-white text-primary text-xs rounded-lg shadow-xl border border-light-5 p-4 pointer-events-none transform -translate-y-1/2 ml-2 min-w-[240px]"
           style={{ left: rowTooltip.x, top: rowTooltip.y }}
         >
           <h4 className="font-bold text-sm text-blue-2-dark mb-2 border-b pb-1">
-            {ASSIGNMENT_LABELS[rowTooltip.type]}
+            {rotations.get(rowTooltip.type)?.label || rowTooltip.type}
           </h4>
 
           {(() => {
-            const meta = ROTATION_METADATA[rowTooltip.type];
+            const meta = rotations.get(rowTooltip.type);
+            if (!meta) return null;
             return (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">

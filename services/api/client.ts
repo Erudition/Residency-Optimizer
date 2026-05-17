@@ -120,7 +120,7 @@ export interface CycleConfig {
   /** X = Z - Y: inpatient block length */
   X: number
   /** Map of residentId → cohort number (1-based) */
-  assignments: Map<string, number>
+  assignments: Record<string, number>
 }
 
 // ── Program Data (everything the engine needs) ──
@@ -288,10 +288,10 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   const Z = cohortCount * Y
   const X = Z - Y
 
-  const cycleAssignments = new Map<string, number>()
+  const cycleAssignments: Record<string, number> = {}
   for (const cycle of gqlCycles) {
     for (const resident of cycle.residents) {
-      cycleAssignments.set(`${resident.id}`, cycle.number)
+      cycleAssignments[`${resident.id}`] = cycle.number
     }
   }
 

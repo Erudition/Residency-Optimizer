@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting, ScheduleHistory } from '../types';
-import { ROTATION_METADATA } from '../constants';
+import { useProgramData } from '../contexts/ProgramDataContext';
 import { ShieldCheck, Clock, Building2, Hospital, AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -69,6 +69,7 @@ const StackedProgressBar = ({
 };
 
 export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, activeYear }) => {
+    const { rotations } = useProgramData();
 
     const auditData = useMemo(() => {
         return residents.map(r => {
@@ -92,7 +93,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                 const weeks = grid[r.id] || [];
                 weeks.forEach(c => {
                     if (!c || !c.assignment) return;
-                    const meta = ROTATION_METADATA[c.assignment];
+                    const meta = rotations.get(c.assignment);
                     if (!meta) return;
 
                     if (meta.setting === ClinicalSetting.OUTPATIENT) {
@@ -132,7 +133,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                 nfViolation: totalNightFloat < 6 // MHS/ACGME min is 6 weeks total
             };
         });
-    }, [residents, history]);
+    }, [residents, history, rotations]);
 
     const globalStats = useMemo(() => {
         const total = auditData.length;

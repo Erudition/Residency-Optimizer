@@ -13,14 +13,7 @@ import {
 } from './types';
 import {
   GENERATE_INITIAL_RESIDENTS,
-  ASSIGNMENT_LABELS,
-  ASSIGNMENT_HEX_COLORS,
-  ASSIGNMENT_ABBREVIATIONS,
-  ACTIVE_START_YEAR,
-  TOTAL_WEEKS,
-  ACGME_TYPES,
-  MHS_TYPES,
-  getAssignmentColor
+  ACTIVE_START_YEAR, TOTAL_WEEKS
 } from './constants';
 import historicalGridData from './specification/historical_schedules_grid_v2.json';
 import { 
@@ -36,6 +29,9 @@ import {
   getAugmentedResidents
 } from './services/scheduler';
 import { preloadHistoricalData } from './services/generators/historyPreloader';
+import { loadProgramData, ProgramData } from './services/api/client';
+import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
+import { getAssignmentColor } from './utils/colorUtils';
 import { healSchedule } from './services/healer';
 import { ScheduleTable } from './components/ScheduleTable';
 import { Dashboard } from './components/Dashboard';
@@ -137,7 +133,8 @@ const AssignmentModal = ({
 }) => {
   if (!isOpen || !anchorRect) return null;
 
-  const keys = Object.keys(ASSIGNMENT_LABELS);
+  const programData = useProgramData();
+  const keys = Array.from(programData.rotations.keys());
   let r = 0;
   let c = 0;
 
@@ -193,8 +190,9 @@ const AssignmentModal = ({
           <button onClick={onClose} className="text-muted hover:text-black text-sm select-none px-1">✕</button>
         </div>
         <div className="grid grid-cols-4 gap-1.5 select-none">
-          {Object.entries(ASSIGNMENT_LABELS).map(([key, label]) => {
-            const bgHex = getAssignmentColor(key as AssignmentType, false);
+          {Array.from(programData.rotations.entries()).map(([key, config]) => {
+            const label = config.label;
+            const bgHex = getAssignmentColor(programData.hueMap.get(key) || 0, false);
             return (
               <button
                 key={key}
@@ -206,11 +204,10 @@ const AssignmentModal = ({
                   border: `1.5px solid oklch(from ${bgHex} calc(l - 0.08) c h)`,
                   boxShadow: `0 2px 0 oklch(from ${bgHex} calc(l - 0.12) c h)`,
                   outline: current === key ? '3px solid #2f80fa' : 'none',
-                  outlineOffset: current === key ? '1px' : 'none'
+                  outlineOffset: '2px',
                 }}
-                title={label}
               >
-                <span className="truncate max-w-full">{label}</span>
+                {label}
               </button>
             );
           })}
@@ -378,6 +375,15 @@ const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): Schedu
 };
 
 const App: React.FC = () => {
+  const [programData, setProgramData] = useState<ProgramData | null>(null);
+  useEffect(() => {
+    loadProgramData(ACTIVE_START_YEAR).then(data => setProgramData(data)).catch(console.error);
+  }, []);
+  
+  if (!programData) {
+    return <div className="flex h-screen items-center justify-center">Loading Residency Data from CMS...</div>;
+  }
+
   const [residents, setResidents] = useState<Resident[]>(() =>
     loadState('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS())
   );
@@ -712,10 +718,10 @@ const App: React.FC = () => {
       stats: calculateStats(activeResidents, currentGrid),
       violations: {
         reqs: getRequirementViolations(activeResidents, currentGrid, fullHistory, activeYear),
-        constraints: getWeeklyViolations(activeResidents, currentGrid),
+        constraints: getWeeklyViolations(activeResidents, currentGrid, programData),
         audit: getAuditViolations(activeResidents, fullHistory, activeYear)
       },
-      fairness: calculateFairnessMetrics(activeResidents, currentGrid)
+      fairness: calculateFairnessMetrics(activeResidents, currentGrid, programData)
     };
   }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId]);
 
@@ -1270,14 +1276,14 @@ const App: React.FC = () => {
         const residentCells: string[] = [];
         for (let i = 0; i < totalWeeksInGrid; i++) {
           const cell = displayGrid[r.id]?.[i];
-          residentCells.push(cell?.assignment ? ASSIGNMENT_ABBREVIATIONS[cell.assignment] : "");
+          residentCells.push(cell?.assignment ? (programData.rotations.get(cell.assignment)?.label || cell.assignment).substring(0, 5) : "");
         }
         const row = worksheet.addRow([...rowData, ...residentCells]);
 
         for (let i = 0; i < totalWeeksInGrid; i++) {
           const cell = displayGrid[r.id]?.[i];
           if (cell?.assignment) {
-            const hex = ASSIGNMENT_HEX_COLORS[cell.assignment]?.replace('#', '') || 'CCCCCC';
+            const hex = getAssignmentColor(programData.hueMap.get(cell.assignment) || 0, false).replace('#', '');
             row.getCell(4 + i).fill = {
               type: 'pattern',
               pattern: 'solid',
@@ -1498,6 +1504,7 @@ const App: React.FC = () => {
   };
 
   return (
+    <ProgramDataProvider programData={programData}>
     <div className={`min-h-screen bg-light-1 flex flex-col font-sans transition-all duration-300 ${isGenerating ? 'engine-busy' : ''}`}>
       {/* ─── Global Header Bar ─── */}
       <div className="h-11 bg-light-3 flex items-center shrink-0 z-30 px-4 border-b border-light-4">
@@ -1611,12 +1618,12 @@ const App: React.FC = () => {
           {viewMode === 'unified' ? (
             <>
               <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
-              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => programData.gradRequirements.filter(r => r.group === 'mhs').map(r => r.requirementType).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
             </>
           ) : (
             <>
-              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
-              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => programData.gradRequirements.filter(r => r.group === 'acgme').map(r => r.requirementType).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => programData.gradRequirements.filter(r => r.group === 'mhs').map(r => r.requirementType).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
               <NavButton id="cohorts" label="Cohorts" icon={Users} />
               <NavButton id="coworking" label="Coworking" icon={Network} />
               <NavButton id="fairness" label="Fairness" icon={Scale} />
@@ -2033,6 +2040,7 @@ const App: React.FC = () => {
       <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} anchorRect={anchorRect} />
       <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => setRenameModalOpen(false)} onSave={handleRename} />
     </div>
+    </ProgramDataProvider>
   );
 };
 

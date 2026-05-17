@@ -1,5 +1,8 @@
+import { buildLevelRequirements } from './reqBuilder';
+import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
+import type { ProgramData } from '../api/client';
+import { TOTAL_WEEKS, COHORT_COUNT } from '../../constants';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek } from './utils';
 
@@ -17,7 +20,7 @@ class SeededRNG {
 
 export const WeekByWeekGenerator: ScheduleGenerator = {
     name: "Week By Week",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
 
         const totalWeeks = Object.values(existingSchedule)[0]?.length || TOTAL_WEEKS;
@@ -33,7 +36,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
-        let validCohortAssignments: any = cohortAssignments;
+        let validCohortAssignments: any = programData?.cycleConfig?.assignments || {};
         if (!validCohortAssignments || Object.keys(validCohortAssignments).length === 0) {
             validCohortAssignments = {};
             const sorted = [...residents].sort((a, b) => {
@@ -86,11 +89,11 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             const yearIndex = Math.floor(week / 52);
             const yearStart = yearIndex * 52;
             const yearEnd = yearStart + 52;
-            return getYearRequirementCount(newSchedule[rId], type, yearStart, yearEnd);
+            return getYearRequirementCount(newSchedule[rId], type, yearStart, yearEnd, programData);
         };
 
         const getReqCountCumulative = (rId: string, type: AssignmentType, week: number): number => {
-            return getYearRequirementCount(newSchedule[rId], type, 0, week) + getPriorRequirementCount(historicalCounts[rId] || {}, type);
+            return getYearRequirementCount(newSchedule[rId], type, 0, week, programData) + getPriorRequirementCount(historicalCounts[rId] || {}, type);
         };
 
 
@@ -139,7 +142,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
         for (let w = 0; w < totalWeeks; w++) {
             // First: Fill mandatory floors for this specific week
             seededShuffle(criticalStaffingTypes).forEach(type => {
-                const meta = ROTATION_METADATA[type];
+                const meta = programData.rotations.get(type);
                 if (!meta) return;
                 const dur = meta.duration || 4;
 
@@ -150,7 +153,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                         return isResidentActive(r, w) &&
                                currentPgy === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, getCohortAtWeek(r, w, validCohortAssignments), dur) &&
+                               isAligned(w, getCohortAtWeek(r, w, validCohortAssignments), dur, programData) &&
                                (weekTypeCounts[w].interns[type] || 0) < meta.maxInterns;
                     })).sort((a, b) => getReqCountCumulative(a.id, type, w) - 
                                      getReqCountCumulative(b.id, type, w));
@@ -167,7 +170,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                         return isResidentActive(r, w) &&
                                currentPgy >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, getCohortAtWeek(r, w, validCohortAssignments), dur) &&
+                               isAligned(w, getCohortAtWeek(r, w, validCohortAssignments), dur, programData) &&
                                (weekTypeCounts[w].seniors[type] || 0) < meta.maxSeniors;
                     })).sort((a, b) => getReqCountCumulative(a.id, type, w) - 
                                      getReqCountCumulative(b.id, type, w));
@@ -183,13 +186,13 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 if (!isResidentActive(r, w) || (newSchedule[r.id][w]?.assignment)) return; // Inactive or already assigned
 
                 const currentPgy = getPgyAtWeek(r, w);
-                const pendingReqs = seededShuffle(REQUIREMENTS[currentPgy] || []).filter(req => {
+                const pendingReqs = seededShuffle(buildLevelRequirements(programData, currentPgy) || []).filter(req => {
                     return getReqCountFast(r.id, req.type, w) < req.minWeeks;
                 });
                 for (const req of pendingReqs) {
-                    const dur = ROTATION_METADATA[req.type]?.duration || 4;
-                    if (canFitBlock(newSchedule, r.id, w, dur) && isAligned(w, getCohortAtWeek(r, w, validCohortAssignments), dur)) {
-                        const meta = ROTATION_METADATA[req.type];
+                    const dur = (programData.rotations.get(req.type)?.duration || programData.cycleConfig.X);
+                    if (canFitBlock(newSchedule, r.id, w, dur) && isAligned(w, getCohortAtWeek(r, w, validCohortAssignments), dur, programData)) {
+                        const meta = programData.rotations.get(req.type);
                         const cI = weekTypeCounts[w].interns[req.type] || 0;
                         const cS = weekTypeCounts[w].seniors[req.type] || 0;
                         

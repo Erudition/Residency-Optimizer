@@ -30,16 +30,14 @@ export async function getScheduleFixture() {
         2026, 
         1, 
         residents, 
-        preloadedHistory, 
-        { existing: { 2026: initialSchedule }, cohortAssignments: { 2026: mockCohortMap } }, 
-        { tries: 50, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, 
-        ['weekByWeek', 'staffingFirst', 'stochastic', 'educationFirst'], 
+        preloadedHistory, getMockProgramData(), { existing: { 2026: initialSchedule }, cohortAssignments: { 2026: mockCohortMap } }, 
+        { tries: 50, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['weekByWeek', 'staffingFirst', 'stochastic', 'educationFirst'], 
         () => false, 
         () => {}
     );
     
     const winner = result.results[0];
-    const healedUnified = await healSchedule(winner.unifiedSchedule!, result.unifiedResidents, 2026, 3000, preloadedHistory, { 2026: mockCohortMap }); 
+    const healedUnified = await healSchedule(winner.unifiedSchedule!, result.unifiedResidents, getMockProgramData(), 2026, 3000, preloadedHistory, { 2026: mockCohortMap }); 
 
     cachedFixture = {
         residents,
@@ -51,3 +49,26 @@ export async function getScheduleFixture() {
 
     return cachedFixture;
 }
+
+;
+
+import { ProgramData } from '../../services/api/client';
+export const getMockProgramData = (): ProgramData => {
+  const mockRotations = new Map<string, any>();
+  const originalGet = mockRotations.get.bind(mockRotations);
+  mockRotations.get = (key: string) => {
+    return originalGet(key) || { codename: key, intensity: 1, duration: 4, setting: 'INPATIENT', requirementTags: [] };
+  };
+  return {
+    rotations: mockRotations as any,
+    cycleConfig: { cohortCount: 5, X: 4, Y: 1, Z: 5, assignments: {} },
+    residents: [],
+    gradRequirements: [],
+    avoidanceRules: [],
+    tags: [],
+    hueMap: new Map(),
+    rotationTags: new Map(),
+    placeholderCodenames: new Set(),
+    flexibleCodenames: new Set()
+  };
+};

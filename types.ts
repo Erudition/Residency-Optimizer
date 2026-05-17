@@ -1,4 +1,5 @@
 
+import type { ProgramData } from './services/api/client';
 export type PgyLevel = 1 | 2 | 3;
 
 export enum ClinicalSetting {
@@ -208,9 +209,9 @@ export interface ScheduleGenerator {
   generate: (
     residents: Resident[],
     existing: ScheduleGrid,
+    programData: ProgramData,
     attemptIndex?: number,
     priorRequirementCounts?: Record<string, Record<string, number>>,  // replaces historicalSchedules
-    cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>,
     onProgress?: (step: number, maxSteps: number, currentPenalty?: number) => void
   ) => ScheduleGrid | Promise<ScheduleGrid>;
 }

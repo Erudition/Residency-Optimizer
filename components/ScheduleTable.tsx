@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
-import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS, ASSIGNMENT_HEX_COLORS, getAssignmentColor } from '../constants';
+import { TOTAL_WEEKS } from '../constants';
+import { useProgramData } from '../contexts/ProgramDataContext';
+import { getAssignmentColor } from '../utils/colorUtils';
 import { User, Lock, Calendar, Sparkles } from 'lucide-react';
 
 interface Props {
@@ -54,6 +56,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   onLockResident,
   onToggleLock
 }) => {
+  const programData = useProgramData();
   const totalWeeks = useMemo(() => {
     const vals = Object.values(schedule);
     return vals.length > 0 ? (vals[0] as any).length : TOTAL_WEEKS;
@@ -164,7 +167,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       setTooltip({
         x: rect.left + window.scrollX + rect.width / 2,
         y: rect.top + window.scrollY,
-        assignmentName: ASSIGNMENT_LABELS[assignment],
+        assignmentName: (programData.rotations.get(assignment)?.label || assignment),
 
         weekIdx: weekIdx,
         peers,
@@ -331,7 +334,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                         >
                           {assign && !isOutOfBounds ? (
                             <span className="truncate w-full block">
-                              {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
+                              {(programData.rotations.get(assign)?.label || assign).substring(0, 5)}
                             </span>
                           ) : (
                             <span className="text-light-5 select-none" style={{ filter: 'grayscale(100%)' }}>

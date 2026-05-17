@@ -2,16 +2,10 @@ import {
   Resident, 
   ScheduleGrid, 
   ScheduleHistory, 
-  AssignmentType, 
   RequirementViolation,
   WeeklyViolation
 } from '../types';
-import { 
-  REQUIREMENTS, 
-  ACGME_TYPES, 
-  ROTATION_METADATA,
-  ELECTIVE_TYPES
-} from '../constants';
+import { ProgramData } from './api/client';
 
 /**
  * Single source of truth for all requirement and constraint validations.
@@ -25,12 +19,13 @@ export class RequirementsEngine {
    */
   static getActualWeeks(
     resident: Resident,
-    type: AssignmentType,
+    requirementType: string,
     schedule: ScheduleGrid,
     historicalSchedules: ScheduleHistory = {},
     sessionStartYear: number,
     currentAcademicYear: number, // renamed from targetYear per engine.md
-    isCumulative: boolean = false
+    isCumulative: boolean = false,
+    programData: ProgramData
   ): number {
     let total = 0;
     const numYears = Math.ceil((Object.values(schedule)[0]?.length || 52) / 52);
@@ -41,7 +36,7 @@ export class RequirementsEngine {
         const y = parseInt(yStr);
         if (y < sessionStartYear) {
           const yearCells = historicalSchedules[y][resident.id] || [];
-          total += yearCells.filter(c => this.fulfills(c.assignment, type)).length;
+          total += yearCells.filter(c => this.fulfills(c.assignment, requirementType, programData)).length;
         }
       });
     }
@@ -56,7 +51,7 @@ export class RequirementsEngine {
         const yearStart = yearIdx * 52;
         const yearEnd = (yearIdx + 1) * 52;
         const cells = (schedule[resident.id] || []).slice(yearStart, yearEnd);
-        total += cells.filter(c => this.fulfills(c.assignment, type)).length;
+        total += cells.filter(c => this.fulfills(c.assignment, requirementType, programData)).length;
       }
     }
 
@@ -70,7 +65,8 @@ export class RequirementsEngine {
     residents: Resident[],
     schedule: ScheduleGrid,
     historicalSchedules: ScheduleHistory = {},
-    activeYear: number
+    activeYear: number,
+    programData: ProgramData
   ): RequirementViolation[] {
     const violations: RequirementViolation[] = [];
     const totalWeeks = Object.values(schedule)[0]?.length || 52;
@@ -83,31 +79,31 @@ export class RequirementsEngine {
         
         if (pgy < 1 || pgy > 3) continue;
 
-        const pgyReqs = REQUIREMENTS[pgy] || [];
-        pgyReqs.forEach(req => {
-          const isACGME = ACGME_TYPES.includes(req.type);
+        programData.gradRequirements.forEach(req => {
+          const isACGME = req.source === 'acgme';
           
-          let minWeeks = req.minWeeks;
+          let minWeeks = 0;
           let actual = 0;
 
           if (isACGME) {
             // ACGME cumulative logic
-            minWeeks = 0;
-            for (let l = 1; l <= pgy; l++) {
-              const levelReqs = REQUIREMENTS[l] || [];
-              const levelReq = levelReqs.find(rq => rq.type === req.type);
-              minWeeks += levelReq ? levelReq.minWeeks : 0;
-            }
-            actual = this.getActualWeeks(r, req.type, schedule, historicalSchedules, activeYear, currentYear, true);
+            minWeeks = (pgy >= 1 ? (req.pgy1Ideal || 0) : 0) + 
+                       (pgy >= 2 ? (req.pgy2Ideal || 0) : 0) + 
+                       (pgy >= 3 ? (req.pgy3Ideal || 0) : 0);
+            
+            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, true, programData);
           } else {
             // MHS annual logic
-            actual = this.getActualWeeks(r, req.type, schedule, historicalSchedules, activeYear, currentYear, false);
+            minWeeks = pgy === 1 ? (req.pgy1Ideal || 0) : 
+                      (pgy === 2 ? (req.pgy2Ideal || 0) : 
+                                   (req.pgy3Ideal || 0));
+            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, false, programData);
           }
 
-          if (actual < minWeeks) {
+          if (minWeeks > 0 && actual < minWeeks) {
             violations.push({
               residentId: r.id,
-              type: req.type,
+              type: req.tag.title,
               minWeeks,
               actual,
               year: currentYear
@@ -122,17 +118,17 @@ export class RequirementsEngine {
 
   /**
    * Centralized check for whether an assignment fulfills a requirement.
-   * Handles category-based fulfillment (e.g. WARDS_RED fulfills category 'Wards').
+   * Handles tag-based fulfillment and codename fulfillment.
    */
-  static fulfills(assigned: AssignmentType | null, required: AssignmentType): boolean {
+  static fulfills(assigned: string | null, required: string, programData: ProgramData): boolean {
     if (!assigned) return false;
     if (assigned === required) return true;
 
-    const assignedMeta = ROTATION_METADATA[assigned];
-    const requiredMeta = ROTATION_METADATA[required];
-
-    if (assignedMeta && requiredMeta && assignedMeta.category && requiredMeta.category) {
-      return assignedMeta.category === requiredMeta.category;
+    // Check if the requirement is a tag (e.g. 'Wards', 'Critical Care')
+    // and the assigned rotation has that tag.
+    const tags = programData.rotationTags.get(assigned);
+    if (tags && tags.includes(required)) {
+      return true;
     }
 
     return false;
@@ -141,15 +137,14 @@ export class RequirementsEngine {
   /**
    * Shared logic for defining flexible (Jeopardy) blocks.
    */
-  static isJeopardyBlock(type: AssignmentType): boolean {
-    const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS_CONSULTS'];
-    return flexibleAssigns.includes(type);
+  static isJeopardyBlock(type: string, programData: ProgramData): boolean {
+    return programData.flexibleCodenames.has(type);
   }
 
   /**
    * Validates clinic site based on resident start year.
    */
-  static isClinicSiteCorrect(resident: Resident, assigned: AssignmentType): boolean {
+  static isClinicSiteCorrect(resident: Resident, assigned: string): boolean {
     if (assigned !== 'CCIM' && assigned !== 'NIMA (Clinic)') return true;
     
     const isNima = resident.startYear === 2025;

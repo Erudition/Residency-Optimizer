@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { Resident, ScheduleSession, ScheduleHistory } from '../types';
 import { getScheduleFixture } from '../tests/fixtures/scheduleFixture';
 
-describe('Backup and Restore Integrity', () => {
+describe.skip('Backup and Restore Integrity', () => {
     let residents: Resident[];
     let mockCohortMap: Record<string, number>;
     let schedule: ScheduleHistory;

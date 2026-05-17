@@ -1,6 +1,8 @@
+import { buildLevelRequirements } from './generators/reqBuilder';
+import type { ProgramData } from './api/client';
 import { RequirementsEngine } from './requirementsEngine';
 import { CompetitionParams, CompetitionPriority, Resident, PgyLevel, ScheduleGrid, ScheduleHistory, AssignmentType, CODENAMES, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting, DetailedScore } from '../types';
-import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS, fulfillsRequirement, ACTIVE_START_YEAR, ACGME_TYPES } from '../constants';
+import { TOTAL_WEEKS, COHORT_COUNT, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, ACTIVE_START_YEAR, ACGME_TYPES } from '../constants';
 import { getRequirementCount, getCumulativeRequirementCount, getYearRequirementCount, getStandardCohortMap } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
@@ -82,7 +84,8 @@ export const generateSchedule = async (
   totalYears: number,
   baseResidents: Resident[],
   historicalSchedules: ScheduleHistory,
-  constraints: { existing: ScheduleHistory, cohortAssignments: Record<number, Record<string, number>> },
+  constraints: { existing: ScheduleHistory },
+  programData: any, // ProgramData type (imported at top or just any)
   params: CompetitionParams,
   algorithmIds: string[],
   isAlgorithmCanceled: (id: string) => boolean,
@@ -90,7 +93,7 @@ export const generateSchedule = async (
   isPromoted: () => boolean = () => false
 ): Promise<{ results: CompetitionResult[], unifiedResidents: Resident[] }> => {
 
-  const { existing, cohortAssignments } = constraints;
+  const { existing } = constraints;
 
   const unifiedResidents = getUnifiedResidents(baseResidents, startYear, totalYears);
   const totalSpanWeeks = totalYears * TOTAL_WEEKS;
@@ -234,17 +237,17 @@ export const generateSchedule = async (
         const unifiedSchedule = await g.generator.generate(
           unifiedResidents, 
           JSON.parse(JSON.stringify(baseUnifiedGrid)), 
+          programData,
           attemptSeed, 
-          combinedPriorCounts, 
-          cohortAssignments // Pass full nested assignments for dynamic cohort resolution
+          combinedPriorCounts
         );
 
         // Score and validate unified grid
-        totalScore = calculateScheduleScore(unifiedResidents, unifiedSchedule, historicalSchedules);
-        const reqViolations = RequirementsEngine.getViolations(unifiedResidents, unifiedSchedule, historicalSchedules, startYear);
-        const weekViolations = getWeeklyViolations(unifiedResidents, unifiedSchedule);
+        totalScore = calculateScheduleScore(unifiedResidents, unifiedSchedule, programData, historicalSchedules);
+        const reqViolations = RequirementsEngine.getViolations(unifiedResidents, unifiedSchedule, historicalSchedules, startYear, programData);
+        const weekViolations = getWeeklyViolations(unifiedResidents, unifiedSchedule, programData);
 
-        attemptTotalViolations = reqViolations.length + weekViolations.length;
+        attemptTotalViolations = reqViolations.length + getAuditViolations(unifiedResidents, historicalSchedules, programData, startYear);
         attemptUnderstaffing = weekViolations.filter(v => v.issue.includes('Min')).length;
         
         const attemptFullData = sliceIntoYears(unifiedSchedule, startYear, totalYears);
@@ -330,18 +333,19 @@ export const calculateStats = (residents: Resident[], schedule: ScheduleGrid): S
   return stats;
 };
 
-export const getRequirementViolations = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory, activeYear?: number): RequirementViolation[] => {
-  return RequirementsEngine.getViolations(residents, schedule, historicalSchedules || {}, activeYear || 2026);
+export const getRequirementViolations = (residents: Resident[], schedule: ScheduleGrid, programData: ProgramData, historicalSchedules?: ScheduleHistory, activeYear?: number): RequirementViolation[] => {
+  return RequirementsEngine.getViolations(residents, schedule, historicalSchedules || {}, activeYear || 2026, programData);
 };
 
 
-export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid, activeYear?: number): WeeklyViolation[] => {
+export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid, programData: ProgramData, activeYear?: number): WeeklyViolation[] => {
   const violations: WeeklyViolation[] = [];
-  const cohortMap = getStandardCohortMap(residents);
+  const cohortMap = getStandardCohortMap(residents, programData);
   const safeGrid = schedule || {};
   const currentYear = activeYear || 2026;
   
   const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
+  const { cohortCount, X, Y } = programData.cycleConfig;
   
   for (let week = 0; week < totalWeeks; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
@@ -350,8 +354,8 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       violations.push({ week, type: 'CCIM', issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
 
-    Object.values(CODENAMES).forEach(type => {
-      const meta = ROTATION_METADATA[type];
+    Array.from(programData.rotations.keys()).forEach(type => {
+      const meta = programData.rotations.get(type);
       if (!meta) return;
 
       const assignees = residents.filter(r => safeGrid[r.id]?.[week]?.assignment === type);
@@ -359,16 +363,16 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       const seniors = assignees.filter(r => ((r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52)) > 1).length;
 
       if (interns < meta.minInterns) {
-        violations.push({ week, type, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}`, year: Math.floor(week / 52) + currentYear, instances: meta.minInterns - interns });
+        violations.push({ week, type: type as AssignmentType, issue: `Min Interns (${meta.minInterns}) unmet: ${interns}`, year: Math.floor(week / 52) + currentYear, instances: meta.minInterns - interns });
       }
       if (interns > meta.maxInterns) {
-        violations.push({ week, type, issue: `Max Interns (${meta.maxInterns}) exceeded: ${interns}`, year: Math.floor(week / 52) + currentYear, instances: interns - meta.maxInterns });
+        violations.push({ week, type: type as AssignmentType, issue: `Max Interns (${meta.maxInterns}) exceeded: ${interns}`, year: Math.floor(week / 52) + currentYear, instances: interns - meta.maxInterns });
       }
       if (seniors < meta.minSeniors) {
-        violations.push({ week, type, issue: `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`, year: Math.floor(week / 52) + currentYear, instances: meta.minSeniors - seniors });
+        violations.push({ week, type: type as AssignmentType, issue: `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`, year: Math.floor(week / 52) + currentYear, instances: meta.minSeniors - seniors });
       }
       if (seniors > meta.maxSeniors) {
-        violations.push({ week, type, issue: `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`, year: Math.floor(week / 52) + currentYear, instances: seniors - meta.maxSeniors });
+        violations.push({ week, type: type as AssignmentType, issue: `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`, year: Math.floor(week / 52) + currentYear, instances: seniors - meta.maxSeniors });
       }
     });
     // T6.2: Jeopardy Pool Monitoring
@@ -376,13 +380,13 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     const jeopardyPgy2 = residents.filter(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       const assign = safeGrid[r.id]?.[week]?.assignment;
-      return pgy === 2 && assign && RequirementsEngine.isJeopardyBlock(assign);
+      return pgy === 2 && assign && RequirementsEngine.isJeopardyBlock(assign, programData);
     }).length;
 
     const jeopardyPgy3 = residents.filter(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       const assign = safeGrid[r.id]?.[week]?.assignment;
-      return pgy === 3 && assign && RequirementsEngine.isJeopardyBlock(assign);
+      return pgy === 3 && assign && RequirementsEngine.isJeopardyBlock(assign, programData);
     }).length;
 
     if (jeopardyPgy2 < 1) {
@@ -396,7 +400,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   // PTO Policy, Clinic Site validations, and Jeopardy Pool Monitoring
   residents.forEach(r => {
     const cohort = cohortMap[r.id] ?? 0;
-    const blockStartOffset = (cohort + 1) % 5;
+    const blockStartOffset = (cohort + Y) % cohortCount;
 
     for (let week = 0; week < totalWeeks; week++) {
       const cell = safeGrid[r.id]?.[week];
@@ -479,7 +483,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
         const cell = safeGrid[r.id]?.[week];
         if (cell && cell.assignment) {
           const assign = cell.assignment;
-          const isFlexible = RequirementsEngine.isJeopardyBlock(assign);
+          const isFlexible = RequirementsEngine.isJeopardyBlock(assign, programData);
           if (isFlexible) {
             seniorFlexibleCount++;
           }
@@ -500,7 +504,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   return violations;
 };
 
-export const getAuditViolations = (residents: Resident[], history: ScheduleHistory, activeYear?: number): number => {
+export const getAuditViolations = (residents: Resident[], history: ScheduleHistory, programData: ProgramData, activeYear?: number): number => {
     let violationCount = 0;
 
     residents.forEach(r => {
@@ -518,7 +522,7 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
             const weeks = grid[r.id] || [];
             weeks.forEach(c => {
                 if (!c || !c.assignment) return;
-                const meta = ROTATION_METADATA[c.assignment];
+                const meta = programData.rotations.get(c.assignment as any);
                 if (!meta) return;
 
                 if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
@@ -552,7 +556,7 @@ const calculateSD = (values: number[], mean: number): number => {
 };
 
 
-export const calculateFairnessMetrics = (residents: Resident[], schedule: ScheduleGrid): CohortFairnessMetrics[] => {
+export const calculateFairnessMetrics = (residents: Resident[], schedule: ScheduleGrid, programData: ProgramData): CohortFairnessMetrics[] => {
   const safeGrid = schedule || {};
   return [1, 2, 3].map(level => {
     const groupRes = residents.filter(r => r.level === level);
@@ -567,7 +571,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
 
       weeks.forEach((c, idx) => {
         if (!c || !c.assignment) return;
-        const m = ROTATION_METADATA[c.assignment];
+        const m = programData.rotations.get(c.assignment as any);
         if (!m) return;
 
         if (CORE_TYPES.includes(c.assignment)) core++;
@@ -672,13 +676,14 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
   return diversity;
 };
 
-export const calculateScheduleScore = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): number => {
-  return calculateDetailedScheduleScore(residents, schedule, historicalSchedules).finalScore;
+export const calculateScheduleScore = (residents: Resident[], schedule: ScheduleGrid, programData: ProgramData, historicalSchedules?: ScheduleHistory): number => {
+  return calculateDetailedScheduleScore(residents, schedule, historicalSchedules || {}, programData).finalScore;
 };
 
-export const calculateDetailedScheduleScore = (residents: Resident[], schedule: ScheduleGrid, historicalSchedules?: ScheduleHistory): DetailedScore => {
+export const calculateDetailedScheduleScore = (residents: Resident[], schedule: ScheduleGrid, history: ScheduleHistory, programData: ProgramData): DetailedScore => {
   const safeGrid = schedule || {};
   const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
+  const { cohortCount, X, Y } = programData.cycleConfig;
   const numYears = Math.ceil(totalWeeks / 52);
 
   // Component 1: Education Requirements (Weight: 0.490)
@@ -691,7 +696,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       const pgy = currentYear - r.startYear + 1;
       if (pgy < 1 || pgy > 3) continue;
 
-      const pgyReqs = REQUIREMENTS[pgy] || [];
+      const pgyReqs = buildLevelRequirements(programData, pgy as any) || [];
       pgyReqs.forEach(req => {
         const isACGME = ACGME_TYPES.includes(req.type);
         let minWeeks = req.minWeeks;
@@ -700,13 +705,13 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
         if (isACGME) {
           minWeeks = 0;
           for (let l = 1; l <= pgy; l++) {
-            const levelReqs = REQUIREMENTS[l] || [];
+            const levelReqs = buildLevelRequirements(programData, l as any) || [];
             const levelReq = levelReqs.find(rq => rq.type === req.type);
             minWeeks += levelReq ? levelReq.minWeeks : 0;
           }
-          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, historicalSchedules || {}, ACTIVE_START_YEAR, currentYear, true);
+          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, history || {}, ACTIVE_START_YEAR, currentYear, true, programData);
         } else {
-          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, historicalSchedules || {}, ACTIVE_START_YEAR, currentYear, false);
+          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, history || {}, ACTIVE_START_YEAR, currentYear, false, programData);
         }
 
         educationDenominator += minWeeks;
@@ -721,8 +726,8 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   let staffingDenominator = 0;
   let staffingNumerator = 0;
 
-  const cohortMap = getStandardCohortMap(residents);
-  const currentYear = ACTIVE_START_YEAR;
+  const cohortMap = getStandardCohortMap(residents, programData);
+  const currentYear = 2026;
 
   for (let week = 0; week < totalWeeks; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
@@ -731,8 +736,8 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
     staffingDenominator += 1;
     staffingNumerator += clinicCount >= 1 ? 1 : 0;
 
-    Object.values(CODENAMES).forEach(type => {
-      const meta = ROTATION_METADATA[type];
+    Array.from(programData.rotations.keys()).forEach(type => {
+      const meta = programData.rotations.get(type);
       if (!meta) return;
 
       const assignees = residents.filter(r => safeGrid[r.id]?.[week]?.assignment === type);
@@ -765,20 +770,20 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
     const jeopardyPgy2 = residents.filter(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       const assign = safeGrid[r.id]?.[week]?.assignment;
-      return pgy === 2 && assign && RequirementsEngine.isJeopardyBlock(assign);
+      return pgy === 2 && assign && RequirementsEngine.isJeopardyBlock(assign, programData);
     }).length;
 
     const jeopardyPgy3 = residents.filter(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       const assign = safeGrid[r.id]?.[week]?.assignment;
-      return pgy === 3 && assign && RequirementsEngine.isJeopardyBlock(assign);
+      return pgy === 3 && assign && RequirementsEngine.isJeopardyBlock(assign, programData);
     }).length;
 
     const seniorFlexibleCount = residents.filter(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       if (pgy > 1) {
         const assign = safeGrid[r.id]?.[week]?.assignment;
-        return assign && RequirementsEngine.isJeopardyBlock(assign);
+        return assign && RequirementsEngine.isJeopardyBlock(assign, programData);
       }
       return false;
     }).length;
@@ -795,7 +800,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
   residents.forEach(r => {
     const cohort = cohortMap[r.id] ?? 0;
-    const blockStartOffset = (cohort + 1) % 5;
+    const blockStartOffset = (cohort + Y) % cohortCount;
 
     for (let week = 0; week < totalWeeks; week++) {
       const cell = safeGrid[r.id]?.[week];
@@ -851,7 +856,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       const assign = safeGrid[r.id]?.[week]?.assignment;
       if (!assign) continue;
 
-      const intensity = ROTATION_METADATA[assign]?.intensity || 0;
+      const intensity = programData.rotations.get(assign as any)?.intensity || 0;
       actualTotalIntensity += intensity;
 
       if (assign === 'CCIM' || assign === 'NIMA (Clinic)' || assign === 'VAC') {
@@ -876,7 +881,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
     let maxStreak = 0;
     weeks.forEach(c => {
       if (!c || !c.assignment) return;
-      const m = ROTATION_METADATA[c.assignment];
+      const m = programData.rotations.get(c.assignment as any);
       if (!m) return;
       if (m.intensity >= 3) {
         currentStreak++;
@@ -941,7 +946,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       if (pgy > 1) {
         const assign = safeGrid[r.id]?.[week]?.assignment;
-        if (assign && RequirementsEngine.isJeopardyBlock(assign)) {
+        if (assign && RequirementsEngine.isJeopardyBlock(assign, programData)) {
           size++;
         }
       }

@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
+import { useProgramData } from '../contexts/ProgramDataContext';
 import { Resident, ScheduleGrid } from '../types';
 import { calculateFairnessMetrics } from '../services/scheduler';
 import { AlertCircle, CheckCircle2, Scale, Flame, Activity, HelpCircle, Moon } from 'lucide-react';
@@ -19,11 +20,12 @@ interface TooltipState {
 }
 
 export const FairnessStats: React.FC<Props> = React.memo(({ residents, schedule, precalculated }) => {
+    const programData = useProgramData();
     const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
     const stats = useMemo(() => {
         if (precalculated) return precalculated;
-        return calculateFairnessMetrics(residents, schedule);
+        return calculateFairnessMetrics(residents, schedule, programData);
     }, [residents, schedule, precalculated]);
 
     const getScoreColor = (regret: number) => {

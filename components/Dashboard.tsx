@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Resident, ScheduleStats, AssignmentType } from '../types';
-import { ASSIGNMENT_COLORS, ASSIGNMENT_HEX_COLORS, ASSIGNMENT_HUES, oklchToHex } from '../constants';
+import { oklchToHex } from '../utils/colorUtils';
+import { useProgramData } from '../contexts/ProgramDataContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface Props {
@@ -9,8 +10,8 @@ interface Props {
   stats: ScheduleStats;
 }
 
-const getHighChromaColor = (type: AssignmentType): string => {
-  const hue = ASSIGNMENT_HUES[type] ?? 180;
+const getHighChromaColor = (type: AssignmentType, hueMap: Map<string, number>): string => {
+  const hue = hueMap.get(type) ?? 180;
   
   let intensity = 1;
   switch (type) {
@@ -52,6 +53,7 @@ const getHighChromaColor = (type: AssignmentType): string => {
 };
 
 export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
+  const programData = useProgramData();
 
   // Transform data for Recharts - Memoized to prevent animation resets on App re-render
   const data = React.useMemo(() => residents.map(r => {
@@ -124,39 +126,29 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
                 cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
                 wrapperStyle={{ zIndex: 100 }}
               />
-              <Bar isAnimationActive={false} dataKey={'RED'} stackId="a" fill={getHighChromaColor('RED')} name="Wards Red" />
-              <Bar isAnimationActive={false} dataKey={'BLUE'} stackId="a" fill={getHighChromaColor('BLUE')} name="Wards Blue" />
-              <Bar isAnimationActive={false} dataKey={'MICU'} stackId="a" fill={getHighChromaColor('MICU')} name="ICU" />
-              <Bar isAnimationActive={false} dataKey={'NF'} stackId="a" fill={getHighChromaColor('NF')} name="Night Float" />
-              <Bar isAnimationActive={false} dataKey={'EM'} stackId="a" fill={getHighChromaColor('EM')} name="EM" />
-              <Bar isAnimationActive={false} dataKey={'CCIM'} stackId="a" fill={getHighChromaColor('CCIM')} name="Clinic" />
-              <Bar isAnimationActive={false} dataKey={'Cards'} stackId="a" fill={getHighChromaColor('Cards')} name="Cardiology" />
-              <Bar isAnimationActive={false} dataKey={'ID'} stackId="a" fill={getHighChromaColor('ID')} name="Inf. Disease" />
-              <Bar isAnimationActive={false} dataKey={'Neph'} stackId="a" fill={getHighChromaColor('Neph')} name="Nephrology" />
-              <Bar isAnimationActive={false} dataKey={'Pulm'} stackId="a" fill={getHighChromaColor('Pulm')} name="Pulmonology" />
 
-              <Bar isAnimationActive={false} dataKey={'METRO_ICU'} stackId="a" fill={getHighChromaColor('METRO_ICU')} name="Metro ICU" />
-              <Bar isAnimationActive={false} dataKey={'Onc'} stackId="a" fill={getHighChromaColor('Onc')} name="Heme/Onc" />
-              <Bar isAnimationActive={false} dataKey={'Neuro'} stackId="a" fill={getHighChromaColor('Neuro')} name="Neurology" />
-              <Bar isAnimationActive={false} dataKey={'Rheum'} stackId="a" fill={getHighChromaColor('Rheum')} name="Rheumatology" />
-              <Bar isAnimationActive={false} dataKey={'GI'} stackId="a" fill={getHighChromaColor('GI')} name="GI" />
+              <Bar isAnimationActive={false} dataKey={'METRO_ICU'} stackId="a" fill={getHighChromaColor('METRO_ICU', programData.hueMap)} name="Metro ICU" />
+              <Bar isAnimationActive={false} dataKey={'Onc'} stackId="a" fill={getHighChromaColor('Onc', programData.hueMap)} name="Heme/Onc" />
+              <Bar isAnimationActive={false} dataKey={'Neuro'} stackId="a" fill={getHighChromaColor('Neuro', programData.hueMap)} name="Neurology" />
+              <Bar isAnimationActive={false} dataKey={'Rheum'} stackId="a" fill={getHighChromaColor('Rheum', programData.hueMap)} name="Rheumatology" />
+              <Bar isAnimationActive={false} dataKey={'GI'} stackId="a" fill={getHighChromaColor('GI', programData.hueMap)} name="GI" />
 
-              <Bar isAnimationActive={false} dataKey={'Add Med'} stackId="a" fill={getHighChromaColor('Add Med')} name="Addiction Med" />
-              <Bar isAnimationActive={false} dataKey={'Endo'} stackId="a" fill={getHighChromaColor('Endo')} name="Endocrinology" />
-              <Bar isAnimationActive={false} dataKey={'Geri'} stackId="a" fill={getHighChromaColor('Geri')} name="Geriatrics" />
-              <Bar isAnimationActive={false} dataKey={'HPC'} stackId="a" fill={getHighChromaColor('HPC')} name="Palliative" />
+              <Bar isAnimationActive={false} dataKey={'Add Med'} stackId="a" fill={getHighChromaColor('Add Med', programData.hueMap)} name="Addiction Med" />
+              <Bar isAnimationActive={false} dataKey={'Endo'} stackId="a" fill={getHighChromaColor('Endo', programData.hueMap)} name="Endocrinology" />
+              <Bar isAnimationActive={false} dataKey={'Geri'} stackId="a" fill={getHighChromaColor('Geri', programData.hueMap)} name="Geriatrics" />
+              <Bar isAnimationActive={false} dataKey={'HPC'} stackId="a" fill={getHighChromaColor('HPC', programData.hueMap)} name="Palliative" />
 
-              <Bar isAnimationActive={false} dataKey={'Research'} stackId="a" fill={getHighChromaColor('Research')} name="Research" />
-              <Bar isAnimationActive={false} dataKey={'CCMA'} stackId="a" fill={getHighChromaColor('CCMA')} name="CCMA" />
-              <Bar isAnimationActive={false} dataKey={'Heart Failure'} stackId="a" fill={getHighChromaColor('Heart Failure')} name="Heart Failure" />
-              <Bar isAnimationActive={false} dataKey={'AMCS_CONSULTS'} stackId="a" fill={getHighChromaColor('AMCS_CONSULTS')} name="AMCS Consults" />
-              <Bar isAnimationActive={false} dataKey={'ENT'} stackId="a" fill={getHighChromaColor('ENT')} name="ENT" />
-              <Bar isAnimationActive={false} dataKey={'PMNR'} stackId="a" fill={getHighChromaColor('PMNR')} name="PMNR" />
+              <Bar isAnimationActive={false} dataKey={'Research'} stackId="a" fill={getHighChromaColor('Research', programData.hueMap)} name="Research" />
+              <Bar isAnimationActive={false} dataKey={'CCMA'} stackId="a" fill={getHighChromaColor('CCMA', programData.hueMap)} name="CCMA" />
+              <Bar isAnimationActive={false} dataKey={'Heart Failure'} stackId="a" fill={getHighChromaColor('Heart Failure', programData.hueMap)} name="Heart Failure" />
+              <Bar isAnimationActive={false} dataKey={'AMCS_CONSULTS'} stackId="a" fill={getHighChromaColor('AMCS_CONSULTS', programData.hueMap)} name="AMCS Consults" />
+              <Bar isAnimationActive={false} dataKey={'ENT'} stackId="a" fill={getHighChromaColor('ENT', programData.hueMap)} name="ENT" />
+              <Bar isAnimationActive={false} dataKey={'PMNR'} stackId="a" fill={getHighChromaColor('PMNR', programData.hueMap)} name="PMNR" />
 
-              <Bar isAnimationActive={false} dataKey={'ELECTIVE'} stackId="a" fill={getHighChromaColor('ELECTIVE')} name="Elective" />
-              <Bar isAnimationActive={false} dataKey={'VAC'} stackId="a" fill={getHighChromaColor('VAC')} name="Vacation" />
-              <Bar isAnimationActive={false} dataKey={'METRO'} stackId="a" fill={getHighChromaColor('METRO')} name="Metro Wards" />
-              <Bar isAnimationActive={false} dataKey={'Jr Hosp'} stackId="a" fill={getHighChromaColor('Jr Hosp')} name="Jr Hospitalist" />
+              <Bar isAnimationActive={false} dataKey={'ELECTIVE'} stackId="a" fill={getHighChromaColor('ELECTIVE', programData.hueMap)} name="Elective" />
+              <Bar isAnimationActive={false} dataKey={'VAC'} stackId="a" fill={getHighChromaColor('VAC', programData.hueMap)} name="Vacation" />
+              <Bar isAnimationActive={false} dataKey={'METRO'} stackId="a" fill={getHighChromaColor('METRO', programData.hueMap)} name="Metro Wards" />
+              <Bar isAnimationActive={false} dataKey={'Jr Hosp'} stackId="a" fill={getHighChromaColor('Jr Hosp', programData.hueMap)} name="Jr Hospitalist" />
 
             </BarChart>
           </ResponsiveContainer>

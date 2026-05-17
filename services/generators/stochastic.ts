@@ -1,5 +1,8 @@
+import { buildLevelRequirements } from './reqBuilder';
+import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, CODENAMES, ScheduleHistory, ScheduleGenerator } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
+import type { ProgramData } from '../api/client';
+import { TOTAL_WEEKS, COHORT_COUNT } from '../../constants';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
 
@@ -17,7 +20,7 @@ class SeededRNG {
 
 export const StochasticGenerator: ScheduleGenerator = {
     name: "Stochastic (Balanced Search)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
 
         const seededShuffle = <T>(array: T[]): T[] => {
@@ -33,9 +36,9 @@ export const StochasticGenerator: ScheduleGenerator = {
         const totalWeeks = Object.values(newSchedule)[0]?.length || 52;
         const numYears = Math.max(1, Math.floor(totalWeeks / 52));
 
-        let validCohortAssignments = { ...(cohortAssignments || {}) };
+        let validCohortAssignments = { ...(programData?.cycleConfig?.assignments || {}) };
         if (Object.keys(validCohortAssignments).length === 0) {
-            validCohortAssignments = getStandardCohortMap(residents);
+            validCohortAssignments = getStandardCohortMap(residents, programData);
         }
 
         const historicalCounts: Record<string, Record<string, number>> = priorRequirementCounts || {};
@@ -67,7 +70,7 @@ export const StochasticGenerator: ScheduleGenerator = {
             const yearEnd = Math.min(totalWeeks, (yIdx + 1) * 52);
 
             for (let pgyLevel = 1; pgyLevel <= 3; pgyLevel++) {
-                const reqs = seededShuffle(REQUIREMENTS[pgyLevel as 1 | 2 | 3] || []);
+                const reqs = seededShuffle(buildLevelRequirements(programData, pgyLevel as 1 | 2 | 3) || []);
                 
                 // Residents who are this level in THIS year
                 const activeResidentsAtLevel = residents.filter(r => {
@@ -80,11 +83,11 @@ export const StochasticGenerator: ScheduleGenerator = {
                 });
 
                 reqs.forEach(req => {
-                    const compatibleTypes = Object.values(CODENAMES).filter(t => fulfillsRequirement(t, req.type));
+                    const compatibleTypes = Object.values(CODENAMES).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
                     
                     const sortedResidents = seededShuffle(activeResidentsAtLevel).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd) + getPriorRequirementCount(historicalCounts[b.id] || {}, req.type);
+                        const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type);
+                        const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, req.type);
                         return countA - countB;
                     });
                     sortedResidents.forEach(res => {
@@ -95,21 +98,21 @@ export const StochasticGenerator: ScheduleGenerator = {
                         const cohort = getCohortAtWeek(res, effectiveStart, validCohortAssignments);
 
                         let safety = 0;
-                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) < req.minWeeks && safety < 100) {
+                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd, programData) < req.minWeeks && safety < 100) {
                             safety++;
                             let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
-                            const dur = ROTATION_METADATA[req.type]?.duration || 4;
+                            const dur = (programData.rotations.get(req.type)?.duration || programData.cycleConfig.X);
 
                             const possibleWeeks = seededShuffle(Array.from({length: effectiveEnd - effectiveStart - dur + 1}, (_, i) => effectiveStart + i));
 
                             for (const w of possibleWeeks) {
                                 const cohort = getCohortAtWeek(res, w, validCohortAssignments);
-                                if (!isAligned(w, cohort, dur)) continue;
+                                if (!isAligned(w, cohort, dur, programData)) continue;
                                 if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
                                 if (w + dur > resEnd) continue;
 
                                 for (const type of compatibleTypes) {
-                                    const meta = ROTATION_METADATA[type];
+                                    const meta = programData.rotations.get(type);
                                     let score = 0;
                                     let possible = true;
 
@@ -144,12 +147,12 @@ export const StochasticGenerator: ScheduleGenerator = {
 
         // 3. Staffing Sweep (Graduation-Aware)
         const criticalTypes = Object.values(CODENAMES).filter(t => {
-            const m = ROTATION_METADATA[t];
+            const m = programData.rotations.get(t);
             return m && (m.minInterns > 0 || m.minSeniors > 0);
         });
 
         criticalTypes.forEach(type => {
-            const meta = ROTATION_METADATA[type];
+            const meta = programData.rotations.get(type);
             if (!meta) return;
             const dur = meta.duration || 4;
 
@@ -170,10 +173,10 @@ export const StochasticGenerator: ScheduleGenerator = {
                         return w >= start && w + dur <= end &&
                                level === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, cohort, dur) &&
+                               isAligned(w, cohort, dur, programData) &&
                                getAssignedCount(newSchedule, residents, w, type, 1) < (meta.maxInterns || 99);
-                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(historicalCounts[a.id] || {}, type)) - 
-                                     (getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(historicalCounts[b.id] || {}, type)));
+                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type)) - 
+                                     (getYearRequirementCount(newSchedule[b.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type)));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
@@ -191,10 +194,10 @@ export const StochasticGenerator: ScheduleGenerator = {
                         return w >= start && w + dur <= end &&
                                level >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, cohort, dur) &&
+                               isAligned(w, cohort, dur, programData) &&
                                getAssignedCount(newSchedule, residents, w, type, 2) < (meta.maxSeniors || 99);
-                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(historicalCounts[a.id] || {}, type)) - 
-                                     (getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(historicalCounts[b.id] || {}, type)));
+                    })).sort((a, b) => (getYearRequirementCount(newSchedule[a.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type)) - 
+                                     (getYearRequirementCount(newSchedule[b.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type)));
                     
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
