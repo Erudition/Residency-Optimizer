@@ -110,6 +110,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Nephrology
 *   **Setting:** Inpatient
+*   **Percent Outpatient:** 25%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0-2 Interns, 0-1 Seniors
@@ -118,6 +119,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Heme/Onc
 *   **Setting:** Inpatient/Outpatient
+*   **Percent Outpatient:** 70%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -142,6 +144,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Gastroenterology (GI)
 *   **Setting:** Outpatient
+*   **Percent Outpatient:** 100%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -158,6 +161,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Endocrinology
 *   **Setting:** Outpatient
+*   **Percent Outpatient:** 100%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -166,6 +170,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Hematology-Oncology
 *   **Setting:** Inpatient/Outpatient
+*   **Percent Outpatient:** 70%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 2/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -174,6 +179,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Geriatrics
 *   **Setting:** Outpatient
+*   **Percent Outpatient:** 60%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -182,6 +188,7 @@ These are the ACGME-mandated subspecialty clinical rotations. They ensure reside
 
 ### Palliative Care (HPC)
 *   **Setting:** Inpatient
+*   **Percent Outpatient:** 0%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0 Interns, 0-2 Seniors
@@ -243,6 +250,7 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Otolaryngology (ENT)
 *   **Setting:** Outpatient
+*   **Percent Outpatient:** 100%
 *   **Duration:** 2 weeks consecutive
 *   **Intensity Rating:** 1/5
 *   **Staffing Requirements:** 0-1 Intern, 0-1 Senior
@@ -296,6 +304,7 @@ These are highly individualized rotation experiences that residents can select t
 
 ### Primary Care
 *   **Setting:** Outpatient
+*   **Percent Outpatient:** 100%
 *   **Location:** NIMA
 *   **Duration:** 4 weeks consecutive
 *   **Intensity Rating:** 3/5
