@@ -73,6 +73,8 @@ For further UI presentation development, add items to interface.md, not GEMINI.m
 
 # Process Management & Background Tasks
 *   **Vitest Testing:** When running Vitest tests via the shell, always use `--run` (or equivalent) to disable watch mode. This is especially critical when piping output to a file or running in the background, as watch mode can prevent the IDE from correctly terminating the process, leading to stale background tasks.
+*   **Host Commands (Flatpak):** On Erudition's machine, this workspace runs inside a Flatpak sandbox. `docker` and `git` are already routed to the host — use them directly. For all other host-side commands (e.g., `fuser`, `pkill`), use `host-spawn` — **never** `flatpak-spawn --host`.
+*   **Dev Server Hygiene:** Before starting a new dev server, always kill any orphan processes occupying the expected port (e.g., `host-spawn fuser -k 3000/tcp`). Never start a duplicate server on a different port — stop the old one first.
 
 
 ## Unauthorized Constraint Modification
