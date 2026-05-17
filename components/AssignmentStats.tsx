@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-import { Resident, ScheduleGrid, AssignmentType } from '../types';
+import { Resident, ScheduleGrid, AssignmentType, CODENAMES } from '../types';
 import { TOTAL_WEEKS, ASSIGNMENT_LABELS, ROTATION_METADATA, ASSIGNMENT_HEX_COLORS } from '../constants';
 import { AlertTriangle } from 'lucide-react';
 
@@ -67,21 +67,21 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
   // Define Row Order
   const sortedAssignmentTypes = useMemo(() => {
     const priorityOrder = [
-      AssignmentType.WARDS_RED,
-      AssignmentType.WARDS_BLUE,
-      AssignmentType.WARDS_METRO,
-      AssignmentType.MICU,
-      AssignmentType.METRO_ICU,
-      AssignmentType.PULM,
-      AssignmentType.NIGHT_FLOAT,
-      AssignmentType.EM,
-      AssignmentType.CLINIC,
-      AssignmentType.NIMA_CLINIC,
-      AssignmentType.ELECTIVE,
-      AssignmentType.VACATION,
+      'RED',
+      'BLUE',
+      'METRO',
+      'MICU',
+      'METRO_ICU',
+      'Pulm',
+      'NF',
+      'EM',
+      'CCIM',
+      'NIMA (Clinic)',
+      'ELECTIVE',
+      'VAC',
     ];
 
-    const allTypes = Object.values(AssignmentType);
+    const allTypes = Object.values(CODENAMES);
     const remainingTypes = allTypes
       .filter(type => !priorityOrder.includes(type))
       .sort((a, b) => {
@@ -96,7 +96,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
   // Group data
   const data: Record<AssignmentType, Resident[][]> = useMemo(() => {
     const d: Record<AssignmentType, Resident[][]> = {} as any;
-    Object.values(AssignmentType).forEach(type => {
+    Object.values(CODENAMES).forEach(type => {
       d[type] = Array(totalWeeks).fill([]);
     });
 
@@ -113,7 +113,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
 
   const maxCounts: Record<AssignmentType, number> = useMemo(() => {
     const m: Record<AssignmentType, number> = {} as any;
-    Object.values(AssignmentType).forEach(type => {
+    Object.values(CODENAMES).forEach(type => {
       let max = 0;
       for (let w = 0; w < totalWeeks; w++) {
         if (data[type][w].length > max) max = data[type][w].length;

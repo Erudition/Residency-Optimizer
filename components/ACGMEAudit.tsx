@@ -106,12 +106,12 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                     if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
                         pgyData[pgy].criticalCare++;
                         totalCriticalCare++;
-                        if (c.assignment !== AssignmentType.AMCS_CONSULTS) {
+                        if (c.assignment !== 'AMCS_CONSULTS') {
                             pgyData[pgy].criticalCareCore++;
                             totalCriticalCareCore++;
                         }
                     }
-                    if (c.assignment === AssignmentType.NIGHT_FLOAT) {
+                    if (c.assignment === 'NF') {
                         pgyData[pgy].nightFloat++;
                         totalNightFloat++;
                     }

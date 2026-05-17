@@ -1,4 +1,4 @@
-import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory, ScheduleGenerator } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, CODENAMES, ScheduleHistory, ScheduleGenerator } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
@@ -55,7 +55,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
-                    const weeklyClinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                    const weeklyClinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }
@@ -80,7 +80,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                 });
 
                 reqs.forEach(req => {
-                    const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
+                    const compatibleTypes = Object.values(CODENAMES).filter(t => fulfillsRequirement(t, req.type));
                     
                     const sortedResidents = seededShuffle(activeResidentsAtLevel).sort((a, b) => {
                         const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type);
@@ -143,7 +143,7 @@ export const StochasticGenerator: ScheduleGenerator = {
         }
 
         // 3. Staffing Sweep (Graduation-Aware)
-        const criticalTypes = Object.values(AssignmentType).filter(t => {
+        const criticalTypes = Object.values(CODENAMES).filter(t => {
             const m = ROTATION_METADATA[t];
             return m && (m.minInterns > 0 || m.minSeniors > 0);
         });
@@ -208,7 +208,7 @@ export const StochasticGenerator: ScheduleGenerator = {
             const end = r.activeWeekEnd ?? totalWeeks;
             for (let w = start; w < end; w++) {
                 if (!newSchedule[r.id][w]?.assignment) {
-                    newSchedule[r.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                    newSchedule[r.id][w] = { assignment: 'ELECTIVE', locked: false };
                 }
             }
         });

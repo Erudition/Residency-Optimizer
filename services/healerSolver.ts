@@ -1,4 +1,4 @@
-import { Resident, ScheduleGrid, AssignmentType } from '../types';
+import { Resident, ScheduleGrid, AssignmentType, CODENAMES } from '../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT, ELECTIVE_TYPES, ACGME_TYPES } from '../constants';
 import { getStandardCohortMap, getCohortAtWeek } from './generators/utils';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
@@ -40,19 +40,19 @@ export const healer: HealerSolver = {
         [1, 2, 3].forEach(l => (REQUIREMENTS[l as 1|2|3] || []).forEach(r => relevantReqTypesSet.add(r.type)));
         const relevantReqTypes = Array.from(relevantReqTypesSet);
         const typeFulfillment: Record<string, AssignmentType[]> = {};
-        Object.values(AssignmentType).forEach(type => { typeFulfillment[type] = relevantReqTypes.filter(req => fulfillsRequirement(type, req)); });
+        Object.values(CODENAMES).forEach(type => { typeFulfillment[type] = relevantReqTypes.filter(req => fulfillsRequirement(type, req)); });
         const assignmentsByLevel: Record<number, AssignmentType[]> = {
-            1: Object.values(AssignmentType).filter(t => t !== AssignmentType.CLINIC && t !== AssignmentType.NIMA_CLINIC && t !== AssignmentType.VACATION && (ROTATION_METADATA[t]?.maxInterns || 0) > 0),
-            2: Object.values(AssignmentType).filter(t => t !== AssignmentType.CLINIC && t !== AssignmentType.NIMA_CLINIC && t !== AssignmentType.VACATION && (ROTATION_METADATA[t]?.maxSeniors || 0) > 0),
-            3: Object.values(AssignmentType).filter(t => t !== AssignmentType.CLINIC && t !== AssignmentType.NIMA_CLINIC && t !== AssignmentType.VACATION && (ROTATION_METADATA[t]?.maxSeniors || 0) > 0),
+            1: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA (Clinic)' && t !== 'VAC' && (ROTATION_METADATA[t]?.maxInterns || 0) > 0),
+            2: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA (Clinic)' && t !== 'VAC' && (ROTATION_METADATA[t]?.maxSeniors || 0) > 0),
+            3: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA (Clinic)' && t !== 'VAC' && (ROTATION_METADATA[t]?.maxSeniors || 0) > 0),
         };
-        const constrainedTypes = Object.values(AssignmentType).filter(type => {
+        const constrainedTypes = Object.values(CODENAMES).filter(type => {
             const m = ROTATION_METADATA[type];
             return m && (m.minInterns > 0 || m.maxInterns < 10 || m.minSeniors > 0 || m.maxSeniors < 10);
         });
         const superCriticalTypes = [
-            AssignmentType.MICU, AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE,
-            AssignmentType.NIGHT_FLOAT, AssignmentType.EM, AssignmentType.WARDS_METRO
+            'MICU', 'RED', 'BLUE',
+            'NF', 'EM', 'METRO'
         ];
 
         const residentMap = new Map(residents.map(r => [r.id, r]));
@@ -93,7 +93,7 @@ export const healer: HealerSolver = {
             return c;
         };
 
-        const flexibleAssigns = [...ELECTIVE_TYPES, AssignmentType.AMCS_CONSULTS];
+        const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS_CONSULTS'];
         const getWeekPenalty = (w: number, wc: any, sched: ScheduleGrid): number => {
             let total = 0; 
             constrainedTypes.forEach(t => total += getTypeStaffingPenalty(t, wc.interns[t] || 0, wc.seniors[t] || 0));
@@ -160,10 +160,10 @@ export const healer: HealerSolver = {
                 if (!currentSchedule[r.id][w] || currentSchedule[r.id][w].assignment === null) {
                     const isClinic = w % COHORT_COUNT === getCohortAtWeek(r, w, validCohortAssignments);
                     if (isClinic) {
-                        const clinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                        const clinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
                         currentSchedule[r.id][w] = { assignment: clinicType, locked: true };
                     } else {
-                        currentSchedule[r.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                        currentSchedule[r.id][w] = { assignment: 'ELECTIVE', locked: false };
                     }
                 }
             }

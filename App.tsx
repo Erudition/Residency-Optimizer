@@ -631,7 +631,7 @@ const App: React.FC = () => {
       return isPgyInRange && hasJoined && hasNotLeft;
     }).map(r => {
       const level = (year - r.startYear + 1) as 1 | 2 | 3;
-      const clinicType = r.startYear === 2025 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+      const clinicType = r.startYear === 2025 ? 'NIMA (Clinic)' : 'CCIM';
       const cohort = yearCohorts[r.id] ?? 0;
       return { ...r, level, clinicType, cohort };
     }).sort((a, b) => {
@@ -680,7 +680,7 @@ const App: React.FC = () => {
        const startYear = activeSchedule.startYear || ACTIVE_START_YEAR;
        return getUnifiedResidents(residents, startYear, 3).map(r => ({
            ...r,
-           clinicType: r.startYear === 2025 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC,
+           clinicType: r.startYear === 2025 ? 'NIMA (Clinic)' : 'CCIM',
            cohort: (activeSchedule?.cohortAssignments?.[startYear] || historicalCohortsByYear[startYear] || {})[r.id] ?? 0
        })).sort((a, b) => {
            if (residentSortOrder === 'cohort') {

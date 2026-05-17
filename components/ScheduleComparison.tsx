@@ -110,7 +110,7 @@ export const ScheduleComparison: React.FC<Props> = ({
       const allWeeks = Object.values(yearGrid) as ScheduleCell[][];
       allWeeks.forEach(weeks => {
         if (Array.isArray(weeks)) {
-          weeks.forEach(c => { if (c && c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
+          weeks.forEach(c => { if (c && c.assignment === 'NF') totalNF++; });
         }
       });
 

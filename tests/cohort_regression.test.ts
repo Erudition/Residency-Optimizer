@@ -53,7 +53,7 @@ describe('Multi-Year Cohort Regression Test', () => {
             Object.entries(yearSchedule).forEach(([resId, weeks]) => {
                 activeCount++;
                 weeks.forEach((cell, w) => {
-                    if (cell && (cell.assignment === AssignmentType.CLINIC || cell.assignment === AssignmentType.NIMA_CLINIC)) {
+                    if (cell && (cell.assignment === 'CCIM' || cell.assignment === 'NIMA (Clinic)')) {
                         weeklyClinicCounts[w]++;
                     }
                 });

@@ -28,13 +28,13 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
     residents.forEach(r => matrix[r.id] = {});
 
     const relevantTypes = [
-      AssignmentType.WARDS_RED,
-      AssignmentType.WARDS_BLUE,
-      AssignmentType.MICU,
-      AssignmentType.NIGHT_FLOAT,
-      AssignmentType.EM,
-      AssignmentType.WARDS_METRO,
-      AssignmentType.JR_HOSPITALIST
+      'RED',
+      'BLUE',
+      'MICU',
+      'NF',
+      'EM',
+      'METRO',
+      'Jr Hosp'
     ];
 
     for (let w = 0; w < 52; w++) {

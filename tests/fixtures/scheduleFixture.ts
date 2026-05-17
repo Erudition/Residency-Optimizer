@@ -23,8 +23,8 @@ export async function getScheduleFixture() {
 
     const initialSchedule: ScheduleGrid = {};
     initialSchedule[lockedResId] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null as any, locked: false }));
-    initialSchedule[lockedResId][11] = { assignment: AssignmentType.VACATION, locked: true };
-    initialSchedule[lockedResId][12] = { assignment: AssignmentType.VACATION, locked: true };
+    initialSchedule[lockedResId][11] = { assignment: 'VAC', locked: true };
+    initialSchedule[lockedResId][12] = { assignment: 'VAC', locked: true };
 
     const result = await generateSchedule(
         2026, 

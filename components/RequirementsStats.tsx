@@ -88,7 +88,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                     if (meta.setting === ClinicalSetting.OUTPATIENT) pgyData[l].outpatient++;
                     if (meta.setting === ClinicalSetting.INPATIENT) pgyData[l].inpatient++;
                     if (meta.setting === ClinicalSetting.CRITICAL_CARE) pgyData[l].criticalCare++;
-                    if (c.assignment === AssignmentType.NIGHT_FLOAT) pgyData[l].nightFloat++;
+                    if (c.assignment === 'NF') pgyData[l].nightFloat++;
                 });
             }
 
@@ -102,12 +102,12 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
             const clinicValid = activeYearWeeks.every(c => !c?.assignment || RequirementsEngine.isClinicSiteCorrect(r, c.assignment));
             
             const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
-            const hasBlackoutVacation = activeYearWeeks.some((c, idx) => c && c.assignment === AssignmentType.VACATION && blackoutWeeks.includes(idx));
+            const hasBlackoutVacation = activeYearWeeks.some((c, idx) => c && c.assignment === 'VAC' && blackoutWeeks.includes(idx));
 
             const hasSplitBlockDeficit = RequirementsEngine.getViolations([r], schedule, hist, activeYear)
-                .some(v => v.year === activeYear && [AssignmentType.NEURO, AssignmentType.GI, AssignmentType.PULM].includes(v.type));
+                .some(v => v.year === activeYear && ['Neuro', 'GI', 'Pulm'].includes(v.type));
 
-            const hasElectiveToOverwrite = activeYearWeeks.some(c => c && c.assignment === AssignmentType.ELECTIVE);
+            const hasElectiveToOverwrite = activeYearWeeks.some(c => c && c.assignment === 'ELECTIVE');
 
             return {
                 ...r,

@@ -1,26 +1,26 @@
-import { ScheduleHistory, AssignmentType, Resident } from '../../types';
+import { ScheduleHistory, AssignmentType, CODENAMES, Resident } from '../../types';
 import { ACTIVE_START_YEAR } from '../../constants';
 import historicalGridData from '../../specification/historical_schedules_grid_v2.json';
 import { z } from 'zod';
 
 // Zod schema for historical data validation
-const AssignmentTypeSchema = z.nativeEnum(AssignmentType).or(z.null()).or(z.string());
+const AssignmentTypeSchema = z.string().nullable();
 
 const HistoricalYearSchema = z.record(z.string(), z.array(AssignmentTypeSchema));
 const HistoricalDataSchema = z.record(z.string(), HistoricalYearSchema);
 
 // Legacy mappings for historical data
 const LEGACY_MAPPING: Record<string, AssignmentType> = {
-    'CVICU': AssignmentType.AMCS_CONSULTS,
-    'CCIM': AssignmentType.CLINIC,
-    'HPC': AssignmentType.PALLIATIVE,
-    'Wards-R': AssignmentType.WARDS_RED,
-    'Wards-B': AssignmentType.WARDS_BLUE,
-    'Met Wards': AssignmentType.WARDS_METRO,
-    'MICU 1': AssignmentType.MICU,
-    'MICU Metro': AssignmentType.METRO_ICU,
-    'Add Med': AssignmentType.ADD_MED,
-    'Jr Hosp': AssignmentType.JR_HOSPITALIST,
+    'CVICU': 'AMCS_CONSULTS',
+    'CCIM': 'CCIM',
+    'HPC': 'HPC',
+    'Wards-R': 'RED',
+    'Wards-B': 'BLUE',
+    'Met Wards': 'METRO',
+    'MICU 1': 'MICU',
+    'MICU Metro': 'METRO_ICU',
+    'Add Med': 'Add Med',
+    'Jr Hosp': 'Jr Hosp',
 };
 
 const HISTORICAL_COHORTS: Record<number, Record<string, number>> = {
@@ -77,10 +77,10 @@ export interface PreloadedHistory {
  * Handles legacy names and null values safely.
  */
 function mapAssignmentType(raw: string | null): AssignmentType {
-    if (raw === null) return AssignmentType.ELECTIVE;
+    if (raw === null) return 'ELECTIVE';
     
     // Check if it's already a valid enum value
-    const validValues = Object.values(AssignmentType) as string[];
+    const validValues = Object.values(CODENAMES) as string[];
     if (validValues.includes(raw)) {
         return raw as AssignmentType;
     }
@@ -91,7 +91,7 @@ function mapAssignmentType(raw: string | null): AssignmentType {
     }
 
     console.warn(`[HistoryPreloader] Unknown assignment type "${raw}", defaulting to ELECTIVE`);
-    return AssignmentType.ELECTIVE;
+    return 'ELECTIVE';
 }
 
 export const preloadHistoricalData = (residents: Resident[]): PreloadedHistory => {

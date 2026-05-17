@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Resident, ScheduleGrid, AssignmentType } from '../types';
+import { Resident, ScheduleGrid, AssignmentType, CODENAMES } from '../types';
 import { TOTAL_WEEKS, ASSIGNMENT_LABELS, ROTATION_METADATA, ASSIGNMENT_HEX_COLORS } from '../constants';
 import { Table, Users, Info } from 'lucide-react';
 
@@ -70,21 +70,21 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
   // Define Row Order matching Coverage Tab
   const sortedAssignmentTypes = useMemo(() => {
     const priorityOrder = [
-      AssignmentType.WARDS_RED,
-      AssignmentType.WARDS_BLUE,
-      AssignmentType.WARDS_METRO,
-      AssignmentType.MICU,
-      AssignmentType.METRO_ICU,
-      AssignmentType.PULM,
-      AssignmentType.NIGHT_FLOAT,
-      AssignmentType.EM,
-      AssignmentType.CLINIC,
-      AssignmentType.NIMA_CLINIC,
-      AssignmentType.ELECTIVE,
-      AssignmentType.VACATION,
+      'RED',
+      'BLUE',
+      'METRO',
+      'MICU',
+      'METRO_ICU',
+      'Pulm',
+      'NF',
+      'EM',
+      'CCIM',
+      'NIMA (Clinic)',
+      'ELECTIVE',
+      'VAC',
     ];
 
-    const allTypes = Object.values(AssignmentType);
+    const allTypes = Object.values(CODENAMES);
     const remainingTypes = allTypes
       .filter(type => !priorityOrder.includes(type))
       .sort((a, b) => {

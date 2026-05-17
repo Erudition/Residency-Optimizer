@@ -1,4 +1,4 @@
-import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator, ScheduleCell } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, CODENAMES, ScheduleGenerator, ScheduleCell } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
@@ -79,7 +79,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 if (w % COHORT_COUNT === getCohortAtWeek(r, w, validCohortAssignments)) {
                     if (row[w].locked) continue;
                     const level = getPgy(r, w);
-                    const clinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                    const clinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
 
                 }
@@ -89,16 +89,16 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         // 2. Staffing Sweep FIRST (Foundation) - Mandatory Minima
         const criticalTypes = [
-            AssignmentType.MICU,
-            AssignmentType.WARDS_RED,
-            AssignmentType.WARDS_BLUE,
-            AssignmentType.NIGHT_FLOAT,
-            AssignmentType.EM,
-            AssignmentType.WARDS_METRO,
-            AssignmentType.JR_HOSPITALIST,
-            AssignmentType.CARDS,
-            AssignmentType.NEPH,
-            AssignmentType.ID
+            'MICU',
+            'RED',
+            'BLUE',
+            'NF',
+            'EM',
+            'METRO',
+            'Jr Hosp',
+            'Cards',
+            'Neph',
+            'ID'
         ];
 
         const historicalCounts = priorRequirementCounts || {};
@@ -166,7 +166,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
             pgyLevels.forEach(level => {
                 const reqs = seededShuffle(REQUIREMENTS[level] || []);
                 reqs.forEach(req => {
-                    const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
+                    const compatibleTypes = Object.values(CODENAMES).filter(t => fulfillsRequirement(t, req.type));
                     
                     const eligibleResidents = seededShuffle(residents.filter(r => {
                         return isActive(r, yearStart) && getPgy(r, yearStart) === level;
@@ -236,7 +236,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
             for (let w = 0; w < row.length; w++) {
                 if (row[w].locked) continue;
                 if (isActive(r, w) && !row[w].assignment) {
-                    newSchedule[r.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                    newSchedule[r.id][w] = { assignment: 'ELECTIVE', locked: false };
                 }
             }
         });

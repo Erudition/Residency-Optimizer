@@ -142,7 +142,7 @@ export class RequirementsEngine {
    * Shared logic for defining flexible (Jeopardy) blocks.
    */
   static isJeopardyBlock(type: AssignmentType): boolean {
-    const flexibleAssigns = [...ELECTIVE_TYPES, AssignmentType.AMCS_CONSULTS];
+    const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS_CONSULTS'];
     return flexibleAssigns.includes(type);
   }
 
@@ -150,10 +150,10 @@ export class RequirementsEngine {
    * Validates clinic site based on resident start year.
    */
   static isClinicSiteCorrect(resident: Resident, assigned: AssignmentType): boolean {
-    if (assigned !== AssignmentType.CLINIC && assigned !== AssignmentType.NIMA_CLINIC) return true;
+    if (assigned !== 'CCIM' && assigned !== 'NIMA (Clinic)') return true;
     
     const isNima = resident.startYear === 2025;
-    if (isNima) return assigned === AssignmentType.NIMA_CLINIC;
-    return assigned === AssignmentType.CLINIC;
+    if (isNima) return assigned === 'NIMA (Clinic)';
+    return assigned === 'CCIM';
   }
 }

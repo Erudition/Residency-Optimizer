@@ -34,7 +34,7 @@ describe('Historical Data Integrity', () => {
         const { history } = preloadHistoricalData(residents);
         
         // Find a specific known legacy mapping in the history
-        // e.g., 'Met Wards' -> AssignmentType.WARDS_METRO ('METRO')
+        // e.g., 'Met Wards' -> 'METRO' ('METRO')
         let foundMetro = false;
         Object.values(history).forEach(yearData => {
             Object.values(yearData).forEach(assignments => {

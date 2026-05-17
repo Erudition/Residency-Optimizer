@@ -1,4 +1,4 @@
-import { AssignmentType, Resident, RotationConfig, ClinicalSetting } from './types';
+import { AssignmentType, CODENAMES, Resident, RotationConfig, ClinicalSetting } from './types';
 
 export const TOTAL_WEEKS = 52;
 export const COHORT_COUNT = 5;
@@ -116,98 +116,98 @@ export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
 };
 
 export const ASSIGNMENT_COLORS: Record<AssignmentType, string> = {
-    [AssignmentType.WARDS_RED]: 'bg-red/40 text-red-2-dark border-red-2',
-    [AssignmentType.WARDS_BLUE]: 'bg-light-blue text-navy-dark border-blue-2',
-    [AssignmentType.MICU]: 'bg-light-purple text-purple-2-dark border-purple',
-    [AssignmentType.NIGHT_FLOAT]: 'bg-light-purple text-purple-2-dark border-purple',
-    [AssignmentType.EM]: 'bg-creamsicle text-orange-dark border-orange',
-    [AssignmentType.CLINIC]: 'bg-light-yellow/30 text-light-yellow-dark border-light-yellow',
-    [AssignmentType.ELECTIVE]: 'bg-lime-green/40 text-green-dark border-lime-green',
-    [AssignmentType.VACATION]: 'bg-light-2 text-muted border-light-5',
-    [AssignmentType.WARDS_METRO]: 'bg-teal-2/30 text-teal-2-dark border-teal-2',
-    [AssignmentType.CARDS]: 'bg-pink/60 text-pink-dark border-pink',
-    [AssignmentType.ID]: 'bg-lime-green text-green-dark border-lime-green',
-    [AssignmentType.NEPH]: 'bg-light-yellow text-light-yellow-dark border-yellow',
-    [AssignmentType.PULM]: 'bg-sky-blue/50 text-sky-blue border-sky-blue',
-    [AssignmentType.ONC]: 'bg-pink/60 text-pink-dark border-pink',
-    [AssignmentType.NEURO]: 'bg-light-purple/80 text-purple-2-dark border-purple',
-    [AssignmentType.RHEUM]: 'bg-lime-green text-green-dark border-green-2',
-    [AssignmentType.GI]: 'bg-light-yellow text-light-yellow-dark border-yellow',
-    [AssignmentType.ADD_MED]: 'bg-light-4 text-black border-light-6',
-    [AssignmentType.ENDO]: 'bg-creamsicle/50 text-orange-dark border-creamsicle',
-    [AssignmentType.GERI]: 'bg-light-4 text-black border-light-6',
-    [AssignmentType.PALLIATIVE]: 'bg-pale-blue text-pale-blue-dark border-pale-blue-dark',
-    [AssignmentType.NIMA_BLOCK]: 'bg-light-yellow text-light-yellow-dark border-yellow',
-    [AssignmentType.METRO_ICU]: 'bg-light-purple text-fuchsia-dark border-fuchsia',
-    [AssignmentType.RESEARCH]: 'bg-light-3 text-black border-light-5',
-    [AssignmentType.CCMA]: 'bg-light-purple/50 text-purple-2 border-purple',
-    [AssignmentType.HF]: 'bg-red/20 text-red-2-dark border-red/40',
-    [AssignmentType.AMCS_CONSULTS]: 'bg-pink/40 text-pink-dark border-pink',
-    [AssignmentType.ENT]: 'bg-teal-2/50 text-teal-2-dark border-teal-2',
-    [AssignmentType.PMNR]: 'bg-pale-blue text-pale-blue-dark border-pale-blue-dark',
-    [AssignmentType.ANAESTHESIA]: 'bg-sky-blue/30 text-sky-blue-dark border-sky-blue',
-    [AssignmentType.NIMA_CLINIC]: 'bg-light-yellow/30 text-light-yellow-dark border-light-yellow',
-    [AssignmentType.JR_HOSPITALIST]: 'bg-light-purple/50 text-purple-2 border-light-purple',
+    ['RED']: 'bg-red/40 text-red-2-dark border-red-2',
+    ['BLUE']: 'bg-light-blue text-navy-dark border-blue-2',
+    ['MICU']: 'bg-light-purple text-purple-2-dark border-purple',
+    ['NF']: 'bg-light-purple text-purple-2-dark border-purple',
+    ['EM']: 'bg-creamsicle text-orange-dark border-orange',
+    ['CCIM']: 'bg-light-yellow/30 text-light-yellow-dark border-light-yellow',
+    ['ELECTIVE']: 'bg-lime-green/40 text-green-dark border-lime-green',
+    ['VAC']: 'bg-light-2 text-muted border-light-5',
+    ['METRO']: 'bg-teal-2/30 text-teal-2-dark border-teal-2',
+    ['Cards']: 'bg-pink/60 text-pink-dark border-pink',
+    ['ID']: 'bg-lime-green text-green-dark border-lime-green',
+    ['Neph']: 'bg-light-yellow text-light-yellow-dark border-yellow',
+    ['Pulm']: 'bg-sky-blue/50 text-sky-blue border-sky-blue',
+    ['Onc']: 'bg-pink/60 text-pink-dark border-pink',
+    ['Neuro']: 'bg-light-purple/80 text-purple-2-dark border-purple',
+    ['Rheum']: 'bg-lime-green text-green-dark border-green-2',
+    ['GI']: 'bg-light-yellow text-light-yellow-dark border-yellow',
+    ['Add Med']: 'bg-light-4 text-black border-light-6',
+    ['Endo']: 'bg-creamsicle/50 text-orange-dark border-creamsicle',
+    ['Geri']: 'bg-light-4 text-black border-light-6',
+    ['HPC']: 'bg-pale-blue text-pale-blue-dark border-pale-blue-dark',
+    ['NIMA']: 'bg-light-yellow text-light-yellow-dark border-yellow',
+    ['METRO_ICU']: 'bg-light-purple text-fuchsia-dark border-fuchsia',
+    ['Research']: 'bg-light-3 text-black border-light-5',
+    ['CCMA']: 'bg-light-purple/50 text-purple-2 border-purple',
+    ['Heart Failure']: 'bg-red/20 text-red-2-dark border-red/40',
+    ['AMCS_CONSULTS']: 'bg-pink/40 text-pink-dark border-pink',
+    ['ENT']: 'bg-teal-2/50 text-teal-2-dark border-teal-2',
+    ['PMNR']: 'bg-pale-blue text-pale-blue-dark border-pale-blue-dark',
+    ['ANAESTHESIA']: 'bg-sky-blue/30 text-sky-blue-dark border-sky-blue',
+    ['NIMA (Clinic)']: 'bg-light-yellow/30 text-light-yellow-dark border-light-yellow',
+    ['Jr Hosp']: 'bg-light-purple/50 text-purple-2 border-light-purple',
 };
 
 export const ASSIGNMENT_HUES: Record<AssignmentType, number> = {
-    [AssignmentType.MICU]: 28,
-    [AssignmentType.METRO_ICU]: 335,
-    [AssignmentType.WARDS_RED]: 15,
-    [AssignmentType.NIGHT_FLOAT]: 282,
-    [AssignmentType.WARDS_BLUE]: 250,
-    [AssignmentType.EM]: 45,
-    [AssignmentType.WARDS_METRO]: 155,
-    [AssignmentType.AMCS_CONSULTS]: 345,
-    [AssignmentType.CCMA]: 280,
-    [AssignmentType.ANAESTHESIA]: 190,
-    [AssignmentType.JR_HOSPITALIST]: 225,
-    [AssignmentType.CLINIC]: 65,
-    [AssignmentType.NIMA_CLINIC]: 75,
-    [AssignmentType.CARDS]: 355,
-    [AssignmentType.NIMA_BLOCK]: 95,
-    [AssignmentType.PMNR]: 205,
-    [AssignmentType.ID]: 140,
-    [AssignmentType.NEPH]: 50,
-    [AssignmentType.PULM]: 185,
-    [AssignmentType.ONC]: 355,
-    [AssignmentType.NEURO]: 270,
-    [AssignmentType.RHEUM]: 125,
-    [AssignmentType.GI]: 70,
-    [AssignmentType.ADD_MED]: 110,
-    [AssignmentType.ENDO]: 45,
-    [AssignmentType.GERI]: 135,
-    [AssignmentType.PALLIATIVE]: 215,
-    [AssignmentType.HF]: 15,
-    [AssignmentType.ENT]: 170,
-    [AssignmentType.RESEARCH]: 100,
-    [AssignmentType.ELECTIVE]: 150,
-    [AssignmentType.VACATION]: 80,
+    ['MICU']: 28,
+    ['METRO_ICU']: 335,
+    ['RED']: 15,
+    ['NF']: 282,
+    ['BLUE']: 250,
+    ['EM']: 45,
+    ['METRO']: 155,
+    ['AMCS_CONSULTS']: 345,
+    ['CCMA']: 280,
+    ['ANAESTHESIA']: 190,
+    ['Jr Hosp']: 225,
+    ['CCIM']: 65,
+    ['NIMA (Clinic)']: 75,
+    ['Cards']: 355,
+    ['NIMA']: 95,
+    ['PMNR']: 205,
+    ['ID']: 140,
+    ['Neph']: 50,
+    ['Pulm']: 185,
+    ['Onc']: 355,
+    ['Neuro']: 270,
+    ['Rheum']: 125,
+    ['GI']: 70,
+    ['Add Med']: 110,
+    ['Endo']: 45,
+    ['Geri']: 135,
+    ['HPC']: 215,
+    ['Heart Failure']: 15,
+    ['ENT']: 170,
+    ['Research']: 100,
+    ['ELECTIVE']: 150,
+    ['VAC']: 80,
 };
 
 const getIntensity = (type: AssignmentType): number => {
     switch (type) {
-        case AssignmentType.MICU:
-        case AssignmentType.METRO_ICU:
+        case 'MICU':
+        case 'METRO_ICU':
             return 5;
-        case AssignmentType.WARDS_RED:
-        case AssignmentType.NIGHT_FLOAT:
+        case 'RED':
+        case 'NF':
             return 4;
-        case AssignmentType.WARDS_BLUE:
-        case AssignmentType.EM:
-        case AssignmentType.WARDS_METRO:
-        case AssignmentType.AMCS_CONSULTS:
-        case AssignmentType.CCMA:
-        case AssignmentType.ANAESTHESIA:
-        case AssignmentType.JR_HOSPITALIST:
+        case 'BLUE':
+        case 'EM':
+        case 'METRO':
+        case 'AMCS_CONSULTS':
+        case 'CCMA':
+        case 'ANAESTHESIA':
+        case 'Jr Hosp':
             return 3;
-        case AssignmentType.CLINIC:
-        case AssignmentType.NIMA_CLINIC:
-        case AssignmentType.CARDS:
-        case AssignmentType.NIMA_BLOCK:
-        case AssignmentType.PMNR:
+        case 'CCIM':
+        case 'NIMA (Clinic)':
+        case 'Cards':
+        case 'NIMA':
+        case 'PMNR':
             return 2;
-        case AssignmentType.VACATION:
+        case 'VAC':
             return 0;
         default:
             return 1;
@@ -250,7 +250,7 @@ export const getHighChromaColor = (type: AssignmentType): string => {
 };
 
 export const ASSIGNMENT_HEX_COLORS: Record<AssignmentType, string> = {} as any;
-Object.values(AssignmentType).forEach(type => {
+Object.values(CODENAMES).forEach(type => {
     const hue = ASSIGNMENT_HUES[type] ?? 180;
     const intensity = getIntensity(type);
     const chroma = intensity === 0 ? 0.015 : 0.01 + intensity * 0.038;
@@ -266,279 +266,279 @@ export const getAssignmentColor = (assign: AssignmentType, isPast = false): stri
 };
 
 export const ASSIGNMENT_LABELS: Record<AssignmentType, string> = {
-    [AssignmentType.WARDS_RED]: 'Wards',
-    [AssignmentType.WARDS_BLUE]: 'Wards Blue',
-    [AssignmentType.MICU]: 'ICU',
-    [AssignmentType.NIGHT_FLOAT]: 'Night Float',
-    [AssignmentType.EM]: 'Emergency',
-    [AssignmentType.CLINIC]: 'Clinic (CCIM)',
-    [AssignmentType.ELECTIVE]: 'Elective',
-    [AssignmentType.VACATION]: 'Vacation',
-    [AssignmentType.WARDS_METRO]: 'Met Wards',
-    [AssignmentType.CARDS]: 'Cardiology',
-    [AssignmentType.ID]: 'Infectious Disease',
-    [AssignmentType.NEPH]: 'Nephrology',
-    [AssignmentType.PULM]: 'Pulmonology',
-    [AssignmentType.METRO_ICU]: 'Metro ICU',
-    [AssignmentType.ONC]: 'Heme/Onc',
-    [AssignmentType.NEURO]: 'Neurology',
-    [AssignmentType.RHEUM]: 'Rheumatology',
-    [AssignmentType.GI]: 'Gastroenterology',
-    [AssignmentType.ADD_MED]: 'Addiction Med',
-    [AssignmentType.ENDO]: 'Endocrinology',
-    [AssignmentType.GERI]: 'Geriatrics',
-    [AssignmentType.PALLIATIVE]: 'Palliative (HPC)',
-    [AssignmentType.NIMA_BLOCK]: 'NIMA',
-    [AssignmentType.RESEARCH]: 'Research',
-    [AssignmentType.CCMA]: 'CCMA',
-    [AssignmentType.HF]: 'Heart Failure',
-    [AssignmentType.AMCS_CONSULTS]: 'AMCS Consults',
-    [AssignmentType.ENT]: 'Otolaryngology',
-    [AssignmentType.PMNR]: 'Physical Medicine & Rehab',
-    [AssignmentType.ANAESTHESIA]: 'Anaesthesia',
-    [AssignmentType.NIMA_CLINIC]: 'NIMA (Clinic)',
-    [AssignmentType.JR_HOSPITALIST]: 'Junior Hospitalist',
+    ['RED']: 'Wards',
+    ['BLUE']: 'Wards Blue',
+    ['MICU']: 'ICU',
+    ['NF']: 'Night Float',
+    ['EM']: 'Emergency',
+    ['CCIM']: 'Clinic (CCIM)',
+    ['ELECTIVE']: 'Elective',
+    ['VAC']: 'Vacation',
+    ['METRO']: 'Met Wards',
+    ['Cards']: 'Cardiology',
+    ['ID']: 'Infectious Disease',
+    ['Neph']: 'Nephrology',
+    ['Pulm']: 'Pulmonology',
+    ['METRO_ICU']: 'Metro ICU',
+    ['Onc']: 'Heme/Onc',
+    ['Neuro']: 'Neurology',
+    ['Rheum']: 'Rheumatology',
+    ['GI']: 'Gastroenterology',
+    ['Add Med']: 'Addiction Med',
+    ['Endo']: 'Endocrinology',
+    ['Geri']: 'Geriatrics',
+    ['HPC']: 'Palliative (HPC)',
+    ['NIMA']: 'NIMA',
+    ['Research']: 'Research',
+    ['CCMA']: 'CCMA',
+    ['Heart Failure']: 'Heart Failure',
+    ['AMCS_CONSULTS']: 'AMCS Consults',
+    ['ENT']: 'Otolaryngology',
+    ['PMNR']: 'Physical Medicine & Rehab',
+    ['ANAESTHESIA']: 'Anaesthesia',
+    ['NIMA (Clinic)']: 'NIMA (Clinic)',
+    ['Jr Hosp']: 'Junior Hospitalist',
 };
 export const ASSIGNMENT_ABBREVIATIONS: Record<AssignmentType, string> = {
-    [AssignmentType.WARDS_RED]: 'W-RED',
-    [AssignmentType.WARDS_BLUE]: 'W-BLUE',
-    [AssignmentType.MICU]: 'ICU',
-    [AssignmentType.NIGHT_FLOAT]: 'NF',
-    [AssignmentType.EM]: 'EM',
-    [AssignmentType.CLINIC]: 'CCIM',
-    [AssignmentType.ELECTIVE]: 'ELEC',
-    [AssignmentType.VACATION]: 'VAC',
-    [AssignmentType.WARDS_METRO]: 'MET',
-    [AssignmentType.CARDS]: 'CARDS',
-    [AssignmentType.ID]: 'ID',
-    [AssignmentType.NEPH]: 'NEPH',
-    [AssignmentType.PULM]: 'PULM',
-    [AssignmentType.METRO_ICU]: 'METRO',
-    [AssignmentType.ONC]: 'ONC',
-    [AssignmentType.NEURO]: 'NEURO',
-    [AssignmentType.RHEUM]: 'RHEUM',
-    [AssignmentType.GI]: 'GI',
-    [AssignmentType.ADD_MED]: 'ADDM',
-    [AssignmentType.ENDO]: 'ENDO',
-    [AssignmentType.GERI]: 'GERI',
-    [AssignmentType.PALLIATIVE]: 'HPC',
-    [AssignmentType.NIMA_BLOCK]: 'NIMA',
-    [AssignmentType.RESEARCH]: 'RSCH',
-    [AssignmentType.CCMA]: 'CCMA',
-    [AssignmentType.HF]: 'HF',
-    [AssignmentType.AMCS_CONSULTS]: 'AMCS',
-    [AssignmentType.ENT]: 'ENT',
-    [AssignmentType.PMNR]: 'PMNR',
-    [AssignmentType.ANAESTHESIA]: 'ANES',
-    [AssignmentType.NIMA_CLINIC]: 'NIMA',
-    [AssignmentType.JR_HOSPITALIST]: 'JH',
+    ['RED']: 'W-RED',
+    ['BLUE']: 'W-BLUE',
+    ['MICU']: 'ICU',
+    ['NF']: 'NF',
+    ['EM']: 'EM',
+    ['CCIM']: 'CCIM',
+    ['ELECTIVE']: 'ELEC',
+    ['VAC']: 'VAC',
+    ['METRO']: 'MET',
+    ['Cards']: 'CARDS',
+    ['ID']: 'ID',
+    ['Neph']: 'NEPH',
+    ['Pulm']: 'PULM',
+    ['METRO_ICU']: 'METRO',
+    ['Onc']: 'ONC',
+    ['Neuro']: 'NEURO',
+    ['Rheum']: 'RHEUM',
+    ['GI']: 'GI',
+    ['Add Med']: 'ADDM',
+    ['Endo']: 'ENDO',
+    ['Geri']: 'GERI',
+    ['HPC']: 'HPC',
+    ['NIMA']: 'NIMA',
+    ['Research']: 'RSCH',
+    ['CCMA']: 'CCMA',
+    ['Heart Failure']: 'HF',
+    ['AMCS_CONSULTS']: 'AMCS',
+    ['ENT']: 'ENT',
+    ['PMNR']: 'PMNR',
+    ['ANAESTHESIA']: 'ANES',
+    ['NIMA (Clinic)']: 'NIMA',
+    ['Jr Hosp']: 'JH',
 };
 
 // Configuration of each rotation's constraints and metadata
 export const ROTATION_METADATA: Record<AssignmentType, RotationConfig> = {
-    [AssignmentType.MICU]: {
-        type: AssignmentType.MICU, label: 'ICU', category: 'ICU',
+    ['MICU']: {
+        type: 'MICU', label: 'ICU', category: 'ICU',
         intensity: 5, setting: ClinicalSetting.CRITICAL_CARE, duration: 4,
         minInterns: 2, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
         minWeeksIntern: 8, minWeeksSenior: 4
     },
-    [AssignmentType.WARDS_RED]: {
-        type: AssignmentType.WARDS_RED, label: 'Wards', category: 'Wards',
+    ['RED']: {
+        type: 'RED', label: 'Wards', category: 'Wards',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 1, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
         minWeeksIntern: 16, minWeeksPGY2: 12, minWeeksPGY3: 8 // PGY1: 16w, PGY2: 12w, PGY3: 8w
     },
-    [AssignmentType.WARDS_BLUE]: {
-        type: AssignmentType.WARDS_BLUE, label: 'Wards Blue', category: 'Wards',
+    ['BLUE']: {
+        type: 'BLUE', label: 'Wards Blue', category: 'Wards',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 1, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
     },
-    [AssignmentType.NIGHT_FLOAT]: {
-        type: AssignmentType.NIGHT_FLOAT, label: 'Night Float', category: 'Night Float',
+    ['NF']: {
+        type: 'NF', label: 'Night Float', category: 'Night Float',
         intensity: 4, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 1, maxInterns: 2, minSeniors: 1, maxSeniors: 2,
         minWeeksIntern: 4, minWeeksPGY2: 4, minWeeksPGY3: 4 // 4 weeks per year per proposal
     },
-    [AssignmentType.EM]: {
-        type: AssignmentType.EM, label: 'Emergency', category: 'Emergency',
+    ['EM']: {
+        type: 'EM', label: 'Emergency', category: 'Emergency',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 1, maxSeniors: 2,
         minWeeksIntern: 0, minWeeksPGY2: 2, minWeeksPGY3: 2 // Restricted to PGY2/3 per proposal
     },
-    [AssignmentType.CLINIC]: {
-        type: AssignmentType.CLINIC, label: 'Clinic', category: 'Clinic',
+    ['CCIM']: {
+        type: 'CCIM', label: 'Clinic', category: 'Clinic',
         intensity: 2, setting: ClinicalSetting.OUTPATIENT, duration: 1,
         minInterns: 0, maxInterns: 10, minSeniors: 0, maxSeniors: 10,
     },
-    [AssignmentType.WARDS_METRO]: {
-        type: AssignmentType.WARDS_METRO, label: 'Metro Wards', category: 'Wards',
+    ['METRO']: {
+        type: 'METRO', label: 'Metro Wards', category: 'Wards',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 1, maxInterns: 3, minSeniors: 1, maxSeniors: 2,
     },
-    [AssignmentType.CARDS]: {
-        type: AssignmentType.CARDS, label: 'Cardiology', category: 'Cardiology',
+    ['Cards']: {
+        type: 'Cards', label: 'Cardiology', category: 'Cardiology',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 1, minSeniors: 0, maxSeniors: 1,
         minWeeksIntern: 2, minWeeksPGY3: 2
     },
-    [AssignmentType.ID]: {
-        type: AssignmentType.ID, label: 'Infectious Disease', category: 'Infectious Disease',
+    ['ID']: {
+        type: 'ID', label: 'Infectious Disease', category: 'Infectious Disease',
         intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 1,
         minWeeksIntern: 2,
     },
-    [AssignmentType.NEPH]: {
-        type: AssignmentType.NEPH, label: 'Nephrology', category: 'Nephrology',
+    ['Neph']: {
+        type: 'Neph', label: 'Nephrology', category: 'Nephrology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 1,
         minWeeksIntern: 2, minWeeksPGY2: 0
     },
-    [AssignmentType.PULM]: {
-        type: AssignmentType.PULM, label: 'Pulmonology', category: 'Pulmonology',
+    ['Pulm']: {
+        type: 'Pulm', label: 'Pulmonology', category: 'Pulmonology',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
         minWeeksIntern: 2, minWeeksPGY2: 2
     },
-    [AssignmentType.ONC]: {
-        type: AssignmentType.ONC, label: 'Heme/Onc', category: 'Heme/Onc',
+    ['Onc']: {
+        type: 'Onc', label: 'Heme/Onc', category: 'Heme/Onc',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
         minWeeksPGY2: 0, minWeeksPGY3: 2 
     },
-    [AssignmentType.NEURO]: {
-        type: AssignmentType.NEURO, label: 'Neurology', category: 'Neurology',
+    ['Neuro']: {
+        type: 'Neuro', label: 'Neurology', category: 'Neurology',
         intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
         minWeeksPGY2: 2, // 2 weeks in PGY2
     },
-    [AssignmentType.RHEUM]: {
-        type: AssignmentType.RHEUM, label: 'Rheumatology', category: 'Rheumatology',
+    ['Rheum']: {
+        type: 'Rheum', label: 'Rheumatology', category: 'Rheumatology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 1,
         minWeeksPGY2: 2, minWeeksPGY3: 0,
     },
-    [AssignmentType.GI]: {
-        type: AssignmentType.GI, label: 'Gastroenterology', category: 'Gastroenterology',
+    ['GI']: {
+        type: 'GI', label: 'Gastroenterology', category: 'Gastroenterology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
         minWeeksPGY2: 2, // 2 weeks in PGY2
     },
-    [AssignmentType.ADD_MED]: {
-        type: AssignmentType.ADD_MED, label: 'Addiction Med', category: 'Addiction Medicine',
+    ['Add Med']: {
+        type: 'Add Med', label: 'Addiction Med', category: 'Addiction Medicine',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2, 
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
         minWeeksPGY3: 2,
     },
-    [AssignmentType.ENDO]: {
-        type: AssignmentType.ENDO, label: 'Endocrinology', category: 'Endocrinology',
+    ['Endo']: {
+        type: 'Endo', label: 'Endocrinology', category: 'Endocrinology',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2, 
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
         minWeeksPGY2: 2,
     },
-    [AssignmentType.GERI]: {
-        type: AssignmentType.GERI, label: 'Geriatrics', category: 'Geriatrics',
+    ['Geri']: {
+        type: 'Geri', label: 'Geriatrics', category: 'Geriatrics',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
         minWeeksPGY3: 2,
     },
-    [AssignmentType.PALLIATIVE]: {
-        type: AssignmentType.PALLIATIVE, label: 'Palliative Care', category: 'Palliative Care',
+    ['HPC']: {
+        type: 'HPC', label: 'Palliative Care', category: 'Palliative Care',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2, 
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
         minWeeksPGY3: 2,
     },
-    [AssignmentType.METRO_ICU]: {
-        type: AssignmentType.METRO_ICU, label: 'Metro ICU', category: 'ICU',
+    ['METRO_ICU']: {
+        type: 'METRO_ICU', label: 'Metro ICU', category: 'ICU',
         intensity: 5, setting: ClinicalSetting.CRITICAL_CARE, duration: 4,
         minInterns: 0, maxInterns: 3, minSeniors: 0, maxSeniors: 3,
     },
-    [AssignmentType.NIMA_BLOCK]: {
-        type: AssignmentType.NIMA_BLOCK, label: 'Primary Care', category: 'Senior Track',
+    ['NIMA']: {
+        type: 'NIMA', label: 'Primary Care', category: 'Senior Track',
         intensity: 2, setting: ClinicalSetting.OUTPATIENT, duration: 4,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
         minWeeksPGY3: 4,
     },
-    [AssignmentType.AMCS_CONSULTS]: {
-        type: AssignmentType.AMCS_CONSULTS, label: 'AMCS Consults',
+    ['AMCS_CONSULTS']: {
+        type: 'AMCS_CONSULTS', label: 'AMCS Consults',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
     },
-    [AssignmentType.CCMA]: {
-        type: AssignmentType.CCMA, label: 'CCMA',
+    ['CCMA']: {
+        type: 'CCMA', label: 'CCMA',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
     },
-    [AssignmentType.HF]: {
-        type: AssignmentType.HF, label: 'Heart Failure',
+    ['Heart Failure']: {
+        type: 'Heart Failure', label: 'Heart Failure',
         intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 2, minSeniors: 0, maxSeniors: 2,
     },
-    [AssignmentType.ENT]: {
-        type: AssignmentType.ENT, label: 'ENT',
+    ['ENT']: {
+        type: 'ENT', label: 'ENT',
         intensity: 1, setting: ClinicalSetting.OUTPATIENT, duration: 2,
         minInterns: 0, maxInterns: 1, minSeniors: 0, maxSeniors: 1,
     },
-    [AssignmentType.PMNR]: {
-        type: AssignmentType.PMNR, label: 'PMNR',
+    ['PMNR']: {
+        type: 'PMNR', label: 'PMNR',
         intensity: 2, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 1, minSeniors: 0, maxSeniors: 1,
     },
-    [AssignmentType.ANAESTHESIA]: {
-        type: AssignmentType.ANAESTHESIA, label: 'Anaesthesia',
+    ['ANAESTHESIA']: {
+        type: 'ANAESTHESIA', label: 'Anaesthesia',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 1, minSeniors: 0, maxSeniors: 1,
     },
-    [AssignmentType.RESEARCH]: {
-        type: AssignmentType.RESEARCH, label: 'Research',
+    ['Research']: {
+        type: 'Research', label: 'Research',
         intensity: 1, setting: ClinicalSetting.NON_CLINICAL, duration: 2,
         minInterns: 0, maxInterns: 10, minSeniors: 0, maxSeniors: 10,
     },
-    [AssignmentType.ELECTIVE]: {
-        type: AssignmentType.ELECTIVE, label: 'Elective',
+    ['ELECTIVE']: {
+        type: 'ELECTIVE', label: 'Elective',
         intensity: 1, setting: ClinicalSetting.INPATIENT, duration: 2,
         minInterns: 0, maxInterns: 20, minSeniors: 0, maxSeniors: 20,
     },
-    [AssignmentType.VACATION]: {
-        type: AssignmentType.VACATION, label: 'Vacation',
+    ['VAC']: {
+        type: 'VAC', label: 'Vacation',
         intensity: 0, setting: ClinicalSetting.NON_CLINICAL, duration: 1,
         minInterns: 0, maxInterns: 20, minSeniors: 0, maxSeniors: 20,
     },
-    [AssignmentType.JR_HOSPITALIST]: {
-        type: AssignmentType.JR_HOSPITALIST, label: 'Junior Hospitalist', category: 'Senior Track',
+    ['Jr Hosp']: {
+        type: 'Jr Hosp', label: 'Junior Hospitalist', category: 'Senior Track',
         intensity: 3, setting: ClinicalSetting.INPATIENT, duration: 4,
         minInterns: 0, maxInterns: 0, minSeniors: 0, maxSeniors: 2,
         minWeeksPGY3: 4
     },
 
-    [AssignmentType.NIMA_CLINIC]: {
-        type: AssignmentType.NIMA_CLINIC, label: 'NIMA Clinic',
+    ['NIMA (Clinic)']: {
+        type: 'NIMA (Clinic)', label: 'NIMA Clinic',
         intensity: 2, setting: ClinicalSetting.OUTPATIENT, duration: 1,
         minInterns: 0, maxInterns: 10, minSeniors: 0, maxSeniors: 10,
     },
 };
 
 export const ACGME_TYPES = [
-    AssignmentType.WARDS_RED,
-    AssignmentType.MICU,
-    AssignmentType.EM,
-    AssignmentType.CARDS,
-    AssignmentType.ID,
-    AssignmentType.NEPH,
-    AssignmentType.PULM,
-    AssignmentType.ONC,
-    AssignmentType.NEURO,
-    AssignmentType.RHEUM,
-    AssignmentType.GI,
-    AssignmentType.ENDO,
-    AssignmentType.GERI
+    'RED',
+    'MICU',
+    'EM',
+    'Cards',
+    'ID',
+    'Neph',
+    'Pulm',
+    'Onc',
+    'Neuro',
+    'Rheum',
+    'GI',
+    'Endo',
+    'Geri'
 ];
 
 export const MHS_TYPES = [
-    AssignmentType.NIGHT_FLOAT,
-    AssignmentType.ADD_MED,
-    AssignmentType.PALLIATIVE,
-    AssignmentType.NIMA_BLOCK,
-    AssignmentType.JR_HOSPITALIST
+    'NF',
+    'Add Med',
+    'HPC',
+    'NIMA',
+    'Jr Hosp'
 ];
 
 // Consistent order for requirement columns in UI
@@ -591,21 +591,21 @@ export const REQUIREMENTS: Record<number, { type: AssignmentType, label: string,
 
 // Classification helpers
 export const CORE_TYPES = Object.keys(ROTATION_METADATA).filter(k =>
-    [AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE, AssignmentType.MICU, AssignmentType.NIGHT_FLOAT, AssignmentType.EM, AssignmentType.CLINIC].includes(k as AssignmentType)
+    ['RED', 'BLUE', 'MICU', 'NF', 'EM', 'CCIM'].includes(k as AssignmentType)
 ) as AssignmentType[];
 
 export const REQUIRED_TYPES = [
-    AssignmentType.CARDS, AssignmentType.ID, AssignmentType.NEPH, AssignmentType.PULM,
-    AssignmentType.ONC, AssignmentType.NEURO, AssignmentType.RHEUM, AssignmentType.GI,
-    AssignmentType.ADD_MED, AssignmentType.ENDO, AssignmentType.GERI, AssignmentType.PALLIATIVE,
-    AssignmentType.NIMA_BLOCK
+    'Cards', 'ID', 'Neph', 'Pulm',
+    'Onc', 'Neuro', 'Rheum', 'GI',
+    'Add Med', 'Endo', 'Geri', 'HPC',
+    'NIMA'
 ];
 
 export const ELECTIVE_TYPES = [
-    AssignmentType.ELECTIVE, AssignmentType.RESEARCH, AssignmentType.HF, AssignmentType.CCMA, AssignmentType.ENT, AssignmentType.PMNR
+    'ELECTIVE', 'Research', 'Heart Failure', 'CCMA', 'ENT', 'PMNR'
 ];
 
-export const VACATION_TYPE = AssignmentType.VACATION;
+export const VACATION_TYPE = 'VAC';
 export const fulfillsRequirement = (assigned: AssignmentType | null, required: AssignmentType): boolean => {
     if (!assigned) return false;
     if (assigned === required) return true;

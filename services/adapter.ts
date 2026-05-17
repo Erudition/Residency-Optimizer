@@ -1,13 +1,13 @@
-import { Resident, ScheduleGrid, AssignmentType, AdaptationParams, ScheduleCell } from '../types';
+import { Resident, ScheduleGrid, AssignmentType, CODENAMES, AdaptationParams, ScheduleCell } from '../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS } from '../constants';
 
 // Helper to check if a cell is modifiable based on settings
 const isModifiable = (cell: ScheduleCell, params: AdaptationParams): boolean => {
     if (cell.locked) return false;
     if (cell.assignment === null) return true;
-    if (cell.assignment === AssignmentType.ELECTIVE) return true;
-    if (params.allowResearchOverride && cell.assignment === AssignmentType.RESEARCH) return true;
-    if (params.allowVacationOverride && cell.assignment === AssignmentType.VACATION) return true;
+    if (cell.assignment === 'ELECTIVE') return true;
+    if (params.allowResearchOverride && cell.assignment === 'Research') return true;
+    if (params.allowVacationOverride && cell.assignment === 'VAC') return true;
     return false;
 };
 
@@ -83,7 +83,7 @@ export const adaptSchedule = (
     // Preference: Lower level residents first (PGY1 > PGY2 > PGY3)
     if (params.fixUnderstaffing) {
         for (let w = 0; w < totalWeeks; w++) {
-            const types = Object.values(AssignmentType);
+            const types = Object.values(CODENAMES);
             for (const type of types) {
                 const meta = ROTATION_METADATA[type];
                 if (!meta) continue;
@@ -147,7 +147,7 @@ export const adaptSchedule = (
     // Preference: Lower level residents first.
     if (params.fixOverstaffing) {
         for (let w = 0; w < totalWeeks; w++) {
-            const types = Object.values(AssignmentType);
+            const types = Object.values(CODENAMES);
             for (const type of types) {
                 const meta = ROTATION_METADATA[type];
                 if (!meta) continue;
@@ -163,7 +163,7 @@ export const adaptSchedule = (
                     
                     for (const cand of candidates) {
                         if (excess <= 0) break;
-                        schedule[cand.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                        schedule[cand.id][w] = { assignment: 'ELECTIVE', locked: false };
                         plannedChanges.push(`Moved ${cand.name} from ${meta.label} to Elective (W${w+1})`);
                         excess--;
                         changes++;
@@ -182,7 +182,7 @@ export const adaptSchedule = (
                     
                     for (const cand of candidates) {
                         if (excess <= 0) break;
-                        schedule[cand.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                        schedule[cand.id][w] = { assignment: 'ELECTIVE', locked: false };
                         plannedChanges.push(`Moved ${cand.name} from ${meta.label} to Elective (W${w+1})`);
                         excess--;
                         changes++;

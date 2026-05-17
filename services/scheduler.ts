@@ -1,5 +1,5 @@
 import { RequirementsEngine } from './requirementsEngine';
-import { CompetitionParams, CompetitionPriority, Resident, PgyLevel, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting, DetailedScore } from '../types';
+import { CompetitionParams, CompetitionPriority, Resident, PgyLevel, ScheduleGrid, ScheduleHistory, AssignmentType, CODENAMES, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting, DetailedScore } from '../types';
 import { TOTAL_WEEKS, COHORT_COUNT, ROTATION_METADATA, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, REQUIREMENTS, fulfillsRequirement, ACTIVE_START_YEAR, ACGME_TYPES } from '../constants';
 import { getRequirementCount, getCumulativeRequirementCount, getYearRequirementCount, getStandardCohortMap } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
@@ -324,7 +324,7 @@ export const calculateStats = (residents: Resident[], schedule: ScheduleGrid): S
   const safeGrid = schedule || {};
   residents.forEach(r => {
     stats[r.id] = {} as Record<AssignmentType, number>;
-    Object.values(AssignmentType).forEach(t => stats[r.id][t] = 0);
+    Object.values(CODENAMES).forEach(t => stats[r.id][t] = 0);
     (safeGrid[r.id] || []).forEach(cell => { if (cell && cell.assignment) stats[r.id][cell.assignment]++; });
   });
   return stats;
@@ -345,12 +345,12 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   
   for (let week = 0; week < totalWeeks; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
-    const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC || a === AssignmentType.NIMA_CLINIC).length;
+    const clinicCount = assignments.filter(a => a === 'CCIM' || a === 'NIMA (Clinic)').length;
     if (clinicCount === 0) {
-      violations.push({ week, type: AssignmentType.CLINIC, issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + currentYear, instances: 1 });
+      violations.push({ week, type: 'CCIM', issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
 
-    Object.values(AssignmentType).forEach(type => {
+    Object.values(CODENAMES).forEach(type => {
       const meta = ROTATION_METADATA[type];
       if (!meta) return;
 
@@ -372,7 +372,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       }
     });
     // T6.2: Jeopardy Pool Monitoring
-    const flexibleAssigns = [...ELECTIVE_TYPES, AssignmentType.AMCS_CONSULTS];
+    const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS_CONSULTS'];
     const jeopardyPgy2 = residents.filter(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       const assign = safeGrid[r.id]?.[week]?.assignment;
@@ -386,10 +386,10 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     }).length;
 
     if (jeopardyPgy2 < 1) {
-      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
+      violations.push({ week, type: 'ELECTIVE', issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
     if (jeopardyPgy3 < 1) {
-      violations.push({ week, type: AssignmentType.ELECTIVE, issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
+      violations.push({ week, type: 'ELECTIVE', issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
   }
 
@@ -409,19 +409,19 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       if (!RequirementsEngine.isClinicSiteCorrect(r, assign)) {
         violations.push({
           week,
-          type: AssignmentType.CLINIC,
+          type: 'CCIM',
           issue: `Clinic site mismatch for resident ${r.name}: assigned ${assign} but requires ${r.startYear === 2025 ? 'NIMA' : 'CCIM'}`,
           year: Math.floor(week / 52) + currentYear
         });
       }
 
       // T6.4: PTO Policy Validator
-      if (assign === AssignmentType.VACATION) {
+      if (assign === 'VAC') {
         // Prevent vacation on +1 clinic weeks
         if (week % 5 === cohort) {
           violations.push({
             week,
-            type: AssignmentType.VACATION,
+            type: 'VAC',
             issue: `Vacation Policy: Vacation prohibited during +1 clinic week for ${r.name}`,
             year: Math.floor(week / 52) + currentYear
           });
@@ -432,7 +432,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
         if (blackoutWeeks.includes(week % 52)) {
           violations.push({
             week,
-            type: AssignmentType.VACATION,
+            type: 'VAC',
             issue: `Vacation Policy: Vacation prohibited during blackout week ${week % 52 + 1} for ${r.name}`,
             year: Math.floor(week / 52) + currentYear
           });
@@ -448,21 +448,21 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       const blockWeeks = Array.from({ length: 4 }, (_, i) => start + i);
       const assignmentsInBlock = blockWeeks.map(w => safeGrid[r.id]?.[w]?.assignment);
 
-      const hasVacation = assignmentsInBlock.includes(AssignmentType.VACATION);
+      const hasVacation = assignmentsInBlock.includes('VAC');
       const hasCore = assignmentsInBlock.some(a => a && [
-        AssignmentType.WARDS_RED,
-        AssignmentType.WARDS_BLUE,
-        AssignmentType.WARDS_METRO,
-        AssignmentType.MICU,
-        AssignmentType.METRO_ICU
+        'RED',
+        'BLUE',
+        'METRO',
+        'MICU',
+        'METRO_ICU'
       ].includes(a));
 
       if (hasVacation && hasCore) {
-        const vacWeekIndex = blockWeeks.find(w => safeGrid[r.id]?.[w]?.assignment === AssignmentType.VACATION);
+        const vacWeekIndex = blockWeeks.find(w => safeGrid[r.id]?.[w]?.assignment === 'VAC');
         const weekNum = vacWeekIndex !== undefined ? vacWeekIndex : start;
         violations.push({
           week: weekNum,
-          type: AssignmentType.VACATION,
+          type: 'VAC',
           issue: `Vacation Policy: Vacation prohibited inside core Wards/ICU block for ${r.name}`,
           year: Math.floor(weekNum / 52) + currentYear
         });
@@ -490,7 +490,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     if (seniorFlexibleCount === 0) {
       violations.push({
         week,
-        type: AssignmentType.ELECTIVE,
+        type: 'ELECTIVE',
         issue: `Jeopardy Gap: No senior residents available on flexible time`,
         year: Math.floor(week / 52) + currentYear
       });
@@ -525,11 +525,11 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
                 if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
                 if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
                     totalCriticalCare++;
-                    if (c.assignment !== AssignmentType.AMCS_CONSULTS) {
+                    if (c.assignment !== 'AMCS_CONSULTS') {
                         criticalCareCore++;
                     }
                 }
-                if (c.assignment === AssignmentType.NIGHT_FLOAT) nightFloat++;
+                if (c.assignment === 'NF') nightFloat++;
             });
         });
 
@@ -574,7 +574,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
         if (ELECTIVE_TYPES.includes(c.assignment)) elec++;
         if (REQUIRED_TYPES.includes(c.assignment)) req++;
         if (c.assignment === VACATION_TYPE) vac++;
-        if (c.assignment === AssignmentType.NIGHT_FLOAT) nf++;
+        if (c.assignment === 'NF') nf++;
         intensity += m.intensity;
 
         // Streak logic
@@ -644,13 +644,13 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
   residents.forEach(r => {
     const partners = new Set<string>();
     const clinicalTypes = [
-      AssignmentType.WARDS_RED,
-      AssignmentType.WARDS_BLUE,
-      AssignmentType.MICU,
-      AssignmentType.NIGHT_FLOAT,
-      AssignmentType.EM,
-      AssignmentType.WARDS_METRO,
-      AssignmentType.JR_HOSPITALIST
+      'RED',
+      'BLUE',
+      'MICU',
+      'NF',
+      'EM',
+      'METRO',
+      'Jr Hosp'
     ];
 
     for (let w = 0; w < TOTAL_WEEKS; w++) {
@@ -726,12 +726,12 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
   for (let week = 0; week < totalWeeks; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
-    const clinicCount = assignments.filter(a => a === AssignmentType.CLINIC || a === AssignmentType.NIMA_CLINIC).length;
+    const clinicCount = assignments.filter(a => a === 'CCIM' || a === 'NIMA (Clinic)').length;
     
     staffingDenominator += 1;
     staffingNumerator += clinicCount >= 1 ? 1 : 0;
 
-    Object.values(AssignmentType).forEach(type => {
+    Object.values(CODENAMES).forEach(type => {
       const meta = ROTATION_METADATA[type];
       if (!meta) return;
 
@@ -806,7 +806,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       staffingDenominator += 1;
       staffingNumerator += RequirementsEngine.isClinicSiteCorrect(r, assign) ? 1 : 0;
 
-      if (assign === AssignmentType.VACATION) {
+      if (assign === 'VAC') {
         staffingDenominator += 1;
         staffingNumerator += (week % 5 !== cohort) ? 1 : 0;
 
@@ -823,13 +823,13 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       const blockWeeks = Array.from({ length: 4 }, (_, i) => start + i);
       const assignmentsInBlock = blockWeeks.map(w => safeGrid[r.id]?.[w]?.assignment);
 
-      const hasVacation = assignmentsInBlock.includes(AssignmentType.VACATION);
+      const hasVacation = assignmentsInBlock.includes('VAC');
       const hasCore = assignmentsInBlock.some(a => a && [
-        AssignmentType.WARDS_RED,
-        AssignmentType.WARDS_BLUE,
-        AssignmentType.WARDS_METRO,
-        AssignmentType.MICU,
-        AssignmentType.METRO_ICU
+        'RED',
+        'BLUE',
+        'METRO',
+        'MICU',
+        'METRO_ICU'
       ].includes(a));
 
       if (hasCore) {
@@ -854,7 +854,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       const intensity = ROTATION_METADATA[assign]?.intensity || 0;
       actualTotalIntensity += intensity;
 
-      if (assign === AssignmentType.CLINIC || assign === AssignmentType.NIMA_CLINIC || assign === AssignmentType.VACATION) {
+      if (assign === 'CCIM' || assign === 'NIMA (Clinic)' || assign === 'VAC') {
         minPossibleIntensity += intensity;
         maxPossibleIntensity += intensity;
       } else {
@@ -905,13 +905,13 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
     const partners = new Set<string>();
     const clinicalTypes = [
-      AssignmentType.WARDS_RED,
-      AssignmentType.WARDS_BLUE,
-      AssignmentType.MICU,
-      AssignmentType.NIGHT_FLOAT,
-      AssignmentType.EM,
-      AssignmentType.WARDS_METRO,
-      AssignmentType.JR_HOSPITALIST
+      'RED',
+      'BLUE',
+      'MICU',
+      'NF',
+      'EM',
+      'METRO',
+      'Jr Hosp'
     ];
 
     for (let w = 0; w < totalWeeks; w++) {
@@ -977,7 +977,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
         if (!c || !c.assignment) return;
         if (CORE_TYPES.includes(c.assignment)) coreCount++;
         if (ELECTIVE_TYPES.includes(c.assignment)) electiveCount++;
-        if (c.assignment === AssignmentType.VACATION) vacationCount++;
+        if (c.assignment === 'VAC') vacationCount++;
       });
 
       return (electiveCount + vacationCount) - coreCount;

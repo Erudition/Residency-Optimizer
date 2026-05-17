@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const historicalDataPath = path.join(__dirname, '../specification/historical_schedules_grid_v2.json');
 const historicalData = JSON.parse(fs.readFileSync(historicalDataPath, 'utf8'));
 
-const VALID_ASSIGNMENTS = Object.values(AssignmentType) as string[];
+const VALID_ASSIGNMENTS = Object.values(CODENAMES) as string[];
 
 // Legacy mappings that we expect and handle in historyPreloader.ts
 const LEGACY_MAPPING: Record<string, string> = {

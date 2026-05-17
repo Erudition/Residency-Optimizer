@@ -1,4 +1,4 @@
-import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, CODENAMES, ScheduleGenerator } from '../../types';
 import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
 
 import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount, getPriorRequirementCount, getStandardCohortMap, getCohortAtWeek } from './utils';
@@ -55,7 +55,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
-                    const weeklyClinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                    const weeklyClinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }
@@ -72,25 +72,25 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 const reqs = seededShuffle(REQUIREMENTS[level as 1|2|3] || []);
                 // Sort by duration descending, then by capacity ascending (harder rotations first)
                 const criticalPriority: AssignmentType[] = [
-                    AssignmentType.MICU,
-                    AssignmentType.WARDS_RED,
-                    AssignmentType.WARDS_BLUE,
-                    AssignmentType.WARDS_METRO,
-                    AssignmentType.GERI,
-                    AssignmentType.EM,
-                    AssignmentType.JR_HOSPITALIST,
-                    AssignmentType.PALLIATIVE,
-                    AssignmentType.ADD_MED,
-                    AssignmentType.NIMA_BLOCK,
-                    AssignmentType.CARDS,
-                    AssignmentType.ID,
-                    AssignmentType.NEPH,
-                    AssignmentType.PULM,
-                    AssignmentType.ONC,
-                    AssignmentType.NEURO,
-                    AssignmentType.RHEUM,
-                    AssignmentType.GI,
-                    AssignmentType.ENDO
+                    'MICU',
+                    'RED',
+                    'BLUE',
+                    'METRO',
+                    'Geri',
+                    'EM',
+                    'Jr Hosp',
+                    'HPC',
+                    'Add Med',
+                    'NIMA',
+                    'Cards',
+                    'ID',
+                    'Neph',
+                    'Pulm',
+                    'Onc',
+                    'Neuro',
+                    'Rheum',
+                    'GI',
+                    'Endo'
                 ];
 
                 reqs.sort((a, b) => {
@@ -112,7 +112,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 });
 
                 reqs.forEach(req => {
-                    const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
+                    const compatibleTypes = Object.values(CODENAMES).filter(t => fulfillsRequirement(t, req.type));
                     
                     seededShuffle(residents.filter(r => {
                         const currentLevel = r.level + yIdx;
@@ -180,16 +180,16 @@ export const EducationFirstGenerator: ScheduleGenerator = {
 
         // 3. Staffing Sweep (Foundation) - Mandatory Minima
         const criticalTypes = [
-            AssignmentType.MICU,
-            AssignmentType.WARDS_RED,
-            AssignmentType.WARDS_BLUE,
-            AssignmentType.NIGHT_FLOAT,
-            AssignmentType.EM,
-            AssignmentType.WARDS_METRO,
-            AssignmentType.JR_HOSPITALIST,
-            AssignmentType.CARDS,
-            AssignmentType.NEPH,
-            AssignmentType.ID
+            'MICU',
+            'RED',
+            'BLUE',
+            'NF',
+            'EM',
+            'METRO',
+            'Jr Hosp',
+            'Cards',
+            'Neph',
+            'ID'
         ];
 
         for (let w = 0; w < totalWeeks; w++) {
@@ -250,7 +250,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
             const end = r.activeWeekEnd ?? totalWeeks;
             for (let w = start; w < end; w++) {
                 if (!newSchedule[r.id][w]?.assignment) {
-                    newSchedule[r.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                    newSchedule[r.id][w] = { assignment: 'ELECTIVE', locked: false };
                 }
             }
         });

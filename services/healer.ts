@@ -1,4 +1,4 @@
-import { ScheduleGrid, AssignmentType, Resident, ScheduleCell } from '../types';
+import { ScheduleGrid, AssignmentType, CODENAMES, Resident, ScheduleCell } from '../types';
 import { ROTATION_METADATA, REQUIREMENTS } from '../constants';
 import { canFitBlock, getAssignedCount, getYearRequirementCount } from './generators/utils';
 import { getWeeklyViolations } from './scheduler';
@@ -15,7 +15,7 @@ const getLevelAtWeek = (r: Resident, week: number, gridStartYear: number): numbe
 
 const hasStaffingViolationInWindow = (schedule: ScheduleGrid, residents: Resident[], startWeek: number, duration: number, gridStartYear: number): boolean => {
     for (let w = startWeek; w < startWeek + duration; w++) {
-        const violated = Object.values(AssignmentType).some(type => {
+        const violated = Object.values(CODENAMES).some(type => {
             const meta = ROTATION_METADATA[type];
             if (!meta) return false;
 
@@ -54,7 +54,7 @@ export const healSchedule = async (
     // T6.5: Deficit Recovery for split blocks (NEURO, GI, PULM)
     residents.forEach(r => {
         const rViolations = RequirementsEngine.getViolations(residents, currentSchedule, historicalSchedules, gridStartYear)
-            .filter(v => v.residentId === r.id && [AssignmentType.NEURO, AssignmentType.GI, AssignmentType.PULM].includes(v.type));
+            .filter(v => v.residentId === r.id && ['Neuro', 'GI', 'Pulm'].includes(v.type));
         
         rViolations.forEach(v => {
             const deficit = v.minWeeks - v.actual;
@@ -64,7 +64,7 @@ export const healSchedule = async (
             
             for (let w = start; w < end && recovered < deficit; w++) {
                 const cell = currentSchedule[r.id]?.[w];
-                if (cell && cell.assignment === AssignmentType.ELECTIVE && !cell.locked) {
+                if (cell && cell.assignment === 'ELECTIVE' && !cell.locked) {
                     cell.assignment = v.type;
                     recovered++;
                 }

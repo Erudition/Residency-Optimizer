@@ -117,7 +117,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                     if (row[w].locked) continue;
                     if (!row[w].assignment) {
                         const pgy = getPgyAtWeek(r, w);
-                        const weeklyClinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                        const weeklyClinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
                         newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                         updateCounts(r.id, r.level, w, weeklyClinicType, 1);
                     }
@@ -127,13 +127,13 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
         // 2. Sequential Temporal Placement
         const criticalStaffingTypes = [
-            AssignmentType.MICU,
-            AssignmentType.WARDS_RED,
-            AssignmentType.WARDS_BLUE,
-            AssignmentType.NIGHT_FLOAT,
-            AssignmentType.EM,
-            AssignmentType.WARDS_METRO,
-            AssignmentType.JR_HOSPITALIST
+            'MICU',
+            'RED',
+            'BLUE',
+            'NF',
+            'EM',
+            'METRO',
+            'Jr Hosp'
         ];
 
         for (let w = 0; w < totalWeeks; w++) {
@@ -207,7 +207,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             const row = newSchedule[r.id];
             for (let w = 0; w < row.length; w++) {
                 if (isResidentActive(r, w) && !row[w]?.assignment) {
-                    row[w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                    row[w] = { assignment: 'ELECTIVE', locked: false };
                 }
             }
         });

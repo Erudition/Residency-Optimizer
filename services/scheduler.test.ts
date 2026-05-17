@@ -29,8 +29,8 @@ describe('Schedule Generator', () => {
     });
 
     it('should respect locked blocks (Vacations)', () => {
-        expect(schedule[lockedResId][11].assignment).toBe(AssignmentType.VACATION);
-        expect(schedule[lockedResId][12].assignment).toBe(AssignmentType.VACATION);
+        expect(schedule[lockedResId][11].assignment).toBe('VAC');
+        expect(schedule[lockedResId][12].assignment).toBe('VAC');
     });
 
     it('should enforce 4+1 Clinic weeks (Cohort rule)', () => {
@@ -40,7 +40,7 @@ describe('Schedule Generator', () => {
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % 5 === cohort) {
                     const assignment = weeks[w].assignment;
-                    expect([AssignmentType.CLINIC, AssignmentType.NIMA_CLINIC, AssignmentType.VACATION]).toContain(assignment);
+                    expect(['CCIM', 'NIMA (Clinic)', 'VAC']).toContain(assignment);
                 }
             }
         });
@@ -60,26 +60,26 @@ describe('Schedule Generator', () => {
             const assignments = schedule[r.id].map(w => w.assignment);
             
             // Check for Cards (2 weeks)
-            expect(assignments.filter(a => a === AssignmentType.CARDS).length).toBeGreaterThanOrEqual(2);
+            expect(assignments.filter(a => a === 'Cards').length).toBeGreaterThanOrEqual(2);
 
             // Check for Wards Red/Blue/Met/Jr Hosp (Total 8+ weeks)
             const wards = assignments.filter(a => 
-                a === AssignmentType.WARDS_RED || 
-                a === AssignmentType.WARDS_BLUE || 
-                a === AssignmentType.WARDS_METRO ||
-                a === AssignmentType.JR_HOSPITALIST
+                a === 'RED' || 
+                a === 'BLUE' || 
+                a === 'METRO' ||
+                a === 'Jr Hosp'
             ).length;
             expect(wards).toBeGreaterThanOrEqual(8);
 
             // Check for ICU (4 weeks)
-            const icu = assignments.filter(a => a === AssignmentType.MICU || a === AssignmentType.METRO_ICU).length;
+            const icu = assignments.filter(a => a === 'MICU' || a === 'METRO_ICU').length;
             expect(icu).toBeGreaterThanOrEqual(4);
 
             // Check for Night Float (2 weeks minimum per metadata)
-            expect(assignments.filter(a => a === AssignmentType.NIGHT_FLOAT).length).toBeGreaterThanOrEqual(2);
+            expect(assignments.filter(a => a === 'NF').length).toBeGreaterThanOrEqual(2);
 
             // Check for ID/Neph/Pulm (2 weeks each)
-            expect(assignments.filter(a => a === AssignmentType.ID).length).toBeGreaterThanOrEqual(2);
+            expect(assignments.filter(a => a === 'ID').length).toBeGreaterThanOrEqual(2);
         });
     });
 

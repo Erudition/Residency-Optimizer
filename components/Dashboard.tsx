@@ -14,31 +14,31 @@ const getHighChromaColor = (type: AssignmentType): string => {
   
   let intensity = 1;
   switch (type) {
-    case AssignmentType.MICU:
-    case AssignmentType.METRO_ICU:
+    case 'MICU':
+    case 'METRO_ICU':
       intensity = 5;
       break;
-    case AssignmentType.WARDS_RED:
-    case AssignmentType.NIGHT_FLOAT:
+    case 'RED':
+    case 'NF':
       intensity = 4;
       break;
-    case AssignmentType.WARDS_BLUE:
-    case AssignmentType.EM:
-    case AssignmentType.WARDS_METRO:
-    case AssignmentType.AMCS_CONSULTS:
-    case AssignmentType.CCMA:
-    case AssignmentType.ANAESTHESIA:
-    case AssignmentType.JR_HOSPITALIST:
+    case 'BLUE':
+    case 'EM':
+    case 'METRO':
+    case 'AMCS_CONSULTS':
+    case 'CCMA':
+    case 'ANAESTHESIA':
+    case 'Jr Hosp':
       intensity = 3;
       break;
-    case AssignmentType.CLINIC:
-    case AssignmentType.NIMA_CLINIC:
-    case AssignmentType.CARDS:
-    case AssignmentType.NIMA_BLOCK:
-    case AssignmentType.PMNR:
+    case 'CCIM':
+    case 'NIMA (Clinic)':
+    case 'Cards':
+    case 'NIMA':
+    case 'PMNR':
       intensity = 2;
       break;
-    case AssignmentType.VACATION:
+    case 'VAC':
       intensity = 0;
       break;
     default:
@@ -59,37 +59,37 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
     return {
       name: r.name,
       pgy: `PGY${r.level}`,
-      [AssignmentType.WARDS_RED]: s[AssignmentType.WARDS_RED] || 0,
-      [AssignmentType.WARDS_BLUE]: s[AssignmentType.WARDS_BLUE] || 0,
-      [AssignmentType.MICU]: s[AssignmentType.MICU] || 0,
-      [AssignmentType.NIGHT_FLOAT]: s[AssignmentType.NIGHT_FLOAT] || 0,
-      [AssignmentType.EM]: s[AssignmentType.EM] || 0,
-      [AssignmentType.CLINIC]: s[AssignmentType.CLINIC] || 0,
-      [AssignmentType.ELECTIVE]: s[AssignmentType.ELECTIVE] || 0,
-      [AssignmentType.VACATION]: s[AssignmentType.VACATION] || 0,
-      [AssignmentType.WARDS_METRO]: s[AssignmentType.WARDS_METRO] || 0,
-      [AssignmentType.CARDS]: s[AssignmentType.CARDS] || 0,
-      [AssignmentType.ID]: s[AssignmentType.ID] || 0,
-      [AssignmentType.NEPH]: s[AssignmentType.NEPH] || 0,
-      [AssignmentType.PULM]: s[AssignmentType.PULM] || 0,
-      [AssignmentType.METRO_ICU]: s[AssignmentType.METRO_ICU] || 0,
-      [AssignmentType.ONC]: s[AssignmentType.ONC] || 0,
-      [AssignmentType.NEURO]: s[AssignmentType.NEURO] || 0,
-      [AssignmentType.RHEUM]: s[AssignmentType.RHEUM] || 0,
-      [AssignmentType.GI]: s[AssignmentType.GI] || 0,
+      ['RED']: s['RED'] || 0,
+      ['BLUE']: s['BLUE'] || 0,
+      ['MICU']: s['MICU'] || 0,
+      ['NF']: s['NF'] || 0,
+      ['EM']: s['EM'] || 0,
+      ['CCIM']: s['CCIM'] || 0,
+      ['ELECTIVE']: s['ELECTIVE'] || 0,
+      ['VAC']: s['VAC'] || 0,
+      ['METRO']: s['METRO'] || 0,
+      ['Cards']: s['Cards'] || 0,
+      ['ID']: s['ID'] || 0,
+      ['Neph']: s['Neph'] || 0,
+      ['Pulm']: s['Pulm'] || 0,
+      ['METRO_ICU']: s['METRO_ICU'] || 0,
+      ['Onc']: s['Onc'] || 0,
+      ['Neuro']: s['Neuro'] || 0,
+      ['Rheum']: s['Rheum'] || 0,
+      ['GI']: s['GI'] || 0,
 
-      [AssignmentType.ADD_MED]: s[AssignmentType.ADD_MED] || 0,
-      [AssignmentType.ENDO]: s[AssignmentType.ENDO] || 0,
-      [AssignmentType.GERI]: s[AssignmentType.GERI] || 0,
-      [AssignmentType.PALLIATIVE]: s[AssignmentType.PALLIATIVE] || 0,
+      ['Add Med']: s['Add Med'] || 0,
+      ['Endo']: s['Endo'] || 0,
+      ['Geri']: s['Geri'] || 0,
+      ['HPC']: s['HPC'] || 0,
 
-      [AssignmentType.RESEARCH]: s[AssignmentType.RESEARCH] || 0,
-      [AssignmentType.CCMA]: s[AssignmentType.CCMA] || 0,
-      [AssignmentType.HF]: s[AssignmentType.HF] || 0,
-      [AssignmentType.AMCS_CONSULTS]: s[AssignmentType.AMCS_CONSULTS] || 0,
-      [AssignmentType.ENT]: s[AssignmentType.ENT] || 0,
-      [AssignmentType.PMNR]: s[AssignmentType.PMNR] || 0,
-      [AssignmentType.JR_HOSPITALIST]: s[AssignmentType.JR_HOSPITALIST] || 0,
+      ['Research']: s['Research'] || 0,
+      ['CCMA']: s['CCMA'] || 0,
+      ['Heart Failure']: s['Heart Failure'] || 0,
+      ['AMCS_CONSULTS']: s['AMCS_CONSULTS'] || 0,
+      ['ENT']: s['ENT'] || 0,
+      ['PMNR']: s['PMNR'] || 0,
+      ['Jr Hosp']: s['Jr Hosp'] || 0,
     };
   }), [residents, stats]);
 
@@ -124,39 +124,39 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
                 cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
                 wrapperStyle={{ zIndex: 100 }}
               />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_RED} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_RED)} name="Wards Red" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_BLUE} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_BLUE)} name="Wards Blue" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.MICU} stackId="a" fill={getHighChromaColor(AssignmentType.MICU)} name="ICU" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.NIGHT_FLOAT} stackId="a" fill={getHighChromaColor(AssignmentType.NIGHT_FLOAT)} name="Night Float" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.EM} stackId="a" fill={getHighChromaColor(AssignmentType.EM)} name="EM" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.CLINIC} stackId="a" fill={getHighChromaColor(AssignmentType.CLINIC)} name="Clinic" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.CARDS} stackId="a" fill={getHighChromaColor(AssignmentType.CARDS)} name="Cardiology" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.ID} stackId="a" fill={getHighChromaColor(AssignmentType.ID)} name="Inf. Disease" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.NEPH} stackId="a" fill={getHighChromaColor(AssignmentType.NEPH)} name="Nephrology" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.PULM} stackId="a" fill={getHighChromaColor(AssignmentType.PULM)} name="Pulmonology" />
+              <Bar isAnimationActive={false} dataKey={'RED'} stackId="a" fill={getHighChromaColor('RED')} name="Wards Red" />
+              <Bar isAnimationActive={false} dataKey={'BLUE'} stackId="a" fill={getHighChromaColor('BLUE')} name="Wards Blue" />
+              <Bar isAnimationActive={false} dataKey={'MICU'} stackId="a" fill={getHighChromaColor('MICU')} name="ICU" />
+              <Bar isAnimationActive={false} dataKey={'NF'} stackId="a" fill={getHighChromaColor('NF')} name="Night Float" />
+              <Bar isAnimationActive={false} dataKey={'EM'} stackId="a" fill={getHighChromaColor('EM')} name="EM" />
+              <Bar isAnimationActive={false} dataKey={'CCIM'} stackId="a" fill={getHighChromaColor('CCIM')} name="Clinic" />
+              <Bar isAnimationActive={false} dataKey={'Cards'} stackId="a" fill={getHighChromaColor('Cards')} name="Cardiology" />
+              <Bar isAnimationActive={false} dataKey={'ID'} stackId="a" fill={getHighChromaColor('ID')} name="Inf. Disease" />
+              <Bar isAnimationActive={false} dataKey={'Neph'} stackId="a" fill={getHighChromaColor('Neph')} name="Nephrology" />
+              <Bar isAnimationActive={false} dataKey={'Pulm'} stackId="a" fill={getHighChromaColor('Pulm')} name="Pulmonology" />
 
-              <Bar isAnimationActive={false} dataKey={AssignmentType.METRO_ICU} stackId="a" fill={getHighChromaColor(AssignmentType.METRO_ICU)} name="Metro ICU" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.ONC} stackId="a" fill={getHighChromaColor(AssignmentType.ONC)} name="Heme/Onc" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.NEURO} stackId="a" fill={getHighChromaColor(AssignmentType.NEURO)} name="Neurology" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.RHEUM} stackId="a" fill={getHighChromaColor(AssignmentType.RHEUM)} name="Rheumatology" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.GI} stackId="a" fill={getHighChromaColor(AssignmentType.GI)} name="GI" />
+              <Bar isAnimationActive={false} dataKey={'METRO_ICU'} stackId="a" fill={getHighChromaColor('METRO_ICU')} name="Metro ICU" />
+              <Bar isAnimationActive={false} dataKey={'Onc'} stackId="a" fill={getHighChromaColor('Onc')} name="Heme/Onc" />
+              <Bar isAnimationActive={false} dataKey={'Neuro'} stackId="a" fill={getHighChromaColor('Neuro')} name="Neurology" />
+              <Bar isAnimationActive={false} dataKey={'Rheum'} stackId="a" fill={getHighChromaColor('Rheum')} name="Rheumatology" />
+              <Bar isAnimationActive={false} dataKey={'GI'} stackId="a" fill={getHighChromaColor('GI')} name="GI" />
 
-              <Bar isAnimationActive={false} dataKey={AssignmentType.ADD_MED} stackId="a" fill={getHighChromaColor(AssignmentType.ADD_MED)} name="Addiction Med" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.ENDO} stackId="a" fill={getHighChromaColor(AssignmentType.ENDO)} name="Endocrinology" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.GERI} stackId="a" fill={getHighChromaColor(AssignmentType.GERI)} name="Geriatrics" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.PALLIATIVE} stackId="a" fill={getHighChromaColor(AssignmentType.PALLIATIVE)} name="Palliative" />
+              <Bar isAnimationActive={false} dataKey={'Add Med'} stackId="a" fill={getHighChromaColor('Add Med')} name="Addiction Med" />
+              <Bar isAnimationActive={false} dataKey={'Endo'} stackId="a" fill={getHighChromaColor('Endo')} name="Endocrinology" />
+              <Bar isAnimationActive={false} dataKey={'Geri'} stackId="a" fill={getHighChromaColor('Geri')} name="Geriatrics" />
+              <Bar isAnimationActive={false} dataKey={'HPC'} stackId="a" fill={getHighChromaColor('HPC')} name="Palliative" />
 
-              <Bar isAnimationActive={false} dataKey={AssignmentType.RESEARCH} stackId="a" fill={getHighChromaColor(AssignmentType.RESEARCH)} name="Research" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.CCMA} stackId="a" fill={getHighChromaColor(AssignmentType.CCMA)} name="CCMA" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.HF} stackId="a" fill={getHighChromaColor(AssignmentType.HF)} name="Heart Failure" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.AMCS_CONSULTS} stackId="a" fill={getHighChromaColor(AssignmentType.AMCS_CONSULTS)} name="AMCS Consults" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.ENT} stackId="a" fill={getHighChromaColor(AssignmentType.ENT)} name="ENT" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.PMNR} stackId="a" fill={getHighChromaColor(AssignmentType.PMNR)} name="PMNR" />
+              <Bar isAnimationActive={false} dataKey={'Research'} stackId="a" fill={getHighChromaColor('Research')} name="Research" />
+              <Bar isAnimationActive={false} dataKey={'CCMA'} stackId="a" fill={getHighChromaColor('CCMA')} name="CCMA" />
+              <Bar isAnimationActive={false} dataKey={'Heart Failure'} stackId="a" fill={getHighChromaColor('Heart Failure')} name="Heart Failure" />
+              <Bar isAnimationActive={false} dataKey={'AMCS_CONSULTS'} stackId="a" fill={getHighChromaColor('AMCS_CONSULTS')} name="AMCS Consults" />
+              <Bar isAnimationActive={false} dataKey={'ENT'} stackId="a" fill={getHighChromaColor('ENT')} name="ENT" />
+              <Bar isAnimationActive={false} dataKey={'PMNR'} stackId="a" fill={getHighChromaColor('PMNR')} name="PMNR" />
 
-              <Bar isAnimationActive={false} dataKey={AssignmentType.ELECTIVE} stackId="a" fill={getHighChromaColor(AssignmentType.ELECTIVE)} name="Elective" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.VACATION} stackId="a" fill={getHighChromaColor(AssignmentType.VACATION)} name="Vacation" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.WARDS_METRO} stackId="a" fill={getHighChromaColor(AssignmentType.WARDS_METRO)} name="Metro Wards" />
-              <Bar isAnimationActive={false} dataKey={AssignmentType.JR_HOSPITALIST} stackId="a" fill={getHighChromaColor(AssignmentType.JR_HOSPITALIST)} name="Jr Hospitalist" />
+              <Bar isAnimationActive={false} dataKey={'ELECTIVE'} stackId="a" fill={getHighChromaColor('ELECTIVE')} name="Elective" />
+              <Bar isAnimationActive={false} dataKey={'VAC'} stackId="a" fill={getHighChromaColor('VAC')} name="Vacation" />
+              <Bar isAnimationActive={false} dataKey={'METRO'} stackId="a" fill={getHighChromaColor('METRO')} name="Metro Wards" />
+              <Bar isAnimationActive={false} dataKey={'Jr Hosp'} stackId="a" fill={getHighChromaColor('Jr Hosp')} name="Jr Hospitalist" />
 
             </BarChart>
           </ResponsiveContainer>

@@ -29,7 +29,7 @@ const test = async () => {
         const pgy2s = residents.filter(r => r.level === 2);
         for (const r of pgy2s) {
             const row = schedule[r.id];
-            const wardsCount = row.filter(c => c.assignment === AssignmentType.WARDS_RED || c.assignment === AssignmentType.WARDS_BLUE || c.assignment === AssignmentType.WARDS_METRO).length;
+            const wardsCount = row.filter(c => c.assignment === 'RED' || c.assignment === 'BLUE' || c.assignment === 'METRO').length;
             if (wardsCount < 8) {
                 failures++;
                 console.log(`Requirement Violation for ${r.id} in attempt ${i}: Wards=${wardsCount}`);

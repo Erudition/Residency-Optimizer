@@ -23,47 +23,49 @@ export interface Resident {
   cohort?: number; // 4+1 cycle assignment (0-4)
 }
 
-export enum AssignmentType {
-  WARDS_RED = 'RED',
-  WARDS_BLUE = 'BLUE',
-  WARDS_METRO = 'METRO',
-  MICU = 'MICU',
-  METRO_ICU = 'METRO_ICU',
-  AMCS_CONSULTS = 'AMCS_CONSULTS',
-  NIGHT_FLOAT = 'NF',
-  EM = 'EM',
-  CLINIC = 'CCIM',
-  NIMA_BLOCK = 'NIMA',
-  ELECTIVE = 'ELECTIVE',
-  VACATION = 'VAC',
+export const CODENAMES = {
+  WARDS_RED: 'RED',
+  WARDS_BLUE: 'BLUE',
+  WARDS_METRO: 'METRO',
+  MICU: 'MICU',
+  METRO_ICU: 'METRO_ICU',
+  AMCS_CONSULTS: 'AMCS_CONSULTS',
+  NIGHT_FLOAT: 'NF',
+  EM: 'EM',
+  CLINIC: 'CCIM',
+  NIMA_BLOCK: 'NIMA',
+  ELECTIVE: 'ELECTIVE',
+  VACATION: 'VAC',
 
   // PGY1 Required Electives
-  CARDS = 'Cards',
-  ID = 'ID',
-  NEPH = 'Neph',
-  PULM = 'Pulm',
+  CARDS: 'Cards',
+  ID: 'ID',
+  NEPH: 'Neph',
+  PULM: 'Pulm',
 
   // PGY2 Required Rotations
-  ONC = 'Onc',
-  NEURO = 'Neuro',
-  RHEUM = 'Rheum',
-  GI = 'GI',
+  ONC: 'Onc',
+  NEURO: 'Neuro',
+  RHEUM: 'Rheum',
+  GI: 'GI',
 
-  ADD_MED = 'Add Med',
-  ENDO = 'Endo',
-  GERI = 'Geri',
-  PALLIATIVE = 'HPC', // Hospice & Palliative Care
-  JR_HOSPITALIST = 'Jr Hosp',
+  ADD_MED: 'Add Med',
+  ENDO: 'Endo',
+  GERI: 'Geri',
+  PALLIATIVE: 'HPC', // Hospice & Palliative Care
+  JR_HOSPITALIST: 'Jr Hosp',
 
   // Voluntary / Other Electives (Available to all years)
-  RESEARCH = 'Research',
-  CCMA = 'CCMA',
-  HF = 'Heart Failure',
-  ENT = 'ENT',
-  PMNR = 'PMNR',
-  ANAESTHESIA = 'ANAESTHESIA',
-  NIMA_CLINIC = 'NIMA (Clinic)',
-}
+  RESEARCH: 'Research',
+  CCMA: 'CCMA',
+  HF: 'Heart Failure',
+  ENT: 'ENT',
+  PMNR: 'PMNR',
+  ANAESTHESIA: 'ANAESTHESIA',
+  NIMA_CLINIC: 'NIMA (Clinic)',
+} as const;
+
+export type AssignmentType = string; // (typeof CODENAMES)[keyof typeof CODENAMES];
 export interface ScheduleCell {
   assignment: AssignmentType;
   locked: boolean; // If manually set, don't overwrite

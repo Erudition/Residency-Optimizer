@@ -52,7 +52,7 @@ export const getPriorRequirementCount = (
 
 export const getCumulativeRequirementCount = (residentId: string, currentYearRow: ScheduleCell[], type: AssignmentType, priorRequirementCounts?: Record<string, Record<string, number>>): number => {
     let count = getRequirementCount(currentYearRow, type);
-    if (type === AssignmentType.NIGHT_FLOAT) {
+    if (type === 'NF') {
         return count;
     }
     if (priorRequirementCounts && priorRequirementCounts[residentId]) {
