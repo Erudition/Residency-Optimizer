@@ -274,12 +274,9 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     onDoubleClick={() => !isReadOnly && onLockResident(resident.id)}
                     title={isReadOnly ? undefined : `Double-click to toggle lock for ${resident.name}`}
                   >
-                    <div className="flex flex-col truncate">
+                    <div className="flex flex-col truncate justify-center">
                       <span className="flex items-center gap-2 truncate" title={resident.name}>
                         {resident.name}
-                      </span>
-                      <span className="text-xs text-muted truncate">
-                        PGY-{resident.level} • Cohort {cohortAssignments ? String.fromCharCode(65 + (cohortAssignments[resident.id] ?? 0)) : 'N/A'}
                       </span>
                     </div>
                   </td>

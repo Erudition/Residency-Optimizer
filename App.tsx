@@ -42,7 +42,6 @@ import { ResidentAssignmentsStats } from './components/ResidentAssignmentsStats'
 import { FairnessStats } from './components/FairnessStats';
 import { RequirementsStats } from './components/RequirementsStats';
 import { ScheduleComparison } from './components/ScheduleComparison';
-import { ACGMEAudit } from './components/ACGMEAudit';
 import { CompetitorStudio } from './components/CompetitorStudio';
 import { CohortKanban } from './components/CohortKanban';
 import { GenerationDashboard } from './components/GenerationDashboard';
@@ -466,7 +465,7 @@ const AppContent: React.FC = () => {
     };
   }, [programData.historicalSchedules, programData.historicalCohorts]);
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts' | 'totals'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts' | 'totals'>('schedule');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'residents' | 'backup' | 'reset'>('residents');
   
@@ -604,11 +603,7 @@ const AppContent: React.FC = () => {
   const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
     setViewMode(mode);
     if (mode === 'unified') {
-      if (['cohorts', 'coworking', 'fairness', 'acgme_requirements', 'workload'].includes(activeTab)) {
-        setActiveTab('schedule');
-      }
-    } else {
-      if (activeTab === 'audit') {
+      if (['cohorts', 'coworking', 'fairness', 'workload'].includes(activeTab)) {
         setActiveTab('schedule');
       }
     }
@@ -734,18 +729,13 @@ const AppContent: React.FC = () => {
            clinicType: r.startYear === 2025 ? 'NIMA' : 'CCIM',
            cohort: (activeSchedule?.cohortAssignments?.[startYear] || historicalCohortsByYear[startYear] || {})[r.id] ?? 0
        })).sort((a, b) => {
-           if (residentSortOrder === 'cohort') {
-               if (a.cohort !== b.cohort) return a.cohort - b.cohort;
-               if (a.level !== b.level) return a.level - b.level;
-               return a.name.localeCompare(b.name);
-           } else {
-               if (a.level !== b.level) return a.level - b.level;
-               return a.name.localeCompare(b.name);
-           }
+           if (a.startYear !== b.startYear) return a.startYear - b.startYear;
+           if (a.cohort !== b.cohort) return a.cohort - b.cohort;
+           return a.name.localeCompare(b.name);
        });
     }
     return activeResidents;
-  }, [viewMode, activeSchedule, residents, activeResidents, residentSortOrder, historicalCohortsByYear]);
+  }, [viewMode, activeSchedule, residents, activeResidents, historicalCohortsByYear]);
 
   const { stats, violations, fairness } = useMemo(() => {
     if ((!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') && !isHistoricalYear) {
@@ -1884,15 +1874,14 @@ const AppContent: React.FC = () => {
           {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
           <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
           <NavButton id="totals" label={viewMode === 'unified' ? "Totals 3yr" : "Totals"} icon={Users} />
-          {viewMode === 'unified' ? (
+          <NavButton 
+            id="requirements" 
+            label={viewMode === 'unified' ? "Requirements 3yr" : "Requirements"} 
+            icon={ClipboardList} 
+            badgeCount={violations.reqs.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} 
+          />
+          {viewMode !== 'unified' && (
             <>
-              <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
-              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'mhs').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
-            </>
-          ) : (
-            <>
-              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'acgme').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
-              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'mhs').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
               <NavButton id="cohorts" label="Cohorts" icon={Users} />
               <NavButton id="coworking" label="Coworking" icon={Network} />
               <NavButton id="fairness" label="Fairness" icon={Scale} />
@@ -2005,27 +1994,29 @@ const AppContent: React.FC = () => {
                   <div className="px-6 py-3 bg-white border-b flex items-center justify-between shrink-0">
                     {/* Left: Group By */}
                     <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
-                        <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
-                          <Button
-                            variant="ghost"
-                            onClick={() => setResidentSortOrder('pgy')}
-                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                          >
-                            <LayoutGrid size={14} />
-                            PGY Level
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={() => setResidentSortOrder('cohort')}
-                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                          >
-                            <Users size={14} />
-                            Cohort
-                          </Button>
+                      {viewMode !== 'unified' && (
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
+                          <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
+                            <Button
+                              variant="ghost"
+                              onClick={() => setResidentSortOrder('pgy')}
+                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                            >
+                              <LayoutGrid size={14} />
+                              PGY Level
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={() => setResidentSortOrder('cohort')}
+                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                            >
+                              <Users size={14} />
+                              Cohort
+                            </Button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
 
@@ -2084,27 +2075,16 @@ const AppContent: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'acgme_requirements' && (
-                <div className="flex-1 overflow-y-auto p-6 bg-light-1">
-                  <div className="max-w-6xl mx-auto">
-                    <RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} />
-                  </div>
+              {activeTab === 'requirements' && (
+                <div className="flex-1 overflow-hidden">
+                  <RequirementsStats
+                    residents={viewMode === 'unified' ? displayResidents : activeResidents}
+                    schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                    history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
+                    activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
+                  />
                 </div>
               )}
-              {activeTab === 'mhs_requirements' && (
-                <div className="flex-1 overflow-y-auto p-6 bg-light-1">
-                  <div className="max-w-6xl mx-auto">
-                    <RequirementsStats
-                      mode="mhs"
-                      residents={viewMode === 'unified' ? displayResidents : activeResidents}
-                      schedule={viewMode === 'unified' ? displayGrid : currentGrid}
-                      history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
-                      activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
-                    />
-                  </div>
-                </div>
-              )}
-              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} /></div>}
               {activeTab === 'cohorts' && (
                 <div className="flex-1 overflow-hidden">
                   <CohortKanban
