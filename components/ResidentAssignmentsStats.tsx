@@ -90,7 +90,11 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
       });
 
       const resSchedule = schedule[r.id] || [];
+      const activeStart = r.activeWeekStart ?? 0;
+      const activeEnd = r.activeWeekEnd ?? resSchedule.length;
       resSchedule.forEach((weekObj, weekIdx) => {
+        // Skip weeks where this resident is not active (multi-year unified grids)
+        if (weekIdx < activeStart || weekIdx >= activeEnd) return;
         const type = weekObj?.assignment;
         if (type && counts[r.id][type]) {
           counts[r.id][type].count++;

@@ -81,6 +81,11 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
 
     for (let w = 0; w < totalWeeks; w++) {
       residents.forEach(r => {
+        // Skip weeks where this resident is not active (multi-year unified grids)
+        const start = r.activeWeekStart ?? 0;
+        const end = r.activeWeekEnd ?? totalWeeks;
+        if (w < start || w >= end) return;
+
         const type = schedule[r.id]?.[w]?.assignment;
         if (type && d[type]) {
           d[type][w] = [...(d[type][w] || []), r];
@@ -106,15 +111,22 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
     const meta = rotations.get(type);
     if (!meta) return null;
 
+    // Filter to only residents active at this week (already filtered in data, but tooltip calls this too)
+    const activeAssignees = assignees.filter(r => {
+      const start = r.activeWeekStart ?? 0;
+      const end = r.activeWeekEnd ?? totalWeeks;
+      return weekIdx >= start && weekIdx < end;
+    });
+
     const firstRes = residents.find(res => res.startYear && res.startYear > 0);
     const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
-    const getPgy = (res: Resident) => {
+    const getPgy = (res: Resident): number => {
       const startYear = res.startYear > 0 ? res.startYear : gridStartYear - Number(res.level) + 1;
       return gridStartYear - startYear + 1 + Math.floor(weekIdx / 52);
     };
 
-    const interns = assignees.filter(r => getPgy(r) === 1).length;
-    const seniors = assignees.filter(r => getPgy(r) > 1).length;
+    const interns = activeAssignees.filter(r => getPgy(r) === 1).length;
+    const seniors = activeAssignees.filter(r => getPgy(r) > 1).length;
 
     if (interns < meta.minInterns) return `Min Interns (${meta.minInterns}) unmet: ${interns}`;
     if (interns > meta.maxInterns) return `Max Interns (${meta.maxInterns}) exceeded: ${interns}`;
