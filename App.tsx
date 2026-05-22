@@ -2092,8 +2092,9 @@ const App: React.FC = () => {
       .catch(err => {
         clearTimeout(slowTimer);
         const message = err instanceof Error ? err.message : String(err);
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
         if (message.includes('fetch') || message.includes('network') || message.includes('ECONNREFUSED') || message.includes('Failed')) {
-          setLoadError(`Could not connect to the CMS backend.\n\nThe API at ${import.meta.env.VITE_API_URL || 'http://localhost:3000'} is not responding.\nMake sure the backend server is running.`);
+          setLoadError(`Could not reach the CMS backend at ${apiUrl}.\n\nPossible causes:\n• The backend server is not running\n• A CORS policy is blocking the request (check the browser console)\n• The API URL is incorrect`);
         } else {
           setLoadError(message);
         }
