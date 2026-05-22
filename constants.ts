@@ -69,7 +69,7 @@ export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
 };
 
 export const CORE_TYPES: AssignmentType[] = ['W-RED', 'W-BLUE', 'ICU', 'NF', 'EM', 'CCIM'];
-export const REQUIRED_TYPES: AssignmentType[] = ['CARDS', 'ID', 'NEPH', 'PULM', 'ONC', 'NEURO', 'RHEUM', 'GI', 'ADDM', 'ENDO', 'GERI', 'HPC', 'NIMA'];
+export const REQUIRED_TYPES: AssignmentType[] = ['CARDS', 'ID', 'NEPH', 'PULM', 'ONC', 'NEURO', 'RHEUM', 'GI', 'ADDM', 'ENDO', 'GERI', 'HPC', 'PC-NIMA'];
 export const ELECTIVE_TYPES: AssignmentType[] = ['ELEC', 'RSCH', 'HF', 'CCMA', 'ENT', 'PMNR'];
 export const VACATION_TYPE: AssignmentType = 'VAC';
 export const ACGME_TYPES: AssignmentType[] = ['W-RED', 'ICU', 'EM', 'CARDS', 'ID', 'NEPH', 'PULM', 'ONC', 'NEURO', 'RHEUM', 'GI', 'ENDO', 'GERI'];

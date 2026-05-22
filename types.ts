@@ -34,7 +34,7 @@ export const CODENAMES = {
   NIGHT_FLOAT: 'NF',
   EM: 'EM',
   CLINIC: 'CCIM',
-  NIMA_BLOCK: 'NIMA',
+  PC_NIMA: 'PC-NIMA',
   ELECTIVE: 'ELEC',
   VACATION: 'VAC',
 
@@ -63,7 +63,7 @@ export const CODENAMES = {
   ENT: 'ENT',
   PMNR: 'PMNR',
   ANAESTHESIA: 'ANES',
-  NIMA: 'NIMA',
+  NIMA_CLINIC: 'NIMA',
 } as const;
 
 export type AssignmentType = string; // (typeof CODENAMES)[keyof typeof CODENAMES];

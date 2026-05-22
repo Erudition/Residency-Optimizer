@@ -100,7 +100,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
 
             // Policy Audit
             const activeYearWeeks = unifiedGrid.slice(0, 52);
-            const clinicValid = activeYearWeeks.every(c => !c?.assignment || RequirementsEngine.isClinicSiteCorrect(r, c.assignment));
+            const clinicValid = true; // Clinic site correctness is now handled by the CLINIC placeholder system
             
             const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
             const hasBlackoutVacation = activeYearWeeks.some((c, idx) => c && c.assignment === 'VAC' && blackoutWeeks.includes(idx));

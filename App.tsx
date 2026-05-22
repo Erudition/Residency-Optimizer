@@ -12,8 +12,10 @@ import {
   ScheduleSession
 } from './types';
 import {
-  ACTIVE_START_YEAR, TOTAL_WEEKS
+  TOTAL_WEEKS
 } from './constants';
+import { deriveActiveStartYear } from './services/programDataUtils';
+const ACTIVE_START_YEAR = deriveActiveStartYear();
 import { 
   generateSchedule, 
   calculateStats, 
