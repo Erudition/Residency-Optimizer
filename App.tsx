@@ -560,10 +560,13 @@ const AppContent: React.FC = () => {
       
       Object.keys(baseHistory)?.forEach(resId => {
         augmentedData[resId] = (baseHistory[resId] || []).map((cell, idx) => {
-          if (!cell) return { assignment: null, locked: idx <= lockedUntil };
+          // Null (unassigned) and placeholder slots remain editable even in
+          // past weeks, so admins can resolve them retroactively.
+          const isEditable = !cell?.assignment || programData.placeholderCodenames.has(cell.assignment);
+          if (!cell) return { assignment: null, locked: isEditable ? false : idx <= lockedUntil };
           return {
             ...cell,
-            locked: !!cell.locked || idx <= lockedUntil
+            locked: isEditable ? false : (!!cell.locked || idx <= lockedUntil)
           };
         });
       });
@@ -580,7 +583,7 @@ const AppContent: React.FC = () => {
       } as any;
     }
     return schedules.find(s => s.id === activeScheduleId);
-  }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear]);
+  }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear, programData.placeholderCodenames]);
   
   const [viewMode, setViewMode] = useState<'singleYear' | 'unified'>('singleYear');
 

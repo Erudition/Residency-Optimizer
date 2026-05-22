@@ -286,8 +286,12 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   {WEEKS.map((w, idx) => {
                     const cell = residentSchedule[idx];
                     const assign = cell?.assignment;
-                    const isPast = isReadOnly || isPastWeek(w, startYear);
+                    const weekIsPast = isReadOnly || isPastWeek(w, startYear);
                     const rotation = assign ? programData.rotations.get(assign) : undefined;
+                    // Null (unassigned) and placeholder slots remain editable
+                    // even in past weeks, so admins can resolve them retroactively.
+                    const isEditable = !assign || programData.placeholderCodenames.has(assign);
+                    const isPast = isEditable ? false : weekIsPast;
                     const intensity = rotation?.intensity ?? 1;
                     const bgHex = assign ? getAssignmentColor(rotation?.color || 0, intensity, isPast) : '#ffffff';
 
@@ -331,7 +335,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           }}
                           onMouseEnter={(e) => assign && !isOutOfBounds && handleMouseEnter(e, resident, idx, assign)}
                           onMouseLeave={handleMouseLeave}
-                          title={isOutOfBounds ? "Outside residency period" : (isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock"))}
+                          title={isOutOfBounds ? "Outside residency period" : (isEditable ? "Click to resolve" : (isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock")))}
                           disabled={isOutOfBounds}
                         >
                           {assign && !isOutOfBounds ? (

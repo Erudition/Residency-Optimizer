@@ -367,14 +367,19 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
 
       if (!historicalSchedules[year]) historicalSchedules[year] = {}
       if (!historicalSchedules[year][residentId]) {
+        // Null slots are always unlocked — they represent missing data that
+        // can be resolved after the fact, even in completed historical years.
         historicalSchedules[year][residentId] = Array.from({ length: 52 }, () => ({
           assignment: null as any,
-          locked: isFullyCompleted,
+          locked: false,
         }))
       }
+      // Placeholder rotations (e.g. unspecified ELEC) remain unlocked so
+      // admins can resolve them to the actual elective retroactively.
+      const isPlaceholder = placeholderCodenames.has(codename)
       historicalSchedules[year][residentId][weekIndex] = {
         assignment: codename,
-        locked: isFullyCompleted || assign.locked,
+        locked: isPlaceholder ? false : (isFullyCompleted || assign.locked),
       }
     }
   }
