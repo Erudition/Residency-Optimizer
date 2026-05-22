@@ -6,13 +6,16 @@
 import type { ProgramData } from './api/client'
 
 /**
- * Derives the active academic start year from the current date.
- * Academic years start in July, so if it's July or later, the start year is the current calendar year.
- * If it's before July, the start year is the previous calendar year.
+ * Derives the active academic year key from the current date.
+ * In this codebase, the year key is the ending calendar year of the academic year
+ * (e.g. AY 2025-26 → key 2026). Academic years start in July, so:
+ * - July 2025 onwards → key 2026 (AY 2025-26)
+ * - Before July 2026 → key 2026 (still AY 2025-26)
+ * - July 2026 onwards → key 2027 (AY 2026-27)
  */
 export function deriveActiveStartYear(): number {
   const now = new Date()
-  return now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+  return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
 }
 
 /** All rotation codenames known to the program. */
