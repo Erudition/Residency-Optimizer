@@ -8,6 +8,9 @@ A Payload CMS backend lives in a sibling repo at `/home/adroit/Projects/residenc
 ### API Integration
 The frontend communicates with the backend via **GraphQL** (Payload's built-in endpoint at `/api/graphql`). TypeScript types are auto-generated from the Payload schema using `graphql-codegen`. **No hardcoded program data in the frontend** — all rotations, residents, requirements, staffing preferences, and cycle configurations come from the API. CORS is configured to allow `https://erudition.github.io` and `localhost:5173`.
 
+### Automated Staffing Configuration Generation
+When creating or editing a rotation in the Payload admin panel, defining a range of interns and seniors (e.g. Min Interns to Max Interns and Min Seniors to Max Seniors) in a staffing configuration block triggers a backend hook that automatically pre-populates all valid combination permutations as ranked preferences in the database (ordered by increasing total resource intensity). This eliminates the need to manually enter every permutation.
+
 ### Rotation Identity
 The `codename` field on Rotations is the universal identifier used across both repos. Codenames are short abbreviations (e.g., `CCIM`, `NIMA`, `ICU`) displayed directly in the schedule grid — there is no separate display abbreviation. The frontend's `AssignmentType` enum is being replaced with runtime strings matching these codenames. **Format constraint:** codenames must be ≤8 characters and consist only of capital letters (`A-Z`) and dashes (`-`). This is enforced by backend validation.
 
