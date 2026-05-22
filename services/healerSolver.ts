@@ -70,7 +70,9 @@ export const healer: HealerSolver = {
             flexibleWeeks[r.id] = []; isFlexible[r.id] = Array(totalWeeks).fill(false);
             for (let w = 0; w < totalWeeks; w++) {
                 const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                if (w >= start && w < end && w % programData.cycleConfig.cohortCount !== cohort && !(existingSchedule?.[r.id]?.[w]?.locked)) {
+                const { Y, Z } = programData.cycleConfig;
+                const isClinic = Math.floor((w % Z) / Y) === cohort;
+                if (w >= start && w < end && !isClinic && !(existingSchedule?.[r.id]?.[w]?.locked)) {
                     flexibleWeeks[r.id].push(w);
                     isFlexible[r.id][w] = true;
                 }
@@ -78,7 +80,7 @@ export const healer: HealerSolver = {
         });
 
         const W_STAFFING = 10000000, W_JEOPARDY = 5000000, W_REQUIREMENT = 25000, W_CONTINUITY = 1000;
-        const TOTAL_CYCLES = Math.floor((totalWeeks - 1) / programData.cycleConfig.cohortCount) + 1;
+        const TOTAL_CYCLES = Math.floor((totalWeeks - 1) / programData.cycleConfig.Z) + 1;
 
         const firstRes = residents.find(res => res.startYear && res.startYear > 0);
         const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : ACTIVE_START_YEAR;
@@ -143,9 +145,9 @@ export const healer: HealerSolver = {
         };
 
         const getCycleCont = (rId: string, sched: ScheduleGrid, cycle: number): number => {
-            const start = cycle * programData.cycleConfig.cohortCount;
+            const start = cycle * programData.cycleConfig.Z;
             let lastA: string | null = null, changes = 0;
-            for (let i = 0; i < programData.cycleConfig.cohortCount; i++) {
+            for (let i = 0; i < programData.cycleConfig.Z; i++) {
                 const w = start + i;
                 if (w >= totalWeeks) continue;
                 const a = sched[rId]?.[w]?.assignment;
@@ -161,7 +163,9 @@ export const healer: HealerSolver = {
             }
             for (let w = 0; w < totalWeeks; w++) {
                 if (!currentSchedule[r.id][w] || currentSchedule[r.id][w].assignment === null) {
-                    const isClinic = w % programData.cycleConfig.cohortCount === getCohortAtWeek(r, w, validCohortAssignments);
+                    const cohort = getCohortAtWeek(r, w, validCohortAssignments);
+                    const { Y, Z } = programData.cycleConfig;
+                    const isClinic = Math.floor((w % Z) / Y) === cohort;
                     if (isClinic) {
                         const clinicType = 'CLINIC';
                         currentSchedule[r.id][w] = { assignment: clinicType, locked: true };
@@ -269,7 +273,7 @@ export const healer: HealerSolver = {
 
             const oldWPs = blockWeeks.map(w => weekPenaltyCache[w]);
             const oldRP = resReqPenaltyCache[r.id];
-            const affectedCycles = Array.from(new Set(blockWeeks.map(w => Math.floor(w / programData.cycleConfig.cohortCount))));
+            const affectedCycles = Array.from(new Set(blockWeeks.map(w => Math.floor(w / programData.cycleConfig.Z))));
             const oldCPs = affectedCycles.map(c => resContCache[r.id][c]);
 
             blockWeeks.forEach((w, i) => {
