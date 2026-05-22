@@ -1,7 +1,7 @@
 import { Resident, AssignmentType } from './types';
 
 export const TOTAL_WEEKS = 52;
-export const ACTIVE_START_YEAR = 2026;
+export const ACTIVE_START_YEAR = 2025;
 export const COHORT_COUNT = 5;
 
 export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {

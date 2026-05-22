@@ -84,7 +84,7 @@ import {
 
 
 
-const APP_DATA_VERSION = 4;
+const APP_DATA_VERSION = 5; // Bumped: year keys changed from ending-year to start-year convention
 
 const loadState = <T,>(key: string, fallback: T): T => {
   try {
