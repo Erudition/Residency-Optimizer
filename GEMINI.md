@@ -127,3 +127,16 @@ The `Schedules` collection stores both candidate and historical schedules in the
 *   **Promotion trigger** — when the PD exports or shares a schedule, the export dialog includes a defaulted-on checkbox: *"Set as official schedule for AY [year]?"*. Checking it copies year 1's assignments into a locked historical `Schedule` and sets `canonicalSchedule`. This piggybacks on the PD's natural workflow (generate → review → export) rather than requiring a separate finalization ceremony.
 *   **Access control** — historical schedules (those referenced by `canonicalSchedule`) have all assignments marked `locked: true`. Only super-admins can unlock/edit them. Candidate schedules are editable by anyone with `manageSchedules` access.
 *   **Conflict resolution** — if multiple candidates are exported with the checkbox, the latest one wins (overwrites the canonical pointer). A warning is shown if an existing canonical schedule would be replaced.
+
+## Realtime Schedule Sync
+Candidate schedules are synchronized between multiple frontend clients and the Payload backend using **Server-Sent Events (SSE)** for push notifications and **GraphQL mutations** for writes.
+
+*   **Architecture** — Writes go through GraphQL mutations (individual cell upserts or bulk saves). The backend broadcasts SSE events to all connected clients via `afterChange` hooks on `Schedules` and `ScheduleAssignments` collections.
+*   **SSE Endpoint** — `GET /api/schedules/stream/:candidateId` maintains persistent `text/event-stream` connections per candidate ID. Each client generates a unique `clientId` to deduplicate its own echoed events.
+*   **Bulk Endpoint** — `POST /api/schedules/bulk` creates a Schedule with all assignments in one request, bypassing individual `afterChange` hooks and broadcasting a single `bulk-sync` event.
+*   **Frontend Service** — `services/api/sync.ts` exports `ScheduleSyncService` (singleton via `getScheduleSyncService()`). It manages EventSource connections, debounced cell upserts (300ms), transparent candidate auto-creation, and exponential-backoff reconnection.
+*   **Offline-first** — The app works fully without a backend. localStorage remains as a fallback cache. Backend sync is opportunistic.
+*   **Identity Mapping** — Schedules have a frontend `id` (string, e.g. `sched-...`) and an optional `backendId` (Payload Schedule doc ID). Unauthenticated users can generate and interact with schedules locally without ever touching the backend.
+*   **Candidate Transparency** — `Candidates` are internal backend groupings (3-year planning horizons). Users never see or manage them directly — the sync service auto-creates them on first save via `ensureCandidate()`.
+*   **Conflict Resolution** — Last-write-wins for simultaneous cell edits. No conflict UI.
+*   **Sync Status UI** — A status indicator in the header shows: 🟢 Synced, 🟡 Syncing, 🔴 Offline, ⚪ Local.
