@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Resident, ScheduleGrid, ScheduleHistory } from '../types';
 import { useProgramData } from '../contexts/ProgramDataContext';
 import { RequirementsEngine } from '../services/requirementsEngine';
-import { CheckCircle2, AlertTriangle, AlertCircle, Info, ClipboardList, ShieldAlert, ArrowUpDown, LayoutGrid, Users, Settings, ListFilter, HelpCircle } from 'lucide-react';
+import { ClipboardList, ArrowUpDown, ListFilter } from 'lucide-react';
 import { Button } from './ui/Button';
 
 interface Props {
@@ -29,7 +29,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
   const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cohort'>('pgy');
 
   // Draggable Left Column Width State
-  const [colWidth, setColWidth] = useState(160);
+  const [colWidth, setColWidth] = useState(180);
   const resizingRef = useRef(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
@@ -48,7 +48,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
   const handleMouseMove = (e: MouseEvent) => {
     if (!resizingRef.current) return;
     const diff = e.pageX - startXRef.current;
-    const newWidth = Math.max(100, Math.min(400, startWidthRef.current + diff));
+    const newWidth = Math.max(120, Math.min(400, startWidthRef.current + diff));
     setColWidth(newWidth);
   };
 
@@ -71,10 +71,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     weeksList: number[];
   } | null>(null);
 
-  // Aux state for collapsing Jeopardy & Deficit Recovery
-  const [showAuxAudits, setShowAuxAudits] = useState(true);
-
-  // Filter and sort the column requirements
+  // Filter and sort the rows of requirements
   const columns = useMemo(() => {
     const reqs = programData.gradRequirements || [];
     let filtered = reqs;
@@ -88,7 +85,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     });
   }, [programData.gradRequirements, sourceFilter]);
 
-  // Sort and group residents dynamically
+  // Sort and group residents dynamically (they represent the columns now)
   const sortedResidents = useMemo(() => {
     if (isUnified) {
       // 3-Year unified view: sorted by matriculation startYear, then cohort, then alphabetically
@@ -218,59 +215,10 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     });
   };
 
-  // Jeopardy monitoring gaps calculation
-  const jeopardyGapWeeks = useMemo(() => {
-    if (activeYear === undefined) return [];
-    const gaps: number[] = [];
-    const totalWeeks = (Object.values(schedule)[0] as any[])?.length || 52;
-
-    for (let w = 0; w < totalWeeks; w++) {
-      let pgy2Flexible = 0;
-      let pgy3Flexible = 0;
-
-      residents.forEach(res => {
-        const currentYear = activeYear + Math.floor(w / 52);
-        const pgy = currentYear - res.startYear + 1;
-        const cell = schedule[res.id]?.[w];
-        if (!cell || !cell.assignment) return;
-
-        if (RequirementsEngine.isJeopardyBlock(cell.assignment, programData)) {
-          if (pgy === 2) pgy2Flexible++;
-          if (pgy === 3) pgy3Flexible++;
-        }
-      });
-
-      if (pgy2Flexible === 0 || pgy3Flexible === 0) gaps.push(w + 1);
-    }
-    return gaps;
-  }, [residents, schedule, activeYear, programData]);
-
-  // Deficit recovery audits calculation
-  const auditData = useMemo(() => {
-    if (activeYear === undefined) return [];
-    return residents.map(r => {
-      const currentPgy = activeYear - r.startYear + 1;
-      const unifiedGrid = schedule[r.id] || [];
-      const activeYearWeeks = unifiedGrid.slice(0, 52);
-
-      const hasSplitBlockDeficit = RequirementsEngine.getViolations([r], schedule, hist, activeYear!, programData)
-        .some(v => v.year === activeYear && ['Neuro', 'GI', 'Pulm'].includes(v.type));
-
-      const hasElectiveToOverwrite = activeYearWeeks.some(c => c && c.assignment === 'ELEC');
-
-      return {
-        ...r,
-        hasSplitBlockDeficit,
-        hasElectiveToOverwrite,
-        pgy: currentPgy
-      };
-    });
-  }, [residents, hist, schedule, activeYear, programData]);
-
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden relative">
       {/* Top Header Toolbar */}
-      <div className="p-4 bg-light-1 border-b flex flex-wrap items-center justify-between gap-4">
+      <div className="p-4 bg-light-1 border-b flex flex-wrap items-center justify-between gap-4 shrink-0">
         <div>
           <h2 className="text-lg font-bold text-primary flex items-center gap-2">
             <ClipboardList size={20} className="text-blue" />
@@ -320,7 +268,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black text-muted uppercase tracking-wider flex items-center gap-1">
                 <ArrowUpDown size={12} />
-                Group Rows
+                Group Columns
               </span>
               <div className="flex bg-light-2 p-0.5 rounded-lg border border-light-5">
                 <Button
@@ -346,30 +294,28 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       {/* Spreadsheet grid */}
       <div className="flex-1 overflow-auto spreadsheet-container">
         <table className="border-separate border-spacing-0 w-max">
-          <thead className="sticky top-0 z-30 bg-light-1 text-xs text-muted font-semibold h-24 shadow-sm select-none">
+          <thead className="sticky top-0 z-30 bg-light-1 text-xs text-muted font-semibold h-28 shadow-sm select-none">
             <tr>
               <th
                 className="sticky left-0 z-40 bg-light-1/90 backdrop-blur-md border-b border-r p-0 text-left transition-all"
                 style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
               >
                 <div className="flex items-center justify-between h-full px-3 py-2 relative">
-                  <span className="truncate pr-2 font-bold text-primary">Resident</span>
+                  <span className="truncate pr-2 font-bold text-primary">Requirement</span>
                   <div
                     className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue active:bg-blue transition-colors z-50"
                     onMouseDown={startResize}
                   />
                 </div>
               </th>
-              {columns.map(req => (
-                <th key={req.id} className="border-b border-light-5 w-24 min-w-[96px] h-24 p-2 bg-light-1 relative text-center">
-                  <div className="h-full flex flex-col justify-end items-center gap-1.5 pb-2">
+              {sortedResidents.map(res => (
+                <th key={res.id} className="border-b border-light-5 w-8 min-w-[32px] h-28 p-0 bg-light-1 relative text-center">
+                  <div className="h-full flex items-end justify-center pb-3">
                     <span
-                      className={`px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-wider ${req.source === 'acgme' ? 'bg-blue/15 text-blue' : 'bg-emerald-500/15 text-emerald-700'}`}
+                      className="text-[11px] font-bold text-primary select-none whitespace-nowrap"
+                      style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                     >
-                      {req.source === 'acgme' ? 'ACGME' : 'Curriculum'}
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-800 tracking-tight leading-tight line-clamp-2 max-w-[80px]">
-                      {req.tag.title}
+                      {res.name}
                     </span>
                   </div>
                 </th>
@@ -377,26 +323,30 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             </tr>
           </thead>
           <tbody className="text-xs">
-            {sortedResidents.map(res => {
+            {columns.map(req => {
               return (
-                <tr key={res.id} className="hover:bg-light-1 group transition-colors">
+                <tr key={req.id} className="hover:bg-light-1 group transition-colors">
                   {/* Left row header: matches schedule screen name cell structure */}
                   <td
-                    className="sticky left-0 z-20 bg-white/80 backdrop-blur-md border-b border-r p-2 font-medium text-black group bg-white/80 backdrop-blur-md transition-colors"
+                    className="sticky left-0 z-20 bg-light-1/90 backdrop-blur-md border-b border-r p-2 font-medium text-black transition-colors"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
                   >
                     <div className="flex flex-col truncate justify-center">
-                      <span className="flex items-center gap-2 truncate font-bold text-slate-800" title={res.name}>
-                        {res.name}
+                      <span className="text-[11px] font-bold text-slate-800 tracking-tight leading-tight truncate" title={req.tag.title}>
+                        {req.tag.title}
+                      </span>
+                      <span
+                        className={`w-max px-1 py-0.2 rounded text-[7px] font-black uppercase mt-0.5 tracking-wider ${req.source === 'acgme' ? 'bg-blue/15 text-blue' : 'bg-emerald-500/15 text-emerald-700'}`}
+                      >
+                        {req.source === 'acgme' ? 'ACGME' : 'Curriculum'}
                       </span>
                     </div>
                   </td>
-                  {columns.map(req => {
+                  {sortedResidents.map(res => {
                     const calc = cellCalculations[res.id]?.[req.id] || { actual: 0, minWeeks: 0, weeksList: [] };
                     const { actual, minWeeks } = calc;
 
                     // Style dynamically
-                    let cellStyle: React.CSSProperties = {};
                     let cellText = `${actual} / ${minWeeks}`;
                     let textClass = 'text-slate-700';
                     let cellBgClass = 'bg-white';
@@ -420,16 +370,16 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
                     return (
                       <td
-                        key={req.id}
-                        className={`border-b text-center cursor-default relative p-0 border-light-3 w-24 min-w-[96px] h-10 ${cellBgClass}`}
+                        key={res.id}
+                        className={`border-b text-center cursor-default relative p-0 border-light-3 w-8 min-w-[32px] h-10 ${cellBgClass}`}
                         onMouseEnter={(e) => handleCellEnter(e, res, req)}
                         onMouseLeave={() => setCellTooltip(null)}
                       >
                         <div className="w-full h-full flex flex-col items-center justify-center relative">
-                          <span className={`text-[11px] font-black ${textClass}`}>{cellText}</span>
+                          <span className={`text-[10px] font-black tracking-tighter ${textClass}`}>{cellText}</span>
                           {/* Mini visual indicator under text for active requirements */}
                           {minWeeks > 0 && (
-                            <div className="absolute bottom-1 left-2 right-2 h-[2px] bg-slate-200/50 rounded-full overflow-hidden">
+                            <div className="absolute bottom-1 left-1.5 right-1.5 h-[2px] bg-slate-200/50 rounded-full overflow-hidden">
                               <div
                                 className={`h-full ${actual >= minWeeks ? 'bg-emerald-500' : isUnified ? 'bg-rose-500' : 'bg-orange-500'}`}
                                 style={{ width: `${Math.min(100, (actual / minWeeks) * 100)}%` }}
@@ -446,98 +396,6 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
           </tbody>
         </table>
       </div>
-
-      {/* Auxiliary Safety & Deficit Audits Toolbar / Panels */}
-      <div className="bg-light-2 border-t px-6 py-3 flex items-center justify-between shrink-0 select-none">
-        <button
-          onClick={() => setShowAuxAudits(!showAuxAudits)}
-          className="flex items-center gap-2 text-xs font-bold text-primary hover:text-blue transition-colors focus:outline-none"
-        >
-          <Info size={14} className="text-blue" />
-          <span>Auxiliary Safety & Deficit Audits</span>
-          <span className="text-[10px] text-muted font-normal bg-light-4 px-1.5 py-0.5 rounded-full ml-1">
-            {jeopardyGapWeeks.length > 0 ? `${jeopardyGapWeeks.length} Jeopardy Gaps` : 'All Jeopardy Gaps Covered'}
-          </span>
-        </button>
-        <span className="text-[9px] font-mono text-muted uppercase tracking-wider">
-          Double check all constraints before finalizing
-        </span>
-      </div>
-
-      {/* Auxiliary Audits Cards */}
-      {showAuxAudits && (
-        <div className="border-t bg-light-1/40 p-4 max-h-[300px] overflow-y-auto space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Jeopardy coverage monitoring card */}
-            <div className="bg-white rounded-xl shadow-sm border border-light-5 p-4 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <ShieldAlert size={14} className="text-orange" />
-                  Jeopardy Coverage Monitor
-                </h4>
-                {jeopardyGapWeeks.length === 0 ? (
-                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-700 text-[10px] font-bold rounded-md">
-                    Secure
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 bg-rose-500/10 text-rose-700 text-[10px] font-bold rounded-md">
-                    Deficit ({jeopardyGapWeeks.length} weeks)
-                  </span>
-                )}
-              </div>
-
-              {jeopardyGapWeeks.length > 0 ? (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-muted">
-                    The following weeks lack minimum senior backup (at least 1 PGY-2 AND 1 PGY-3 on flexible/jeopardy):
-                  </p>
-                  <div className="flex flex-wrap gap-1 mt-1 max-h-[120px] overflow-y-auto">
-                    {jeopardyGapWeeks.map(w => (
-                      <span key={w} className="px-1.5 py-0.5 bg-orange text-white text-[9px] font-mono font-bold rounded">
-                        Wk {w}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-muted leading-relaxed">
-                  All scheduled weeks satisfy the senior jeopardy coverage criteria (1 PGY-2 senior backup AND 1 PGY-3 senior backup).
-                </p>
-              )}
-            </div>
-
-            {/* Split Block Deficit recovery monitor card */}
-            <div className="bg-white rounded-xl shadow-sm border border-light-5 p-4 flex flex-col gap-2">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <AlertTriangle size={14} className="text-blue" />
-                Subspecialty Deficit Recovery
-              </h4>
-              <div className="max-h-[150px] overflow-y-auto divide-y divide-light-3">
-                {auditData.map(d => (
-                  <div key={d.id} className="py-2 flex items-center justify-between text-xs first:pt-0 last:pb-0">
-                    <span className="font-semibold text-slate-700">{d.name} <span className="text-[10px] text-muted">(PGY-{d.pgy})</span></span>
-                    <div>
-                      {d.hasSplitBlockDeficit ? (
-                        d.hasElectiveToOverwrite ? (
-                          <span className="px-2 py-0.5 bg-blue/10 text-blue font-bold rounded text-[9px] uppercase tracking-wide">
-                            Auto-recovery active
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-rose-500/10 text-rose-700 font-bold rounded text-[9px] uppercase tracking-wide">
-                            Needs intervention
-                          </span>
-                        )
-                      ) : (
-                        <span className="text-emerald-700 text-[10px]">No deficits</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Hover Floating Tooltip */}
       {cellTooltip && (
@@ -602,3 +460,4 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     </div>
   );
 });
+RequirementsStats.displayName = 'RequirementsStats';

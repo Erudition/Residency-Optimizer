@@ -3,7 +3,8 @@ import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
 import { TOTAL_WEEKS } from '../constants';
 import { useProgramData } from '../contexts/ProgramDataContext';
 import { getAssignmentColor } from '../utils/colorUtils';
-import { User, Lock, Calendar, Sparkles } from 'lucide-react';
+import { User, Lock, Calendar, Sparkles, AlertTriangle } from 'lucide-react';
+import { RequirementsEngine } from '../services/requirementsEngine';
 
 interface Props {
   residents: Resident[];
@@ -63,6 +64,33 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   }, [schedule]);
   
   const WEEKS = useMemo(() => Array.from({ length: totalWeeks }, (_, i) => i + 1), [totalWeeks]);
+
+  const jeopardyGaps = useMemo(() => {
+    const gaps = new Set<number>();
+    if (!startYear || residents.length === 0) return gaps;
+
+    for (let w = 0; w < totalWeeks; w++) {
+      let pgy2Flexible = 0;
+      let pgy3Flexible = 0;
+
+      residents.forEach(res => {
+        const currentYear = startYear + Math.floor(w / 52);
+        const pgy = currentYear - res.startYear + 1;
+        const cell = schedule[res.id]?.[w];
+        if (!cell || !cell.assignment) return;
+
+        if (RequirementsEngine.isJeopardyBlock(cell.assignment, programData)) {
+          if (pgy === 2) pgy2Flexible++;
+          if (pgy === 3) pgy3Flexible++;
+        }
+      });
+
+      if (pgy2Flexible === 0 || pgy3Flexible === 0) {
+        gaps.add(w);
+      }
+    }
+    return gaps;
+  }, [residents, schedule, startYear, totalWeeks, programData]);
 
   // Resizable Column State
   const [colWidth, setColWidth] = useState(160);
@@ -243,22 +271,40 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   />
                 </div>
               </th>
-              {WEEKS.map((w, idx) => (
-                <th
-                  key={w}
-                  onDoubleClick={() => !isReadOnly && onLockWeek(idx)}
-                  className={`p-1 min-w-[80px] text-center bg-light-1 transition-colors ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
-                  style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
-                  title={isReadOnly ? undefined : "Double-click to toggle lock for this entire week"}
-                >
-                  <div className="flex flex-col items-center">
-                    <span>W{w}</span>
-                    <span className="text-[9px] font-normal text-muted normal-case">
-                      {getDateForWeek(w, startYear)}
-                    </span>
-                  </div>
-                </th>
-              ))}
+              {WEEKS.map((w, idx) => {
+                const hasDeficit = jeopardyGaps.has(idx);
+                return (
+                  <th
+                    key={w}
+                    onDoubleClick={() => !isReadOnly && onLockWeek(idx)}
+                    className={`p-1 min-w-[80px] text-center bg-light-1 transition-colors relative ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
+                    style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
+                    title={
+                      hasDeficit
+                        ? "Jeopardy Deficit: Lacks minimum senior backup (at least 1 PGY-2 AND 1 PGY-3 senior backup)"
+                        : isReadOnly ? undefined : "Double-click to toggle lock for this entire week"
+                    }
+                  >
+                    <div className="flex flex-col items-center justify-center relative">
+                      {hasDeficit && (
+                        <div className="absolute top-1 right-1">
+                          <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-orange"></span>
+                          </span>
+                        </div>
+                      )}
+                      <span className="flex items-center gap-1">
+                        W{w}
+                        {hasDeficit && <AlertTriangle size={10} className="text-orange" />}
+                      </span>
+                      <span className="text-[9px] font-normal text-muted normal-case">
+                        {getDateForWeek(w, startYear)}
+                      </span>
+                    </div>
+                  </th>
+                );
+              })}
 
             </tr>
           </thead>
