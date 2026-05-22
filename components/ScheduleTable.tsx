@@ -66,12 +66,19 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   const WEEKS = useMemo(() => Array.from({ length: totalWeeks }, (_, i) => i + 1), [totalWeeks]);
 
   const jeopardyGaps = useMemo(() => {
-    const gaps = new Set<number>();
+    const gaps = new Map<number, {
+      pgy2FlexibleCount: number;
+      pgy3FlexibleCount: number;
+      pgy2FlexibleNames: string[];
+      pgy3FlexibleNames: string[];
+    }>();
     if (!startYear || residents.length === 0) return gaps;
 
     for (let w = 0; w < totalWeeks; w++) {
-      let pgy2Flexible = 0;
-      let pgy3Flexible = 0;
+      let pgy2FlexibleCount = 0;
+      let pgy3FlexibleCount = 0;
+      const pgy2FlexibleNames: string[] = [];
+      const pgy3FlexibleNames: string[] = [];
 
       residents.forEach(res => {
         const currentYear = startYear + Math.floor(w / 52);
@@ -80,13 +87,24 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
         if (!cell || !cell.assignment) return;
 
         if (RequirementsEngine.isJeopardyBlock(cell.assignment, programData)) {
-          if (pgy === 2) pgy2Flexible++;
-          if (pgy === 3) pgy3Flexible++;
+          if (pgy === 2) {
+            pgy2FlexibleCount++;
+            pgy2FlexibleNames.push(`${res.firstName} ${res.lastName}`);
+          }
+          if (pgy === 3) {
+            pgy3FlexibleCount++;
+            pgy3FlexibleNames.push(`${res.firstName} ${res.lastName}`);
+          }
         }
       });
 
-      if (pgy2Flexible === 0 || pgy3Flexible === 0) {
-        gaps.add(w);
+      if (pgy2FlexibleCount === 0 || pgy3FlexibleCount === 0) {
+        gaps.set(w, {
+          pgy2FlexibleCount,
+          pgy3FlexibleCount,
+          pgy2FlexibleNames,
+          pgy3FlexibleNames
+        });
       }
     }
     return gaps;
@@ -272,7 +290,8 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                 </div>
               </th>
               {WEEKS.map((w, idx) => {
-                const hasDeficit = jeopardyGaps.has(idx);
+                const deficitInfo = jeopardyGaps.get(idx);
+                const hasDeficit = !!deficitInfo;
                 return (
                   <th
                     key={w}
@@ -280,21 +299,13 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     className={`p-1 min-w-[80px] text-center bg-light-1 transition-colors relative ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
                     style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                     title={
-                      hasDeficit
-                        ? "Jeopardy Deficit: Lacks minimum senior backup (at least 1 PGY-2 AND 1 PGY-3 senior backup)"
+                      deficitInfo
+                        ? `⚠️ Senior Jeopardy Deficit (Week ${w})\nLacks minimum senior backup coverage.\nRequired: At least 1 PGY-2 AND 1 PGY-3 senior backup on flexible/jeopardy service.\n\nActive Senior Coverage:\n- PGY-2 Seniors on Backup: ${deficitInfo.pgy2FlexibleCount} (${deficitInfo.pgy2FlexibleNames.join(', ') || 'None'})\n- PGY-3 Seniors on Backup: ${deficitInfo.pgy3FlexibleCount} (${deficitInfo.pgy3FlexibleNames.join(', ') || 'None'})`
                         : isReadOnly ? undefined : "Double-click to toggle lock for this entire week"
                     }
                   >
                     <div className="flex flex-col items-center justify-center relative">
-                      {hasDeficit && (
-                        <div className="absolute top-1 right-1">
-                          <span className="flex h-2 w-2 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-orange"></span>
-                          </span>
-                        </div>
-                      )}
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 font-bold">
                         W{w}
                         {hasDeficit && <AlertTriangle size={10} className="text-orange" />}
                       </span>

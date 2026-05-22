@@ -220,80 +220,6 @@ export class ScheduleSyncService {
   }
 
   /**
-   * Save a full schedule grid to the backend via the bulk endpoint.
-   * Returns the new backend schedule ID.
-   */
-  async saveScheduleGrid(
-    candidateId: number,
-    title: string,
-    academicYear: number,
-    grid: ScheduleGrid,
-  ): Promise<number | null> {
-    if (!isAuthenticated()) return null
-    try {
-      await this.ensureCaches()
-
-      const ayId = this.ayIdCache?.get(academicYear)
-      if (!ayId) {
-        console.warn(`[Sync] Academic year ${academicYear} not found in backend`)
-        return null
-      }
-
-      // Build the assignments array
-      const assignments: Array<{
-        residentId: number
-        week: number
-        rotationId: number
-        locked: boolean
-      }> = []
-
-      for (const [residentId, cells] of Object.entries(grid)) {
-        for (let w = 0; w < cells.length; w++) {
-          const cell = cells[w]
-          if (!cell?.assignment) continue
-
-          const rotId = this.rotationIdCache?.get(cell.assignment)
-          if (!rotId) continue
-
-          assignments.push({
-            residentId: parseInt(residentId, 10),
-            week: w + 1,
-            rotationId: rotId,
-            locked: cell.locked,
-          })
-        }
-      }
-
-      // Use the bulk endpoint
-      const response = await fetch(`${API_URL}/api/sync/bulk`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({
-          candidateId,
-          title,
-          academicYearId: ayId,
-          assignments,
-        }),
-      })
-
-      if (!response.ok) {
-        const err = await response.json()
-        console.error('[Sync] Bulk save failed:', err)
-        return null
-      }
-
-      const result = await response.json()
-      return result.scheduleId as number
-    } catch (err) {
-      console.error('[Sync] Bulk save error:', err)
-      return null
-    }
-  }
-
-  /**
    * Rename a schedule on the backend.
    */
   async renameSchedule(backendId: number, title: string): Promise<void> {
@@ -327,56 +253,237 @@ export class ScheduleSyncService {
   // ── Candidate Management ──
 
   /**
-   * Find or create a Candidate for the given starting year.
-   * Transparent to the user — they never see Candidate objects.
+   * Create a new Candidate with the given title.
+   * Each generation creates a fresh Candidate (no dedup by year).
    */
-  async ensureCandidate(startYear: number): Promise<number | null> {
+  async createCandidate(
+    startYear: number,
+    title: string,
+  ): Promise<{ candidateId: number } | null> {
     if (!isAuthenticated()) return null
     try {
       this.refreshAuthHeaders()
-      // Check if an active candidate exists for this year
-      const res = await this.client.request<{
-        Candidates: { docs: Array<{ id: number; title: string; status: string; startingYear: { startingYear: number } }> }
-      }>(CANDIDATES_QUERY, {
-        where: { status: { equals: 'active' } },
-      })
-
-      const existing = res.Candidates.docs.find(
-        (c) => c.startingYear.startingYear === startYear,
-      )
-      if (existing) return existing.id
-
-      // Resolve the AcademicYear backend ID
       await this.ensureCaches()
+
       const ayId = this.ayIdCache?.get(startYear)
       if (!ayId) {
         console.warn(`[Sync] Cannot create candidate: AY ${startYear} not found`)
         return null
       }
 
-      // Create a new candidate
       const createRes = await this.client.request<{
         createCandidate: { id: number; title: string }
       }>(CREATE_CANDIDATE_MUTATION, {
         data: {
-          title: `Planning Session — AY ${startYear}–${startYear + 3}`,
+          title,
           startingYear: ayId,
           status: 'active',
         },
       })
 
-      return createRes.createCandidate.id
+      const candidateId = createRes.createCandidate.id
+      console.log(`[Sync] Created candidate ${candidateId}: "${title}"`)
+      return { candidateId }
     } catch (err) {
-      console.error('[Sync] ensureCandidate failed:', err)
+      console.error('[Sync] createCandidate failed:', err)
       return null
     }
+  }
+
+  /**
+   * Save all 3 year grids for a candidate via the bulk endpoint.
+   * Creates a Schedule for each year and saves all assignments.
+   * Returns the per-year schedule IDs.
+   */
+  async saveCandidateGrids(
+    candidateId: number,
+    title: string,
+    data: Record<number, ScheduleGrid>,
+  ): Promise<Record<number, number>> {
+    if (!isAuthenticated()) return {}
+    const scheduleIds: Record<number, number> = {}
+
+    try {
+      await this.ensureCaches()
+
+      for (const [yearStr, grid] of Object.entries(data)) {
+        const year = parseInt(yearStr, 10)
+        if (!grid) continue
+
+        const ayId = this.ayIdCache?.get(year)
+        if (!ayId) {
+          console.warn(`[Sync] Skipping year ${year}: AY not found`)
+          continue
+        }
+
+        const assignments: Array<{
+          residentId: number
+          week: number
+          rotationId: number
+          locked: boolean
+        }> = []
+
+        for (const [residentId, cells] of Object.entries(grid)) {
+          for (let w = 0; w < cells.length; w++) {
+            const cell = cells[w]
+            if (!cell?.assignment) continue
+
+            const rotId = this.rotationIdCache?.get(cell.assignment)
+            if (!rotId) continue
+
+            assignments.push({
+              residentId: parseInt(residentId, 10),
+              week: w + 1,
+              rotationId: rotId,
+              locked: cell.locked,
+            })
+          }
+        }
+
+        const response = await fetch(`${API_URL}/api/sync/bulk`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({
+            candidateId,
+            title: `${title} — AY ${year}`,
+            academicYearId: ayId,
+            assignments,
+          }),
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          scheduleIds[year] = result.scheduleId
+          console.log(`[Sync] Saved year ${year} → schedule ${result.scheduleId} (${assignments.length} assignments)`)
+        } else {
+          const err = await response.json().catch(() => ({ error: 'unknown' }))
+          console.error(`[Sync] Bulk save failed for year ${year}:`, err)
+        }
+      }
+    } catch (err) {
+      console.error('[Sync] saveCandidateGrids error:', err)
+    }
+
+    return scheduleIds
   }
 
   // ── Data Loading ──
 
   /**
-   * Load all schedules and their assignments for a candidate.
-   * Returns the data needed to populate CandidateSchedule objects.
+   * Load all active candidates from the backend.
+   * Returns data needed to reconstruct CandidateSchedule objects.
+   */
+  async loadAllCandidates(): Promise<
+    Array<{
+      candidateId: number
+      title: string
+      startYear: number
+      scheduleIds: Record<number, number>
+      yearData: Record<
+        number,
+        Array<{
+          residentId: number
+          week: number
+          rotation: string
+          locked: boolean
+        }>
+      >
+    }>
+  > {
+    if (!isAuthenticated()) return []
+    try {
+      this.refreshAuthHeaders()
+
+      const res = await this.client.request<{
+        Candidates: {
+          docs: Array<{
+            id: number
+            title: string
+            status: string
+            startingYear: { id: number; startingYear: number }
+          }>
+        }
+      }>(CANDIDATES_QUERY, {
+        where: { status: { equals: 'active' } },
+      })
+
+      const candidates = res.Candidates.docs
+      if (candidates.length === 0) return []
+
+      const results = await Promise.all(
+        candidates.map(async (candidate) => {
+          const schedRes = await this.client.request<{
+            Schedules: {
+              docs: Array<{
+                id: number
+                title: string
+                academicYear: { id: number; startingYear: number }
+              }>
+            }
+          }>(CANDIDATE_SCHEDULES_QUERY, {
+            where: { candidate: { equals: candidate.id } },
+          })
+
+          const scheduleIds: Record<number, number> = {}
+          const yearData: Record<
+            number,
+            Array<{
+              residentId: number
+              week: number
+              rotation: string
+              locked: boolean
+            }>
+          > = {}
+
+          for (const sched of schedRes.Schedules.docs) {
+            const year = sched.academicYear.startingYear
+            scheduleIds[year] = sched.id
+
+            const assignRes = await this.client.request<{
+              ScheduleAssignments: {
+                docs: Array<{
+                  id: number
+                  resident: { id: number }
+                  week: number
+                  rotation: { codename: string }
+                  locked: boolean
+                }>
+              }
+            }>(SCHEDULE_ASSIGNMENTS_QUERY, {
+              where: { schedule: { equals: sched.id } },
+            })
+
+            yearData[year] = assignRes.ScheduleAssignments.docs.map((a) => ({
+              residentId: a.resident.id,
+              week: a.week,
+              rotation: a.rotation.codename,
+              locked: a.locked,
+            }))
+          }
+
+          return {
+            candidateId: candidate.id,
+            title: candidate.title,
+            startYear: candidate.startingYear.startingYear,
+            scheduleIds,
+            yearData,
+          }
+        }),
+      )
+
+      console.log(`[Sync] Loaded ${results.length} candidates from backend`)
+      return results
+    } catch (err) {
+      console.error('[Sync] loadAllCandidates failed:', err)
+      return []
+    }
+  }
+
+  /**
+   * Load all schedules and their assignments for a single candidate.
    */
   async loadCandidateSchedules(candidateId: number): Promise<
     Array<{
@@ -392,7 +499,7 @@ export class ScheduleSyncService {
     }>
   > {
     try {
-      // 1. Get all schedules for this candidate
+      this.refreshAuthHeaders()
       const schedRes = await this.client.request<{
         Schedules: {
           docs: Array<{
@@ -406,11 +513,8 @@ export class ScheduleSyncService {
         where: { candidate: { equals: candidateId } },
       })
 
-      const schedules = schedRes.Schedules.docs
-
-      // 2. For each schedule, load its assignments
       const results = await Promise.all(
-        schedules.map(async (sched) => {
+        schedRes.Schedules.docs.map(async (sched) => {
           const assignRes = await this.client.request<{
             ScheduleAssignments: {
               docs: Array<{
