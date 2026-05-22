@@ -30,6 +30,7 @@ import {
 } from './services/scheduler';
 import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
 import { getScheduleSyncService, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
+import { extractTokenFromURL, isAuthenticated } from './services/api/auth';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
 import { healSchedule } from './services/healer';
@@ -408,6 +409,9 @@ const syncResidentsWithBackend = (cached: Resident[], backendResidents: Resident
   
   return merged;
 };
+
+// Extract JWT from URL if present (set by Payload admin "Launch Scheduler" redirect)
+extractTokenFromURL();
 
 const AppContent: React.FC = () => {
   const programData = useProgramData();

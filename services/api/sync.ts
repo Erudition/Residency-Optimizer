@@ -16,6 +16,7 @@
 
 import { GraphQLClient } from 'graphql-request'
 import type { ScheduleGrid } from '../../types'
+import { getAuthHeaders, isAuthenticated } from './auth'
 import {
   CANDIDATES_QUERY,
   CREATE_CANDIDATE_MUTATION,
@@ -112,6 +113,18 @@ export class ScheduleSyncService {
       headers: { 'Content-Type': 'application/json' },
     })
     this.clientId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  }
+
+  /**
+   * Refresh the GraphQL client headers with the current auth token.
+   * Must be called before any authenticated request.
+   */
+  private refreshAuthHeaders(): void {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    }
+    this.client = new GraphQLClient(GRAPHQL_ENDPOINT, { headers })
   }
 
   // ── Connection Management ──
@@ -216,6 +229,7 @@ export class ScheduleSyncService {
     academicYear: number,
     grid: ScheduleGrid,
   ): Promise<number | null> {
+    if (!isAuthenticated()) return null
     try {
       await this.ensureCaches()
 
@@ -253,7 +267,10 @@ export class ScheduleSyncService {
       // Use the bulk endpoint
       const response = await fetch(`${API_URL}/api/sync/bulk`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({
           candidateId,
           title,
@@ -280,7 +297,9 @@ export class ScheduleSyncService {
    * Rename a schedule on the backend.
    */
   async renameSchedule(backendId: number, title: string): Promise<void> {
+    if (!isAuthenticated()) return
     try {
+      this.refreshAuthHeaders()
       await this.client.request(UPDATE_SCHEDULE_MUTATION, {
         id: backendId,
         data: { title },
@@ -294,7 +313,9 @@ export class ScheduleSyncService {
    * Delete a schedule from the backend.
    */
   async deleteSchedule(backendId: number): Promise<void> {
+    if (!isAuthenticated()) return
     try {
+      this.refreshAuthHeaders()
       await this.client.request(DELETE_SCHEDULE_MUTATION, {
         id: backendId,
       })
@@ -310,7 +331,9 @@ export class ScheduleSyncService {
    * Transparent to the user — they never see Candidate objects.
    */
   async ensureCandidate(startYear: number): Promise<number | null> {
+    if (!isAuthenticated()) return null
     try {
+      this.refreshAuthHeaders()
       // Check if an active candidate exists for this year
       const res = await this.client.request<{
         Candidates: { docs: Array<{ id: number; title: string; status: string; startingYear: { startingYear: number } }> }
@@ -517,7 +540,9 @@ export class ScheduleSyncService {
     rotationCodename: string,
     locked: boolean,
   ): Promise<void> {
+    if (!isAuthenticated()) return
     try {
+      this.refreshAuthHeaders()
       await this.ensureCaches()
       const rotId = this.rotationIdCache?.get(rotationCodename)
       if (!rotId) {
