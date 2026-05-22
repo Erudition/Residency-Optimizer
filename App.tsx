@@ -2075,12 +2075,92 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   const [programData, setProgramData] = useState<ProgramData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSlow, setIsSlow] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
   useEffect(() => {
-    loadProgramData(ACTIVE_START_YEAR).then(data => setProgramData(data)).catch(console.error);
-  }, []);
-  
+    setLoadError(null);
+    setIsSlow(false);
+    const slowTimer = setTimeout(() => setIsSlow(true), 5000);
+
+    loadProgramData(ACTIVE_START_YEAR)
+      .then(data => {
+        clearTimeout(slowTimer);
+        setProgramData(data);
+      })
+      .catch(err => {
+        clearTimeout(slowTimer);
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('fetch') || message.includes('network') || message.includes('ECONNREFUSED') || message.includes('Failed')) {
+          setLoadError(`Could not connect to the CMS backend.\n\nThe API at ${import.meta.env.VITE_API_URL || 'http://localhost:3000'} is not responding.\nMake sure the backend server is running.`);
+        } else {
+          setLoadError(message);
+        }
+      });
+
+    return () => clearTimeout(slowTimer);
+  }, [retryCount]);
+
+  if (loadError) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#fafafa', color: '#333', gap: '16px', padding: '24px',
+      }}>
+        <div style={{
+          background: '#fff', borderRadius: '16px', padding: '40px 48px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #eee', maxWidth: '480px', width: '100%', textAlign: 'center',
+        }}>
+          <AlertCircle size={40} style={{ color: '#e06c4a', marginBottom: '16px' }} />
+          <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: '#222' }}>
+            Connection Failed
+          </h2>
+          <pre style={{
+            fontSize: '13px', color: '#888', lineHeight: '1.6', whiteSpace: 'pre-wrap',
+            margin: '0 0 24px', fontFamily: 'inherit',
+          }}>
+            {loadError}
+          </pre>
+          <button
+            onClick={() => { setLoadError(null); setRetryCount(c => c + 1); }}
+            style={{
+              background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px',
+              padding: '10px 28px', fontSize: '14px', fontWeight: 500, cursor: 'pointer',
+              transition: 'background 150ms',
+            }}
+            onMouseOver={e => (e.currentTarget.style.background = '#2563eb')}
+            onMouseOut={e => (e.currentTarget.style.background = '#3b82f6')}
+          >
+            <RotateCcw size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '6px' }} />
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!programData) {
-    return <div className="flex h-screen items-center justify-center">Loading Residency Data from CMS...</div>;
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#fafafa', color: '#555', gap: '12px',
+      }}>
+        <Loader2 size={28} style={{ color: '#3b82f6', animation: 'spin 1s linear infinite' }} />
+        <div style={{ fontSize: '14px', fontWeight: 500 }}>
+          Loading Residency Data from CMS…
+        </div>
+        {isSlow && (
+          <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+            This is taking longer than usual. Is the backend server running?
+          </div>
+        )}
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    );
   }
 
   return (
