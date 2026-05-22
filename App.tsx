@@ -29,6 +29,7 @@ import {
   getAugmentedResidents
 } from './services/scheduler';
 import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
+import { getScheduleSyncService, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
 import { healSchedule } from './services/healer';
@@ -533,6 +534,11 @@ const AppContent: React.FC = () => {
   const [promoteOnExport, setPromoteOnExport] = useState(true);
   const [isPromoting, setIsPromoting] = useState(false);
 
+  // ── Sync Service ──
+  const syncService = useMemo(() => getScheduleSyncService(), []);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('disconnected');
+  const [activeCandidateId, setActiveCandidateId] = useState<number | null>(null);
+
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -969,6 +975,83 @@ const AppContent: React.FC = () => {
       }
     }
   }, [activeScheduleId]);
+
+  // ── SSE Sync Lifecycle ──
+  useEffect(() => {
+    if (!activeCandidateId) return;
+
+    syncService.connect(activeCandidateId);
+    setSyncStatus('syncing');
+
+    // Poll sync status periodically
+    const statusInterval = setInterval(() => {
+      setSyncStatus(syncService.syncStatus);
+    }, 2000);
+
+    // Handle incoming events from other clients
+    const unsubscribe = syncService.onEvent((event: ScheduleSyncEvent) => {
+      switch (event.type) {
+        case 'assignment-change': {
+          // Apply remote cell edit to local state
+          setSchedules(prev => prev.map(s => {
+            if (s.backendId !== event.scheduleId) return s;
+            // Find which year this schedule covers
+            const yearKeys = Object.keys(s.data).map(Number);
+            for (const year of yearKeys) {
+              const grid = s.data[year];
+              if (!grid) continue;
+              const resId = event.residentId.toString();
+              if (grid[resId]) {
+                const weekIdx = event.week - 1; // Backend is 1-based
+                const updatedRow = [...grid[resId]];
+                updatedRow[weekIdx] = {
+                  assignment: event.rotation,
+                  locked: event.locked,
+                };
+                return {
+                  ...s,
+                  data: {
+                    ...s.data,
+                    [year]: {
+                      ...grid,
+                      [resId]: updatedRow,
+                    },
+                  },
+                };
+              }
+            }
+            return s;
+          }));
+          break;
+        }
+        case 'schedule-created': {
+          // A remote client created a new schedule — we'll load it on next full sync
+          console.log('[Sync] Remote schedule created:', event.scheduleId, event.title);
+          break;
+        }
+        case 'schedule-updated': {
+          // Apply remote rename
+          setSchedules(prev => prev.map(s =>
+            s.backendId === event.scheduleId ? { ...s, name: event.title } : s
+          ));
+          break;
+        }
+        case 'schedule-deleted': {
+          // Remove schedule deleted by remote client
+          setSchedules(prev => prev.filter(s => s.backendId !== event.scheduleId));
+          break;
+        }
+      }
+    });
+
+    return () => {
+      clearInterval(statusInterval);
+      unsubscribe();
+      syncService.disconnect();
+      setSyncStatus('disconnected');
+    };
+  }, [activeCandidateId, syncService]);
+
   const handleGenerate = async () => {
     if (isGeneratingRef.current) return;
     
@@ -1113,6 +1196,10 @@ const AppContent: React.FC = () => {
   const handleRename = (newName: string) => {
     if (scheduleToRename && newName.trim()) {
       setSchedules(prev => prev.map(s => s.id === scheduleToRename.id ? { ...s, name: newName } : s));
+      // Sync rename to backend if the schedule has a backend ID
+      if (scheduleToRename.backendId) {
+        syncService.renameSchedule(scheduleToRename.backendId, newName.trim());
+      }
     }
     setRenameModalOpen(false);
     setScheduleToRename(null);
@@ -1218,6 +1305,17 @@ const AppContent: React.FC = () => {
         yearCopy[selectedCell.resId] = updatedRow;
 
         const dataCopy = { ...s.data, [activeYear]: yearCopy };
+
+        // Fire background sync for this cell edit
+        if (s.backendId && type) {
+          syncService.upsertCell(
+            s.backendId,
+            parseInt(selectedCell.resId, 10),
+            selectedCell.week + 1, // Backend uses 1-based weeks
+            type,
+            true,
+          );
+        }
 
         return {
           ...s,
@@ -1589,6 +1687,50 @@ const AppContent: React.FC = () => {
               <span className="text-[9px] font-black text-blue uppercase tracking-tighter">Engine Busy</span>
             </div>
           )}
+          {/* Sync Status Indicator */}
+          <div
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border cursor-default"
+            style={{
+              backgroundColor: syncStatus === 'connected' ? 'rgba(16,185,129,0.1)'
+                : syncStatus === 'syncing' ? 'rgba(245,158,11,0.1)'
+                : syncStatus === 'offline' ? 'rgba(239,68,68,0.1)'
+                : 'rgba(156,163,175,0.1)',
+              borderColor: syncStatus === 'connected' ? 'rgba(16,185,129,0.2)'
+                : syncStatus === 'syncing' ? 'rgba(245,158,11,0.2)'
+                : syncStatus === 'offline' ? 'rgba(239,68,68,0.2)'
+                : 'rgba(156,163,175,0.2)',
+            }}
+            title={
+              syncStatus === 'connected' ? 'Synced — changes are saved to the server'
+              : syncStatus === 'syncing' ? 'Syncing — connecting to server...'
+              : syncStatus === 'offline' ? 'Offline — changes are local only'
+              : 'Local — not connected to a planning session'
+            }
+          >
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full"
+              style={{
+                backgroundColor: syncStatus === 'connected' ? '#10b981'
+                  : syncStatus === 'syncing' ? '#f59e0b'
+                  : syncStatus === 'offline' ? '#ef4444'
+                  : '#9ca3af',
+              }}
+            />
+            <span
+              className="text-[9px] font-black uppercase tracking-tighter"
+              style={{
+                color: syncStatus === 'connected' ? '#10b981'
+                  : syncStatus === 'syncing' ? '#f59e0b'
+                  : syncStatus === 'offline' ? '#ef4444'
+                  : '#9ca3af',
+              }}
+            >
+              {syncStatus === 'connected' ? 'Synced'
+                : syncStatus === 'syncing' ? 'Syncing'
+                : syncStatus === 'offline' ? 'Offline'
+                : 'Local'}
+            </span>
+          </div>
         </div>
 
         {/* Center: Academic Year Tabs */}
