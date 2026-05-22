@@ -451,8 +451,8 @@ const AppContent: React.FC = () => {
     ACTIVE_START_YEAR + 2
   ], [historicalYears]);
 
-  const isHistoricalYear = activeYear < ACTIVE_START_YEAR;
-  const isFutureYear = activeYear >= ACTIVE_START_YEAR;
+  const isHistoricalYear = activeYear <= ACTIVE_START_YEAR;
+  const isFutureYear = activeYear > ACTIVE_START_YEAR;
 
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => {
     return {

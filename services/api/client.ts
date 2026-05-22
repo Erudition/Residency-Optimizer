@@ -347,7 +347,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   const historicalCohorts: Record<number, Record<string, number>> = {}
   for (const cycle of allGqlCycles) {
     const year = cycle.academicYear?.startingYear
-    if (year && year < academicYear) {
+    if (year && year <= academicYear) {
       if (!historicalCohorts[year]) historicalCohorts[year] = {}
       for (const resident of cycle.residents) {
         historicalCohorts[year][resident.id.toString()] = cycle.number - 1
@@ -359,7 +359,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   const historicalSchedules: ScheduleHistory = {}
   for (const assign of gqlAssignments) {
     const year = assign.schedule?.academicYear?.startingYear
-    if (year && year < academicYear) {
+    if (year && year <= academicYear) {
       const residentId = assign.resident.id.toString()
       const weekIndex = assign.week - 1
       const codename = assign.rotation.codename
