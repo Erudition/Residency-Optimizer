@@ -13,10 +13,14 @@ import {
   RESIDENTS_QUERY,
   CLINIC_CYCLES_QUERY,
   ACADEMIC_YEAR_QUERY,
+  ALL_ACADEMIC_YEARS_QUERY,
   GRAD_REQUIREMENTS_QUERY,
   AVOIDANCE_RULES_QUERY,
   TAGS_QUERY,
   SCHEDULE_ASSIGNMENTS_QUERY,
+  CREATE_SCHEDULE_MUTATION,
+  CREATE_SCHEDULE_ASSIGNMENT_MUTATION,
+  UPDATE_ACADEMIC_YEAR_MUTATION,
 } from './queries'
 import type { RotationConfig, Resident, PgyLevel, ScheduleHistory } from '../../types'
 
@@ -39,6 +43,7 @@ interface GqlAcademicYear {
   id: number
   startingYear: number
   clinicWeeksPerCycle?: number
+  canonicalSchedule?: { id: number } | null
 }
 
 interface GqlTag {
@@ -223,6 +228,18 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     throw new Error(`Academic year ${academicYear} not found in the backend`)
   }
 
+  // ── Resolve canonical schedule IDs for historical filtering ──
+  // Fetch ALL academic years to build the set of canonical schedule IDs.
+  // This ensures historical schedules are loaded only from the official record.
+  const allAYsRes = await client.request<{ AcademicYears: { docs: GqlAcademicYear[] } }>(
+    ALL_ACADEMIC_YEARS_QUERY,
+  )
+  const canonicalScheduleIds = new Set(
+    allAYsRes.AcademicYears.docs
+      .filter(ayDoc => ayDoc.canonicalSchedule)
+      .map(ayDoc => ayDoc.canonicalSchedule!.id),
+  )
+
   // Locally filter relationship data to bypass Payload GraphQL nested operator limitations
   gqlRotations = gqlRotations.filter(r => 
     r.availableSince?.startingYear <= academicYear &&
@@ -252,10 +269,18 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
       intensity: r.intensity,
       duration: 4, // Default block length; will be replaced by X from cycle config
       setting: deriveSettingFromPercentage(r.outpatientPercentage),
-      minInterns: staffing?.preferences[0]?.internCount ?? 0,
-      maxInterns: staffing?.preferences[staffing.preferences.length - 1]?.internCount ?? 0,
-      minSeniors: staffing?.preferences[0]?.seniorCount ?? 0,
-      maxSeniors: staffing?.preferences[staffing.preferences.length - 1]?.seniorCount ?? 0,
+      minInterns: staffing?.preferences.length
+        ? Math.min(...staffing.preferences.map(p => p.internCount))
+        : 0,
+      maxInterns: staffing?.preferences.length
+        ? Math.max(...staffing.preferences.map(p => p.internCount))
+        : 0,
+      minSeniors: staffing?.preferences.length
+        ? Math.min(...staffing.preferences.map(p => p.seniorCount))
+        : 0,
+      maxSeniors: staffing?.preferences.length
+        ? Math.max(...staffing.preferences.map(p => p.seniorCount))
+        : 0,
       color: r.color ? parseInt(r.color, 10) : undefined,
     }
 
@@ -358,6 +383,9 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   // ── Transform Historical Schedules ──
   const historicalSchedules: ScheduleHistory = {}
   for (const assign of gqlAssignments) {
+    // Only load assignments from canonical (official) schedules
+    if (canonicalScheduleIds.size > 0 && !canonicalScheduleIds.has(assign.schedule.id)) continue
+
     const year = assign.schedule?.academicYear?.startingYear
     if (year && year <= academicYear) {
       const residentId = assign.resident.id.toString()
@@ -424,4 +452,104 @@ function deriveSettingFromPercentage(outpatientPct: number): RotationConfig['set
   if (outpatientPct >= 80) return 'Outpatient' as any
   if (outpatientPct === 0) return 'Inpatient' as any
   return 'Inpatient' as any // Default; the engine uses intensity, not setting
+}
+
+// ── Schedule Promotion ──
+
+interface PromoteParams {
+  /** The academic year's starting year (e.g. 2025 for AY 2025-26) */
+  academicYear: number
+  /** Schedule grid for the year: residentId → ScheduleCell[] (length 52) */
+  grid: import('../../types').ScheduleGrid
+  /** Title for the canonical schedule */
+  title: string
+}
+
+/**
+ * Promotes a schedule to become the canonical (official) historical record
+ * for a given academic year. Creates a new standalone Schedule document with
+ * locked assignments and sets it as canonicalSchedule on the AcademicYear.
+ *
+ * Resolves all backend IDs (AY, rotations) internally so the caller only
+ * needs to pass frontend data.
+ *
+ * Returns the ID of the newly created canonical schedule.
+ */
+export async function promoteScheduleToCanonical(params: PromoteParams): Promise<number> {
+  const { academicYear, grid, title } = params
+
+  // Resolve the AcademicYear backend ID
+  const ayRes = await client.request<{ AcademicYears: { docs: { id: number; startingYear: number }[] } }>(
+    ACADEMIC_YEAR_QUERY,
+    { where: { startingYear: { equals: academicYear } } },
+  )
+  const ayDoc = ayRes.AcademicYears.docs[0]
+  if (!ayDoc) throw new Error(`Academic year ${academicYear} not found in backend`)
+
+  // Resolve rotation codename → backend ID map
+  const rotRes = await client.request<{ Rotations: { docs: { id: number; codename: string }[] } }>(
+    ROTATIONS_QUERY,
+  )
+  const rotationIdMap = new Map(rotRes.Rotations.docs.map(r => [r.codename, r.id]))
+
+  // 1. Create a standalone schedule (no candidate link)
+  const scheduleRes = await client.request<{
+    createSchedule: { id: number; title: string }
+  }>(CREATE_SCHEDULE_MUTATION, {
+    data: {
+      title,
+      academicYear: ayDoc.id,
+      _status: 'published',
+    },
+  })
+  const newScheduleId = scheduleRes.createSchedule.id
+
+  // 2. Create locked assignments for each resident/week
+  const createPromises: Promise<any>[] = []
+  for (const [residentId, cells] of Object.entries(grid)) {
+    for (let w = 0; w < cells.length; w++) {
+      const cell = cells[w]
+      if (!cell?.assignment) continue
+
+      const rotId = rotationIdMap.get(cell.assignment)
+      if (!rotId) continue
+
+      createPromises.push(
+        client.request(CREATE_SCHEDULE_ASSIGNMENT_MUTATION, {
+          data: {
+            schedule: newScheduleId,
+            resident: parseInt(residentId, 10),
+            week: w + 1,
+            rotation: rotId,
+            locked: true,
+          },
+        }),
+      )
+    }
+  }
+  // Execute in batches to avoid overwhelming the backend
+  const BATCH_SIZE = 50
+  for (let i = 0; i < createPromises.length; i += BATCH_SIZE) {
+    await Promise.all(createPromises.slice(i, i + BATCH_SIZE))
+  }
+
+  // 3. Set this schedule as canonical on the academic year
+  await client.request(UPDATE_ACADEMIC_YEAR_MUTATION, {
+    id: ayDoc.id,
+    data: { canonicalSchedule: newScheduleId },
+  })
+
+  return newScheduleId
+}
+
+/**
+ * Checks if a given academic year already has a canonical schedule.
+ * Returns the canonical schedule ID if one exists, null otherwise.
+ */
+export async function getCanonicalScheduleId(academicYear: number): Promise<number | null> {
+  const res = await client.request<{ AcademicYears: { docs: GqlAcademicYear[] } }>(
+    ACADEMIC_YEAR_QUERY,
+    { where: { startingYear: { equals: academicYear } } },
+  )
+  return res.AcademicYears.docs[0]?.canonicalSchedule?.id ?? null
 }

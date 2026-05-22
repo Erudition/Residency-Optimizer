@@ -28,7 +28,7 @@ import {
   getUnifiedResidents,
   getAugmentedResidents
 } from './services/scheduler';
-import { loadProgramData, ProgramData, serializeProgramData } from './services/api/client';
+import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
 import { healSchedule } from './services/healer';
@@ -79,7 +79,10 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
-  Copy
+  Copy,
+  Crown,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 
 
@@ -527,6 +530,8 @@ const AppContent: React.FC = () => {
 
   const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
+  const [promoteOnExport, setPromoteOnExport] = useState(true);
+  const [isPromoting, setIsPromoting] = useState(false);
 
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
@@ -1346,6 +1351,36 @@ const AppContent: React.FC = () => {
     } finally {
       setIsExporting(false);
     }
+
+    // After successful export, optionally promote to canonical
+    if (promoteOnExport && !activeSchedule.isHistory && activeSchedule.data?.[activeYear]) {
+      setIsPromoting(true);
+      try {
+        const existingCanonical = await getCanonicalScheduleId(activeYear);
+        if (existingCanonical) {
+          const confirmed = confirm(
+            `AY ${activeYear}-${(activeYear + 1).toString().slice(-2)} already has an official schedule. ` +
+            `Replace it with "${activeSchedule.name}"?`
+          );
+          if (!confirmed) {
+            setIsPromoting(false);
+            return;
+          }
+        }
+
+        await promoteScheduleToCanonical({
+          academicYear: activeYear,
+          grid: activeSchedule.data[activeYear],
+          title: `Official: ${activeSchedule.name} (AY ${activeYear}-${(activeYear + 1).toString().slice(-2)})`,
+        });
+        alert(`✓ Schedule promoted to official record for AY ${activeYear}-${(activeYear + 1).toString().slice(-2)}`);
+      } catch (e) {
+        console.error('Promotion failed', e);
+        alert(`Excel export succeeded, but promotion to official schedule failed: ${e}`);
+      } finally {
+        setIsPromoting(false);
+      }
+    }
   };
 
   const handleDuplicateSchedule = (sched: ScheduleSession) => {
@@ -1908,12 +1943,33 @@ const AppContent: React.FC = () => {
 
                         <Button variant="primary" size="md" 
                           onClick={handleExportXLSX}
-                          disabled={isExporting}
+                          disabled={isExporting || isPromoting}
                            className="w-full py-4 bg-green hover:bg-emerald-700 disabled:bg-light-3 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all" 
                         >
-                          {isExporting ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
-                          Export Current to Excel
+                          {(isExporting || isPromoting) ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
+                          {isPromoting ? 'Promoting to Official...' : 'Export Current to Excel'}
                         </Button>
+
+                        {!activeSchedule?.isHistory && activeSchedule?.data?.[activeYear] && (
+                          <button
+                            onClick={() => setPromoteOnExport(!promoteOnExport)}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg border border-light-3 hover:bg-light-1 transition-colors cursor-pointer"
+                          >
+                            {promoteOnExport
+                              ? <CheckSquare size={18} className="text-green shrink-0" />
+                              : <Square size={18} className="text-muted shrink-0" />
+                            }
+                            <div className="text-left">
+                              <div className="text-sm font-medium text-primary flex items-center gap-1.5">
+                                <Crown size={14} className="text-amber-500" />
+                                Set as official schedule for AY {activeYear}-{(activeYear + 1).toString().slice(-2)}
+                              </div>
+                              <div className="text-[10px] text-muted mt-0.5">
+                                Copies this year's assignments to the historical record (locked)
+                              </div>
+                            </div>
+                          </button>
+                        )}
                       </div>
 
                       <div className="mt-6 bg-highlight p-4 rounded-lg flex gap-3 items-start">

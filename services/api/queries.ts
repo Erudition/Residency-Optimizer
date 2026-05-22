@@ -99,6 +99,23 @@ export const ACADEMIC_YEAR_QUERY = /* GraphQL */ `
         id
         startingYear
         clinicWeeksPerCycle
+        canonicalSchedule {
+          id
+        }
+      }
+    }
+  }
+`
+
+export const ALL_ACADEMIC_YEARS_QUERY = /* GraphQL */ `
+  query AllAcademicYears {
+    AcademicYears(limit: 20) {
+      docs {
+        id
+        startingYear
+        canonicalSchedule {
+          id
+        }
       }
     }
   }
@@ -175,6 +192,34 @@ export const SCHEDULE_ASSIGNMENTS_QUERY = /* GraphQL */ `
           codename
         }
         locked
+      }
+    }
+  }
+`
+
+export const CREATE_SCHEDULE_MUTATION = /* GraphQL */ `
+  mutation CreateSchedule($data: mutationScheduleInput!) {
+    createSchedule(data: $data) {
+      id
+      title
+    }
+  }
+`
+
+export const CREATE_SCHEDULE_ASSIGNMENT_MUTATION = /* GraphQL */ `
+  mutation CreateScheduleAssignment($data: mutationScheduleAssignmentInput!) {
+    createScheduleAssignment(data: $data) {
+      id
+    }
+  }
+`
+
+export const UPDATE_ACADEMIC_YEAR_MUTATION = /* GraphQL */ `
+  mutation UpdateAcademicYear($id: Int!, $data: mutationAcademicYearUpdateInput!) {
+    updateAcademicYear(id: $id, data: $data) {
+      id
+      canonicalSchedule {
+        id
       }
     }
   }
