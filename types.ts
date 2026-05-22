@@ -240,6 +240,14 @@ export interface ScheduleSession {
   isHistory?: boolean;
   startYear?: number;
   lockedUntilWeek?: number;
+  /** Payload Schedule doc ID (null/undefined for local-only schedules) */
+  backendId?: number;
+  /** Parent Candidate doc ID */
+  candidateId?: number;
+  /** Timestamp of last confirmed server write */
+  lastSyncedAt?: Date;
+  /** Sync status: synced, pending, error, or local-only */
+  syncStatus?: 'synced' | 'pending' | 'error' | 'local-only';
 }
 
 export interface DetailedScore {
