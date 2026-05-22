@@ -1,8 +1,9 @@
 import { buildLevelRequirements } from './reqBuilder';
 import { RequirementsEngine } from '../requirementsEngine';
-import { Resident, ScheduleGrid, AssignmentType, CODENAMES, ScheduleGenerator, ScheduleCell } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator, ScheduleCell } from '../../types';
 import type { ProgramData } from '../api/client';
-import { TOTAL_WEEKS, COHORT_COUNT } from '../../constants';
+import { TOTAL_WEEKS } from '../../constants';
+import { getAllCodenames } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
 
@@ -79,10 +80,10 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     }
                     continue;
                 }
-                if (w % COHORT_COUNT === getCohortAtWeek(r, w, validCohortAssignments)) {
+                if (w % programData.cycleConfig.cohortCount === getCohortAtWeek(r, w, validCohortAssignments)) {
                     if (row[w].locked) continue;
                     const level = getPgy(r, w);
-                    const clinicType = (r.startYear === 2025) ? 'NIMA' : 'CCIM';
+                    const clinicType = 'CLINIC';
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
 
                 }
@@ -169,7 +170,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
             pgyLevels.forEach(level => {
                 const reqs = seededShuffle(buildLevelRequirements(programData, level) || []);
                 reqs.forEach(req => {
-                    const compatibleTypes = Object.values(CODENAMES).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
+                    const compatibleTypes = getAllCodenames(programData).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
                     
                     const eligibleResidents = seededShuffle(residents.filter(r => {
                         return isActive(r, yearStart) && getPgy(r, yearStart) === level;

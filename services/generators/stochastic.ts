@@ -1,8 +1,9 @@
 import { buildLevelRequirements } from './reqBuilder';
 import { RequirementsEngine } from '../requirementsEngine';
-import { Resident, ScheduleGrid, AssignmentType, CODENAMES, ScheduleHistory, ScheduleGenerator } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory, ScheduleGenerator } from '../../types';
 import type { ProgramData } from '../api/client';
-import { TOTAL_WEEKS, COHORT_COUNT } from '../../constants';
+import { TOTAL_WEEKS } from '../../constants';
+import { getAllCodenames } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
 
@@ -55,10 +56,10 @@ export const StochasticGenerator: ScheduleGenerator = {
 
             for (let w = start; w < end; w++) {
                 const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                if (w % COHORT_COUNT === cohort) {
+                if (w % programData.cycleConfig.cohortCount === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
-                    const weeklyClinicType = (r.startYear === 2025) ? 'NIMA' : 'CCIM';
+                    const weeklyClinicType = 'CLINIC';
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }
@@ -83,7 +84,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                 });
 
                 reqs.forEach(req => {
-                    const compatibleTypes = Object.values(CODENAMES).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
+                    const compatibleTypes = getAllCodenames(programData).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
                     
                     const sortedResidents = seededShuffle(activeResidentsAtLevel).sort((a, b) => {
                         const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type);
@@ -146,7 +147,7 @@ export const StochasticGenerator: ScheduleGenerator = {
         }
 
         // 3. Staffing Sweep (Graduation-Aware)
-        const criticalTypes = Object.values(CODENAMES).filter(t => {
+        const criticalTypes = getAllCodenames(programData).filter(t => {
             const m = programData.rotations.get(t);
             return m && (m.minInterns > 0 || m.minSeniors > 0);
         });

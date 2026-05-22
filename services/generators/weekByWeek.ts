@@ -2,7 +2,7 @@ import { buildLevelRequirements } from './reqBuilder';
 import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
 import type { ProgramData } from '../api/client';
-import { TOTAL_WEEKS, COHORT_COUNT } from '../../constants';
+import { TOTAL_WEEKS } from '../../constants';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek } from './utils';
 
@@ -44,7 +44,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 return a.name.localeCompare(b.name);
             });
             sorted.forEach((r, idx) => {
-                validCohortAssignments[r.id] = idx % COHORT_COUNT;
+                validCohortAssignments[r.id] = idx % programData.cycleConfig.cohortCount;
             });
         }
 
@@ -116,11 +116,11 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             for (let w = 0; w < row.length; w++) {
                 if (!isResidentActive(r, w)) continue;
                 const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                if (w % COHORT_COUNT === cohort) {
+                if (w % programData.cycleConfig.cohortCount === cohort) {
                     if (row[w].locked) continue;
                     if (!row[w].assignment) {
                         const pgy = getPgyAtWeek(r, w);
-                        const weeklyClinicType = (r.startYear === 2025) ? 'NIMA' : 'CCIM';
+                        const weeklyClinicType = 'CLINIC';
                         newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                         updateCounts(r.id, r.level, w, weeklyClinicType, 1);
                     }

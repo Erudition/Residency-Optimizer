@@ -140,15 +140,4 @@ export class RequirementsEngine {
   static isJeopardyBlock(type: string, programData: ProgramData): boolean {
     return programData.flexibleCodenames.has(type);
   }
-
-  /**
-   * Validates clinic site based on resident start year.
-   */
-  static isClinicSiteCorrect(resident: Resident, assigned: string): boolean {
-    if (assigned !== 'CCIM' && assigned !== 'NIMA') return true;
-    
-    const isNima = resident.startYear === 2025;
-    if (isNima) return assigned === 'NIMA';
-    return assigned === 'CCIM';
-  }
 }

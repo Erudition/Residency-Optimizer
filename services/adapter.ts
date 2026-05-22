@@ -1,4 +1,4 @@
-import { Resident, ScheduleGrid, AssignmentType, CODENAMES, AdaptationParams, ScheduleCell } from '../types';
+import { Resident, ScheduleGrid, AssignmentType, AdaptationParams, ScheduleCell } from '../types';
 import { TOTAL_WEEKS } from '../constants';
 import type { ProgramData } from './api/client';
 import { buildLevelRequirements } from './generators/reqBuilder';

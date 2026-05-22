@@ -1,8 +1,9 @@
 import { buildLevelRequirements } from './reqBuilder';
 import { RequirementsEngine } from '../requirementsEngine';
-import { Resident, ScheduleGrid, AssignmentType, CODENAMES, ScheduleGenerator } from '../../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
 import type { ProgramData } from '../api/client';
-import { TOTAL_WEEKS, COHORT_COUNT } from '../../constants';
+import { TOTAL_WEEKS } from '../../constants';
+import { getAllCodenames } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount, getPriorRequirementCount, getStandardCohortMap, getCohortAtWeek } from './utils';
 
@@ -55,10 +56,10 @@ export const EducationFirstGenerator: ScheduleGenerator = {
             const row = newSchedule[r.id];
             for (let w = start; w < end; w++) {
                 const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                if (w % COHORT_COUNT === cohort) {
+                if (w % programData.cycleConfig.cohortCount === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
-                    const weeklyClinicType = (r.startYear === 2025) ? 'NIMA' : 'CCIM';
+                    const weeklyClinicType = 'CLINIC';
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }
@@ -115,7 +116,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 });
 
                 reqs.forEach(req => {
-                    const compatibleTypes = Object.values(CODENAMES).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
+                    const compatibleTypes = getAllCodenames(programData).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
                     
                     seededShuffle(residents.filter(r => {
                         const currentLevel = r.level + yIdx;

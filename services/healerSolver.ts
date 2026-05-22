@@ -1,7 +1,7 @@
-import { Resident, ScheduleGrid, AssignmentType, CODENAMES } from '../types';
+import { Resident, ScheduleGrid, AssignmentType } from '../types';
 import { RequirementsEngine } from './requirementsEngine';
 import { ProgramData } from './api/client';
-import { ELECTIVE_TYPES, ACGME_TYPES } from '../constants';
+import { getAllCodenames, isClinicRotation } from './programDataUtils';
 import { getStandardCohortMap, getCohortAtWeek } from './generators/utils';
 import { buildLevelRequirements } from './generators/reqBuilder';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
@@ -44,14 +44,15 @@ export const healer: HealerSolver = {
         [1, 2, 3].forEach(l => (buildLevelRequirements(programData, l) || []).forEach(r => relevantReqTypesSet.add(r.type)));
         const relevantReqTypes = Array.from(relevantReqTypesSet);
         const typeFulfillment: Record<string, AssignmentType[]> = {};
-        Object.values(CODENAMES).forEach(type => { typeFulfillment[type] = relevantReqTypes.filter(req => RequirementsEngine.fulfills(type, req, programData)); });
+        const allCodenames = getAllCodenames(programData);
+        allCodenames.forEach(type => { typeFulfillment[type] = relevantReqTypes.filter(req => RequirementsEngine.fulfills(type, req, programData)); });
         const assignmentsByLevel: Record<number, AssignmentType[]> = {
-            1: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA' && t !== 'VAC' && (programData.rotations[t]?.maxInterns || 0) > 0),
-            2: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA' && t !== 'VAC' && (programData.rotations[t]?.maxSeniors || 0) > 0),
-            3: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA' && t !== 'VAC' && (programData.rotations[t]?.maxSeniors || 0) > 0),
+            1: allCodenames.filter(t => !isClinicRotation(programData, t) && t !== 'VAC' && (programData.rotations.get(t)?.maxInterns || 0) > 0),
+            2: allCodenames.filter(t => !isClinicRotation(programData, t) && t !== 'VAC' && (programData.rotations.get(t)?.maxSeniors || 0) > 0),
+            3: allCodenames.filter(t => !isClinicRotation(programData, t) && t !== 'VAC' && (programData.rotations.get(t)?.maxSeniors || 0) > 0),
         };
-        const constrainedTypes = Object.values(CODENAMES).filter(type => {
-            const m = programData.rotations[type];
+        const constrainedTypes = allCodenames.filter(type => {
+            const m = programData.rotations.get(type);
             return m && (m.minInterns > 0 || m.maxInterns < 10 || m.minSeniors > 0 || m.maxSeniors < 10);
         });
         const superCriticalTypes = [
@@ -97,7 +98,7 @@ export const healer: HealerSolver = {
             return c;
         };
 
-        const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS'];
+        const flexibleAssigns = Array.from(programData.flexibleCodenames);
         const getWeekPenalty = (w: number, wc: any, sched: ScheduleGrid): number => {
             let total = 0; 
             constrainedTypes.forEach(t => total += getTypeStaffingPenalty(t, wc.interns[t] || 0, wc.seniors[t] || 0));
@@ -124,7 +125,7 @@ export const healer: HealerSolver = {
             let p = 0;
             activeLevels.forEach(lvl => {
                 (buildLevelRequirements(programData, lvl) || []).forEach(req => {
-                    if (ACGME_TYPES.includes(req.type)) {
+                    if (req.source === 'ACGME') {
                         let cumulativeRequired = 0;
                         for (let l = 1; l <= lvl; l++) {
                             const levelReqs = buildLevelRequirements(programData, l) || [];
@@ -164,7 +165,7 @@ export const healer: HealerSolver = {
                 if (!currentSchedule[r.id][w] || currentSchedule[r.id][w].assignment === null) {
                     const isClinic = w % programData.cycleConfig.cohortCount === getCohortAtWeek(r, w, validCohortAssignments);
                     if (isClinic) {
-                        const clinicType = (r.startYear === 2025) ? 'NIMA' : 'CCIM';
+                        const clinicType = 'CLINIC';
                         currentSchedule[r.id][w] = { assignment: clinicType, locked: true };
                     } else {
                         currentSchedule[r.id][w] = { assignment: 'ELEC', locked: false };

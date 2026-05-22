@@ -1,5 +1,6 @@
-import { ScheduleGrid, AssignmentType, CODENAMES, Resident, ScheduleCell } from '../types';
+import { ScheduleGrid, AssignmentType, Resident, ScheduleCell } from '../types';
 import { ProgramData } from './api/client';
+import { getAllCodenames } from './programDataUtils';
 
 import { canFitBlock, getAssignedCount, getYearRequirementCount } from './generators/utils';
 import { getWeeklyViolations } from './scheduler';
@@ -16,7 +17,7 @@ const getLevelAtWeek = (r: Resident, week: number, gridStartYear: number): numbe
 
 const hasStaffingViolationInWindow = (schedule: ScheduleGrid, residents: Resident[], startWeek: number, duration: number, gridStartYear: number, programData: ProgramData): boolean => {
     for (let w = startWeek; w < startWeek + duration; w++) {
-        const violated = Object.values(CODENAMES).some(type => {
+        const violated = getAllCodenames(programData).some(type => {
             const meta = programData.rotations.get(type);
             if (!meta) return false;
 

@@ -1,8 +1,9 @@
 import { buildLevelRequirements } from './generators/reqBuilder';
 import type { ProgramData } from './api/client';
 import { RequirementsEngine } from './requirementsEngine';
-import { CompetitionParams, CompetitionPriority, Resident, PgyLevel, ScheduleGrid, ScheduleHistory, AssignmentType, CODENAMES, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting, DetailedScore } from '../types';
-import { TOTAL_WEEKS, COHORT_COUNT, CORE_TYPES, REQUIRED_TYPES, ELECTIVE_TYPES, VACATION_TYPE, ACTIVE_START_YEAR, ACGME_TYPES } from '../constants';
+import { CompetitionParams, CompetitionPriority, Resident, PgyLevel, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting, DetailedScore } from '../types';
+import { TOTAL_WEEKS } from '../constants';
+import { getAllCodenames, isClinicRotation, deriveActiveStartYear } from './programDataUtils';
 import { getRequirementCount, getCumulativeRequirementCount, getYearRequirementCount, getStandardCohortMap } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
@@ -32,8 +33,9 @@ export const sliceIntoYears = (unifiedGrid: ScheduleGrid, sYear: number, numYear
 
 
 
-export const getAugmentedResidents = (baseResidents: Resident[], maxYear: number, startYear: number = ACTIVE_START_YEAR): Resident[] => {
-  const minYear = Math.min(...baseResidents.map(r => r.startYear), startYear);
+export const getAugmentedResidents = (baseResidents: Resident[], maxYear: number, startYear?: number): Resident[] => {
+  const derivedStartYear = startYear ?? deriveActiveStartYear();
+  const minYear = Math.min(...baseResidents.map(r => r.startYear), derivedStartYear);
   const allResidents = [...baseResidents];
   for (let currentY = minYear; currentY <= maxYear; currentY++) {
     if (!allResidents.some(r => r.startYear === currentY)) {
@@ -327,8 +329,11 @@ export const calculateStats = (residents: Resident[], schedule: ScheduleGrid): S
   const safeGrid = schedule || {};
   residents?.forEach(r => {
     stats[r.id] = {} as Record<AssignmentType, number>;
-    Object.values(CODENAMES)?.forEach(t => stats[r.id][t] = 0);
-    (safeGrid[r.id] || [])?.forEach(cell => { if (cell && cell.assignment) stats[r.id][cell.assignment]++; });
+    (safeGrid[r.id] || [])?.forEach(cell => {
+      if (cell && cell.assignment) {
+        stats[r.id][cell.assignment] = (stats[r.id][cell.assignment] || 0) + 1;
+      }
+    });
   });
   return stats;
 };
@@ -349,7 +354,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   
   for (let week = 0; week < totalWeeks; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
-    const clinicCount = assignments.filter(a => a === 'CCIM' || a === 'NIMA').length;
+    const clinicCount = assignments.filter(a => a && isClinicRotation(programData, a)).length;
     if (clinicCount === 0) {
       violations.push({ week, type: 'CCIM', issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
@@ -376,7 +381,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       }
     });
     // T6.2: Jeopardy Pool Monitoring
-    const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS'];
+    const flexibleAssigns = Array.from(programData.flexibleCodenames);
     const jeopardyPgy2 = residents.filter(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       const assign = safeGrid[r.id]?.[week]?.assignment;
@@ -409,15 +414,8 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       const assign = cell.assignment;
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
 
-      // T6.3: PGY-specific Clinic Sites
-      if (!RequirementsEngine.isClinicSiteCorrect(r, assign)) {
-        violations.push({
-          week,
-          type: 'CCIM',
-          issue: `Clinic site mismatch for resident ${r.name}: assigned ${assign} but requires ${r.startYear === 2025 ? 'NIMA' : 'CCIM'}`,
-          year: Math.floor(week / 52) + currentYear
-        });
-      }
+      // T6.3: Clinic Sites — with the CLINIC placeholder approach, no per-resident site check is needed
+
 
       // T6.4: PTO Policy Validator
       if (assign === 'VAC') {
@@ -573,10 +571,10 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
         const m = programData.rotations.get(c.assignment as any);
         if (!m) return;
 
-        if (CORE_TYPES.includes(c.assignment)) core++;
-        if (ELECTIVE_TYPES.includes(c.assignment)) elec++;
-        if (REQUIRED_TYPES.includes(c.assignment)) req++;
-        if (c.assignment === VACATION_TYPE) vac++;
+        if (programData.rotations.get(c.assignment)?.intensity && programData.rotations.get(c.assignment)!.intensity >= 3) core++;
+        if (programData.flexibleCodenames.has(c.assignment)) elec++;
+        if (!isClinicRotation(programData, c.assignment) && c.assignment !== 'VAC' && !programData.flexibleCodenames.has(c.assignment)) req++;
+        if (c.assignment === 'VAC') vac++;
         if (c.assignment === 'NF') nf++;
         intensity += m.intensity;
 
@@ -689,15 +687,17 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   let educationDenominator = 0;
   let educationNumerator = 0;
 
+  const baseYear = deriveActiveStartYear();
+
   residents?.forEach(r => {
     for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
-      const currentYear = ACTIVE_START_YEAR + yearIdx;
+      const currentYear = baseYear + yearIdx;
       const pgy = currentYear - r.startYear + 1;
       if (pgy < 1 || pgy > 3) continue;
 
       const pgyReqs = buildLevelRequirements(programData, pgy as any) || [];
       pgyReqs?.forEach(req => {
-        const isACGME = ACGME_TYPES.includes(req.type);
+        const isACGME = req.source === 'ACGME';
         let minWeeks = req.minWeeks;
         let actual = 0;
 
@@ -708,9 +708,9 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
             const levelReq = levelReqs.find(rq => rq.type === req.type);
             minWeeks += levelReq ? levelReq.minWeeks : 0;
           }
-          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, history || {}, ACTIVE_START_YEAR, currentYear, true, programData);
+          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, history || {}, currentYear, currentYear, true, programData);
         } else {
-          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, history || {}, ACTIVE_START_YEAR, currentYear, false, programData);
+          actual = RequirementsEngine.getActualWeeks(r, req.type, schedule, history || {}, currentYear, currentYear, false, programData);
         }
 
         educationDenominator += minWeeks;
@@ -730,7 +730,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
   for (let week = 0; week < totalWeeks; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
-    const clinicCount = assignments.filter(a => a === 'CCIM' || a === 'NIMA').length;
+    const clinicCount = assignments.filter(a => a && isClinicRotation(programData, a)).length;
     
     staffingDenominator += 1;
     staffingNumerator += clinicCount >= 1 ? 1 : 0;
@@ -807,8 +807,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
       const assign = cell.assignment;
 
-      staffingDenominator += 1;
-      staffingNumerator += RequirementsEngine.isClinicSiteCorrect(r, assign) ? 1 : 0;
+      // Clinic site correctness is now handled by CLINIC placeholder — no per-resident site check needed
 
       if (assign === 'VAC') {
         staffingDenominator += 1;
@@ -857,7 +856,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       const intensity = programData.rotations.get(assign as any)?.intensity || 0;
       actualTotalIntensity += intensity;
 
-      if (assign === 'CCIM' || assign === 'NIMA' || assign === 'VAC') {
+      if (isClinicRotation(programData, assign) || assign === 'VAC') {
         minPossibleIntensity += intensity;
         maxPossibleIntensity += intensity;
       } else {
@@ -978,8 +977,8 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
       weeks?.forEach(c => {
         if (!c || !c.assignment) return;
-        if (CORE_TYPES.includes(c.assignment)) coreCount++;
-        if (ELECTIVE_TYPES.includes(c.assignment)) electiveCount++;
+        if (programData.rotations.get(c.assignment)?.intensity && programData.rotations.get(c.assignment)!.intensity >= 3) coreCount++;
+        if (programData.flexibleCodenames.has(c.assignment)) electiveCount++;
         if (c.assignment === 'VAC') vacationCount++;
       });
 
