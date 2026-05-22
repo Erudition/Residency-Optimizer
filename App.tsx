@@ -1165,7 +1165,34 @@ const AppContent: React.FC = () => {
             startYear: activeYear,
             createdAt: new Date(),
             isGenerating: false,
+            syncStatus: 'local-only' as const,
           }));
+
+          // Fire background bulk save for each result
+          if (activeCandidateId) {
+            finalResults.forEach((sched: any) => {
+              // Save first year's grid via bulk endpoint
+              const firstYearGrid = sched.data[activeYear];
+              if (firstYearGrid) {
+                syncService.saveScheduleGrid(
+                  activeCandidateId,
+                  sched.name,
+                  activeYear,
+                  firstYearGrid,
+                ).then(backendId => {
+                  if (backendId) {
+                    // Update the schedule with its backend ID
+                    setSchedules(prev2 => prev2.map(s =>
+                      s.id === sched.id
+                        ? { ...s, backendId, candidateId: activeCandidateId, syncStatus: 'synced' as const, lastSyncedAt: new Date() }
+                        : s
+                    ));
+                  }
+                });
+              }
+            });
+          }
+
           return [...prev, ...finalResults];
         });
         setActiveScheduleId(newIds[0]);
@@ -1491,9 +1518,33 @@ const AppContent: React.FC = () => {
       unifiedData: sched.unifiedData ? JSON.parse(JSON.stringify(sched.unifiedData)) : undefined,
       createdAt: new Date(),
       cohortAssignments: sched.cohortAssignments ? JSON.parse(JSON.stringify(sched.cohortAssignments)) : undefined,
+      // Duplicates start as local-only — no backendId until saved
+      backendId: undefined,
+      syncStatus: 'local-only',
     };
     setSchedules(prev => [...prev, duplicated]);
     setActiveScheduleId(newId);
+
+    // Save to backend in background if connected
+    if (activeCandidateId && sched.startYear) {
+      const firstYearGrid = duplicated.data[sched.startYear];
+      if (firstYearGrid) {
+        syncService.saveScheduleGrid(
+          activeCandidateId,
+          duplicated.name,
+          sched.startYear,
+          firstYearGrid,
+        ).then(backendId => {
+          if (backendId) {
+            setSchedules(prev => prev.map(s =>
+              s.id === newId
+                ? { ...s, backendId, candidateId: activeCandidateId, syncStatus: 'synced' as const, lastSyncedAt: new Date() }
+                : s
+            ));
+          }
+        });
+      }
+    }
   };
 
   const handleToggleLock = (residentId: string, weekIdx: number) => {
@@ -1545,6 +1596,11 @@ const AppContent: React.FC = () => {
 
   const handleDeleteAllSchedules = () => {
     if (confirm("Delete all schedule versions?")) {
+      // Delete from backend in background
+      const schedulesToDelete = schedules.filter(s => s.backendId);
+      schedulesToDelete.forEach(s => {
+        syncService.deleteSchedule(s.backendId!);
+      });
       setSchedules([]);
       setActiveScheduleId("all");
     }
