@@ -24,6 +24,10 @@ Clinic scheduling uses an X+Y model stored in `ClinicCycles` (cohort documents) 
 *   Clinic week formula: `Math.floor((week % Z) / Y) === cohortIndex`
 *   Standard 4+1: 5 cycle docs, Y=1. Programs using 4+2: 3 cycle docs, Y=2.
 *   Residents are assigned directly to ClinicCycle documents for a given AY.
+*   **Cohort Indexing & Clinic Week Constraints**:
+    *   To prevent off-by-one errors and scheduling mismatches, all cohort indices (active, historical, fallback) must be represented as **0-based** (range `0` to `cohortCount - 1`) in memory.
+    *   Clinic week checking and pre-population across all generators, healer solvers, continuity scoring, and requirements engines must generically resolve clinic weeks using the cycle-length (`Z`) and weeks-per-cycle (`Y`) values: `Math.floor((week % Z) / Y) === cohortIndex`. Hardcoding `% 5` or `% cohortCount` for clinic checks is strictly prohibited.
+    *   Clinic assignments (`CLINIC`) must never be scheduled, mutated, or generated on non-clinic weeks (flexible weeks).
 
 The project is built to a Github pages site available at `https://erudition.github.io/Residency-Optimizer/`, built from the main branch. Make sure I am always working in a dedicated feature branch when making changes. 
 
