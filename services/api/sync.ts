@@ -353,7 +353,7 @@ export class ScheduleSyncService {
 
   /**
    * Load all schedules and their assignments for a candidate.
-   * Returns the data needed to populate ScheduleSession objects.
+   * Returns the data needed to populate CandidateSchedule objects.
    */
   async loadCandidateSchedules(candidateId: number): Promise<
     Array<{

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { Resident, ScheduleSession, ScheduleHistory } from '../types';
+import { Resident, CandidateSchedule, ScheduleHistory } from '../types';
 import { getScheduleFixture } from '../tests/fixtures/scheduleFixture';
 
 describe.skip('Backup and Restore Integrity', () => {
@@ -16,7 +16,7 @@ describe.skip('Backup and Restore Integrity', () => {
 
     it('should maintain data integrity across export and import cycle with real generated data', () => {
         // 1. Setup real session data
-        const mockSchedules: ScheduleSession[] = [
+        const mockSchedules: CandidateSchedule[] = [
             {
                 id: 'real-schedule-AY26',
                 name: 'Realistic Generated Schedule',
@@ -45,7 +45,7 @@ describe.skip('Backup and Restore Integrity', () => {
         const restoredSchedules = (importedJson.schedules as any[]).map((s: any) => ({
             ...s,
             createdAt: s.createdAt ? new Date(s.createdAt) : new Date()
-        })) as ScheduleSession[];
+        })) as CandidateSchedule[];
 
         const restoredResidents = importedJson.residents as Resident[];
 

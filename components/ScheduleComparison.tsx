@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useProgramData } from '../contexts/ProgramDataContext';
-import { ScheduleGrid, ScheduleHistory, Resident, AssignmentType, ScheduleCell, ScheduleSession } from '../types';
+import { ScheduleGrid, ScheduleHistory, Resident, AssignmentType, ScheduleCell, CandidateSchedule } from '../types';
 import { calculateFairnessMetrics, calculateScheduleScore, calculateDetailedScheduleScore } from '../services/scheduler';
 import { Sparkles, Loader2, Info, Download, Users, Plus, ChevronUp, ChevronDown, ArrowUpDown, Pencil } from 'lucide-react';
 import { Button } from './ui/Button';
@@ -34,7 +34,7 @@ const Identicon = ({ id, size = 16 }: { id: string, size?: number }) => {
 
 interface Props {
   residents: Resident[];
-  schedules: ScheduleSession[];
+  schedules: CandidateSchedule[];
   activeScheduleId: string | null;
   onSelect: (id: string) => void;
   onRename: (id: string) => void;

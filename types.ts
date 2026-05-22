@@ -217,7 +217,7 @@ export interface ScheduleGenerator {
     onProgress?: (step: number, maxSteps: number, currentPenalty?: number) => void
   ) => ScheduleGrid | Promise<ScheduleGrid>;
 }
-export interface ScheduleSession {
+export interface CandidateSchedule {
   id: string;
   name: string;
   data: ScheduleHistory;
@@ -240,10 +240,10 @@ export interface ScheduleSession {
   isHistory?: boolean;
   startYear?: number;
   lockedUntilWeek?: number;
-  /** Payload Schedule doc ID (null/undefined for local-only schedules) */
+  /** Backend Candidate doc ID (null/undefined for local-only candidates) */
   backendId?: number;
-  /** Parent Candidate doc ID */
-  candidateId?: number;
+  /** Per-year Schedule doc IDs keyed by starting year */
+  scheduleIds?: Record<number, number>;
   /** Timestamp of last confirmed server write */
   lastSyncedAt?: Date;
   /** Sync status: synced, pending, error, or local-only */

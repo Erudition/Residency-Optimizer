@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useTransition } from 'react';
 import { 
   Resident, 
-  ScheduleSession, 
+  CandidateSchedule, 
   CompetitionParams, 
   ScheduleHistory,
   AlgorithmConfig,
@@ -15,7 +15,7 @@ interface Props {
   residents: Resident[];
   compParams: CompetitionParams;
   historySchedules: ScheduleHistory;
-  activeSchedule: ScheduleSession | undefined;
+  activeSchedule: CandidateSchedule | undefined;
   algoConfig: AlgorithmConfig[];
   onComplete: (results: any[], unifiedResidents?: Resident[]) => void;
   onCancel: () => void;

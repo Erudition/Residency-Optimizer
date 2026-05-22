@@ -9,7 +9,7 @@ import {
   AssignmentType,
   ScheduleCell,
   ConvergenceDataPoint,
-  ScheduleSession
+  CandidateSchedule
 } from './types';
 import {
   TOTAL_WEEKS
@@ -348,7 +348,7 @@ const sanitizeScheduleGrid = (
   return sanitized;
 };
 
-const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): ScheduleSession => {
+const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): CandidateSchedule => {
   const data = s.data || s.schedule || {};
   const id = s.id || `sched-imported-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
   const name = s.name || s.winnerName || 'Imported Schedule';
@@ -417,8 +417,8 @@ const AppContent: React.FC = () => {
     return syncResidentsWithBackend(cached, programData.residents);
   });
 
-  const [schedules, setSchedules] = useState<ScheduleSession[]>(() => {
-    const rawSchedules = loadState<ScheduleSession[]>('rsp_schedules_v4', []);
+  const [schedules, setSchedules] = useState<CandidateSchedule[]>(() => {
+    const rawSchedules = loadState<CandidateSchedule[]>('rsp_schedules_v4', []);
     const cached = loadState<Resident[]>('rsp_residents_v4', []);
     const loadedResidents = syncResidentsWithBackend(cached, programData.residents);
     return rawSchedules.map((s: any) => normalizeAndSanitizeSchedule(s, loadedResidents));
@@ -789,7 +789,7 @@ const AppContent: React.FC = () => {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ resId: string, week: number } | null>(null);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
-  const [scheduleToRename, setScheduleToRename] = useState<ScheduleSession | null>(null);
+  const [scheduleToRename, setScheduleToRename] = useState<CandidateSchedule | null>(null);
 
   useEffect(() => {
     localStorage.setItem('rsp_sort_order', JSON.stringify(residentSortOrder));
@@ -1498,9 +1498,9 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleDuplicateSchedule = (sched: ScheduleSession) => {
+  const handleDuplicateSchedule = (sched: CandidateSchedule) => {
     const newId = Math.random().toString(36).substring(2, 9);
-    const duplicated: ScheduleSession = {
+    const duplicated: CandidateSchedule = {
       ...sched,
       id: newId,
       name: `${sched.name} (Copy)`,
