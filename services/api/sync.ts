@@ -16,7 +16,7 @@
 
 import { GraphQLClient } from 'graphql-request'
 import type { ScheduleGrid } from '../../types'
-import { getAuthHeaders, isAuthenticated } from './auth'
+import { getAuthHeaders, getToken, isAuthenticated } from './auth'
 import {
   CANDIDATES_QUERY,
   CREATE_CANDIDATE_MUTATION,
@@ -555,7 +555,11 @@ export class ScheduleSyncService {
   private openEventSource(): void {
     if (!this._candidateId) return
 
-    const url = `${SSE_BASE}/${this._candidateId}?clientId=${encodeURIComponent(this.clientId)}`
+    const token = getToken()
+    let url = `${SSE_BASE}/${this._candidateId}?clientId=${encodeURIComponent(this.clientId)}`
+    if (token) {
+      url += `&token=${encodeURIComponent(token)}`
+    }
 
     try {
       this.eventSource = new EventSource(url)
