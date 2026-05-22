@@ -12,7 +12,6 @@ import {
   ScheduleSession
 } from './types';
 import {
-  GENERATE_INITIAL_RESIDENTS,
   ACTIVE_START_YEAR, TOTAL_WEEKS
 } from './constants';
 import historicalGridData from './specification/historical_schedules_grid_v2.json';
@@ -29,7 +28,7 @@ import {
   getAugmentedResidents
 } from './services/scheduler';
 import { preloadHistoricalData } from './services/generators/historyPreloader';
-import { loadProgramData, ProgramData } from './services/api/client';
+import { loadProgramData, ProgramData, serializeProgramData } from './services/api/client';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
 import { healSchedule } from './services/healer';
@@ -192,7 +191,7 @@ const AssignmentModal = ({
         <div className="grid grid-cols-4 gap-1.5 select-none">
           {Array.from(programData.rotations.entries()).map(([key, config]) => {
             const label = config.label;
-            const bgHex = getAssignmentColor(programData.hueMap.get(key) || 0, false);
+            const bgHex = getAssignmentColor(programData.hueMap.get(key) || 0, config.intensity, false);
             return (
               <button
                 key={key}
@@ -288,12 +287,12 @@ const sanitizeScheduleGrid = (
   
   const residentsMap = new Map<string, Resident>();
   if (Array.isArray(residentsList)) {
-    residentsList.forEach(r => {
+    residentsList?.forEach(r => {
       residentsMap.set(r.id, r);
       residentsMap.set(r.name, r);
     });
   } else if (residentsList && typeof residentsList === 'object') {
-    Object.entries(residentsList).forEach(([name, data]: [string, any]) => {
+    Object.entries(residentsList)?.forEach(([name, data]: [string, any]) => {
       const id = data.id || name;
       const r = { id, name, ...data } as Resident;
       residentsMap.set(id, r);
@@ -303,7 +302,7 @@ const sanitizeScheduleGrid = (
   
   const sanitized: ScheduleGrid = {};
   
-  Object.entries(grid).forEach(([rId, row]) => {
+  Object.entries(grid)?.forEach(([rId, row]) => {
     const resident = residentsMap.get(rId);
     if (!resident || !Array.isArray(row)) {
       sanitized[rId] = row;
@@ -353,7 +352,7 @@ const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): Schedu
   const startYear = s.startYear || 2026;
 
   const sanitizedData: Record<string, ScheduleGrid> = {};
-  Object.entries(data).forEach(([yearStr, grid]) => {
+  Object.entries(data)?.forEach(([yearStr, grid]) => {
     sanitizedData[yearStr] = sanitizeScheduleGrid(grid as ScheduleGrid, residentsList, parseInt(yearStr), startYear);
   });
 
@@ -374,23 +373,51 @@ const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): Schedu
   };
 };
 
-const App: React.FC = () => {
-  const [programData, setProgramData] = useState<ProgramData | null>(null);
-  useEffect(() => {
-    loadProgramData(ACTIVE_START_YEAR).then(data => setProgramData(data)).catch(console.error);
-  }, []);
-  
-  if (!programData) {
-    return <div className="flex h-screen items-center justify-center">Loading Residency Data from CMS...</div>;
+const syncResidentsWithBackend = (cached: Resident[], backendResidents: Resident[]): Resident[] => {
+  if (!cached || cached.length === 0) {
+    return backendResidents;
   }
+  const cachedMap = new Map(cached.map(r => [r.id, r]));
+  const merged: Resident[] = [];
+  
+  // Process all backend residents (active source of truth)
+  backendResidents.forEach(backendRes => {
+    const cachedRes = cachedMap.get(backendRes.id);
+    if (cachedRes) {
+      merged.push({
+        ...backendRes,
+        // Preserve local relationship constraints if customized
+        avoidResidentIds: cachedRes.avoidResidentIds || backendRes.avoidResidentIds || [],
+        // Preserve cohort if assigned locally
+        cohort: cachedRes.cohort !== undefined ? cachedRes.cohort : backendRes.cohort,
+      });
+    } else {
+      merged.push(backendRes);
+    }
+  });
+  
+  // Keep manually added local residents that are not in the backend
+  cached.forEach(cachedRes => {
+    if (cachedRes.id.startsWith('manual-') || cachedRes.id.startsWith('imported-')) {
+      merged.push(cachedRes);
+    }
+  });
+  
+  return merged;
+};
 
-  const [residents, setResidents] = useState<Resident[]>(() =>
-    loadState('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS())
-  );
+const AppContent: React.FC = () => {
+  const programData = useProgramData();
+
+  const [residents, setResidents] = useState<Resident[]>(() => {
+    const cached = loadState<Resident[]>('rsp_residents_v4', []);
+    return syncResidentsWithBackend(cached, programData.residents);
+  });
 
   const [schedules, setSchedules] = useState<ScheduleSession[]>(() => {
     const rawSchedules = loadState<ScheduleSession[]>('rsp_schedules_v4', []);
-    const loadedResidents = loadState<Resident[]>('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS());
+    const cached = loadState<Resident[]>('rsp_residents_v4', []);
+    const loadedResidents = syncResidentsWithBackend(cached, programData.residents);
     return rawSchedules.map((s: any) => normalizeAndSanitizeSchedule(s, loadedResidents));
   });
   const [algoAttempts, setAlgoAttempts] = useState<number[]>([]);
@@ -530,7 +557,7 @@ const App: React.FC = () => {
 
       const augmentedData: ScheduleGrid = {};
       
-      Object.keys(baseHistory).forEach(resId => {
+      Object.keys(baseHistory)?.forEach(resId => {
         augmentedData[resId] = (baseHistory[resId] || []).map((cell, idx) => {
           if (!cell) return { assignment: null, locked: idx <= lockedUntil };
           return {
@@ -596,7 +623,7 @@ const App: React.FC = () => {
         return a.name.localeCompare(b.name);
       });
       const defaultCohorts: Record<string, number> = {};
-      activeResidentsForDefault.forEach((r, idx) => {
+      activeResidentsForDefault?.forEach((r, idx) => {
         defaultCohorts[r.id] = idx % 5;
       });
       yearCohorts = defaultCohorts;
@@ -623,7 +650,7 @@ const App: React.FC = () => {
         return a.name.localeCompare(b.name);
       });
       const defaultCohorts: Record<string, number> = {};
-      activeResidents.forEach((r, idx) => {
+      activeResidents?.forEach((r, idx) => {
         defaultCohorts[r.id] = idx % 5;
       });
       yearCohorts = defaultCohorts;
@@ -662,7 +689,7 @@ const App: React.FC = () => {
         const startYear = activeSchedule.startYear || ACTIVE_START_YEAR;
         const offset = (activeYear - startYear) * TOTAL_WEEKS;
         const sliced: ScheduleGrid = {};
-        Object.entries(bestHealGrid).forEach(([rId, row]) => {
+        Object.entries(bestHealGrid)?.forEach(([rId, row]) => {
           sliced[rId] = (row as any).slice(offset, offset + TOTAL_WEEKS);
         });
         return sliced;
@@ -717,13 +744,13 @@ const App: React.FC = () => {
     return {
       stats: calculateStats(activeResidents, currentGrid),
       violations: {
-        reqs: getRequirementViolations(activeResidents, currentGrid, fullHistory, activeYear),
+        reqs: getRequirementViolations(activeResidents, currentGrid, programData, fullHistory, activeYear),
         constraints: getWeeklyViolations(activeResidents, currentGrid, programData),
-        audit: getAuditViolations(activeResidents, fullHistory, activeYear)
+        audit: getAuditViolations(activeResidents, fullHistory, programData, activeYear)
       },
       fairness: calculateFairnessMetrics(activeResidents, currentGrid, programData)
     };
-  }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId]);
+  }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId, programData]);
 
   const activeViolationsCount = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
@@ -738,15 +765,15 @@ const App: React.FC = () => {
       const y = startYear + offset;
       const yrResidents = getResidentsForYear(y);
       const yrGrid = useUnified ? (activeSchedule.data[y] || {}) : currentGrid;
-      const reqsList = getRequirementViolations(yrResidents, yrGrid, fullHistory, y);
+      const reqsList = getRequirementViolations(yrResidents, yrGrid, programData, fullHistory, y);
       const reqs = reqsList.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0);
-      const constraintsList = getWeeklyViolations(yrResidents, yrGrid, y);
+      const constraintsList = getWeeklyViolations(yrResidents, yrGrid, programData, y);
       const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
-      const audit = getAuditViolations(yrResidents, fullHistory, y);
+      const audit = getAuditViolations(yrResidents, fullHistory, programData, y);
       total += reqs + constraints + audit;
     }
     return total;
-  }, [activeSchedule, historySchedules, activeScheduleId, activeYear, viewMode, currentGrid, residents]);
+  }, [activeSchedule, historySchedules, activeScheduleId, activeYear, viewMode, currentGrid, residents, programData]);
 
   const hasViolations = activeViolationsCount > 0;
 
@@ -763,7 +790,7 @@ const App: React.FC = () => {
   // Cleanup workers on unmount (when tab closes)
   useEffect(() => {
     return () => {
-      activeWorkersRef.current.forEach(worker => worker.terminate());
+      activeWorkersRef.current?.forEach(worker => worker.terminate());
       activeWorkersRef.current.clear();
     };
   }, []);
@@ -844,6 +871,7 @@ const App: React.FC = () => {
         residents,
         historicalSchedules,
         constraints: { existing, cohortAssignments },
+        programData: serializeProgramData(programData),
         params,
         algorithmIds
       });
@@ -972,7 +1000,7 @@ const App: React.FC = () => {
             return a.name.localeCompare(b.name);
           });
           const defaultCohorts: Record<string, number> = {};
-          activeResidents.forEach((r, idx) => {
+          activeResidents?.forEach((r, idx) => {
             defaultCohorts[r.id] = idx % 5;
           });
           yearCohorts = defaultCohorts;
@@ -1152,7 +1180,8 @@ const App: React.FC = () => {
         historicalSchedules: historySchedules,
         startYear,
         totalYears,
-        cohortAssignments: activeSched.cohortAssignments
+        cohortAssignments: activeSched.cohortAssignments,
+        programData: serializeProgramData(programData)
       });
 
       setIsHealing(true);
@@ -1271,19 +1300,20 @@ const App: React.FC = () => {
       const headerRow = worksheet.addRow(headers);
       headerRow.font = { bold: true };
 
-      displayResidents.forEach(r => {
+      displayResidents?.forEach(r => {
         const rowData = [r.name, r.level, String.fromCharCode(65 + (r.cohort ?? 0))];
         const residentCells: string[] = [];
         for (let i = 0; i < totalWeeksInGrid; i++) {
           const cell = displayGrid[r.id]?.[i];
-          residentCells.push(cell?.assignment ? (programData.rotations.get(cell.assignment)?.label || cell.assignment).substring(0, 5) : "");
+          residentCells.push(cell?.assignment ? cell.assignment : "");
         }
         const row = worksheet.addRow([...rowData, ...residentCells]);
 
         for (let i = 0; i < totalWeeksInGrid; i++) {
           const cell = displayGrid[r.id]?.[i];
           if (cell?.assignment) {
-            const hex = getAssignmentColor(programData.hueMap.get(cell.assignment) || 0, false).replace('#', '');
+            const intensity = programData.rotations.get(cell.assignment)?.intensity ?? 1;
+            const hex = getAssignmentColor(programData.hueMap.get(cell.assignment) || 0, intensity, false).replace('#', '');
             row.getCell(4 + i).fill = {
               type: 'pattern',
               pattern: 'solid',
@@ -1353,7 +1383,7 @@ const App: React.FC = () => {
       const firstRid = Object.keys(grid)[0];
       const shouldLock = firstRid ? !grid[firstRid][weekIdx]?.locked : true;
 
-      Object.keys(grid).forEach(rid => {
+      Object.keys(grid)?.forEach(rid => {
         const weeks = [...(grid[rid] || [])];
         if (weeks[weekIdx]) {
           weeks[weekIdx] = { ...weeks[weekIdx], locked: shouldLock };
@@ -1367,7 +1397,7 @@ const App: React.FC = () => {
 
   const handleFactoryReset = () => {
     if (confirm("This will delete ALL data. Are you sure?")) {
-      setResidents(GENERATE_INITIAL_RESIDENTS());
+      setResidents(programData.residents);
       setSchedules([]);
       setActiveScheduleId("all");
     }
@@ -1398,7 +1428,7 @@ const App: React.FC = () => {
 
   const handleResetResidents = () => {
     if (confirm("Reset all residents to defaults?")) {
-      setResidents(GENERATE_INITIAL_RESIDENTS());
+      setResidents(programData.residents);
     }
   };
   const handleLockResident = (residentId: string) => {
@@ -1504,7 +1534,6 @@ const App: React.FC = () => {
   };
 
   return (
-    <ProgramDataProvider programData={programData}>
     <div className={`min-h-screen bg-light-1 flex flex-col font-sans transition-all duration-300 ${isGenerating ? 'engine-busy' : ''}`}>
       {/* ─── Global Header Bar ─── */}
       <div className="h-11 bg-light-3 flex items-center shrink-0 z-30 px-4 border-b border-light-4">
@@ -1618,12 +1647,12 @@ const App: React.FC = () => {
           {viewMode === 'unified' ? (
             <>
               <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
-              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => programData.gradRequirements.filter(r => r.group === 'mhs').map(r => r.requirementType).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'mhs').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
             </>
           ) : (
             <>
-              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => programData.gradRequirements.filter(r => r.group === 'acgme').map(r => r.requirementType).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
-              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => programData.gradRequirements.filter(r => r.group === 'mhs').map(r => r.requirementType).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'acgme').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'mhs').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
               <NavButton id="cohorts" label="Cohorts" icon={Users} />
               <NavButton id="coworking" label="Coworking" icon={Network} />
               <NavButton id="fairness" label="Fairness" icon={Scale} />
@@ -2040,6 +2069,22 @@ const App: React.FC = () => {
       <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} anchorRect={anchorRect} />
       <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => setRenameModalOpen(false)} onSave={handleRename} />
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  const [programData, setProgramData] = useState<ProgramData | null>(null);
+  useEffect(() => {
+    loadProgramData(ACTIVE_START_YEAR).then(data => setProgramData(data)).catch(console.error);
+  }, []);
+  
+  if (!programData) {
+    return <div className="flex h-screen items-center justify-center">Loading Residency Data from CMS...</div>;
+  }
+
+  return (
+    <ProgramDataProvider programData={programData}>
+      <AppContent />
     </ProgramDataProvider>
   );
 };
