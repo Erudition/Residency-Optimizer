@@ -1,352 +1,461 @@
-import React, { useMemo } from 'react';
-import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting, ScheduleHistory } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import { Resident, ScheduleGrid, ScheduleHistory } from '../types';
 import { useProgramData } from '../contexts/ProgramDataContext';
-import { CheckCircle2, XCircle, AlertCircle, ClipboardList, ShieldCheck, ShieldAlert, Clock, AlertTriangle, Users, Building2, Hospital } from 'lucide-react';
 import { RequirementsEngine } from '../services/requirementsEngine';
+import { ClipboardList, ArrowUpDown, ListFilter } from 'lucide-react';
+import { Button } from './ui/Button';
 
 interface Props {
-    residents: Resident[];
-    schedule: ScheduleGrid;
-    history?: ScheduleHistory;
-    activeYear?: number;
-    mode: 'acgme' | 'mhs';
+  residents: Resident[];
+  schedule: ScheduleGrid;
+  history?: ScheduleHistory;
+  activeYear?: number;
 }
 
-const StackedProgressBar = ({ 
-    yearData, 
-    minWeeks, 
-    colorClass,
-    totalValue,
-    isCap = false
-}: { 
-    yearData: Record<number, number>, 
-    minWeeks: number, 
-    colorClass: string,
-    totalValue: number,
-    isCap?: boolean
-}) => {
-    return (
-        <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-end">
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${totalValue > minWeeks && isCap ? 'text-red' : 'text-slate-500'}`}>
-                    {totalValue} / {minWeeks}w
-                </span>
-                {totalValue >= minWeeks && !isCap && <CheckCircle2 size={12} className="text-green mb-0.5" />}
-                {totalValue > minWeeks && isCap && <AlertTriangle size={12} className="text-red mb-0.5" />}
-            </div>
-            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner border border-slate-200/50">
-                {[1, 2, 3].map(pgy => {
-                    const value = yearData[pgy] || 0;
-                    if (value === 0) return null;
-                    const width = (value / Math.max(minWeeks, totalValue)) * 100;
-                    const opacity = pgy === 1 ? 'opacity-40' : pgy === 2 ? 'opacity-70' : 'opacity-100';
-                    return (
-                        <div 
-                            key={pgy}
-                            className={`${colorClass} ${opacity} h-full transition-all duration-500`}
-                            style={{ width: `${width}%` }}
-                            title={`PGY-${pgy}: ${value}w / ${minWeeks}w`}
-                        />
-                    );
-                })}
-            </div>
-        </div>
-    );
-};
+export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear }) => {
+  const programData = useProgramData();
+  const hist = history || {};
 
-export const RequirementsStats: React.FC<Props> = ({ residents, schedule, history, activeYear, mode }) => {
-    const programData = useProgramData();
-    const hist = history || {};
+  // Check if we are in 3-Year Unified view (more than 52 weeks in schedule)
+  const isUnified = useMemo(() => {
+    const vals = Object.values(schedule);
+    return vals.length > 0 ? (vals[0] as any).length > 52 : false;
+  }, [schedule]);
 
-    const auditData = useMemo(() => {
-        if (activeYear === undefined) return [];
+  // Filtering requirements by source
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'acgme' | 'mhs'>('all');
 
-        return residents.map(r => {
-            const currentPgy = activeYear - r.startYear + 1;
-            const unifiedGrid = schedule[r.id] || [];
-            
-            const pgyData: Record<number, { outpatient: number, inpatient: number, criticalCare: number, nightFloat: number }> = {
-                1: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
-                2: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 },
-                3: { outpatient: 0, inpatient: 0, criticalCare: 0, nightFloat: 0 }
-            };
+  // Sorting / Grouping residents (in 1-year view only)
+  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>('pgy');
 
-            for (let l = 1; l <= 3; l++) {
-                const year = r.startYear + l - 1;
-                let weeks: any[] = [];
-                
-                if (year < activeYear) {
-                    weeks = hist[year]?.[r.id] || [];
-                } else {
-                    const offset = (year - activeYear) * 52;
-                    weeks = unifiedGrid.slice(offset, offset + 52);
-                }
+  // Draggable Left Column Width State
+  const [colWidth, setColWidth] = useState(180);
+  const resizingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(0);
 
-                weeks.forEach(c => {
-                    if (!c?.assignment) return;
-                    const meta = programData.rotations.get(c.assignment);
-                    if (!meta) return;
-                    if (meta.setting === ClinicalSetting.OUTPATIENT) pgyData[l].outpatient++;
-                    if (meta.setting === ClinicalSetting.INPATIENT) pgyData[l].inpatient++;
-                    if (meta.setting === ClinicalSetting.CRITICAL_CARE) pgyData[l].criticalCare++;
-                    if (c.assignment === 'NF') pgyData[l].nightFloat++;
-                });
-            }
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    resizingRef.current = true;
+    startXRef.current = e.pageX;
+    startWidthRef.current = colWidth;
 
-            const totalOutpatient = pgyData[1].outpatient + pgyData[2].outpatient + pgyData[3].outpatient;
-            const totalInpatient = pgyData[1].inpatient + pgyData[2].inpatient + pgyData[3].inpatient;
-            const totalCriticalCare = pgyData[1].criticalCare + pgyData[2].criticalCare + pgyData[3].criticalCare;
-            const totalNightFloat = pgyData[1].nightFloat + pgyData[2].nightFloat + pgyData[3].nightFloat;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+  };
 
-            // Policy Audit
-            const activeYearWeeks = unifiedGrid.slice(0, 52);
-            const clinicValid = true; // Clinic site correctness is now handled by the CLINIC placeholder system
-            
-            const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
-            const hasBlackoutVacation = activeYearWeeks.some((c, idx) => c && c.assignment === 'VAC' && blackoutWeeks.includes(idx));
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!resizingRef.current) return;
+    const diff = e.pageX - startXRef.current;
+    const newWidth = Math.max(120, Math.min(400, startWidthRef.current + diff));
+    setColWidth(newWidth);
+  };
 
-            const hasSplitBlockDeficit = RequirementsEngine.getViolations([r], schedule, hist, activeYear!, programData)
-                .some(v => v.year === activeYear && ['Neuro', 'GI', 'Pulm'].includes(v.type));
+  const handleMouseUp = () => {
+    resizingRef.current = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = '';
+  };
 
-            const hasElectiveToOverwrite = activeYearWeeks.some(c => c && c.assignment === 'ELEC');
+  // Tooltip state for hovering over grid cells
+  const [cellTooltip, setCellTooltip] = useState<{
+    x: number;
+    y: number;
+    residentName: string;
+    reqTitle: string;
+    source: string;
+    actual: number;
+    minWeeks: number;
+    weeksList: number[];
+  } | null>(null);
 
-            return {
-                ...r,
-                pgyData,
-                outpatient: totalOutpatient,
-                inpatient: totalInpatient,
-                criticalCare: totalCriticalCare,
-                nightFloat: totalNightFloat,
-                critCareViolation: totalCriticalCare > 24,
-                nfViolation: totalNightFloat < 6,
-                clinicValid,
-                hasBlackoutVacation,
-                hasSplitBlockDeficit,
-                hasElectiveToOverwrite,
-                pgy: currentPgy
-            };
-        });
-    }, [residents, hist, schedule, activeYear]);
+  // Filter and sort the rows of requirements
+  const columns = useMemo(() => {
+    const reqs = programData.gradRequirements || [];
+    let filtered = reqs;
+    if (sourceFilter !== 'all') {
+      filtered = reqs.filter(r => r.source === sourceFilter);
+    }
+    // Group by source (acgme first, then mhs/curriculum), then alphabetically by tag title
+    return [...filtered].sort((a, b) => {
+      if (a.source !== b.source) return a.source.localeCompare(b.source);
+      return a.tag.title.localeCompare(b.tag.title);
+    });
+  }, [programData.gradRequirements, sourceFilter]);
 
-    const globalStats = useMemo(() => {
-        if (mode !== 'acgme') return null;
-        const total = auditData.length;
-        return {
-            outpatientMet: auditData.filter(d => d.outpatient >= 44).length,
-            inpatientMet: auditData.filter(d => (d.inpatient + d.criticalCare) >= 48).length,
-            critCareSafe: auditData.filter(d => !d.critCareViolation).length,
-            nfSafe: auditData.filter(d => d.nightFloat >= 6).length,
-            total
-        };
-    }, [auditData, mode]);
+  // Sort and group residents dynamically (they represent the columns now)
+  const sortedResidents = useMemo(() => {
+    if (isUnified) {
+      // 3-Year unified view: sorted by matriculation startYear, then cohort, then alphabetically
+      return [...residents].sort((a, b) => {
+        if (a.startYear !== b.startYear) return a.startYear - b.startYear;
+        const cohortA = a.cohort ?? 0;
+        const cohortB = b.cohort ?? 0;
+        if (cohortA !== cohortB) return cohortA - cohortB;
+        return a.name.localeCompare(b.name);
+      });
+    }
 
-    const jeopardyGapWeeks = useMemo(() => {
-        if (mode !== 'mhs' || activeYear === undefined) return [];
-        const gaps: number[] = [];
-        const totalWeeks = (Object.values(schedule)[0] as any[])?.length || 52;
+    // 1-Year view: sorted dynamically based on user toggle
+    return [...residents].sort((a, b) => {
+      if (residentSortOrder === 'pgy') {
+        const pgyA = activeYear! - a.startYear + 1;
+        const pgyB = activeYear! - b.startYear + 1;
+        if (pgyA !== pgyB) return pgyA - pgyB;
+        const cohortA = a.cohort ?? 0;
+        const cohortB = b.cohort ?? 0;
+        if (cohortA !== cohortB) return cohortA - cohortB;
+        return a.name.localeCompare(b.name);
+      } else {
+        const cohortA = a.cohort ?? 0;
+        const cohortB = b.cohort ?? 0;
+        if (cohortA !== cohortB) return cohortA - cohortB;
+        const pgyA = activeYear! - a.startYear + 1;
+        const pgyB = activeYear! - b.startYear + 1;
+        if (pgyA !== pgyB) return pgyA - pgyB;
+        return a.name.localeCompare(b.name);
+      }
+    });
+  }, [residents, isUnified, residentSortOrder, activeYear]);
 
-        for (let w = 0; w < totalWeeks; w++) {
-            let pgy2Flexible = 0;
-            let pgy3Flexible = 0;
+  // Pre-calculate cells and values for each resident/requirement
+  const cellCalculations = useMemo(() => {
+    const calcs: Record<string, Record<number, { actual: number; minWeeks: number; weeksList: number[] }>> = {};
 
-            residents.forEach(res => {
-                const currentYear = activeYear + Math.floor(w / 52);
-                const pgy = currentYear - res.startYear + 1;
-                const cell = schedule[res.id]?.[w];
-                if (!cell || !cell.assignment) return;
-                
-                if (RequirementsEngine.isJeopardyBlock(cell.assignment, programData)) {
-                    if (pgy === 2) pgy2Flexible++;
-                    if (pgy === 3) pgy3Flexible++;
-                }
-            });
+    sortedResidents.forEach(res => {
+      calcs[res.id] = {};
+      const level = activeYear! - res.startYear + 1;
 
-            if (pgy2Flexible === 0 || pgy3Flexible === 0) gaps.push(w + 1);
+      columns.forEach(req => {
+        const isACGME = req.source === 'acgme';
+        let minWeeks = 0;
+        let actual = 0;
+
+        if (isUnified) {
+          minWeeks = req.minimum || 0;
+          actual = RequirementsEngine.getActualWeeks(
+            res,
+            req.tag.title,
+            schedule,
+            hist,
+            activeYear!,
+            res.startYear + 2,
+            true,
+            programData
+          );
+        } else {
+          if (isACGME) {
+            minWeeks = (req.pgy1Ideal || 0) + (level >= 2 ? (req.pgy2Ideal || 0) : 0) + (level >= 3 ? (req.pgy3Ideal || 0) : 0);
+            actual = RequirementsEngine.getActualWeeks(
+              res,
+              req.tag.title,
+              schedule,
+              hist,
+              activeYear!,
+              activeYear!,
+              true,
+              programData
+            );
+          } else {
+            minWeeks = (level === 1 ? req.pgy1Ideal : (level === 2 ? req.pgy2Ideal : req.pgy3Ideal)) || 0;
+            actual = RequirementsEngine.getActualWeeks(
+              res,
+              req.tag.title,
+              schedule,
+              hist,
+              activeYear!,
+              activeYear!,
+              false,
+              programData
+            );
+          }
         }
-        return gaps;
-    }, [residents, schedule, activeYear, mode]);
 
-    const isUnified = useMemo(() => {
-        const vals = Object.values(schedule);
-        return vals.length > 0 ? (vals[0] as any).length > 52 : false;
-    }, [schedule]);
+        // Collect exact week indexes (1-based relative to start of unified grid) for tooltips
+        const weeksList: number[] = [];
+        const resGrid = schedule[res.id] || [];
+        const numYears = Math.ceil(resGrid.length / 52);
 
-    
-    const renderGroup = (level: number) => {
-        const groupResidents = residents.filter(r => (activeYear! - r.startYear + 1) === level);
-        const reqs = programData.gradRequirements.filter(r => r.source === mode);
+        for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
+          const year = activeYear! + yearIdx;
+          if ((isUnified && year <= res.startYear + 2) || (!isUnified && year === activeYear)) {
+            const yearStart = yearIdx * 52;
+            const yearCells = resGrid.slice(yearStart, yearStart + 52);
+            yearCells.forEach((c, idx) => {
+              if (c?.assignment && RequirementsEngine.fulfills(c.assignment, req.tag.title, programData)) {
+                weeksList.push(yearStart + idx + 1);
+              }
+            });
+          }
+        }
 
-        // Filter out requirements that don't apply to this PGY level if we are looking at MHS (annual)
-        // For ACGME (cumulative), we just show them if they have *any* requirement up to this level.
-        const relevantReqs = reqs.filter(r => {
-            const minThisLevel = level === 1 ? r.pgy1Ideal : (level === 2 ? r.pgy2Ideal : r.pgy3Ideal);
-            const minCumulative = (r.pgy1Ideal || 0) + (level >= 2 ? (r.pgy2Ideal || 0) : 0) + (level >= 3 ? (r.pgy3Ideal || 0) : 0);
-            return (mode === 'acgme' && minCumulative > 0) || (mode === 'mhs' && minThisLevel && minThisLevel > 0);
-        });
+        calcs[res.id][req.id] = { actual, minWeeks, weeksList };
+      });
+    });
 
-        if (relevantReqs.length === 0 || groupResidents.length === 0) return null;
+    return calcs;
+  }, [sortedResidents, columns, schedule, hist, activeYear, isUnified, programData]);
 
-        return (
-            <div key={level} className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden mb-8">
-                <div className="px-6 py-4 border-b border-light-3 bg-light-1/50 flex items-center gap-2">
-                    <span className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide
-              ${level === 1 ? 'bg-lime-green/40 text-green-dark' : level === 2 ? 'bg-light-blue text-navy' : 'bg-light-purple/50 text-purple-2'}
-           `}>
-                        PGY-${level}
-                    </span>
-                    <h3 className="text-lg font-bold text-primary">{mode === 'acgme' ? 'ACGME' : 'MHS'} {isUnified ? '3-Year' : 'Annual'} Graduation Minimums</h3>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-light-2">
-                                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b w-1/4">Resident</th>
-                                {relevantReqs.map(r => {
-                                    let headerMin = 0;
-                                    if (isUnified) {
-                                        headerMin = r.minimum || 0; // Total overall residency minimum
-                                    } else if (mode === 'acgme') {
-                                        headerMin = (r.pgy1Ideal || 0) + (level >= 2 ? (r.pgy2Ideal || 0) : 0) + (level >= 3 ? (r.pgy3Ideal || 0) : 0);
-                                    } else {
-                                        headerMin = (level === 1 ? r.pgy1Ideal : (level === 2 ? r.pgy2Ideal : r.pgy3Ideal)) || 0;
-                                    }
-                                    
-                                    return (
-                                        <th key={r.tag.title} className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center min-w-[100px]">
-                                            {r.tag.title} <span className="text-[9px] font-black opacity-60">({headerMin}w+)</span>
-                                        </th>
-                                    );
-                                })}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-light-3">
-                            {groupResidents.map(res => {
-                                return (
-                                    <tr key={res.id} className="hover:bg-light-1/30 transition-colors">
-                                        <td className="px-6 py-4 border-b">
-                                            <div className="font-bold text-primary">{res.name}</div>
-                                            <div className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">ID: {res.id}</div>
-                                        </td>
-                                        {relevantReqs.map(req => {
-                                            const isACGME = req.source === 'acgme';
-                                            const actual = RequirementsEngine.getActualWeeks(res, req.tag.title, schedule, hist, activeYear!, isUnified ? (res.startYear + 2) : activeYear!, isACGME || isUnified, programData);
-                                            
-                                            let minWeeks = 0;
-                                            if (isUnified) {
-                                                minWeeks = req.minimum || 0;
-                                            } else if (isACGME) {
-                                                minWeeks = (req.pgy1Ideal || 0) + (level >= 2 ? (req.pgy2Ideal || 0) : 0) + (level >= 3 ? (req.pgy3Ideal || 0) : 0);
-                                            } else {
-                                                minWeeks = (level === 1 ? req.pgy1Ideal : (level === 2 ? req.pgy2Ideal : req.pgy3Ideal)) || 0;
-                                            }
+  // Handle cell enter for tooltips
+  const handleCellEnter = (e: React.MouseEvent, res: Resident, req: any) => {
+    const calc = cellCalculations[res.id]?.[req.id] || { actual: 0, minWeeks: 0, weeksList: [] };
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
 
-                                            const isViolated = minWeeks > 0 && actual < minWeeks;
-                                            return (
-                                                <td key={req.tag.title} className="px-4 py-4 border-b text-center">
-                                                    <div className={`text-sm font-bold ${isViolated ? 'text-red' : 'text-green-dark'}`}>
-                                                        {actual} / {minWeeks}
-                                                    </div>
-                                                    <div className="w-full bg-slate-100 h-1.5 rounded-full mt-1 overflow-hidden">
-                                                        <div 
-                                                            className={`h-full ${isViolated ? 'bg-red' : 'bg-green'}`} 
-                                                            style={{ width: `${Math.min(100, (actual / (minWeeks || 1)) * 100)}%` }} 
-                                                        />
-                                                    </div>
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        );
-    };
+    setCellTooltip({
+      x: rect.left + window.scrollX + rect.width / 2,
+      y: rect.top + window.scrollY,
+      residentName: res.name,
+      reqTitle: req.tag.title,
+      source: req.source,
+      actual: calc.actual,
+      minWeeks: calc.minWeeks,
+      weeksList: calc.weeksList
+    });
+  };
 
-
-    return (
-        <div className="space-y-8">
-            {/* Jeopardy Monitoring */}
-            {jeopardyGapWeeks.length > 0 && (
-                <div className="bg-red/5 border border-red/20 rounded-xl p-4 flex items-start gap-3">
-                    <div className="bg-red/10 p-2 rounded-lg text-red">
-                        <Users size={20} />
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-bold text-red uppercase tracking-wide">Jeopardy Coverage Gaps Detected</h4>
-                        <p className="text-xs text-red/80 mt-1">
-                            The following weeks lack minimum senior backup (1 PGY-2 AND 1 PGY-3):
-                        </p>
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                            {jeopardyGapWeeks.map(w => (
-                                <span key={w} className="px-2 py-0.5 bg-red text-white text-[10px] font-bold rounded shadow-sm">
-                                    Week {w}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* MHS Annual Requirement Tables */}
-            {[1, 2, 3].map(renderGroup)}
-
-            {/* Deficit Recovery Audit */}
-            <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden mt-8">
-                <div className="px-6 py-4 border-b border-light-3 bg-light-1/50 flex items-center gap-2">
-                    <AlertCircle className="text-primary" size={20} />
-                    <h3 className="text-lg font-bold text-primary">Deficit Recovery Audit ({isUnified ? '3-Year' : 'Annual'})</h3>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-light-2">
-                                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Resident</th>
-                                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Deficit Recovery Flag</th>
-                                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-light-3">
-                            {auditData.map(d => (
-                                <tr key={d.id} className="hover:bg-light-1/30 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-primary">{d.name}</div>
-                                        <div className="text-xs text-slate-400">PGY-{d.pgy}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {d.hasSplitBlockDeficit ? (
-                                            <div className="flex items-center gap-2 text-red font-bold">
-                                                <AlertTriangle size={18} />
-                                                <span>Subspecialty Deficit Detected</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2 text-green font-medium">
-                                                <CheckCircle2 size={18} />
-                                                <span>No Deficits</span>
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {d.hasSplitBlockDeficit && (
-                                            d.hasElectiveToOverwrite ? (
-                                                <div className="text-blue font-bold text-xs uppercase flex items-center gap-1.5">
-                                                    <Clock size={14} /> Auto-recovery scheduled
-                                                </div>
-                                            ) : (
-                                                <div className="text-red-dark font-black text-xs uppercase flex items-center gap-1.5">
-                                                    <XCircle size={14} /> Training Extension Likely
-                                                </div>
-                                            )
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+  return (
+    <div className="h-full flex flex-col bg-white overflow-hidden relative">
+      {/* Top Header Toolbar */}
+      <div className="p-4 bg-light-1 border-b flex flex-wrap items-center justify-between gap-4 shrink-0">
+        <div>
+          <h2 className="text-lg font-bold text-primary flex items-center gap-2">
+            <ClipboardList size={20} className="text-blue" />
+            {isUnified ? '3-Year Graduation Requirements Grid' : 'Annual Educational Requirements Grid'}
+          </h2>
+          <p className="text-xs text-muted mt-0.5">
+            {isUnified
+              ? 'Tracking cumulative 3-year minimum ACGME & program graduation rules overall.'
+              : 'Tracking single-year educational requirement targets and annual curriculum ideals.'}
+          </p>
         </div>
-    );
-};
+
+        <div className="flex items-center gap-4">
+          {/* Filter by Source */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-muted uppercase tracking-wider flex items-center gap-1">
+              <ListFilter size={12} />
+              Filter Source
+            </span>
+            <div className="flex bg-light-2 p-0.5 rounded-lg border border-light-5">
+              <Button
+                variant="ghost"
+                onClick={() => setSourceFilter('all')}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${sourceFilter === 'all' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+              >
+                All
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setSourceFilter('acgme')}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${sourceFilter === 'acgme' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+              >
+                ACGME
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setSourceFilter('mhs')}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${sourceFilter === 'mhs' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+              >
+                Curriculum
+              </Button>
+            </div>
+          </div>
+
+          {/* Group / Sort By Toggle (Only visible in 1-year view) */}
+          {!isUnified && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-muted uppercase tracking-wider flex items-center gap-1">
+                <ArrowUpDown size={12} />
+                Group Columns
+              </span>
+              <div className="flex bg-light-2 p-0.5 rounded-lg border border-light-5">
+                <Button
+                  variant="ghost"
+                  onClick={() => setResidentSortOrder('pgy')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                >
+                  PGY Level
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setResidentSortOrder('cycle')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                >
+                  Clinic Cycle
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Spreadsheet grid */}
+      <div className="flex-1 overflow-auto spreadsheet-container">
+        <table className="border-separate border-spacing-0 w-max">
+          <thead className="sticky top-0 z-30 bg-light-1 text-xs text-muted font-semibold h-28 shadow-sm select-none">
+            <tr>
+              <th
+                className="sticky left-0 z-40 bg-light-1/90 backdrop-blur-md border-b border-r p-0 text-left transition-all"
+                style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth, zIndex: 150 }}
+              >
+                <div className="flex items-center justify-between h-full px-3 py-2 relative">
+                  <span className="truncate pr-2 font-bold text-primary">Requirement</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue active:bg-blue transition-colors z-50"
+                    onMouseDown={startResize}
+                  />
+                </div>
+              </th>
+              {sortedResidents.map((res, idx) => (
+                <th
+                  key={res.id}
+                  className="border-b border-light-5 w-11 min-w-[44px] h-28 p-0 bg-light-1 relative"
+                  style={{ zIndex: 100 - idx }}
+                >
+                  <div className="h-full flex items-end justify-start pb-4 relative overflow-visible">
+                    <span
+                      className="text-[11px] font-bold text-primary select-none whitespace-nowrap absolute bottom-3 left-4"
+                      style={{
+                        transform: 'rotate(-45deg)',
+                        transformOrigin: 'left bottom',
+                      }}
+                    >
+                      {res.name}
+                    </span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="text-xs">
+            {columns.map(req => {
+              return (
+                <tr key={req.id} className="hover:bg-light-1 group transition-colors">
+                  {/* Left row header: matches schedule screen name cell structure */}
+                  <td
+                    className="sticky left-0 z-20 bg-light-1/90 backdrop-blur-md border-b border-r p-1 px-2 font-medium text-black transition-colors"
+                    style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
+                  >
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span
+                        className={`px-1 py-0.2 rounded text-[7px] font-black uppercase tracking-wider shrink-0 ${req.source === 'acgme' ? 'bg-blue/15 text-blue' : 'bg-emerald-500/15 text-emerald-700'}`}
+                      >
+                        {req.source === 'acgme' ? 'ACGME' : 'CURR'}
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-800 tracking-tight leading-tight truncate" title={req.tag.title}>
+                        {req.tag.title}
+                      </span>
+                    </div>
+                  </td>
+                  {sortedResidents.map(res => {
+                    const calc = cellCalculations[res.id]?.[req.id] || { actual: 0, minWeeks: 0, weeksList: [] };
+                    const { actual, minWeeks } = calc;
+
+                    // Style dynamically
+                    let cellText = `${actual} / ${minWeeks}`;
+                    let textClass = 'text-slate-700';
+                    let cellBgClass = 'bg-white';
+
+                    if (minWeeks === 0) {
+                      cellText = '-';
+                      textClass = 'text-slate-400 font-normal';
+                    } else if (actual >= minWeeks) {
+                      // Compliant / Met (Green)
+                      cellBgClass = 'bg-emerald-50 text-emerald-800 border-b border-emerald-100 font-bold';
+                    } else {
+                      // Deficit / Unmet
+                      if (isUnified) {
+                        // 3-Year view: failed hard minimum (Rose/Red)
+                        cellBgClass = 'bg-rose-50 text-rose-800 border-b border-rose-100 font-bold';
+                      } else {
+                        // 1-Year view: unsatisfied soft ideal (Orange)
+                        cellBgClass = 'bg-orange-50 text-orange-800 border-b border-orange-100 font-bold';
+                      }
+                    }
+
+                    return (
+                      <td
+                        key={res.id}
+                        className={`border-b text-center cursor-default relative p-0 border-light-3 w-11 min-w-[44px] h-7 ${cellBgClass}`}
+                        onMouseEnter={(e) => handleCellEnter(e, res, req)}
+                        onMouseLeave={() => setCellTooltip(null)}
+                      >
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className={`text-[12px] font-extrabold tracking-tight ${textClass}`}>{cellText}</span>
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Hover Floating Tooltip */}
+      {cellTooltip && (
+        <div
+          className="fixed z-[200] bg-slate-900 text-white text-xs rounded-xl py-3 px-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-10px] min-w-[200px] border border-slate-750"
+          style={{ left: cellTooltip.x, top: cellTooltip.y }}
+        >
+          <div className="font-black text-sm border-b border-slate-800 pb-1.5 mb-2 flex items-center justify-between gap-4">
+            <span className="text-white truncate">{cellTooltip.residentName}</span>
+            <span
+              className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase ${cellTooltip.source === 'acgme' ? 'bg-blue text-white' : 'bg-emerald-600 text-white'}`}
+            >
+              {cellTooltip.source === 'acgme' ? 'ACGME' : 'Curriculum'}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex justify-between gap-4 text-[11px]">
+              <span className="text-slate-400">Requirement:</span>
+              <span className="font-bold text-slate-200">{cellTooltip.reqTitle}</span>
+            </div>
+            <div className="flex justify-between gap-4 text-[11px]">
+              <span className="text-slate-400">Progress:</span>
+              <span className="font-bold text-slate-100">
+                {cellTooltip.actual} / {cellTooltip.minWeeks} weeks
+              </span>
+            </div>
+            <div className="flex justify-between gap-4 text-[11px] pt-1">
+              <span className="text-slate-400">Compliance Status:</span>
+              {cellTooltip.minWeeks === 0 ? (
+                <span className="text-slate-500 font-semibold">Not Applicable</span>
+              ) : cellTooltip.actual >= cellTooltip.minWeeks ? (
+                <span className="text-emerald-400 font-black flex items-center gap-1">Met ✅</span>
+              ) : isUnified ? (
+                <span className="text-rose-400 font-black flex items-center gap-1">Violated ❌</span>
+              ) : (
+                <span className="text-orange-400 font-black flex items-center gap-1">Unmet Target ⚠️</span>
+              )}
+            </div>
+
+            {/* List of assigned weeks */}
+            {cellTooltip.weeksList.length > 0 && (
+              <div className="mt-2.5 pt-2 border-t border-slate-800">
+                <div className="text-[8px] uppercase text-slate-400 font-black tracking-wider mb-1">
+                  Scheduled Weeks ({cellTooltip.weeksList.length}w)
+                </div>
+                <div className="flex flex-wrap gap-1 max-w-[210px] max-h-[80px] overflow-y-auto">
+                  {cellTooltip.weeksList.map(w => (
+                    <span key={w} className="bg-slate-800 text-slate-350 px-1.5 py-0.5 rounded text-[9px] font-mono">
+                      Wk {w}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tooltip caret */}
+          <div className="absolute left-1/2 -bottom-1 w-2.5 h-2.5 bg-slate-900 border-r border-b border-slate-800/20 transform -translate-x-1/2 rotate-45" />
+        </div>
+      )}
+    </div>
+  );
+});
+RequirementsStats.displayName = 'RequirementsStats';

@@ -224,3 +224,119 @@ export const UPDATE_ACADEMIC_YEAR_MUTATION = /* GraphQL */ `
     }
   }
 `
+
+// ── Sync-related queries and mutations ──
+
+export const CANDIDATES_QUERY = /* GraphQL */ `
+  query Candidates($where: Candidate_where) {
+    Candidates(where: $where, limit: 20) {
+      docs {
+        id
+        title
+        status
+        startingYear {
+          id
+          startingYear
+        }
+      }
+    }
+  }
+`
+
+export const CREATE_CANDIDATE_MUTATION = /* GraphQL */ `
+  mutation CreateCandidate($data: mutationCandidateInput!) {
+    createCandidate(data: $data) {
+      id
+      title
+    }
+  }
+`
+
+export const CANDIDATE_SCHEDULES_QUERY = /* GraphQL */ `
+  query CandidateSchedules($where: Schedule_where) {
+    Schedules(where: $where, limit: 20) {
+      docs {
+        id
+        title
+        academicYear {
+          id
+          startingYear
+        }
+        candidate {
+          id
+        }
+      }
+    }
+  }
+`
+
+export const UPDATE_SCHEDULE_MUTATION = /* GraphQL */ `
+  mutation UpdateSchedule($id: Int!, $data: mutationScheduleUpdateInput!) {
+    updateSchedule(id: $id, data: $data) {
+      id
+      title
+    }
+  }
+`
+
+export const DELETE_SCHEDULE_MUTATION = /* GraphQL */ `
+  mutation DeleteSchedule($id: Int!) {
+    deleteSchedule(id: $id) {
+      id
+    }
+  }
+`
+
+export const DELETE_CANDIDATE_MUTATION = /* GraphQL */ `
+  mutation DeleteCandidate($id: Int!) {
+    deleteCandidate(id: $id) {
+      id
+    }
+  }
+`
+
+export const UPSERT_SCHEDULE_ASSIGNMENT_MUTATION = /* GraphQL */ `
+  mutation UpsertScheduleAssignment($data: mutationScheduleAssignmentInput!) {
+    createScheduleAssignment(data: $data) {
+      id
+    }
+  }
+`
+
+export const DELETE_SCHEDULE_ASSIGNMENTS_BY_SCHEDULE = /* GraphQL */ `
+  mutation DeleteScheduleAssignment($id: Int!) {
+    deleteScheduleAssignment(id: $id) {
+      id
+    }
+  }
+`
+
+export const FIND_ASSIGNMENT_QUERY = /* GraphQL */ `
+  query FindAssignment($where: ScheduleAssignment_where) {
+    ScheduleAssignments(where: $where, limit: 1) {
+      docs {
+        id
+        schedule {
+          id
+        }
+        resident {
+          id
+        }
+        week
+        rotation {
+          id
+          codename
+        }
+        locked
+      }
+    }
+  }
+`
+
+export const UPDATE_SCHEDULE_ASSIGNMENT_MUTATION = /* GraphQL */ `
+  mutation UpdateScheduleAssignment($id: Int!, $data: mutationScheduleAssignmentUpdateInput!) {
+    updateScheduleAssignment(id: $id, data: $data) {
+      id
+    }
+  }
+`

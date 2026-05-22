@@ -215,7 +215,7 @@ export class RequirementsEngine {
     const safeGrid = schedule || {};
     const currentYear = activeYear || deriveActiveStartYear();
     const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
-    const { cohortCount, Y, cohortCount: totalCohorts } = programData.cycleConfig;
+    const { cohortCount, Y, Z, X, cohortCount: totalCohorts } = programData.cycleConfig;
     
     const cohortMap = getStandardCohortMap(residents, programData);
 
@@ -288,7 +288,7 @@ export class RequirementsEngine {
     // PTO Policy, Clinic Site validations, and Jeopardy Pool Monitoring
     residents?.forEach(r => {
       const cohort = cohortMap[r.id] ?? 0;
-      const blockStartOffset = (cohort + Y) % cohortCount;
+      const blockStartOffset = (cohort * Y + Y) % Z;
       const start = r.activeWeekStart ?? 0;
       const end = r.activeWeekEnd ?? totalWeeks;
 
@@ -301,7 +301,7 @@ export class RequirementsEngine {
         // T6.4: PTO Policy Validator
         if (assign === 'VAC') {
           // Prevent vacation on +1 clinic weeks
-          if (week % 5 === cohort) {
+          if (Math.floor((week % Z) / Y) === cohort) {
             violations.push({
               week,
               type: 'VAC' as AssignmentType,
@@ -324,12 +324,12 @@ export class RequirementsEngine {
       }
 
       // Prevent vacation inside core Wards/ICU blocks
-      for (let cycle = 0; cycle < Math.floor(totalWeeks / 5); cycle++) {
-        const cycleStart = cycle * 5 + blockStartOffset;
-        if (cycleStart + 4 > totalWeeks) continue;
-        if (cycleStart + 3 < start || cycleStart >= end) continue;
+      for (let cycle = 0; cycle < Math.floor(totalWeeks / Z); cycle++) {
+        const cycleStart = cycle * Z + blockStartOffset;
+        if (cycleStart + X > totalWeeks) continue;
+        if (cycleStart + (X - 1) < start || cycleStart >= end) continue;
 
-        const blockWeeks = Array.from({ length: 4 }, (_, i) => cycleStart + i);
+        const blockWeeks = Array.from({ length: X }, (_, i) => cycleStart + i);
         const assignmentsInBlock = blockWeeks.map(w => safeGrid[r.id]?.[w]?.assignment);
 
         const hasVacation = assignmentsInBlock.includes('VAC');

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useTransition } from 'react';
 import { 
   Resident, 
-  ScheduleSession, 
+  CandidateSchedule, 
   CompetitionParams, 
   ScheduleHistory,
   AlgorithmConfig,
@@ -15,7 +15,7 @@ interface Props {
   residents: Resident[];
   compParams: CompetitionParams;
   historySchedules: ScheduleHistory;
-  activeSchedule: ScheduleSession | undefined;
+  activeSchedule: CandidateSchedule | undefined;
   algoConfig: AlgorithmConfig[];
   onComplete: (results: any[], unifiedResidents?: Resident[]) => void;
   onCancel: () => void;
@@ -70,7 +70,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
     params: CompetitionParams, 
     onProgress: (iteration: number, attempts: Record<string, number>, exhaustionPoints: Record<string, number>, scores: number[] | undefined, year: number, overallProgress: number, healerProgress?: number) => void,
     historicalSchedules: ScheduleHistory, 
-    cohortAssignments: Record<number, Record<string, number>>,
+    cycleAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
     signal?: AbortSignal
   ): Promise<{ results: any[], unifiedResidents?: Resident[] }> => {
@@ -123,7 +123,7 @@ export const GlobalOptimizer: React.FC<Props> = ({
         year: startYear, 
         totalYears, 
         historicalSchedules, 
-        constraints: { residents, existing, cohortAssignments }, 
+        constraints: { residents, existing, cohortAssignments: cycleAssignments }, 
         params, 
         algorithmIds 
       });

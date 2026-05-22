@@ -5,6 +5,7 @@ import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek } from './utils';
+import { isClinicRotation } from '../programDataUtils';
 
 
 class SeededRNG {
@@ -116,7 +117,9 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             for (let w = 0; w < row.length; w++) {
                 if (!isResidentActive(r, w)) continue;
                 const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                if (w % programData.cycleConfig.cohortCount === cohort) {
+                const { Y, Z } = programData.cycleConfig;
+                const isClinic = Math.floor((w % Z) / Y) === cohort;
+                if (isClinic) {
                     if (row[w].locked) continue;
                     if (!row[w].assignment) {
                         const pgy = getPgyAtWeek(r, w);
@@ -187,7 +190,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
                 const currentPgy = getPgyAtWeek(r, w);
                 const pendingReqs = seededShuffle(buildLevelRequirements(programData, currentPgy) || []).filter(req => {
-                    return getReqCountFast(r.id, req.type, w) < req.minWeeks;
+                    return !isClinicRotation(programData, req.type) && getReqCountFast(r.id, req.type, w) < req.minWeeks;
                 });
                 for (const req of pendingReqs) {
                     const dur = (programData.rotations.get(req.type)?.duration || programData.cycleConfig.X);

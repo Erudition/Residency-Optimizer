@@ -37,7 +37,7 @@ export function hasTag(programData: ProgramData, codename: string, tag: string):
 
 /** Clinic rotations (both specific sites and placeholder). */
 export function isClinicRotation(programData: ProgramData, codename: string): boolean {
-  return hasTag(programData, codename, 'Clinic')
+  return hasTag(programData, codename, 'Clinic') || hasTag(programData, codename, 'Continuity Clinic')
 }
 
 /** Get the clinic codenames (e.g. ['CCIM', 'NIMA', 'CLINIC']). */

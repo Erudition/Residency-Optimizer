@@ -3,7 +3,7 @@ import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
 import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
-import { getAllCodenames } from '../programDataUtils';
+import { getAllCodenames, isClinicRotation } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount, getPriorRequirementCount, getStandardCohortMap, getCohortAtWeek } from './utils';
 
@@ -56,7 +56,9 @@ export const EducationFirstGenerator: ScheduleGenerator = {
             const row = newSchedule[r.id];
             for (let w = start; w < end; w++) {
                 const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                if (w % programData.cycleConfig.cohortCount === cohort) {
+                const { Y, Z } = programData.cycleConfig;
+                const isClinic = Math.floor((w % Z) / Y) === cohort;
+                if (isClinic) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
                     const weeklyClinicType = 'CLINIC';
@@ -73,7 +75,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
 
             const allLevels = [1, 2, 3];
             allLevels.forEach(level => {
-                const reqs = seededShuffle(buildLevelRequirements(programData, level as 1|2|3) || []);
+                const reqs = seededShuffle(buildLevelRequirements(programData, level as 1|2|3) || []).filter(r => !isClinicRotation(programData, r.type));
                 // Sort by duration descending, then by capacity ascending (harder rotations first)
                 const criticalPriority: AssignmentType[] = [
                     'ICU',

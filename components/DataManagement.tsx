@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { Resident, AssignmentType } from '../types';
-import { ScheduleSession } from '../types';
+import { CandidateSchedule } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import {
@@ -15,8 +15,8 @@ import {
 
 interface Props {
     residents: Resident[];
-    schedules: ScheduleSession[];
-    onImportJSON: (data: { residents: Resident[], schedules: ScheduleSession[] }) => void;
+    schedules: CandidateSchedule[];
+    onImportJSON: (data: { residents: Resident[], schedules: CandidateSchedule[] }) => void;
 }
 
 export const DataManagement: React.FC<Props> = ({

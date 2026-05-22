@@ -64,12 +64,12 @@ export const getCumulativeRequirementCount = (residentId: string, currentYearRow
     return count;
 };
 export const isAligned = (w: number, cohort: number, dur: number, programData: ProgramData): boolean => {
-    const { cohortCount, X, Y } = programData.cycleConfig;
+    const { X, Y, Z } = programData.cycleConfig;
     if (dur !== X && dur !== X / 2) return true;
-    const offset = ((w % cohortCount) + cohortCount) % cohortCount;
-    const startRelToClinic = (offset - cohort + cohortCount) % cohortCount;
-    if (dur === X) return startRelToClinic === Y;
-    if (dur === X / 2) return startRelToClinic === Y || startRelToClinic === Y + (X / 2);
+    const blockStart = (cohort * Y + Y) % Z;
+    const startRelToInpatient = ((w % Z) - blockStart + Z) % Z;
+    if (dur === X) return startRelToInpatient === 0;
+    if (dur === X / 2) return startRelToInpatient === 0 || startRelToInpatient === X / 2;
     return true;
 };
 

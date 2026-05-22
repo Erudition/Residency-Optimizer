@@ -454,19 +454,11 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
 
   residents?.forEach(r => {
     const partners = new Set<string>();
-    const clinicalTypes = [
-      'W-RED',
-      'W-BLUE',
-      'ICU',
-      'NF',
-      'EM',
-      'METRO',
-      'Jr Hosp'
-    ];
+    const nonCoWorkingTypes = ['VAC', 'ELEC', 'RSCH'];
 
     for (let w = 0; w < TOTAL_WEEKS; w++) {
       const myAssign = safeGrid[r.id]?.[w]?.assignment;
-      if (myAssign && clinicalTypes.includes(myAssign)) {
+      if (myAssign && !nonCoWorkingTypes.includes(myAssign)) {
         residents?.forEach(peer => {
           if (peer.id !== r.id && safeGrid[peer.id]?.[w]?.assignment === myAssign) {
             partners.add(peer.id);
@@ -490,7 +482,7 @@ export const calculateScheduleScore = (residents: Resident[], schedule: Schedule
 export const calculateDetailedScheduleScore = (residents: Resident[], schedule: ScheduleGrid, history: ScheduleHistory, programData: ProgramData): DetailedScore => {
   const safeGrid = schedule || {};
   const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
-  const { cohortCount, X, Y } = programData.cycleConfig;
+  const { cohortCount, X, Y, Z } = programData.cycleConfig;
   const numYears = Math.ceil(totalWeeks / 52);
 
   // Component 1: Education Requirements (Weight: 0.490)
@@ -615,7 +607,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
   residents?.forEach(r => {
     const cohort = cohortMap[r.id] ?? 0;
-    const blockStartOffset = (cohort + Y) % cohortCount;
+    const blockStartOffset = (cohort * Y + Y) % Z;
     const start = r.activeWeekStart ?? 0;
     const end = r.activeWeekEnd ?? totalWeeks;
 
@@ -627,7 +619,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
       if (assign === 'VAC') {
         staffingDenominator += 1;
-        staffingNumerator += (week % 5 !== cohort) ? 1 : 0;
+        staffingNumerator += (Math.floor((week % Z) / Y) !== cohort) ? 1 : 0;
 
         const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
         staffingDenominator += 1;
@@ -635,12 +627,12 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       }
     }
 
-    for (let cycle = 0; cycle < Math.floor(totalWeeks / 5); cycle++) {
-      const startCycle = cycle * 5 + blockStartOffset;
-      if (startCycle + 4 > totalWeeks) continue;
-      if (startCycle + 3 < start || startCycle >= end) continue;
+    for (let cycle = 0; cycle < Math.floor(totalWeeks / Z); cycle++) {
+      const startCycle = cycle * Z + blockStartOffset;
+      if (startCycle + X > totalWeeks) continue;
+      if (startCycle + (X - 1) < start || startCycle >= end) continue;
 
-      const blockWeeks = Array.from({ length: 4 }, (_, i) => startCycle + i);
+      const blockWeeks = Array.from({ length: X }, (_, i) => startCycle + i);
       const assignmentsInBlock = blockWeeks.map(w => safeGrid[r.id]?.[w]?.assignment);
 
       const hasVacation = assignmentsInBlock.includes('VAC');

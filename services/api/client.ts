@@ -250,7 +250,20 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   // (to support multi-year generation and viewing historical/future schedules).
 
   gqlCycles = gqlCycles.filter(c => c.academicYear?.startingYear === academicYear)
-  gqlGradReqs = gqlGradReqs.filter(g => g.academicYear?.startingYear === academicYear)
+  
+  // Load graduation requirements for the active year, or fall back to the closest year if none exist for the active year
+  const activeYearReqs = gqlGradReqs.filter(g => g.academicYear?.startingYear === academicYear);
+  if (activeYearReqs.length > 0) {
+    gqlGradReqs = activeYearReqs;
+  } else {
+    const yearsWithReqs = Array.from(new Set(gqlGradReqs.map(g => g.academicYear?.startingYear).filter(Boolean))) as number[];
+    if (yearsWithReqs.length > 0) {
+      const closestYear = yearsWithReqs.reduce((prev, curr) => 
+        Math.abs(curr - academicYear) < Math.abs(prev - academicYear) ? curr : prev
+      );
+      gqlGradReqs = gqlGradReqs.filter(g => g.academicYear?.startingYear === closestYear);
+    }
+  }
 
   // ── Transform Rotations ──
   const rotations = new Map<string, RotationConfig>()
@@ -356,7 +369,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   const cycleAssignments: Record<string, number> = {}
   for (const cycle of gqlCycles) {
     for (const resident of cycle.residents) {
-      cycleAssignments[`${resident.id}`] = cycle.number
+      cycleAssignments[`${resident.id}`] = cycle.number - 1
     }
   }
 

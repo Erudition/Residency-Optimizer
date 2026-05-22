@@ -9,7 +9,11 @@ import {
   AssignmentType,
   ScheduleCell,
   ConvergenceDataPoint,
-  ScheduleSession
+  CandidateSchedule,
+  DraftCandidate,
+  PublishedCandidate,
+  isDraft,
+  isPublished
 } from './types';
 import {
   TOTAL_WEEKS
@@ -29,6 +33,8 @@ import {
   getAugmentedResidents
 } from './services/scheduler';
 import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
+import { getScheduleSyncService, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
+import { extractTokenFromURL, isAuthenticated } from './services/api/auth';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
 import { healSchedule } from './services/healer';
@@ -41,9 +47,8 @@ import { ResidentAssignmentsStats } from './components/ResidentAssignmentsStats'
 import { FairnessStats } from './components/FairnessStats';
 import { RequirementsStats } from './components/RequirementsStats';
 import { ScheduleComparison } from './components/ScheduleComparison';
-import { ACGMEAudit } from './components/ACGMEAudit';
 import { CompetitorStudio } from './components/CompetitorStudio';
-import { CohortKanban } from './components/CohortKanban';
+import { CycleKanban } from './components/CycleKanban';
 import { GenerationDashboard } from './components/GenerationDashboard';
 import { SettingsOverlay } from './components/SettingsOverlay';
 import { Button } from './components/ui/Button';
@@ -82,7 +87,8 @@ import {
   Copy,
   Crown,
   CheckSquare,
-  Square
+  Square,
+  CloudUpload
 } from 'lucide-react';
 
 
@@ -237,7 +243,7 @@ const RenameModal = ({
   return (
     <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-6 w-96">
-        <h3 className="text-lg font-bold mb-4">Rename Schedule</h3>
+        <h3 className="text-lg font-bold mb-4">Rename Candidate</h3>
         <input
           type="text"
           value={name}
@@ -348,7 +354,7 @@ const sanitizeScheduleGrid = (
   return sanitized;
 };
 
-const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): ScheduleSession => {
+const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): CandidateSchedule => {
   const data = s.data || s.schedule || {};
   const id = s.id || `sched-imported-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
   const name = s.name || s.winnerName || 'Imported Schedule';
@@ -364,16 +370,31 @@ const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): Schedu
     ? sanitizeScheduleGrid(rawUnified as ScheduleGrid, residentsList, undefined, startYear) 
     : undefined;
 
-  return {
-    ...s,
+  // Preserve kind if already set (e.g. from a previous session), default to draft
+  const kind = s.kind === 'published' ? 'published' : 'draft';
+  const base = {
     id,
     name,
     data: sanitizedData,
     unifiedData: sanitizedUnifiedData,
     startYear,
     createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
-    isGenerating: false
+    isGenerating: false,
+    metrics: s.metrics,
+    cohortAssignments: s.cohortAssignments,
+    isHistory: s.isHistory,
+    lockedUntilWeek: s.lockedUntilWeek,
   };
+  if (kind === 'published') {
+    return {
+      ...base,
+      kind: 'published' as const,
+      candidateId: s.candidateId,
+      scheduleIds: s.scheduleIds || {},
+      lastSyncedAt: s.lastSyncedAt ? new Date(s.lastSyncedAt) : undefined,
+    };
+  }
+  return { ...base, kind: 'draft' as const };
 };
 
 const syncResidentsWithBackend = (cached: Resident[], backendResidents: Resident[]): Resident[] => {
@@ -409,6 +430,9 @@ const syncResidentsWithBackend = (cached: Resident[], backendResidents: Resident
   return merged;
 };
 
+// Extract JWT from URL if present (set by Payload admin "Launch Scheduler" redirect)
+extractTokenFromURL();
+
 const AppContent: React.FC = () => {
   const programData = useProgramData();
 
@@ -417,8 +441,8 @@ const AppContent: React.FC = () => {
     return syncResidentsWithBackend(cached, programData.residents);
   });
 
-  const [schedules, setSchedules] = useState<ScheduleSession[]>(() => {
-    const rawSchedules = loadState<ScheduleSession[]>('rsp_schedules_v4', []);
+  const [schedules, setSchedules] = useState<CandidateSchedule[]>(() => {
+    const rawSchedules = loadState<CandidateSchedule[]>('rsp_schedules_v4', []);
     const cached = loadState<Resident[]>('rsp_residents_v4', []);
     const loadedResidents = syncResidentsWithBackend(cached, programData.residents);
     return rawSchedules.map((s: any) => normalizeAndSanitizeSchedule(s, loadedResidents));
@@ -434,7 +458,7 @@ const AppContent: React.FC = () => {
   );
 
   const [activeYear, setActiveYear] = useState<number>(ACTIVE_START_YEAR);
-  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cohort'>(() =>
+  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>(() =>
     loadState('rsp_sort_order', 'pgy')
   );
   // Dynamic history detection
@@ -465,7 +489,7 @@ const AppContent: React.FC = () => {
     };
   }, [programData.historicalSchedules, programData.historicalCohorts]);
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts' | 'totals'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cycles' | 'totals'>('schedule');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'residents' | 'backup' | 'reset'>('residents');
   
@@ -533,6 +557,13 @@ const AppContent: React.FC = () => {
   const [promoteOnExport, setPromoteOnExport] = useState(true);
   const [isPromoting, setIsPromoting] = useState(false);
 
+  // ── Sync Service ──
+  const syncService = useMemo(() => getScheduleSyncService(), []);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(
+    isAuthenticated() ? 'connected' : 'local-only'
+  );
+
+
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -598,11 +629,7 @@ const AppContent: React.FC = () => {
   const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
     setViewMode(mode);
     if (mode === 'unified') {
-      if (['cohorts', 'coworking', 'fairness', 'acgme_requirements', 'workload'].includes(activeTab)) {
-        setActiveTab('schedule');
-      }
-    } else {
-      if (activeTab === 'audit') {
+      if (['cycles', 'coworking', 'fairness', 'workload'].includes(activeTab)) {
         setActiveTab('schedule');
       }
     }
@@ -681,7 +708,7 @@ const AppContent: React.FC = () => {
       return { ...r, level, clinicType, cohort };
     }).sort((a, b) => {
 
-      if (residentSortOrder === 'cohort') {
+      if (residentSortOrder === 'cycle') {
         if (a.cohort !== b.cohort) return a.cohort - b.cohort;
         if (a.level !== b.level) return a.level - b.level;
         return a.name.localeCompare(b.name);
@@ -728,18 +755,13 @@ const AppContent: React.FC = () => {
            clinicType: r.startYear === 2025 ? 'NIMA' : 'CCIM',
            cohort: (activeSchedule?.cohortAssignments?.[startYear] || historicalCohortsByYear[startYear] || {})[r.id] ?? 0
        })).sort((a, b) => {
-           if (residentSortOrder === 'cohort') {
-               if (a.cohort !== b.cohort) return a.cohort - b.cohort;
-               if (a.level !== b.level) return a.level - b.level;
-               return a.name.localeCompare(b.name);
-           } else {
-               if (a.level !== b.level) return a.level - b.level;
-               return a.name.localeCompare(b.name);
-           }
+           if (a.startYear !== b.startYear) return a.startYear - b.startYear;
+           if (a.cohort !== b.cohort) return a.cohort - b.cohort;
+           return a.name.localeCompare(b.name);
        });
     }
     return activeResidents;
-  }, [viewMode, activeSchedule, residents, activeResidents, residentSortOrder, historicalCohortsByYear]);
+  }, [viewMode, activeSchedule, residents, activeResidents, historicalCohortsByYear]);
 
   const { stats, violations, fairness } = useMemo(() => {
     if ((!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') && !isHistoricalYear) {
@@ -793,7 +815,7 @@ const AppContent: React.FC = () => {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ resId: string, week: number } | null>(null);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
-  const [scheduleToRename, setScheduleToRename] = useState<ScheduleSession | null>(null);
+  const [scheduleToRename, setScheduleToRename] = useState<CandidateSchedule | null>(null);
 
   useEffect(() => {
     localStorage.setItem('rsp_sort_order', JSON.stringify(residentSortOrder));
@@ -944,7 +966,9 @@ const AppContent: React.FC = () => {
 
   useEffect(() => { 
     try {
-      const pruned = schedules.slice(-3).map(sch => {
+      // Only persist draft candidates to localStorage — published ones live on the server
+      const drafts = schedules.filter(s => isDraft(s));
+      const pruned = drafts.slice(-3).map(sch => {
         if (!sch.metrics) return sch;
         return {
           ...sch,
@@ -969,6 +993,146 @@ const AppContent: React.FC = () => {
       }
     }
   }, [activeScheduleId]);
+
+  // ── SSE Sync Lifecycle ──
+  // Derive candidateId from the active tab's backendId
+  const activeSched = schedules.find(s => s.id === activeScheduleId);
+  const activeSyncId = (activeSched && isPublished(activeSched)) ? activeSched.candidateId : null;
+
+  useEffect(() => {
+    if (!activeSyncId) return;
+
+    syncService.connect(activeSyncId);
+    setSyncStatus('connected');
+
+    // Poll sync status periodically
+    const statusInterval = setInterval(() => {
+      setSyncStatus(syncService.syncStatus);
+    }, 2000);
+
+    // Handle incoming events from other clients
+    const unsubscribe = syncService.onEvent((event: ScheduleSyncEvent) => {
+      switch (event.type) {
+        case 'assignment-change': {
+          // Apply remote cell edit to local state
+          setSchedules(prev => prev.map(s => {
+            if (s.backendId !== event.scheduleId) return s;
+            // Find which year this schedule covers
+            const yearKeys = Object.keys(s.data).map(Number);
+            for (const year of yearKeys) {
+              const grid = s.data[year];
+              if (!grid) continue;
+              const resId = event.residentId.toString();
+              if (grid[resId]) {
+                const weekIdx = event.week - 1; // Backend is 1-based
+                const updatedRow = [...grid[resId]];
+                updatedRow[weekIdx] = {
+                  assignment: event.rotation,
+                  locked: event.locked,
+                };
+                return {
+                  ...s,
+                  data: {
+                    ...s.data,
+                    [year]: {
+                      ...grid,
+                      [resId]: updatedRow,
+                    },
+                  },
+                };
+              }
+            }
+            return s;
+          }));
+          break;
+        }
+        case 'schedule-created': {
+          // A remote client created a new schedule — we'll load it on next full sync
+          console.log('[Sync] Remote schedule created:', event.scheduleId, event.title);
+          break;
+        }
+        case 'schedule-updated': {
+          // Apply remote rename
+          setSchedules(prev => prev.map(s =>
+            s.backendId === event.scheduleId ? { ...s, name: event.title } : s
+          ));
+          break;
+        }
+        case 'schedule-deleted': {
+          // Remove schedule deleted by remote client
+          setSchedules(prev => prev.filter(s => s.backendId !== event.scheduleId));
+          break;
+        }
+      }
+    });
+
+    return () => {
+      clearInterval(statusInterval);
+      unsubscribe();
+      syncService.disconnect();
+      setSyncStatus(isAuthenticated() ? 'connected' : 'local-only');
+    };
+  }, [activeSyncId, syncService]);
+
+  // ── Load existing backend candidates on startup ──
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+
+    syncService.loadAllCandidates().then(candidates => {
+      if (candidates.length === 0) return;
+
+      setSchedules(prev => {
+        const existingBackendIds = new Set(prev.filter(s => s.backendId).map(s => s.backendId));
+        const newCandidates: CandidateSchedule[] = [];
+
+        for (const candidate of candidates) {
+          // Skip if we already have this candidate locally
+          if (existingBackendIds.has(candidate.candidateId)) continue;
+
+          // Build the ScheduleHistory (3-year grid) from backend data
+          const data: Record<number, any> = {};
+          const yearEntries = Object.entries(candidate.yearData) as [string, typeof candidate.yearData[number]][];
+          for (const [yearStr, assignments] of yearEntries) {
+            const year = parseInt(yearStr, 10);
+            const grid: any = {};
+            for (const a of assignments) {
+              const resId = a.residentId.toString();
+              if (!grid[resId]) {
+                grid[resId] = Array(52).fill(null).map(() => ({ assignment: null, locked: false }));
+              }
+              if (a.week >= 1 && a.week <= 52) {
+                grid[resId][a.week - 1] = {
+                  assignment: a.rotation,
+                  locked: a.locked,
+                };
+              }
+            }
+            data[year] = grid;
+          }
+
+          newCandidates.push({
+            kind: 'published' as const,
+            id: `pub-${candidate.candidateId}`,
+            name: candidate.title,
+            data,
+            createdAt: new Date(),
+            startYear: candidate.startYear,
+            candidateId: candidate.candidateId,
+            scheduleIds: candidate.scheduleIds,
+            lastSyncedAt: new Date(),
+          });
+        }
+
+        if (newCandidates.length > 0) {
+          console.log(`[Sync] Loaded ${newCandidates.length} candidates from backend`);
+          return [...prev, ...newCandidates];
+        }
+        return prev;
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncService]);
+
   const handleGenerate = async () => {
     if (isGeneratingRef.current) return;
     
@@ -1072,7 +1236,8 @@ const AppContent: React.FC = () => {
           });
         }
         setSchedules(prev => {
-          const finalResults = results.map((res: any, idx: number) => ({
+          const finalResults: DraftCandidate[] = results.map((res: any, idx: number) => ({
+            kind: 'draft' as const,
             id: newIds[idx],
             name: `${res.winnerName} (${idx === 0 ? 'Optimal' : `Rank ${idx + 1}`})`,
             data: res.schedule,
@@ -1083,6 +1248,7 @@ const AppContent: React.FC = () => {
             createdAt: new Date(),
             isGenerating: false,
           }));
+
           return [...prev, ...finalResults];
         });
         setActiveScheduleId(newIds[0]);
@@ -1113,6 +1279,10 @@ const AppContent: React.FC = () => {
   const handleRename = (newName: string) => {
     if (scheduleToRename && newName.trim()) {
       setSchedules(prev => prev.map(s => s.id === scheduleToRename.id ? { ...s, name: newName } : s));
+      // Sync rename to backend if published
+      if (isPublished(scheduleToRename)) {
+        syncService.renameSchedule(scheduleToRename.candidateId, newName.trim());
+      }
     }
     setRenameModalOpen(false);
     setScheduleToRename(null);
@@ -1200,6 +1370,81 @@ const AppContent: React.FC = () => {
     }
   };
 
+
+  // Publish state: 'idle' | 'naming' (modal open) | 'saving' (network)
+  const [publishState, setPublishState] = useState<'idle' | 'naming' | 'saving'>('idle');
+
+  const handlePublishClick = () => {
+    if (!activeSchedule || !isDraft(activeSchedule) || !activeSchedule.startYear) return;
+    if (!isAuthenticated()) return;
+    // Open the rename modal pre-filled with the draft's name for the user to confirm/edit
+    setScheduleToRename(activeSchedule);
+    setPublishState('naming');
+    setRenameModalOpen(true);
+  };
+
+  const handlePublishSave = async (candidateName: string) => {
+    const sched = scheduleToRename;
+    setRenameModalOpen(false);
+    setScheduleToRename(null);
+
+    if (!sched || !isDraft(sched) || !sched.startYear || !candidateName.trim()) {
+      setPublishState('idle');
+      return;
+    }
+
+    setPublishState('saving');
+    try {
+      const result = await syncService.createCandidate(sched.startYear, candidateName.trim());
+      if (!result) {
+        console.error('[Publish] Failed to create candidate');
+        return;
+      }
+      const { candidateId } = result;
+      const scheduleIds = await syncService.saveCandidateGrids(
+        candidateId,
+        candidateName.trim(),
+        sched.data,
+      );
+
+      // Replace the draft with a published candidate
+      const published: PublishedCandidate = {
+        kind: 'published',
+        id: `pub-${candidateId}`,
+        candidateId,
+        scheduleIds,
+        name: candidateName.trim(),
+        data: sched.data,
+        unifiedData: sched.unifiedData,
+        createdAt: sched.createdAt,
+        metrics: sched.metrics,
+        cohortAssignments: sched.cohortAssignments,
+        startYear: sched.startYear,
+        lastSyncedAt: new Date(),
+      };
+
+      setSchedules(prev => prev.map(s => s.id === sched.id ? published : s));
+      setActiveScheduleId(published.id);
+      console.log(`[Publish] Published "${candidateName}" as candidate ${candidateId}`);
+    } catch (err) {
+      console.error('[Publish] Failed:', err);
+    } finally {
+      setPublishState('idle');
+    }
+  };
+
+  const handleDeleteSchedule = async (sched: CandidateSchedule) => {
+    if (isPublished(sched)) {
+      const confirmed = window.confirm(
+        `Delete "${sched.name}"?\n\nThis will permanently remove this candidate for all users.`
+      );
+      if (!confirmed) return;
+      await syncService.deleteCandidate(sched.candidateId);
+    }
+    setSchedules(prev => prev.filter(x => x.id !== sched.id));
+    if (activeScheduleId === sched.id) setActiveScheduleId('all');
+  };
+
   const handleCellClick = (resId: string, week: number, rect?: DOMRect) => {
     setSelectedCell({ resId, week });
     if (rect) setAnchorRect(rect);
@@ -1219,6 +1464,17 @@ const AppContent: React.FC = () => {
 
         const dataCopy = { ...s.data, [activeYear]: yearCopy };
 
+        // Fire background sync for this cell edit
+        if (s.backendId && type) {
+          syncService.upsertCell(
+            s.backendId,
+            parseInt(selectedCell.resId, 10),
+            selectedCell.week + 1, // Backend uses 1-based weeks
+            type,
+            true,
+          );
+        }
+
         return {
           ...s,
           data: dataCopy
@@ -1228,21 +1484,21 @@ const AppContent: React.FC = () => {
     setModalOpen(false);
   };
 
-  const handleAssignCohort = (residentId: string, cohortIndex: number) => {
+  const handleAssignCycle = (residentId: string, cycleIndex: number) => {
     if (!activeScheduleId) return;
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
 
-      const updatedCohorts = { ...(s.cohortAssignments || {}) };
+      const updatedCycles = { ...(s.cohortAssignments || {}) };
       // BUG FIX: If the year mapping doesn't exist yet, we must initialize it with the CURRENT state
-      // otherwise, all other residents reset to cohort 0.
-      const yearMapping = { ...(updatedCohorts[activeYear] || activeYearCohorts) };
-      yearMapping[residentId] = cohortIndex;
-      updatedCohorts[activeYear] = yearMapping;
+      // otherwise, all other residents reset to cycle 0.
+      const yearMapping = { ...(updatedCycles[activeYear] || activeYearCohorts) };
+      yearMapping[residentId] = cycleIndex;
+      updatedCycles[activeYear] = yearMapping;
 
       return {
         ...s,
-        cohortAssignments: updatedCohorts
+        cohortAssignments: updatedCycles
       };
     }));
   };
@@ -1383,16 +1639,19 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleDuplicateSchedule = (sched: ScheduleSession) => {
+  const handleDuplicateSchedule = (sched: CandidateSchedule) => {
     const newId = Math.random().toString(36).substring(2, 9);
-    const duplicated: ScheduleSession = {
-      ...sched,
+    // Duplicates always start as drafts — user must Publish explicitly
+    const duplicated: DraftCandidate = {
+      kind: 'draft',
       id: newId,
       name: `${sched.name} (Copy)`,
       data: JSON.parse(JSON.stringify(sched.data)),
       unifiedData: sched.unifiedData ? JSON.parse(JSON.stringify(sched.unifiedData)) : undefined,
       createdAt: new Date(),
       cohortAssignments: sched.cohortAssignments ? JSON.parse(JSON.stringify(sched.cohortAssignments)) : undefined,
+      startYear: sched.startYear,
+      metrics: sched.metrics,
     };
     setSchedules(prev => [...prev, duplicated]);
     setActiveScheduleId(newId);
@@ -1447,6 +1706,11 @@ const AppContent: React.FC = () => {
 
   const handleDeleteAllSchedules = () => {
     if (confirm("Delete all schedule versions?")) {
+      // Delete from backend in background
+      const schedulesToDelete = schedules.filter(s => s.backendId);
+      schedulesToDelete.forEach(s => {
+        syncService.deleteSchedule(s.backendId!);
+      });
       setSchedules([]);
       setActiveScheduleId("all");
     }
@@ -1589,6 +1853,44 @@ const AppContent: React.FC = () => {
               <span className="text-[9px] font-black text-blue uppercase tracking-tighter">Engine Busy</span>
             </div>
           )}
+          {/* Sync Status Indicator */}
+          <div
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border cursor-default"
+            style={{
+              backgroundColor: syncStatus === 'live' ? 'rgba(139,92,246,0.1)'
+                : syncStatus === 'connected' ? 'rgba(16,185,129,0.1)'
+                : 'rgba(156,163,175,0.1)',
+              borderColor: syncStatus === 'live' ? 'rgba(139,92,246,0.2)'
+                : syncStatus === 'connected' ? 'rgba(16,185,129,0.2)'
+                : 'rgba(156,163,175,0.2)',
+            }}
+            title={
+              syncStatus === 'live' ? 'Live — real-time sync active with other clients'
+              : syncStatus === 'connected' ? 'Connected — authenticated with server'
+              : 'Local Only — not connected to a server'
+            }
+          >
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full"
+              style={{
+                backgroundColor: syncStatus === 'live' ? '#8b5cf6'
+                  : syncStatus === 'connected' ? '#10b981'
+                  : '#9ca3af',
+              }}
+            />
+            <span
+              className="text-[9px] font-black uppercase tracking-tighter"
+              style={{
+                color: syncStatus === 'live' ? '#8b5cf6'
+                  : syncStatus === 'connected' ? '#10b981'
+                  : '#9ca3af',
+              }}
+            >
+              {syncStatus === 'live' ? 'Live'
+                : syncStatus === 'connected' ? 'Connected'
+                : 'Local Only'}
+            </span>
+          </div>
         </div>
 
         {/* Center: Academic Year Tabs */}
@@ -1686,16 +1988,15 @@ const AppContent: React.FC = () => {
           {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
           <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
           <NavButton id="totals" label={viewMode === 'unified' ? "Totals 3yr" : "Totals"} icon={Users} />
-          {viewMode === 'unified' ? (
+          <NavButton 
+            id="requirements" 
+            label={viewMode === 'unified' ? "Requirements 3yr" : "Requirements"} 
+            icon={ClipboardList} 
+            badgeCount={violations.reqs.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} 
+          />
+          {viewMode !== 'unified' && (
             <>
-              <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
-              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'mhs').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
-            </>
-          ) : (
-            <>
-              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'acgme').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
-              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'mhs').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
-              <NavButton id="cohorts" label="Cohorts" icon={Users} />
+              <NavButton id="cycles" label="Cycles" icon={Users} />
               <NavButton id="coworking" label="Coworking" icon={Network} />
               <NavButton id="fairness" label="Fairness" icon={Scale} />
             </>
@@ -1807,27 +2108,29 @@ const AppContent: React.FC = () => {
                   <div className="px-6 py-3 bg-white border-b flex items-center justify-between shrink-0">
                     {/* Left: Group By */}
                     <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
-                        <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
-                          <Button
-                            variant="ghost"
-                            onClick={() => setResidentSortOrder('pgy')}
-                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                          >
-                            <LayoutGrid size={14} />
-                            PGY Level
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={() => setResidentSortOrder('cohort')}
-                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                          >
-                            <Users size={14} />
-                            Cohort
-                          </Button>
+                      {viewMode !== 'unified' && (
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
+                          <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
+                            <Button
+                              variant="ghost"
+                              onClick={() => setResidentSortOrder('pgy')}
+                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                            >
+                              <LayoutGrid size={14} />
+                              PGY Level
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={() => setResidentSortOrder('cohort')}
+                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                            >
+                              <Users size={14} />
+                              Cohort
+                            </Button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
 
@@ -1852,6 +2155,35 @@ const AppContent: React.FC = () => {
                             </>
                           )}
                         </Button>
+                      )}
+                      {/* Publish button — only for draft, non-history schedules when authenticated */}
+                      {!activeSchedule?.isHistory && isAuthenticated() && activeSchedule && (
+                        isPublished(activeSchedule) ? (
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                            <CloudUpload size={13} />
+                            Published
+                          </span>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handlePublishClick}
+                            disabled={publishState !== 'idle' || !activeSchedule?.startYear}
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
+                          >
+                            {publishState === 'saving' ? (
+                              <>
+                                <Loader2 size={14} className="animate-spin" />
+                                Publishing…
+                              </>
+                            ) : (
+                              <>
+                                <CloudUpload size={14} />
+                                Publish
+                              </>
+                            )}
+                          </Button>
+                        )
                       )}
                     </div>
                   </div>
@@ -1886,38 +2218,27 @@ const AppContent: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'acgme_requirements' && (
-                <div className="flex-1 overflow-y-auto p-6 bg-light-1">
-                  <div className="max-w-6xl mx-auto">
-                    <RequirementsStats mode="acgme" residents={activeResidents} schedule={currentGrid} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} precalculatedViolations={violations.reqs} />
-                  </div>
-                </div>
-              )}
-              {activeTab === 'mhs_requirements' && (
-                <div className="flex-1 overflow-y-auto p-6 bg-light-1">
-                  <div className="max-w-6xl mx-auto">
-                    <RequirementsStats
-                      mode="mhs"
-                      residents={viewMode === 'unified' ? displayResidents : activeResidents}
-                      schedule={viewMode === 'unified' ? displayGrid : currentGrid}
-                      history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
-                      activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
-                    />
-                  </div>
-                </div>
-              )}
-              {activeTab === 'audit' && <div className="flex-1 overflow-y-auto"><ACGMEAudit residents={activeResidents} history={{ ...historySchedules, ...(activeSchedule?.data || {}) }} activeYear={activeYear} /></div>}
-              {activeTab === 'cohorts' && (
+              {activeTab === 'requirements' && (
                 <div className="flex-1 overflow-hidden">
-                  <CohortKanban
-                    residents={activeResidents}
-                    activeYear={activeYear}
-                    cohortAssignments={activeYearCohorts}
-                    onAssignCohort={handleAssignCohort}
+                  <RequirementsStats
+                    residents={viewMode === 'unified' ? displayResidents : activeResidents}
+                    schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                    history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
+                    activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
                   />
                 </div>
               )}
-              {activeTab === 'coworking' && <div className="flex-1 overflow-y-auto"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'cycles' && (
+                <div className="flex-1 overflow-hidden">
+                  <CycleKanban
+                    residents={activeResidents}
+                    activeYear={activeYear}
+                    cycleAssignments={activeYearCohorts}
+                    onAssignCycle={handleAssignCycle}
+                  />
+                </div>
+              )}
+              {activeTab === 'coworking' && <div className="flex-1 overflow-hidden"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
               {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={fairness} /></div>}
               {activeTab === 'export' && (
                 <div className="flex-1 overflow-y-auto p-8 bg-light-1">
@@ -2091,10 +2412,9 @@ const AppContent: React.FC = () => {
                       </Button>
                       <Button variant="ghost" size="sm" onClick={(e) => { 
                         e.stopPropagation(); 
-                        setSchedules(s => s.filter(x => x.id !== sched.id)); 
-                        if (activeScheduleId === sched.id) setActiveScheduleId('all'); 
-                      }} className="p-0.5 rounded text-muted hover:text-red transition-colors">
-                        <X size={10} />
+                        handleDeleteSchedule(sched);
+                      }} className="p-0.5 rounded text-muted hover:text-red transition-colors" title={isPublished(sched) ? 'Delete candidate for all users' : 'Remove draft'}>
+                        <Trash2 size={10} />
                       </Button>
                     </div>
                   </div>
@@ -2130,7 +2450,7 @@ const AppContent: React.FC = () => {
       )}
 
       <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} anchorRect={anchorRect} />
-      <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => setRenameModalOpen(false)} onSave={handleRename} />
+      <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => { setRenameModalOpen(false); setPublishState('idle'); setScheduleToRename(null); }} onSave={publishState === 'naming' ? handlePublishSave : handleRename} />
     </div>
   );
 };

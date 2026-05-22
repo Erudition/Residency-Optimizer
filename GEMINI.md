@@ -24,6 +24,10 @@ Clinic scheduling uses an X+Y model stored in `ClinicCycles` (cohort documents) 
 *   Clinic week formula: `Math.floor((week % Z) / Y) === cohortIndex`
 *   Standard 4+1: 5 cycle docs, Y=1. Programs using 4+2: 3 cycle docs, Y=2.
 *   Residents are assigned directly to ClinicCycle documents for a given AY.
+*   **Cohort Indexing & Clinic Week Constraints**:
+    *   To prevent off-by-one errors and scheduling mismatches, all cohort indices (active, historical, fallback) must be represented as **0-based** (range `0` to `cohortCount - 1`) in memory.
+    *   Clinic week checking and pre-population across all generators, healer solvers, continuity scoring, and requirements engines must generically resolve clinic weeks using the cycle-length (`Z`) and weeks-per-cycle (`Y`) values: `Math.floor((week % Z) / Y) === cohortIndex`. Hardcoding `% 5` or `% cohortCount` for clinic checks is strictly prohibited.
+    *   Clinic assignments (`CLINIC`) must never be scheduled, mutated, or generated on non-clinic weeks (flexible weeks).
 
 The project is built to a Github pages site available at `https://erudition.github.io/Residency-Optimizer/`, built from the main branch. Make sure I am always working in a dedicated feature branch when making changes. 
 
@@ -123,3 +127,27 @@ The `Schedules` collection stores both candidate and historical schedules in the
 *   **Promotion trigger** — when the PD exports or shares a schedule, the export dialog includes a defaulted-on checkbox: *"Set as official schedule for AY [year]?"*. Checking it copies year 1's assignments into a locked historical `Schedule` and sets `canonicalSchedule`. This piggybacks on the PD's natural workflow (generate → review → export) rather than requiring a separate finalization ceremony.
 *   **Access control** — historical schedules (those referenced by `canonicalSchedule`) have all assignments marked `locked: true`. Only super-admins can unlock/edit them. Candidate schedules are editable by anyone with `manageSchedules` access.
 *   **Conflict resolution** — if multiple candidates are exported with the checkbox, the latest one wins (overwrites the canonical pointer). A warning is shown if an existing canonical schedule would be replaced.
+
+## Realtime Schedule Sync
+Candidate schedules are synchronized between multiple frontend clients and the Payload backend using **Server-Sent Events (SSE)** for push notifications and **GraphQL mutations** for writes.
+
+*   **Architecture** — Writes go through GraphQL mutations (individual cell upserts or bulk saves). The backend broadcasts SSE events to all connected clients via `afterChange` hooks on `Schedules` and `ScheduleAssignments` collections.
+*   **SSE Endpoint** — `GET /api/sync/stream/:candidateId` maintains persistent `text/event-stream` connections per candidate ID. Each client generates a unique `clientId` to deduplicate its own echoed events.
+*   **Bulk Endpoint** — `POST /api/sync/bulk` creates a Schedule with all assignments in one request, bypassing individual `afterChange` hooks and broadcasting a single `bulk-sync` event.
+*   **Frontend Service** — `services/api/sync.ts` exports `ScheduleSyncService` (singleton via `getScheduleSyncService()`). It manages EventSource connections, debounced cell upserts (300ms), transparent candidate auto-creation, and exponential-backoff reconnection.
+*   **Offline-first** — The app works fully without a backend. localStorage remains as a fallback cache. Backend sync is opportunistic.
+*   **Identity Mapping** — Schedules have a frontend `id` (string, e.g. `sched-...`) and an optional `backendId` (Payload Schedule doc ID). Unauthenticated users can generate and interact with schedules locally without ever touching the backend.
+*   **Candidate Transparency** — `Candidates` are internal backend groupings (3-year planning horizons). Users never see or manage them directly — the sync service auto-creates them on first save via `ensureCandidate()`.
+*   **Conflict Resolution** — Last-write-wins for simultaneous cell edits. No conflict UI.
+*   **Sync Status UI** — A status indicator in the header shows: 🟣 Live (SSE streaming), 🟢 Connected (authenticated), ⚪ Local Only (no auth).
+
+## Clinic Block Scheduling Guardrail
+*   **Clinic Assignment Exclusivity**: Clinic assignments (`CLINIC` or specific clinic codenames) must never be scheduled, generated, or mutated on non-clinic (flexible) weeks.
+*   **Continuity Clinic Tag Integration**: The scheduling helper `isClinicRotation` must check for both `'Clinic'` and `'Continuity Clinic'` tags to align with the seeded tag titles in the database.
+*   **Generator Requirement Checks**: All generator algorithms must explicitly filter out clinic rotations from their educational block-placement loops to prevent clinic assignments from being scheduled as blocks on non-clinic weeks.
+## Unified Educational Requirements Spreadsheet Grid
+*   **Grid layout and columns**: All individual ACGME and Curriculum educational requirements from the backend are represented as columns, and residents as rows. Old ACGME, Curriculum, and ACGME Audit screens are consolidated into this single screen.
+*   **Sticky row header resizing**: The resident name row header column is sticky and can be horizontally resized by dragging the right border of the column.
+*   **Dynamic sorting**: In 1-year view, sorting can be toggled between "PGY Level" (consisting of PGY groups, cohorts, and then alphabetically) and "Cohort" (consisting of Cohort groups, PGYs, and then alphabetically). In 3-year unified view, the group controls are hidden, and residents are always sorted by matriculation year `startYear` first, then cohort, then alphabetically.
+*   **Color coding**: Cells are color-coded based on compliance status: satisfied cells are emerald green (`bg-emerald-50 text-emerald-800 border-b border-emerald-100 font-bold`), unsatisfied annual soft targets/ideals in 1-year view are soft orange (`bg-orange-50 text-orange-800 border-b border-orange-100 font-bold`), and unsatisfied hard graduation minimums in 3-year view are rose/red (`bg-rose-50 text-rose-800 border-b border-rose-100 font-bold`). Non-applicable requirements (0 minimum/ideal weeks) display a simple dash (`-`).
+*   **Diagonally Tilted Headers**: Resident column headers across both the Requirements and Totals (Rotation Totals) grids must be tilted diagonally at a `-45deg` angle with absolute positioning (`absolute bottom-3`, `left-4` / `left-3`, `transform-origin: left bottom`) to optimize legibility and facilitate compact columns. To prevent subsequent column backgrounds from clipping or painting over the overflowing rotated text of preceding columns, the resident headers must be assigned a decreasing `zIndex` from left to right (`style={{ zIndex: 100 - idx }}`), while the sticky left row header must retain the highest z-index (`zIndex: 150`) to remain on top of scrolled resident columns.
