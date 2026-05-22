@@ -45,7 +45,7 @@ The PGY-2 takes on team leadership on Wards and gains intensive triage exposure 
 | **1** | **Critical Care Core** | ICU Main |
 | **1** | **Night Float** | 4 weeks Supervisory Night Float (NF) |
 | **0.5** | **Emergency Medicine** | 2 weeks Emergency Medicine (EM) 
-| **0.5** | **Neurology** | Neurology |
+| **1.0** | **Neurology** | Neurology |
 | **0.5** | **Gastroenterology** | Gastroenterology |
 | **0.5** | **Pulmonology** | 2 weeks Pulmonology Consult/Procedural |
 | **0.5** | **Rheumatology** | 2 weeks Rheumatology |
