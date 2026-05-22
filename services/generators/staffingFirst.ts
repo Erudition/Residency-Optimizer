@@ -80,7 +80,10 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     }
                     continue;
                 }
-                if (w % programData.cycleConfig.cohortCount === getCohortAtWeek(r, w, validCohortAssignments)) {
+                const cohort = getCohortAtWeek(r, w, validCohortAssignments);
+                const { Y, Z } = programData.cycleConfig;
+                const isClinic = Math.floor((w % Z) / Y) === cohort;
+                if (isClinic) {
                     if (row[w].locked) continue;
                     const level = getPgy(r, w);
                     const clinicType = 'CLINIC';
