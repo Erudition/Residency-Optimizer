@@ -58,7 +58,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
-                    const weeklyClinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
+                    const weeklyClinicType = (r.startYear === 2025) ? 'NIMA_CLINIC' : 'CCIM';
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }
@@ -79,21 +79,21 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                     'RED',
                     'BLUE',
                     'METRO',
-                    'Geri',
+                    'GERI',
                     'EM',
-                    'Jr Hosp',
+                    'JH',
                     'HPC',
-                    'Add Med',
+                    'ADDM',
                     'NIMA',
-                    'Cards',
+                    'CARDS',
                     'ID',
-                    'Neph',
-                    'Pulm',
-                    'Onc',
-                    'Neuro',
-                    'Rheum',
+                    'NEPH',
+                    'PULM',
+                    'ONC',
+                    'NEURO',
+                    'RHEUM',
                     'GI',
-                    'Endo'
+                    'ENDO'
                 ];
 
                 reqs.sort((a, b) => {

@@ -39,31 +39,31 @@ export const CODENAMES = {
   VACATION: 'VAC',
 
   // PGY1 Required Electives
-  CARDS: 'Cards',
+  CARDS: 'CARDS',
   ID: 'ID',
-  NEPH: 'Neph',
-  PULM: 'Pulm',
-
+  NEPH: 'NEPH',
+  PULM: 'PULM',
+ 
   // PGY2 Required Rotations
-  ONC: 'Onc',
-  NEURO: 'Neuro',
-  RHEUM: 'Rheum',
+  ONC: 'ONC',
+  NEURO: 'NEURO',
+  RHEUM: 'RHEUM',
   GI: 'GI',
-
-  ADD_MED: 'Add Med',
-  ENDO: 'Endo',
-  GERI: 'Geri',
+ 
+  ADD_MED: 'ADDM',
+  ENDO: 'ENDO',
+  GERI: 'GERI',
   PALLIATIVE: 'HPC', // Hospice & Palliative Care
-  JR_HOSPITALIST: 'Jr Hosp',
-
+  JR_HOSPITALIST: 'JH',
+ 
   // Voluntary / Other Electives (Available to all years)
-  RESEARCH: 'Research',
+  RESEARCH: 'RSCH',
   CCMA: 'CCMA',
-  HF: 'Heart Failure',
+  HF: 'HF',
   ENT: 'ENT',
   PMNR: 'PMNR',
   ANAESTHESIA: 'ANAESTHESIA',
-  NIMA_CLINIC: 'NIMA (Clinic)',
+  NIMA_CLINIC: 'NIMA_CLINIC',
 } as const;
 
 export type AssignmentType = string; // (typeof CODENAMES)[keyof typeof CODENAMES];

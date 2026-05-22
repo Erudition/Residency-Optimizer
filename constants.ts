@@ -69,7 +69,7 @@ export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
 };
 
 export const CORE_TYPES: AssignmentType[] = ['RED', 'BLUE', 'MICU', 'NF', 'EM', 'CCIM'];
-export const REQUIRED_TYPES: AssignmentType[] = ['Cards', 'ID', 'Neph', 'Pulm', 'Onc', 'Neuro', 'Rheum', 'GI', 'Add Med', 'Endo', 'Geri', 'HPC', 'NIMA'];
-export const ELECTIVE_TYPES: AssignmentType[] = ['ELECTIVE', 'Research', 'Heart Failure', 'CCMA', 'ENT', 'PMNR'];
+export const REQUIRED_TYPES: AssignmentType[] = ['CARDS', 'ID', 'NEPH', 'PULM', 'ONC', 'NEURO', 'RHEUM', 'GI', 'ADDM', 'ENDO', 'GERI', 'HPC', 'NIMA'];
+export const ELECTIVE_TYPES: AssignmentType[] = ['ELECTIVE', 'RSCH', 'HF', 'CCMA', 'ENT', 'PMNR'];
 export const VACATION_TYPE: AssignmentType = 'VAC';
-export const ACGME_TYPES: AssignmentType[] = ['RED', 'MICU', 'EM', 'Cards', 'ID', 'Neph', 'Pulm', 'Onc', 'Neuro', 'Rheum', 'GI', 'Endo', 'Geri'];
+export const ACGME_TYPES: AssignmentType[] = ['RED', 'MICU', 'EM', 'CARDS', 'ID', 'NEPH', 'PULM', 'ONC', 'NEURO', 'RHEUM', 'GI', 'ENDO', 'GERI'];

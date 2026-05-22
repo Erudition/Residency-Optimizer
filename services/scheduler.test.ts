@@ -43,7 +43,7 @@ let residents: Resident[];
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % 5 === cohort) {
                     const assignment = weeks[w].assignment;
-                    expect(['CCIM', 'NIMA (Clinic)', 'VAC']).toContain(assignment);
+                    expect(['CCIM', 'NIMA_CLINIC', 'VAC']).toContain(assignment);
                 }
             }
         });
@@ -63,14 +63,14 @@ let residents: Resident[];
             const assignments = schedule[r.id].map(w => w.assignment);
             
             // Check for Cards (2 weeks)
-            expect(assignments.filter(a => a === 'Cards').length).toBeGreaterThanOrEqual(2);
+            expect(assignments.filter(a => a === 'CARDS').length).toBeGreaterThanOrEqual(2);
 
             // Check for Wards Red/Blue/Met/Jr Hosp (Total 8+ weeks)
             const wards = assignments.filter(a => 
                 a === 'RED' || 
                 a === 'BLUE' || 
                 a === 'METRO' ||
-                a === 'Jr Hosp'
+                a === 'JH'
             ).length;
             expect(wards).toBeGreaterThanOrEqual(8);
 
