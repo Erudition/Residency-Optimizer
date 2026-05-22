@@ -1,8 +1,9 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Resident, ScheduleGrid, AssignmentType } from '../types';
+import { Resident, ScheduleGrid } from '../types';
 import { AlertTriangle } from 'lucide-react';
 import { useProgramData } from '../contexts/ProgramDataContext';
-import { getDisplayOrderedCodenames } from '../services/programDataUtils';
+import { getDisplayOrderedCodenames, deriveActiveStartYear } from '../services/programDataUtils';
+import { RequirementsEngine } from '../services/requirementsEngine';
 import { oklchToHex } from '../utils/colorUtils';
 
 interface Props {
@@ -108,31 +109,8 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
   }, [data, rotations, totalWeeks]);
 
   const checkConstraints = (type: string, assignees: Resident[], weekIdx: number) => {
-    const meta = rotations.get(type);
-    if (!meta) return null;
-
-    // Filter to only residents active at this week (already filtered in data, but tooltip calls this too)
-    const activeAssignees = assignees.filter(r => {
-      const start = r.activeWeekStart ?? 0;
-      const end = r.activeWeekEnd ?? totalWeeks;
-      return weekIdx >= start && weekIdx < end;
-    });
-
-    const firstRes = residents.find(res => res.startYear && res.startYear > 0);
-    const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
-    const getPgy = (res: Resident): number => {
-      const startYear = res.startYear > 0 ? res.startYear : gridStartYear - Number(res.level) + 1;
-      return gridStartYear - startYear + 1 + Math.floor(weekIdx / 52);
-    };
-
-    const interns = activeAssignees.filter(r => getPgy(r) === 1).length;
-    const seniors = activeAssignees.filter(r => getPgy(r) > 1).length;
-
-    if (interns < meta.minInterns) return `Min Interns (${meta.minInterns}) unmet: ${interns}`;
-    if (interns > meta.maxInterns) return `Max Interns (${meta.maxInterns}) exceeded: ${interns}`;
-    if (seniors < meta.minSeniors) return `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`;
-    if (seniors > meta.maxSeniors) return `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`;
-    return null;
+    const baseYear = deriveActiveStartYear();
+    return RequirementsEngine.getStaffingViolation(type, assignees, weekIdx, baseYear, programData);
   };
 
   const handleCellEnter = (e: React.MouseEvent, type: string, weekIdx: number) => {

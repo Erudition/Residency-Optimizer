@@ -1,37 +1,11 @@
-import { ScheduleGrid, AssignmentType, Resident, ScheduleCell } from '../types';
+import { ScheduleGrid, Resident } from '../types';
 import { ProgramData } from './api/client';
-import { getAllCodenames } from './programDataUtils';
 
-import { canFitBlock, getAssignedCount, getYearRequirementCount } from './generators/utils';
 import { getWeeklyViolations } from './scheduler';
 import { RequirementsEngine } from './requirementsEngine';
 import { healer } from './healerSolver';
 
-/**
- * Checks if the current schedule has any staffing violations at a given week.
- */
-const getLevelAtWeek = (r: Resident, week: number, gridStartYear: number): number => {
-    const currentYear = gridStartYear + Math.floor(week / 52);
-    return currentYear - r.startYear + 1;
-};
 
-const hasStaffingViolationInWindow = (schedule: ScheduleGrid, residents: Resident[], startWeek: number, duration: number, gridStartYear: number, programData: ProgramData): boolean => {
-    for (let w = startWeek; w < startWeek + duration; w++) {
-        const violated = getAllCodenames(programData).some(type => {
-            const meta = programData.rotations.get(type);
-            if (!meta) return false;
-
-            const assignees = residents.filter(r => schedule[r.id]?.[w]?.assignment === type);
-            const interns = assignees.filter(r => getLevelAtWeek(r, w, gridStartYear) === 1).length;
-            const seniors = assignees.filter(r => getLevelAtWeek(r, w, gridStartYear) > 1).length;
-
-            return (interns < (meta.minInterns || 0)) || (interns > (meta.maxInterns || 99)) ||
-                   (seniors < (meta.minSeniors || 0)) || (seniors > (meta.maxSeniors || 99));
-        });
-        if (violated) return true;
-    }
-    return false;
-};
 
 /**
  * Phase 2 Healer: Post-generation hill-climbing optimization.

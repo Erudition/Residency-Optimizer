@@ -1,6 +1,7 @@
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
 import { RequirementsEngine } from './requirementsEngine';
 import { ProgramData } from './api/client';
+import { ACTIVE_START_YEAR } from '../constants';
 import { getAllCodenames, isClinicRotation } from './programDataUtils';
 import { getStandardCohortMap, getCohortAtWeek } from './generators/utils';
 import { buildLevelRequirements } from './generators/reqBuilder';
@@ -57,7 +58,7 @@ export const healer: HealerSolver = {
         });
         const superCriticalTypes = [
             'ICU', 'W-RED', 'W-BLUE',
-            'NF', 'EM', 'METRO'
+            'NF', 'EM', 'W-MET'
         ];
 
         const residentMap = new Map(residents.map(r => [r.id, r]));
@@ -80,17 +81,14 @@ export const healer: HealerSolver = {
         const TOTAL_CYCLES = Math.floor((totalWeeks - 1) / programData.cycleConfig.cohortCount) + 1;
 
         const firstRes = residents.find(res => res.startYear && res.startYear > 0);
-        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
+        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : ACTIVE_START_YEAR;
 
         const getPgyAtWeek = (res: Resident, week: number): number => {
-            if (res.startYear && res.startYear > 0) {
-                return Math.min(3, gridStartYear + Math.floor(week / 52) - res.startYear + 1);
-            }
-            return Math.min(3, (Number(res.level) || 1) + Math.floor(week / 52));
+            return Math.min(3, RequirementsEngine.getPgyAtWeek(res, week, gridStartYear));
         };
 
         const getTypeStaffingPenalty = (type: AssignmentType, interns: number, seniors: number): number => {
-            const m = programData.rotations[type]!; let c = 0;
+            const m = programData.rotations.get(type); if (!m) return 0; let c = 0;
             if (interns < m.minInterns) c += (m.minInterns - interns) * W_STAFFING;
             if (interns > m.maxInterns) c += (interns - m.maxInterns) * W_STAFFING;
             if (seniors < m.minSeniors) c += (m.minSeniors - seniors) * W_STAFFING;
