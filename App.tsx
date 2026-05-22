@@ -540,7 +540,7 @@ const AppContent: React.FC = () => {
   // ── Sync Service ──
   const syncService = useMemo(() => getScheduleSyncService(), []);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('disconnected');
-  const [activeCandidateId, setActiveCandidateId] = useState<number | null>(null); // TODO: derive from active tab's backendId
+
 
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
@@ -971,10 +971,14 @@ const AppContent: React.FC = () => {
   }, [activeScheduleId]);
 
   // ── SSE Sync Lifecycle ──
-  useEffect(() => {
-    if (!activeCandidateId) return;
+  // Derive candidateId from the active tab's backendId
+  const activeSched = schedules.find(s => s.id === activeScheduleId);
+  const activeSyncId = activeSched?.backendId ?? null;
 
-    syncService.connect(activeCandidateId);
+  useEffect(() => {
+    if (!activeSyncId) return;
+
+    syncService.connect(activeSyncId);
     setSyncStatus('syncing');
 
     // Poll sync status periodically
@@ -1044,7 +1048,66 @@ const AppContent: React.FC = () => {
       syncService.disconnect();
       setSyncStatus('disconnected');
     };
-  }, [activeCandidateId, syncService]);
+  }, [activeSyncId, syncService]);
+
+  // ── Load existing backend candidates on startup ──
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+
+    syncService.loadAllCandidates().then(candidates => {
+      if (candidates.length === 0) return;
+
+      setSchedules(prev => {
+        const existingBackendIds = new Set(prev.filter(s => s.backendId).map(s => s.backendId));
+        const newCandidates: CandidateSchedule[] = [];
+
+        for (const candidate of candidates) {
+          // Skip if we already have this candidate locally
+          if (existingBackendIds.has(candidate.candidateId)) continue;
+
+          // Build the ScheduleHistory (3-year grid) from backend data
+          const data: Record<number, any> = {};
+          const yearEntries = Object.entries(candidate.yearData) as [string, typeof candidate.yearData[number]][];
+          for (const [yearStr, assignments] of yearEntries) {
+            const year = parseInt(yearStr, 10);
+            const grid: any = {};
+            for (const a of assignments) {
+              const resId = a.residentId.toString();
+              if (!grid[resId]) {
+                grid[resId] = Array(52).fill(null).map(() => ({ assignment: null, locked: false }));
+              }
+              if (a.week >= 1 && a.week <= 52) {
+                grid[resId][a.week - 1] = {
+                  assignment: a.rotation,
+                  locked: a.locked,
+                };
+              }
+            }
+            data[year] = grid;
+          }
+
+          newCandidates.push({
+            id: `backend-${candidate.candidateId}`,
+            name: candidate.title,
+            data,
+            createdAt: new Date(),
+            startYear: candidate.startYear,
+            backendId: candidate.candidateId,
+            scheduleIds: candidate.scheduleIds,
+            syncStatus: 'synced',
+            lastSyncedAt: new Date(),
+          });
+        }
+
+        if (newCandidates.length > 0) {
+          console.log(`[Sync] Loaded ${newCandidates.length} candidates from backend`);
+          return [...prev, ...newCandidates];
+        }
+        return prev;
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncService]);
 
   const handleGenerate = async () => {
     if (isGeneratingRef.current) return;
