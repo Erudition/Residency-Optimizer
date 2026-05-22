@@ -22,7 +22,7 @@ export async function getScheduleFixture() {
     const preloadedHistory: any = {};
     for (const r of residents) {
       preloadedHistory[r.id] = Array.from({ length: 52 }, () => ({
-        assignment: 'ELEC',
+        assignment: null as any,
         locked: true,
       }));
     }

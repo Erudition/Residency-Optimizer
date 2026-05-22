@@ -368,7 +368,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
       if (!historicalSchedules[year]) historicalSchedules[year] = {}
       if (!historicalSchedules[year][residentId]) {
         historicalSchedules[year][residentId] = Array.from({ length: 52 }, () => ({
-          assignment: 'ELEC',
+          assignment: null as any,
           locked: isFullyCompleted,
         }))
       }
