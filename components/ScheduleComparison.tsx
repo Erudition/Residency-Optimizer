@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useProgramData } from '../contexts/ProgramDataContext';
 import { ScheduleGrid, ScheduleHistory, Resident, AssignmentType, ScheduleCell, ScheduleSession } from '../types';
 import { calculateFairnessMetrics, calculateScheduleScore, calculateDetailedScheduleScore } from '../services/scheduler';
 import { Sparkles, Loader2, Info, Download, Users, Plus, ChevronUp, ChevronDown, ArrowUpDown, Pencil } from 'lucide-react';
@@ -68,6 +69,7 @@ export const ScheduleComparison: React.FC<Props> = ({
   activeYear,
   history
 }) => {
+  const programData = useProgramData();
   const [isSyncing, setIsSyncing] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduleMetrics, direction: 'asc' | 'desc' }>({ key: 'score', direction: 'desc' });
 
@@ -86,8 +88,8 @@ export const ScheduleComparison: React.FC<Props> = ({
   const metrics: ScheduleMetrics[] = useMemo(() => {
     return schedules.filter(s => !s.isGenerating).map(s => {
       const yearGrid = s.data?.[activeYear] || {};
-      const groups = calculateFairnessMetrics(residents, yearGrid);
-      const detailed = calculateDetailedScheduleScore(residents, yearGrid, history);
+      const groups = calculateFairnessMetrics(residents, yearGrid, programData);
+      const detailed = calculateDetailedScheduleScore(residents, yearGrid, history, programData);
       const score = detailed.finalScore;
 
       const f1 = groups.find(g => g.level === 1)?.fairnessScore || 0;
@@ -110,7 +112,7 @@ export const ScheduleComparison: React.FC<Props> = ({
       const allWeeks = Object.values(yearGrid) as ScheduleCell[][];
       allWeeks.forEach(weeks => {
         if (Array.isArray(weeks)) {
-          weeks.forEach(c => { if (c && c.assignment === AssignmentType.NIGHT_FLOAT) totalNF++; });
+          weeks.forEach(c => { if (c && c.assignment === 'NF') totalNF++; });
         }
       });
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting, ScheduleHistory } from '../types';
-import { ROTATION_METADATA } from '../constants';
+import { useProgramData } from '../contexts/ProgramDataContext';
 import { ShieldCheck, Clock, Building2, Hospital, AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -69,6 +69,7 @@ const StackedProgressBar = ({
 };
 
 export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, activeYear }) => {
+    const { rotations, rotationTags } = useProgramData();
 
     const auditData = useMemo(() => {
         return residents.map(r => {
@@ -92,26 +93,27 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                 const weeks = grid[r.id] || [];
                 weeks.forEach(c => {
                     if (!c || !c.assignment) return;
-                    const meta = ROTATION_METADATA[c.assignment];
+                    const meta = rotations.get(c.assignment);
                     if (!meta) return;
 
-                    if (meta.setting === ClinicalSetting.OUTPATIENT) {
+                    const tags = rotationTags.get(c.assignment) || [];
+                    if (tags.includes('Outpatient')) {
                         pgyData[pgy].outpatient++;
                         totalOutpatient++;
                     }
-                    if (meta.setting === ClinicalSetting.INPATIENT) {
+                    if (tags.includes('Inpatient')) {
                         pgyData[pgy].inpatient++;
                         totalInpatient++;
                     }
-                    if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
+                    if (tags.includes('Critical Care')) {
                         pgyData[pgy].criticalCare++;
                         totalCriticalCare++;
-                        if (c.assignment !== AssignmentType.AMCS_CONSULTS) {
+                        if (c.assignment !== 'AMCS') {
                             pgyData[pgy].criticalCareCore++;
                             totalCriticalCareCore++;
                         }
                     }
-                    if (c.assignment === AssignmentType.NIGHT_FLOAT) {
+                    if (c.assignment === 'NF' || tags.includes('Night Float')) {
                         pgyData[pgy].nightFloat++;
                         totalNightFloat++;
                     }
@@ -132,7 +134,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                 nfViolation: totalNightFloat < 6 // MHS/ACGME min is 6 weeks total
             };
         });
-    }, [residents, history]);
+    }, [residents, history, rotations, rotationTags]);
 
     const globalStats = useMemo(() => {
         const total = auditData.length;

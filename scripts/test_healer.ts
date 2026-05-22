@@ -31,7 +31,7 @@ async function run() {
                 // If resident not found for a year (e.g. resident graduated), fill with null/empty
                 // The healer seems to expect a certain length. Let's fill 52 weeks of dummy.
                 for (let i = 0; i < 52; i++) {
-                    flatSchedule[r.id].push({ assignment: AssignmentType.ELECTIVE, locked: false });
+                    flatSchedule[r.id].push({ assignment: 'ELECTIVE', locked: false });
                 }
             }
         });

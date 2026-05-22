@@ -22,9 +22,7 @@ async function runGenerator() {
         3,
         residents,
         {},
-        { existing: {}, cohortAssignments: {} },
-        params,
-        ['staffingFirst'],
+        { existing: {} }, null as any, params, ['staffingFirst'],
         () => (Date.now() - startTime) > duration,
         (iteration, scores) => {
             if (iteration % 10 === 0) console.log(`Iteration ${iteration}, Best Score: ${scores[0]}`);

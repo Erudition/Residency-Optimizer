@@ -1,5 +1,7 @@
+import { ProgramData } from '../api/client';
 import { ScheduleGrid, AssignmentType, ScheduleCell, Resident } from '../../types';
-import { TOTAL_WEEKS, fulfillsRequirement, ROTATION_METADATA } from '../../constants';
+import { TOTAL_WEEKS } from '../../constants';
+import { RequirementsEngine } from '../requirementsEngine';
 
 export const canFitBlock = (schedule: ScheduleGrid, residentId: string, start: number, duration: number): boolean => {
     const row = schedule[residentId];
@@ -29,18 +31,19 @@ export const placeBlock = (schedule: ScheduleGrid, residentId: string, start: nu
 
 export const shuffle = <T>(array: T[]): T[] => [...array].sort(() => Math.random() - 0.5);
 
-export const getRequirementCount = (row: ScheduleCell[], type: AssignmentType): number => {
-    return row.filter(c => c && fulfillsRequirement(c.assignment, type)).length;
+export const getRequirementCount = (row: ScheduleCell[], type: AssignmentType, programData: ProgramData): number => {
+    return row.filter(c => c && RequirementsEngine.fulfills(c.assignment, type, programData)).length;
 };
 
 export const getYearRequirementCount = (
     row: ScheduleCell[],
     type: AssignmentType,
     yearStart: number,
-    yearEnd: number
+    yearEnd: number,
+    programData: ProgramData
 ): number => {
     return row.slice(yearStart, yearEnd)
-        .filter(c => c && fulfillsRequirement(c.assignment, type)).length;
+        .filter(c => c && RequirementsEngine.fulfills(c.assignment, type, programData)).length;
 };
 
 export const getPriorRequirementCount = (
@@ -50,9 +53,9 @@ export const getPriorRequirementCount = (
     return priorCounts[type] || 0;
 };
 
-export const getCumulativeRequirementCount = (residentId: string, currentYearRow: ScheduleCell[], type: AssignmentType, priorRequirementCounts?: Record<string, Record<string, number>>): number => {
-    let count = getRequirementCount(currentYearRow, type);
-    if (type === AssignmentType.NIGHT_FLOAT) {
+export const getCumulativeRequirementCount = (residentId: string, currentYearRow: ScheduleCell[], type: AssignmentType, programData: ProgramData, priorRequirementCounts?: Record<string, Record<string, number>>): number => {
+    let count = getRequirementCount(currentYearRow, type, programData);
+    if (type === 'NF') {
         return count;
     }
     if (priorRequirementCounts && priorRequirementCounts[residentId]) {
@@ -60,14 +63,13 @@ export const getCumulativeRequirementCount = (residentId: string, currentYearRow
     }
     return count;
 };
-export const isAligned = (w: number, cohort: number, dur: number): boolean => {
-    // COHORT_COUNT is 5
-    const COHORT_COUNT = 5;
-    if (dur !== 4 && dur !== 2) return true;
-    const offset = ((w % COHORT_COUNT) + COHORT_COUNT) % COHORT_COUNT;
-    const startRelToClinic = (offset - cohort + COHORT_COUNT) % COHORT_COUNT;
-    if (dur === 4) return startRelToClinic === 1;
-    if (dur === 2) return startRelToClinic === 1 || startRelToClinic === 3;
+export const isAligned = (w: number, cohort: number, dur: number, programData: ProgramData): boolean => {
+    const { cohortCount, X, Y } = programData.cycleConfig;
+    if (dur !== X && dur !== X / 2) return true;
+    const offset = ((w % cohortCount) + cohortCount) % cohortCount;
+    const startRelToClinic = (offset - cohort + cohortCount) % cohortCount;
+    if (dur === X) return startRelToClinic === Y;
+    if (dur === X / 2) return startRelToClinic === Y || startRelToClinic === Y + (X / 2);
     return true;
 };
 
@@ -88,8 +90,8 @@ export const getAssignedCount = (schedule: ScheduleGrid, residents: { id: string
     }).length;
 };
 
-export const canPlaceWithoutViolation = (schedule: ScheduleGrid, residents: { id: string, level: number }[], start: number, duration: number, type: AssignmentType, level: number): boolean => {
-    const meta = ROTATION_METADATA[type];
+export const canPlaceWithoutViolation = (schedule: ScheduleGrid, residents: { id: string, level: number }[], start: number, duration: number, type: AssignmentType, level: number, programData: ProgramData): boolean => {
+    const meta = programData.rotations.get(type);
     if (!meta) return true;
     const max = (level === 1) ? (meta.maxInterns || 99) : (meta.maxSeniors || 99);
     
@@ -122,14 +124,14 @@ export const getCohortAtWeek = (
 };
 
 
-export const getStandardCohortMap = (residents: Resident[]): Record<string, number> => {
+export const getStandardCohortMap = (residents: Resident[], programData: ProgramData): Record<string, number> => {
     const sorted = [...residents].sort((a, b) => {
         if (a.level !== b.level) return a.level - b.level;
         return a.name.localeCompare(b.name);
     });
     const map: Record<string, number> = {};
     sorted.forEach((r, idx) => {
-        map[r.id] = idx % 5;
+        map[r.id] = idx % programData.cycleConfig.cohortCount;
     });
     return map;
 };

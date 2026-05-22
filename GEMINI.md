@@ -8,11 +8,14 @@ A Payload CMS backend lives in a sibling repo at `/home/adroit/Projects/residenc
 ### API Integration
 The frontend communicates with the backend via **GraphQL** (Payload's built-in endpoint at `/api/graphql`). TypeScript types are auto-generated from the Payload schema using `graphql-codegen`. **No hardcoded program data in the frontend** — all rotations, residents, requirements, staffing preferences, and cycle configurations come from the API. CORS is configured to allow `https://erudition.github.io` and `localhost:5173`.
 
+### Automated Staffing Configuration Generation
+When creating or editing a rotation in the Payload admin panel, defining a range of interns and seniors (e.g. Min Interns to Max Interns and Min Seniors to Max Seniors) in a staffing configuration block triggers a backend hook that automatically pre-populates all valid combination permutations as ranked preferences in the database (ordered by increasing total resource intensity). This eliminates the need to manually enter every permutation.
+
 ### Rotation Identity
-The `codename` field on Rotations is the universal identifier used across both repos. It serves as both the schedule grid label and the primary key for lookups. The frontend's `AssignmentType` enum is being replaced with runtime strings matching these codenames.
+The `codename` field on Rotations is the universal identifier used across both repos. Codenames are short abbreviations (e.g., `CCIM`, `NIMA`, `ICU`) displayed directly in the schedule grid — there is no separate display abbreviation. The frontend's `AssignmentType` enum is being replaced with runtime strings matching these codenames. **Format constraint:** codenames must be ≤8 characters and consist only of capital letters (`A-Z`) and dashes (`-`). This is enforced by backend validation.
 
 ### Placeholder Rotations
-Rotations with `isPlaceholder: true` (e.g., unspecified Elective, unspecified Clinic) are scheduled by the engine as proxies. The admin or resident resolves them to a specific rotation afterward. The frontend should visually distinguish placeholder cells from finalized assignments.
+Rotations with `isPlaceholder` set (a relationship to a `Tag`) are scheduled by the engine as proxies for their tag category. Examples: `ELEC` → Elective tag, `CLINIC` → Clinic tag. Their display title is `"Unspecified {Tag}"` (e.g., "Unspecified Elective"). The schedule grid appends `?` to their codename (e.g., `ELEC?`). The admin or resident resolves them to a specific rotation afterward. Placeholder cells remain unlocked even in historical/past views. See `specification/engine.md` for the scheduling constraint.
 
 ### X+Y Clinic Cycle Model
 Clinic scheduling uses an X+Y model stored in `ClinicCycles` (cohort documents) and `AcademicYears.clinicWeeksPerCycle` (Y):
@@ -40,6 +43,14 @@ Do not use the word "target" in code, comments, specs, or conversation — it co
 *   **Ideal** — a soft goal. Getting closer improves the schedule score, but not reaching it is NOT a violation. Milestones (e.g., cumulative progress checkpoints at PGY-year boundaries) are ideals.
 *   **Property Mapping** — Programmatically, minimum requirements are stored in the `minWeeks` property. The legacy `target` property has been deprecated and must not be used.
 *   **Matriculation Year** — The academic year a resident entered PGY-1 (stored as `startYear`). Graduation requirements are resolved against this year. Prefer "matriculation year" in documentation and specs; `startYear` remains the code-level field name for brevity.
+
+# Academic Year Convention
+All year keys, variables, and data structures across both the frontend and backend use the **starting calendar year** of the academic year. Academic years begin on July 1.
+
+*   AY 2025-26 → year key `2025` (July 2025 – June 2026)
+*   AY 2024-25 → year key `2024` (July 2024 – June 2025)
+
+This applies to: schedule data keys, `activeYear` state, `ACTIVE_START_YEAR`, `deriveActiveStartYear()`, `Resident.startYear`, `AcademicYear.startingYear` (backend), historical schedule keys, and any new code that references academic years. Never use the ending calendar year as a key.
 
 # Specification
 The files found in the `specification/` folder are the authoritative sources of truth for the application code you write. Report, and then correct, any code that is out of sync with the spec.
@@ -105,3 +116,10 @@ For further UI presentation development, add items to interface.md, not GEMINI.m
 *   **Transfer-out Compliance**: The scheduling generator and history preloaders must respect each resident's `transferOutYear` property, excluding transferred residents from active assignment pools and cohort counts for years starting at or after their transfer-out date.
 *   **Null Schedule Pre-population**: Any blank or `null` assignments loaded into the schedule grid must be pre-populated prior to healing, using appropriate clinic assignment locks for assigned clinic weeks, and default electives for non-clinic weeks.
 
+## Schedule Lifecycle & Historical Promotion
+The `Schedules` collection stores both candidate and historical schedules in the same schema (single-year, weeks 1–52). Candidate schedules are grouped into 3-year planning horizons via a `Candidates` collection for real-time collaboration.
+
+*   **`AcademicYear.canonicalSchedule`** — a nullable relationship pointing to the one `Schedule` doc that represents the official historical record for that year. If null, the year has no finalized schedule.
+*   **Promotion trigger** — when the PD exports or shares a schedule, the export dialog includes a defaulted-on checkbox: *"Set as official schedule for AY [year]?"*. Checking it copies year 1's assignments into a locked historical `Schedule` and sets `canonicalSchedule`. This piggybacks on the PD's natural workflow (generate → review → export) rather than requiring a separate finalization ceremony.
+*   **Access control** — historical schedules (those referenced by `canonicalSchedule`) have all assignments marked `locked: true`. Only super-admins can unlock/edit them. Candidate schedules are editable by anyone with `manageSchedules` access.
+*   **Conflict resolution** — if multiple candidates are exported with the checkbox, the latest one wins (overwrites the canonical pointer). A warning is shown if an existing canonical schedule would be replaced.

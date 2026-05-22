@@ -27,7 +27,7 @@ async function run() {
                 flatSchedule[r.id].push(...nestedSchedule[year][r.id]);
             } else {
                 for (let i = 0; i < 52; i++) {
-                    flatSchedule[r.id].push({ assignment: AssignmentType.ELECTIVE, locked: false });
+                    flatSchedule[r.id].push({ assignment: 'ELECTIVE', locked: false });
                 }
             }
         });

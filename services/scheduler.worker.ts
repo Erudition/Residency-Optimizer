@@ -5,6 +5,7 @@ import {
   getAuditViolations 
 } from './scheduler';
 import { healSchedule } from './healer';
+import { deserializeProgramData } from './api/client';
 
 let cancelledAlgorithmIds = new Set<string>();
 let isPromoteTriggered = false;
@@ -43,6 +44,7 @@ const postProgress = (iteration: number, scores: (number | null)[], attempts: Re
 
 onmessage = async (e: MessageEvent) => {
   const { type, totalYears, residents, historicalSchedules, constraints, params, algorithmIds } = e.data;
+  const programData = deserializeProgramData(e.data.programData);
 
   if (type === 'generate') {
     cancelledAlgorithmIds.clear();
@@ -56,6 +58,7 @@ onmessage = async (e: MessageEvent) => {
         residents,
         historicalSchedules,
         constraints,
+        programData,
         params,
         algorithmIds,
         (id) => cancelledAlgorithmIds.has(id),
@@ -78,7 +81,7 @@ onmessage = async (e: MessageEvent) => {
            // Run healer on the unified grid
            // 150 iterations per result for fast execution
            console.log("Starting Healer phase for result", idx);
-           const healedUnified = await healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, undefined, e.data.historicalSchedules, e.data.constraints?.cohortAssignments, (step, max, v) => {
+           const healedUnified = await healSchedule(res.unifiedSchedule, unifiedResidents, programData, e.data.year, undefined, e.data.historicalSchedules, e.data.constraints?.cohortAssignments, (step, max, v) => {
              if (step % 10000 === 0) console.log("Healer progress:", step, "/", max, "Violations:", v);
              postMessage({ 
                type: 'progress', 
@@ -129,9 +132,9 @@ onmessage = async (e: MessageEvent) => {
   } else if (type === 'cancelAlgorithm') {
     cancelledAlgorithmIds.add(e.data.algoId);
   } else if (type === 'start-heal') {
-    const { grid, residents, historicalSchedules, startYear, totalYears, cohortAssignments } = e.data;
+    const { grid, residents, historicalSchedules, startYear, totalYears } = e.data;
     isHealingActive = true;
-    runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1, cohortAssignments);
+    runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1, programData);
   } else if (type === 'stop-heal') {
     isHealingActive = false;
   } else if (type === 'cancel') {
@@ -150,16 +153,17 @@ async function runHeal(
   historicalSchedules: any,
   startYear: number,
   totalYears: number,
-  cohortAssignments?: any
+  programData?: any
 ) {
   let currentBest = JSON.parse(JSON.stringify(grid));
   currentBest = await healSchedule(
     currentBest, 
     residents, 
+    programData,
     startYear,
     undefined,
     historicalSchedules,
-    cohortAssignments,
+    undefined,
     (step, max, v) => {
       postMessage({ 
         type: 'heal-ping', 
@@ -183,15 +187,15 @@ async function runHeal(
           return level >= 1 && level <= 3;
         });
         const yrGrid = sliced[y] || {};
-        const reqs = getRequirementViolations(yrResidents, yrGrid, fullHistory, y).length;
-        const constraints = getWeeklyViolations(yrResidents, yrGrid, y).length;
-        const audit = getAuditViolations(yrResidents, fullHistory, y);
+        const reqs = getRequirementViolations(yrResidents, yrGrid, programData, fullHistory, y).length;
+        const constraints = getWeeklyViolations(yrResidents, yrGrid, programData, y).length;
+        const audit = getAuditViolations(yrResidents, fullHistory, programData, y);
         total += reqs + constraints + audit;
       }
     } else {
-      const reqs = getRequirementViolations(residents, currentBest, fullHistory, startYear).length;
-      const constraints = getWeeklyViolations(residents, currentBest, startYear).length;
-      const audit = getAuditViolations(residents, fullHistory, startYear);
+      const reqs = getRequirementViolations(residents, currentBest, programData, fullHistory, startYear).length;
+      const constraints = getWeeklyViolations(residents, currentBest, programData, startYear).length;
+      const audit = getAuditViolations(residents, fullHistory, programData, startYear);
       total = reqs + constraints + audit;
     }
 

@@ -1,6 +1,10 @@
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT, ELECTIVE_TYPES, ACGME_TYPES } from '../constants';
+import { RequirementsEngine } from './requirementsEngine';
+import { ProgramData } from './api/client';
+import { ACTIVE_START_YEAR } from '../constants';
+import { getAllCodenames, isClinicRotation } from './programDataUtils';
 import { getStandardCohortMap, getCohortAtWeek } from './generators/utils';
+import { buildLevelRequirements } from './generators/reqBuilder';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
 
 class SeededRNG {
@@ -17,6 +21,7 @@ export interface HealerSolver {
     solve: (
         residents: Resident[],
         existingSchedule: ScheduleGrid,
+        programData: ProgramData,
         attemptIndex?: number,
         priorRequirementCounts?: Record<string, Record<string, number>>,
         cohortAssignments?: Record<string, number>,
@@ -26,33 +31,34 @@ export interface HealerSolver {
 
 export const healer: HealerSolver = {
     name: "Annealing Healer Solver",
-    solve: async (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>, onProgress?: (step: number, maxSteps: number, currentPenalty: number) => void): Promise<ScheduleGrid> => {
-        const existingRows = Object.values(existingSchedule);
-        const totalWeeks = existingRows.length > 0 ? existingRows[0].length : TOTAL_WEEKS;
+    solve: async (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>, onProgress?: (step: number, maxSteps: number, currentPenalty: number) => void): Promise<ScheduleGrid> => {
+                const existingRows = Object.values(existingSchedule);
+        const totalWeeks = existingRows.length > 0 ? existingRows[0].length : 52;
         const rng = new SeededRNG(42 + attemptIndex);
         const validCohortAssignments: Record<string, number> = { ...cohortAssignments };
         if (Object.keys(validCohortAssignments).length === 0) {
             const sorted = [...residents].sort((a, b) => (a.level !== b.level) ? a.level - b.level : a.name.localeCompare(b.name));
-            sorted.forEach((r, idx) => { validCohortAssignments[r.id] = idx % COHORT_COUNT; });
+            sorted.forEach((r, idx) => { validCohortAssignments[r.id] = idx % programData.cycleConfig.cohortCount; });
         }
 
         const relevantReqTypesSet = new Set<AssignmentType>();
-        [1, 2, 3].forEach(l => (REQUIREMENTS[l as 1|2|3] || []).forEach(r => relevantReqTypesSet.add(r.type)));
+        [1, 2, 3].forEach(l => (buildLevelRequirements(programData, l) || []).forEach(r => relevantReqTypesSet.add(r.type)));
         const relevantReqTypes = Array.from(relevantReqTypesSet);
         const typeFulfillment: Record<string, AssignmentType[]> = {};
-        Object.values(AssignmentType).forEach(type => { typeFulfillment[type] = relevantReqTypes.filter(req => fulfillsRequirement(type, req)); });
+        const allCodenames = getAllCodenames(programData);
+        allCodenames.forEach(type => { typeFulfillment[type] = relevantReqTypes.filter(req => RequirementsEngine.fulfills(type, req, programData)); });
         const assignmentsByLevel: Record<number, AssignmentType[]> = {
-            1: Object.values(AssignmentType).filter(t => t !== AssignmentType.CLINIC && t !== AssignmentType.NIMA_CLINIC && t !== AssignmentType.VACATION && (ROTATION_METADATA[t]?.maxInterns || 0) > 0),
-            2: Object.values(AssignmentType).filter(t => t !== AssignmentType.CLINIC && t !== AssignmentType.NIMA_CLINIC && t !== AssignmentType.VACATION && (ROTATION_METADATA[t]?.maxSeniors || 0) > 0),
-            3: Object.values(AssignmentType).filter(t => t !== AssignmentType.CLINIC && t !== AssignmentType.NIMA_CLINIC && t !== AssignmentType.VACATION && (ROTATION_METADATA[t]?.maxSeniors || 0) > 0),
+            1: allCodenames.filter(t => !isClinicRotation(programData, t) && t !== 'VAC' && (programData.rotations.get(t)?.maxInterns || 0) > 0),
+            2: allCodenames.filter(t => !isClinicRotation(programData, t) && t !== 'VAC' && (programData.rotations.get(t)?.maxSeniors || 0) > 0),
+            3: allCodenames.filter(t => !isClinicRotation(programData, t) && t !== 'VAC' && (programData.rotations.get(t)?.maxSeniors || 0) > 0),
         };
-        const constrainedTypes = Object.values(AssignmentType).filter(type => {
-            const m = ROTATION_METADATA[type];
+        const constrainedTypes = allCodenames.filter(type => {
+            const m = programData.rotations.get(type);
             return m && (m.minInterns > 0 || m.maxInterns < 10 || m.minSeniors > 0 || m.maxSeniors < 10);
         });
         const superCriticalTypes = [
-            AssignmentType.MICU, AssignmentType.WARDS_RED, AssignmentType.WARDS_BLUE,
-            AssignmentType.NIGHT_FLOAT, AssignmentType.EM, AssignmentType.WARDS_METRO
+            'ICU', 'W-RED', 'W-BLUE',
+            'NF', 'EM', 'W-MET'
         ];
 
         const residentMap = new Map(residents.map(r => [r.id, r]));
@@ -64,7 +70,7 @@ export const healer: HealerSolver = {
             flexibleWeeks[r.id] = []; isFlexible[r.id] = Array(totalWeeks).fill(false);
             for (let w = 0; w < totalWeeks; w++) {
                 const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                if (w >= start && w < end && w % COHORT_COUNT !== cohort && !(existingSchedule?.[r.id]?.[w]?.locked)) {
+                if (w >= start && w < end && w % programData.cycleConfig.cohortCount !== cohort && !(existingSchedule?.[r.id]?.[w]?.locked)) {
                     flexibleWeeks[r.id].push(w);
                     isFlexible[r.id][w] = true;
                 }
@@ -72,20 +78,17 @@ export const healer: HealerSolver = {
         });
 
         const W_STAFFING = 10000000, W_JEOPARDY = 5000000, W_REQUIREMENT = 25000, W_CONTINUITY = 1000;
-        const TOTAL_CYCLES = Math.floor((totalWeeks - 1) / COHORT_COUNT) + 1;
+        const TOTAL_CYCLES = Math.floor((totalWeeks - 1) / programData.cycleConfig.cohortCount) + 1;
 
         const firstRes = residents.find(res => res.startYear && res.startYear > 0);
-        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
+        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : ACTIVE_START_YEAR;
 
         const getPgyAtWeek = (res: Resident, week: number): number => {
-            if (res.startYear && res.startYear > 0) {
-                return Math.min(3, gridStartYear + Math.floor(week / 52) - res.startYear + 1);
-            }
-            return Math.min(3, (Number(res.level) || 1) + Math.floor(week / 52));
+            return Math.min(3, RequirementsEngine.getPgyAtWeek(res, week, gridStartYear));
         };
 
         const getTypeStaffingPenalty = (type: AssignmentType, interns: number, seniors: number): number => {
-            const m = ROTATION_METADATA[type]!; let c = 0;
+            const m = programData.rotations.get(type); if (!m) return 0; let c = 0;
             if (interns < m.minInterns) c += (m.minInterns - interns) * W_STAFFING;
             if (interns > m.maxInterns) c += (interns - m.maxInterns) * W_STAFFING;
             if (seniors < m.minSeniors) c += (m.minSeniors - seniors) * W_STAFFING;
@@ -93,7 +96,7 @@ export const healer: HealerSolver = {
             return c;
         };
 
-        const flexibleAssigns = [...ELECTIVE_TYPES, AssignmentType.AMCS_CONSULTS];
+        const flexibleAssigns = Array.from(programData.flexibleCodenames);
         const getWeekPenalty = (w: number, wc: any, sched: ScheduleGrid): number => {
             let total = 0; 
             constrainedTypes.forEach(t => total += getTypeStaffingPenalty(t, wc.interns[t] || 0, wc.seniors[t] || 0));
@@ -119,11 +122,11 @@ export const healer: HealerSolver = {
             for (let w = 0; w < totalWeeks; w++) activeLevels.add(getPgyAtWeek(r, w));
             let p = 0;
             activeLevels.forEach(lvl => {
-                (REQUIREMENTS[lvl as 1|2|3] || []).forEach(req => {
-                    if (ACGME_TYPES.includes(req.type)) {
+                (buildLevelRequirements(programData, lvl) || []).forEach(req => {
+                    if (req.source === 'ACGME') {
                         let cumulativeRequired = 0;
                         for (let l = 1; l <= lvl; l++) {
-                            const levelReqs = REQUIREMENTS[l] || [];
+                            const levelReqs = buildLevelRequirements(programData, l) || [];
                             const reqObj = levelReqs.find(rq => rq.type === req.type);
                             cumulativeRequired += reqObj ? reqObj.minWeeks : 0;
                         }
@@ -140,9 +143,9 @@ export const healer: HealerSolver = {
         };
 
         const getCycleCont = (rId: string, sched: ScheduleGrid, cycle: number): number => {
-            const start = cycle * COHORT_COUNT;
+            const start = cycle * programData.cycleConfig.cohortCount;
             let lastA: string | null = null, changes = 0;
-            for (let i = 0; i < COHORT_COUNT; i++) {
+            for (let i = 0; i < programData.cycleConfig.cohortCount; i++) {
                 const w = start + i;
                 if (w >= totalWeeks) continue;
                 const a = sched[rId]?.[w]?.assignment;
@@ -158,12 +161,12 @@ export const healer: HealerSolver = {
             }
             for (let w = 0; w < totalWeeks; w++) {
                 if (!currentSchedule[r.id][w] || currentSchedule[r.id][w].assignment === null) {
-                    const isClinic = w % COHORT_COUNT === getCohortAtWeek(r, w, validCohortAssignments);
+                    const isClinic = w % programData.cycleConfig.cohortCount === getCohortAtWeek(r, w, validCohortAssignments);
                     if (isClinic) {
-                        const clinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                        const clinicType = 'CLINIC';
                         currentSchedule[r.id][w] = { assignment: clinicType, locked: true };
                     } else {
-                        currentSchedule[r.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                        currentSchedule[r.id][w] = { assignment: 'ELEC', locked: false };
                     }
                 }
             }
@@ -266,7 +269,7 @@ export const healer: HealerSolver = {
 
             const oldWPs = blockWeeks.map(w => weekPenaltyCache[w]);
             const oldRP = resReqPenaltyCache[r.id];
-            const affectedCycles = Array.from(new Set(blockWeeks.map(w => Math.floor(w / COHORT_COUNT))));
+            const affectedCycles = Array.from(new Set(blockWeeks.map(w => Math.floor(w / programData.cycleConfig.cohortCount))));
             const oldCPs = affectedCycles.map(c => resContCache[r.id][c]);
 
             blockWeeks.forEach((w, i) => {

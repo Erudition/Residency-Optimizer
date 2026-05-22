@@ -1,4 +1,5 @@
 
+import type { ProgramData } from './services/api/client';
 export type PgyLevel = 1 | 2 | 3;
 
 export enum ClinicalSetting {
@@ -23,47 +24,49 @@ export interface Resident {
   cohort?: number; // 4+1 cycle assignment (0-4)
 }
 
-export enum AssignmentType {
-  WARDS_RED = 'RED',
-  WARDS_BLUE = 'BLUE',
-  WARDS_METRO = 'METRO',
-  MICU = 'MICU',
-  METRO_ICU = 'METRO_ICU',
-  AMCS_CONSULTS = 'AMCS_CONSULTS',
-  NIGHT_FLOAT = 'NF',
-  EM = 'EM',
-  CLINIC = 'CCIM',
-  NIMA_BLOCK = 'NIMA',
-  ELECTIVE = 'ELECTIVE',
-  VACATION = 'VAC',
+export const CODENAMES = {
+  WARDS_RED: 'W-RED',
+  WARDS_BLUE: 'W-BLUE',
+  WARDS_METRO: 'W-MET',
+  MICU: 'ICU',
+  METRO_ICU: 'MET-ICU',
+  AMCS_CONSULTS: 'AMCS',
+  NIGHT_FLOAT: 'NF',
+  EM: 'EM',
+  CLINIC: 'CCIM',
+  PC_NIMA: 'PC-NIMA',
+  ELECTIVE: 'ELEC',
+  VACATION: 'VAC',
 
   // PGY1 Required Electives
-  CARDS = 'Cards',
-  ID = 'ID',
-  NEPH = 'Neph',
-  PULM = 'Pulm',
-
+  CARDS: 'CARDS',
+  ID: 'ID',
+  NEPH: 'NEPH',
+  PULM: 'PULM',
+ 
   // PGY2 Required Rotations
-  ONC = 'Onc',
-  NEURO = 'Neuro',
-  RHEUM = 'Rheum',
-  GI = 'GI',
-
-  ADD_MED = 'Add Med',
-  ENDO = 'Endo',
-  GERI = 'Geri',
-  PALLIATIVE = 'HPC', // Hospice & Palliative Care
-  JR_HOSPITALIST = 'Jr Hosp',
-
+  ONC: 'ONC',
+  NEURO: 'NEURO',
+  RHEUM: 'RHEUM',
+  GI: 'GI',
+ 
+  ADD_MED: 'ADDM',
+  ENDO: 'ENDO',
+  GERI: 'GERI',
+  PALLIATIVE: 'HPC', // Hospice & Palliative Care
+  JR_HOSPITALIST: 'JH',
+ 
   // Voluntary / Other Electives (Available to all years)
-  RESEARCH = 'Research',
-  CCMA = 'CCMA',
-  HF = 'Heart Failure',
-  ENT = 'ENT',
-  PMNR = 'PMNR',
-  ANAESTHESIA = 'ANAESTHESIA',
-  NIMA_CLINIC = 'NIMA (Clinic)',
-}
+  RESEARCH: 'RSCH',
+  CCMA: 'CCMA',
+  HF: 'HF',
+  ENT: 'ENT',
+  PMNR: 'PMNR',
+  ANAESTHESIA: 'ANES',
+  NIMA_CLINIC: 'NIMA',
+} as const;
+
+export type AssignmentType = string; // (typeof CODENAMES)[keyof typeof CODENAMES];
 export interface ScheduleCell {
   assignment: AssignmentType;
   locked: boolean; // If manually set, don't overwrite
@@ -100,6 +103,7 @@ export interface RotationConfig {
   minWeeksPGY3?: number;   // Specific PGY3 minimum
 
   notes?: string;
+  color?: number; // OKLCH hue value configured in the backend
 }
 
 export interface ResidentFairnessMetrics {
@@ -206,8 +210,9 @@ export interface ScheduleGenerator {
   generate: (
     residents: Resident[],
     existing: ScheduleGrid,
+    programData: ProgramData,
     attemptIndex?: number,
-    priorRequirementCounts?: Record<string, Record<string, number>>,  // replaces historicalSchedules
+    priorRequirementCounts?: Record<string, Record<string, number>>,
     cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>,
     onProgress?: (step: number, maxSteps: number, currentPenalty?: number) => void
   ) => ScheduleGrid | Promise<ScheduleGrid>;

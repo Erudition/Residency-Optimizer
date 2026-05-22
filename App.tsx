@@ -12,17 +12,10 @@ import {
   ScheduleSession
 } from './types';
 import {
-  GENERATE_INITIAL_RESIDENTS,
-  ASSIGNMENT_LABELS,
-  ASSIGNMENT_HEX_COLORS,
-  ASSIGNMENT_ABBREVIATIONS,
-  ACTIVE_START_YEAR,
-  TOTAL_WEEKS,
-  ACGME_TYPES,
-  MHS_TYPES,
-  getAssignmentColor
+  TOTAL_WEEKS
 } from './constants';
-import historicalGridData from './specification/historical_schedules_grid_v2.json';
+import { deriveActiveStartYear } from './services/programDataUtils';
+const ACTIVE_START_YEAR = deriveActiveStartYear();
 import { 
   generateSchedule, 
   calculateStats, 
@@ -35,7 +28,9 @@ import {
   getUnifiedResidents,
   getAugmentedResidents
 } from './services/scheduler';
-import { preloadHistoricalData } from './services/generators/historyPreloader';
+import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
+import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
+import { getAssignmentColor } from './utils/colorUtils';
 import { healSchedule } from './services/healer';
 import { ScheduleTable } from './components/ScheduleTable';
 import { Dashboard } from './components/Dashboard';
@@ -84,12 +79,15 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
-  Copy
+  Copy,
+  Crown,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 
 
 
-const APP_DATA_VERSION = 4;
+const APP_DATA_VERSION = 5; // Bumped: year keys changed from ending-year to start-year convention
 
 const loadState = <T,>(key: string, fallback: T): T => {
   try {
@@ -137,7 +135,8 @@ const AssignmentModal = ({
 }) => {
   if (!isOpen || !anchorRect) return null;
 
-  const keys = Object.keys(ASSIGNMENT_LABELS);
+  const programData = useProgramData();
+  const keys = Array.from(programData.rotations.keys());
   let r = 0;
   let c = 0;
 
@@ -193,8 +192,9 @@ const AssignmentModal = ({
           <button onClick={onClose} className="text-muted hover:text-black text-sm select-none px-1">✕</button>
         </div>
         <div className="grid grid-cols-4 gap-1.5 select-none">
-          {Object.entries(ASSIGNMENT_LABELS).map(([key, label]) => {
-            const bgHex = getAssignmentColor(key as AssignmentType, false);
+          {Array.from(programData.rotations.entries()).map(([key, config]) => {
+            const label = config.label;
+            const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
             return (
               <button
                 key={key}
@@ -206,11 +206,10 @@ const AssignmentModal = ({
                   border: `1.5px solid oklch(from ${bgHex} calc(l - 0.08) c h)`,
                   boxShadow: `0 2px 0 oklch(from ${bgHex} calc(l - 0.12) c h)`,
                   outline: current === key ? '3px solid #2f80fa' : 'none',
-                  outlineOffset: current === key ? '1px' : 'none'
+                  outlineOffset: '2px',
                 }}
-                title={label}
               >
-                <span className="truncate max-w-full">{label}</span>
+                {label}
               </button>
             );
           })}
@@ -291,12 +290,12 @@ const sanitizeScheduleGrid = (
   
   const residentsMap = new Map<string, Resident>();
   if (Array.isArray(residentsList)) {
-    residentsList.forEach(r => {
+    residentsList?.forEach(r => {
       residentsMap.set(r.id, r);
       residentsMap.set(r.name, r);
     });
   } else if (residentsList && typeof residentsList === 'object') {
-    Object.entries(residentsList).forEach(([name, data]: [string, any]) => {
+    Object.entries(residentsList)?.forEach(([name, data]: [string, any]) => {
       const id = data.id || name;
       const r = { id, name, ...data } as Resident;
       residentsMap.set(id, r);
@@ -306,7 +305,7 @@ const sanitizeScheduleGrid = (
   
   const sanitized: ScheduleGrid = {};
   
-  Object.entries(grid).forEach(([rId, row]) => {
+  Object.entries(grid)?.forEach(([rId, row]) => {
     const resident = residentsMap.get(rId);
     if (!resident || !Array.isArray(row)) {
       sanitized[rId] = row;
@@ -356,7 +355,7 @@ const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): Schedu
   const startYear = s.startYear || 2026;
 
   const sanitizedData: Record<string, ScheduleGrid> = {};
-  Object.entries(data).forEach(([yearStr, grid]) => {
+  Object.entries(data)?.forEach(([yearStr, grid]) => {
     sanitizedData[yearStr] = sanitizeScheduleGrid(grid as ScheduleGrid, residentsList, parseInt(yearStr), startYear);
   });
 
@@ -377,14 +376,51 @@ const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): Schedu
   };
 };
 
-const App: React.FC = () => {
-  const [residents, setResidents] = useState<Resident[]>(() =>
-    loadState('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS())
-  );
+const syncResidentsWithBackend = (cached: Resident[], backendResidents: Resident[]): Resident[] => {
+  if (!cached || cached.length === 0) {
+    return backendResidents;
+  }
+  const cachedMap = new Map(cached.map(r => [r.id, r]));
+  const merged: Resident[] = [];
+  
+  // Process all backend residents (active source of truth)
+  backendResidents.forEach(backendRes => {
+    const cachedRes = cachedMap.get(backendRes.id);
+    if (cachedRes) {
+      merged.push({
+        ...backendRes,
+        // Preserve local relationship constraints if customized
+        avoidResidentIds: cachedRes.avoidResidentIds || backendRes.avoidResidentIds || [],
+        // Preserve cohort if assigned locally
+        cohort: cachedRes.cohort !== undefined ? cachedRes.cohort : backendRes.cohort,
+      });
+    } else {
+      merged.push(backendRes);
+    }
+  });
+  
+  // Keep manually added local residents that are not in the backend
+  cached.forEach(cachedRes => {
+    if (cachedRes.id.startsWith('manual-') || cachedRes.id.startsWith('imported-')) {
+      merged.push(cachedRes);
+    }
+  });
+  
+  return merged;
+};
+
+const AppContent: React.FC = () => {
+  const programData = useProgramData();
+
+  const [residents, setResidents] = useState<Resident[]>(() => {
+    const cached = loadState<Resident[]>('rsp_residents_v4', []);
+    return syncResidentsWithBackend(cached, programData.residents);
+  });
 
   const [schedules, setSchedules] = useState<ScheduleSession[]>(() => {
     const rawSchedules = loadState<ScheduleSession[]>('rsp_schedules_v4', []);
-    const loadedResidents = loadState<Resident[]>('rsp_residents_v4', GENERATE_INITIAL_RESIDENTS());
+    const cached = loadState<Resident[]>('rsp_residents_v4', []);
+    const loadedResidents = syncResidentsWithBackend(cached, programData.residents);
     return rawSchedules.map((s: any) => normalizeAndSanitizeSchedule(s, loadedResidents));
   });
   const [algoAttempts, setAlgoAttempts] = useState<number[]>([]);
@@ -403,27 +439,31 @@ const App: React.FC = () => {
   );
   // Dynamic history detection
   const historicalYears = useMemo(() => 
-    Object.keys(historicalGridData)
+    Object.keys(programData.historicalSchedules)
       .map(Number)
       .filter(y => y < ACTIVE_START_YEAR)
       .sort((a, b) => a - b),
-  []);
+    [programData.historicalSchedules]
+  );
 
   // All academic years: historical + current + future
   const allAcademicYears = useMemo(() => [
     ...historicalYears,
     ACTIVE_START_YEAR,
     ACTIVE_START_YEAR + 1,
-    ACTIVE_START_YEAR + 2
+    ACTIVE_START_YEAR + 2,
+    ACTIVE_START_YEAR + 3
   ], [historicalYears]);
 
-  const isHistoricalYear = activeYear < ACTIVE_START_YEAR;
-  const isFutureYear = activeYear >= ACTIVE_START_YEAR;
+  const isHistoricalYear = activeYear <= ACTIVE_START_YEAR;
+  const isFutureYear = activeYear > ACTIVE_START_YEAR;
 
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => {
-    console.log('[DEBUG] residents structure:', Array.isArray(residents), residents);
-    return preloadHistoricalData(Array.isArray(residents) ? residents : []);
-  }, [residents]);
+    return {
+      history: programData.historicalSchedules,
+      cohortAssignments: programData.historicalCohorts,
+    };
+  }, [programData.historicalSchedules, programData.historicalCohorts]);
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts' | 'totals'>('schedule');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -490,6 +530,8 @@ const App: React.FC = () => {
 
   const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
+  const [promoteOnExport, setPromoteOnExport] = useState(true);
+  const [isPromoting, setIsPromoting] = useState(false);
 
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
@@ -524,12 +566,15 @@ const App: React.FC = () => {
 
       const augmentedData: ScheduleGrid = {};
       
-      Object.keys(baseHistory).forEach(resId => {
+      Object.keys(baseHistory)?.forEach(resId => {
         augmentedData[resId] = (baseHistory[resId] || []).map((cell, idx) => {
-          if (!cell) return { assignment: null, locked: idx <= lockedUntil };
+          // Null (unassigned) and placeholder slots remain editable even in
+          // past weeks, so admins can resolve them retroactively.
+          const isEditable = !cell?.assignment || programData.placeholderCodenames.has(cell.assignment);
+          if (!cell) return { assignment: null, locked: isEditable ? false : idx <= lockedUntil };
           return {
             ...cell,
-            locked: !!cell.locked || idx <= lockedUntil
+            locked: isEditable ? false : (!!cell.locked || idx <= lockedUntil)
           };
         });
       });
@@ -546,7 +591,7 @@ const App: React.FC = () => {
       } as any;
     }
     return schedules.find(s => s.id === activeScheduleId);
-  }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear]);
+  }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear, programData.placeholderCodenames]);
   
   const [viewMode, setViewMode] = useState<'singleYear' | 'unified'>('singleYear');
 
@@ -590,7 +635,7 @@ const App: React.FC = () => {
         return a.name.localeCompare(b.name);
       });
       const defaultCohorts: Record<string, number> = {};
-      activeResidentsForDefault.forEach((r, idx) => {
+      activeResidentsForDefault?.forEach((r, idx) => {
         defaultCohorts[r.id] = idx % 5;
       });
       yearCohorts = defaultCohorts;
@@ -617,7 +662,7 @@ const App: React.FC = () => {
         return a.name.localeCompare(b.name);
       });
       const defaultCohorts: Record<string, number> = {};
-      activeResidents.forEach((r, idx) => {
+      activeResidents?.forEach((r, idx) => {
         defaultCohorts[r.id] = idx % 5;
       });
       yearCohorts = defaultCohorts;
@@ -631,7 +676,7 @@ const App: React.FC = () => {
       return isPgyInRange && hasJoined && hasNotLeft;
     }).map(r => {
       const level = (year - r.startYear + 1) as 1 | 2 | 3;
-      const clinicType = r.startYear === 2025 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+      const clinicType = r.startYear === 2025 ? 'NIMA' : 'CCIM';
       const cohort = yearCohorts[r.id] ?? 0;
       return { ...r, level, clinicType, cohort };
     }).sort((a, b) => {
@@ -656,7 +701,7 @@ const App: React.FC = () => {
         const startYear = activeSchedule.startYear || ACTIVE_START_YEAR;
         const offset = (activeYear - startYear) * TOTAL_WEEKS;
         const sliced: ScheduleGrid = {};
-        Object.entries(bestHealGrid).forEach(([rId, row]) => {
+        Object.entries(bestHealGrid)?.forEach(([rId, row]) => {
           sliced[rId] = (row as any).slice(offset, offset + TOTAL_WEEKS);
         });
         return sliced;
@@ -680,7 +725,7 @@ const App: React.FC = () => {
        const startYear = activeSchedule.startYear || ACTIVE_START_YEAR;
        return getUnifiedResidents(residents, startYear, 3).map(r => ({
            ...r,
-           clinicType: r.startYear === 2025 ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC,
+           clinicType: r.startYear === 2025 ? 'NIMA' : 'CCIM',
            cohort: (activeSchedule?.cohortAssignments?.[startYear] || historicalCohortsByYear[startYear] || {})[r.id] ?? 0
        })).sort((a, b) => {
            if (residentSortOrder === 'cohort') {
@@ -711,13 +756,13 @@ const App: React.FC = () => {
     return {
       stats: calculateStats(activeResidents, currentGrid),
       violations: {
-        reqs: getRequirementViolations(activeResidents, currentGrid, fullHistory, activeYear),
-        constraints: getWeeklyViolations(activeResidents, currentGrid),
-        audit: getAuditViolations(activeResidents, fullHistory, activeYear)
+        reqs: getRequirementViolations(activeResidents, currentGrid, programData, fullHistory, activeYear),
+        constraints: getWeeklyViolations(activeResidents, currentGrid, programData),
+        audit: getAuditViolations(activeResidents, fullHistory, programData, activeYear)
       },
-      fairness: calculateFairnessMetrics(activeResidents, currentGrid)
+      fairness: calculateFairnessMetrics(activeResidents, currentGrid, programData)
     };
-  }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId]);
+  }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId, programData]);
 
   const activeViolationsCount = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
@@ -732,15 +777,15 @@ const App: React.FC = () => {
       const y = startYear + offset;
       const yrResidents = getResidentsForYear(y);
       const yrGrid = useUnified ? (activeSchedule.data[y] || {}) : currentGrid;
-      const reqsList = getRequirementViolations(yrResidents, yrGrid, fullHistory, y);
+      const reqsList = getRequirementViolations(yrResidents, yrGrid, programData, fullHistory, y);
       const reqs = reqsList.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0);
-      const constraintsList = getWeeklyViolations(yrResidents, yrGrid, y);
+      const constraintsList = getWeeklyViolations(yrResidents, yrGrid, programData, y);
       const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
-      const audit = getAuditViolations(yrResidents, fullHistory, y);
+      const audit = getAuditViolations(yrResidents, fullHistory, programData, y);
       total += reqs + constraints + audit;
     }
     return total;
-  }, [activeSchedule, historySchedules, activeScheduleId, activeYear, viewMode, currentGrid, residents]);
+  }, [activeSchedule, historySchedules, activeScheduleId, activeYear, viewMode, currentGrid, residents, programData]);
 
   const hasViolations = activeViolationsCount > 0;
 
@@ -757,7 +802,7 @@ const App: React.FC = () => {
   // Cleanup workers on unmount (when tab closes)
   useEffect(() => {
     return () => {
-      activeWorkersRef.current.forEach(worker => worker.terminate());
+      activeWorkersRef.current?.forEach(worker => worker.terminate());
       activeWorkersRef.current.clear();
     };
   }, []);
@@ -838,6 +883,7 @@ const App: React.FC = () => {
         residents,
         historicalSchedules,
         constraints: { existing, cohortAssignments },
+        programData: serializeProgramData(programData),
         params,
         algorithmIds
       });
@@ -966,7 +1012,7 @@ const App: React.FC = () => {
             return a.name.localeCompare(b.name);
           });
           const defaultCohorts: Record<string, number> = {};
-          activeResidents.forEach((r, idx) => {
+          activeResidents?.forEach((r, idx) => {
             defaultCohorts[r.id] = idx % 5;
           });
           yearCohorts = defaultCohorts;
@@ -1146,7 +1192,8 @@ const App: React.FC = () => {
         historicalSchedules: historySchedules,
         startYear,
         totalYears,
-        cohortAssignments: activeSched.cohortAssignments
+        cohortAssignments: activeSched.cohortAssignments,
+        programData: serializeProgramData(programData)
       });
 
       setIsHealing(true);
@@ -1265,19 +1312,20 @@ const App: React.FC = () => {
       const headerRow = worksheet.addRow(headers);
       headerRow.font = { bold: true };
 
-      displayResidents.forEach(r => {
+      displayResidents?.forEach(r => {
         const rowData = [r.name, r.level, String.fromCharCode(65 + (r.cohort ?? 0))];
         const residentCells: string[] = [];
         for (let i = 0; i < totalWeeksInGrid; i++) {
           const cell = displayGrid[r.id]?.[i];
-          residentCells.push(cell?.assignment ? ASSIGNMENT_ABBREVIATIONS[cell.assignment] : "");
+          residentCells.push(cell?.assignment ? cell.assignment : "");
         }
         const row = worksheet.addRow([...rowData, ...residentCells]);
 
         for (let i = 0; i < totalWeeksInGrid; i++) {
           const cell = displayGrid[r.id]?.[i];
           if (cell?.assignment) {
-            const hex = ASSIGNMENT_HEX_COLORS[cell.assignment]?.replace('#', '') || 'CCCCCC';
+            const rotation = programData.rotations.get(cell.assignment);
+            const hex = getAssignmentColor(rotation?.color || 0, rotation?.intensity ?? 1, false).replace('#', '');
             row.getCell(4 + i).fill = {
               type: 'pattern',
               pattern: 'solid',
@@ -1302,6 +1350,36 @@ const App: React.FC = () => {
       alert("Failed to export Excel file. See console for details.");
     } finally {
       setIsExporting(false);
+    }
+
+    // After successful export, optionally promote to canonical
+    if (promoteOnExport && !activeSchedule.isHistory && activeSchedule.data?.[activeYear]) {
+      setIsPromoting(true);
+      try {
+        const existingCanonical = await getCanonicalScheduleId(activeYear);
+        if (existingCanonical) {
+          const confirmed = confirm(
+            `AY ${activeYear}-${(activeYear + 1).toString().slice(-2)} already has an official schedule. ` +
+            `Replace it with "${activeSchedule.name}"?`
+          );
+          if (!confirmed) {
+            setIsPromoting(false);
+            return;
+          }
+        }
+
+        await promoteScheduleToCanonical({
+          academicYear: activeYear,
+          grid: activeSchedule.data[activeYear],
+          title: `Official: ${activeSchedule.name} (AY ${activeYear}-${(activeYear + 1).toString().slice(-2)})`,
+        });
+        alert(`✓ Schedule promoted to official record for AY ${activeYear}-${(activeYear + 1).toString().slice(-2)}`);
+      } catch (e) {
+        console.error('Promotion failed', e);
+        alert(`Excel export succeeded, but promotion to official schedule failed: ${e}`);
+      } finally {
+        setIsPromoting(false);
+      }
     }
   };
 
@@ -1347,7 +1425,7 @@ const App: React.FC = () => {
       const firstRid = Object.keys(grid)[0];
       const shouldLock = firstRid ? !grid[firstRid][weekIdx]?.locked : true;
 
-      Object.keys(grid).forEach(rid => {
+      Object.keys(grid)?.forEach(rid => {
         const weeks = [...(grid[rid] || [])];
         if (weeks[weekIdx]) {
           weeks[weekIdx] = { ...weeks[weekIdx], locked: shouldLock };
@@ -1361,7 +1439,7 @@ const App: React.FC = () => {
 
   const handleFactoryReset = () => {
     if (confirm("This will delete ALL data. Are you sure?")) {
-      setResidents(GENERATE_INITIAL_RESIDENTS());
+      setResidents(programData.residents);
       setSchedules([]);
       setActiveScheduleId("all");
     }
@@ -1392,7 +1470,7 @@ const App: React.FC = () => {
 
   const handleResetResidents = () => {
     if (confirm("Reset all residents to defaults?")) {
-      setResidents(GENERATE_INITIAL_RESIDENTS());
+      setResidents(programData.residents);
     }
   };
   const handleLockResident = (residentId: string) => {
@@ -1611,12 +1689,12 @@ const App: React.FC = () => {
           {viewMode === 'unified' ? (
             <>
               <NavButton id="audit" label="ACGME 3yr" icon={ShieldCheck} badgeCount={violations.audit} />
-              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="mhs_requirements" label="Curriculum 3yr" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'mhs').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
             </>
           ) : (
             <>
-              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => ACGME_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
-              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => MHS_TYPES.includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="acgme_requirements" label="ACGME" icon={ClipboardList} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'acgme').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
+              <NavButton id="mhs_requirements" label="Curriculum" icon={ShieldCheck} badgeCount={violations.reqs.filter(v => (programData.gradRequirements || []).filter(r => r.source === 'mhs').map(r => r.tag.title).includes(v.type)).reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} />
               <NavButton id="cohorts" label="Cohorts" icon={Users} />
               <NavButton id="coworking" label="Coworking" icon={Network} />
               <NavButton id="fairness" label="Fairness" icon={Scale} />
@@ -1865,12 +1943,33 @@ const App: React.FC = () => {
 
                         <Button variant="primary" size="md" 
                           onClick={handleExportXLSX}
-                          disabled={isExporting}
+                          disabled={isExporting || isPromoting}
                            className="w-full py-4 bg-green hover:bg-emerald-700 disabled:bg-light-3 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all" 
                         >
-                          {isExporting ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
-                          Export Current to Excel
+                          {(isExporting || isPromoting) ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
+                          {isPromoting ? 'Promoting to Official...' : 'Export Current to Excel'}
                         </Button>
+
+                        {!activeSchedule?.isHistory && activeSchedule?.data?.[activeYear] && (
+                          <button
+                            onClick={() => setPromoteOnExport(!promoteOnExport)}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg border border-light-3 hover:bg-light-1 transition-colors cursor-pointer"
+                          >
+                            {promoteOnExport
+                              ? <CheckSquare size={18} className="text-green shrink-0" />
+                              : <Square size={18} className="text-muted shrink-0" />
+                            }
+                            <div className="text-left">
+                              <div className="text-sm font-medium text-primary flex items-center gap-1.5">
+                                <Crown size={14} className="text-amber-500" />
+                                Set as official schedule for AY {activeYear}-{(activeYear + 1).toString().slice(-2)}
+                              </div>
+                              <div className="text-[10px] text-muted mt-0.5">
+                                Copies this year's assignments to the historical record (locked)
+                              </div>
+                            </div>
+                          </button>
+                        )}
                       </div>
 
                       <div className="mt-6 bg-highlight p-4 rounded-lg flex gap-3 items-start">
@@ -2033,6 +2132,104 @@ const App: React.FC = () => {
       <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} anchorRect={anchorRect} />
       <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => setRenameModalOpen(false)} onSave={handleRename} />
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  const [programData, setProgramData] = useState<ProgramData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSlow, setIsSlow] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    setLoadError(null);
+    setIsSlow(false);
+    const slowTimer = setTimeout(() => setIsSlow(true), 5000);
+
+    loadProgramData(ACTIVE_START_YEAR)
+      .then(data => {
+        clearTimeout(slowTimer);
+        setProgramData(data);
+      })
+      .catch(err => {
+        clearTimeout(slowTimer);
+        const message = err instanceof Error ? err.message : String(err);
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        if (message.includes('fetch') || message.includes('network') || message.includes('ECONNREFUSED') || message.includes('Failed')) {
+          setLoadError(`Could not reach the CMS backend at ${apiUrl}.\n\nPossible causes:\n• The backend server is not running\n• A CORS policy is blocking the request (check the browser console)\n• The API URL is incorrect`);
+        } else {
+          setLoadError(message);
+        }
+      });
+
+    return () => clearTimeout(slowTimer);
+  }, [retryCount]);
+
+  if (loadError) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#fafafa', color: '#333', gap: '16px', padding: '24px',
+      }}>
+        <div style={{
+          background: '#fff', borderRadius: '16px', padding: '40px 48px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #eee', maxWidth: '480px', width: '100%', textAlign: 'center',
+        }}>
+          <AlertCircle size={40} style={{ color: '#e06c4a', marginBottom: '16px' }} />
+          <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: '#222' }}>
+            Connection Failed
+          </h2>
+          <pre style={{
+            fontSize: '13px', color: '#888', lineHeight: '1.6', whiteSpace: 'pre-wrap',
+            margin: '0 0 24px', fontFamily: 'inherit',
+          }}>
+            {loadError}
+          </pre>
+          <button
+            onClick={() => { setLoadError(null); setRetryCount(c => c + 1); }}
+            style={{
+              background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px',
+              padding: '10px 28px', fontSize: '14px', fontWeight: 500, cursor: 'pointer',
+              transition: 'background 150ms',
+            }}
+            onMouseOver={e => (e.currentTarget.style.background = '#2563eb')}
+            onMouseOut={e => (e.currentTarget.style.background = '#3b82f6')}
+          >
+            <RotateCcw size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '6px' }} />
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!programData) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#fafafa', color: '#555', gap: '12px',
+      }}>
+        <Loader2 size={28} style={{ color: '#3b82f6', animation: 'spin 1s linear infinite' }} />
+        <div style={{ fontSize: '14px', fontWeight: 500 }}>
+          Loading Residency Data from CMS…
+        </div>
+        {isSlow && (
+          <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+            This is taking longer than usual. Is the backend server running?
+          </div>
+        )}
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    );
+  }
+
+  return (
+    <ProgramDataProvider programData={programData}>
+      <AppContent />
+    </ProgramDataProvider>
   );
 };
 

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
-import { TOTAL_WEEKS, ASSIGNMENT_LABELS, ROTATION_METADATA, ASSIGNMENT_HEX_COLORS } from '../constants';
+import { useProgramData } from '../contexts/ProgramDataContext';
+import { getDisplayOrderedCodenames } from '../services/programDataUtils';
+import { oklchToHex } from '../utils/colorUtils';
 import { Table, Users, Info } from 'lucide-react';
 
 interface Props {
@@ -8,10 +10,12 @@ interface Props {
   schedule: ScheduleGrid;
 }
 
-const getBaseColorStyle = (assignment: AssignmentType, count: number, max: number): React.CSSProperties => {
+const getBaseColorStyle = (count: number, max: number, hue: number, intensityScore: number): React.CSSProperties => {
   if (count === 0) return { backgroundColor: '#ffffff' };
 
-  const baseHex = ASSIGNMENT_HEX_COLORS[assignment] || '#ccc';
+  const chroma = intensityScore === 0 ? 0.015 : 0.01 + intensityScore * 0.038;
+  const baseHex = oklchToHex(0.84, chroma, hue);
+
   // Maximum typical rotation weeks in a year is around 12, so normalize against that or the actual max
   const intensity = Math.min(1, 0.2 + (count / Math.max(1, max)) * 0.8);
 
@@ -23,6 +27,9 @@ const getBaseColorStyle = (assignment: AssignmentType, count: number, max: numbe
 };
 
 export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
+  const programData = useProgramData();
+  const { rotations } = programData;
+
   // Sort residents by level and cohort so the columns are beautifully grouped
   const sortedResidents = useMemo(() => {
     return [...residents].sort((a, b) => {
@@ -69,36 +76,12 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
 
   // Define Row Order matching Coverage Tab
   const sortedAssignmentTypes = useMemo(() => {
-    const priorityOrder = [
-      AssignmentType.WARDS_RED,
-      AssignmentType.WARDS_BLUE,
-      AssignmentType.WARDS_METRO,
-      AssignmentType.MICU,
-      AssignmentType.METRO_ICU,
-      AssignmentType.PULM,
-      AssignmentType.NIGHT_FLOAT,
-      AssignmentType.EM,
-      AssignmentType.CLINIC,
-      AssignmentType.NIMA_CLINIC,
-      AssignmentType.ELECTIVE,
-      AssignmentType.VACATION,
-    ];
-
-    const allTypes = Object.values(AssignmentType);
-    const remainingTypes = allTypes
-      .filter(type => !priorityOrder.includes(type))
-      .sort((a, b) => {
-        const labelA = ASSIGNMENT_LABELS[a] || '';
-        const labelB = ASSIGNMENT_LABELS[b] || '';
-        return labelA.localeCompare(labelB);
-      });
-
-    return [...priorityOrder, ...remainingTypes];
-  }, []);
+    return getDisplayOrderedCodenames(programData);
+  }, [programData]);
 
   // Compute assign-weeks for each resident and rotation
   const assignmentCounts = useMemo(() => {
-    const counts: Record<string, Record<AssignmentType, { count: number, weeks: number[] }>> = {};
+    const counts: Record<string, Record<string, { count: number, weeks: number[] }>> = {};
     
     sortedResidents.forEach(r => {
       counts[r.id] = {} as any;
@@ -107,7 +90,11 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
       });
 
       const resSchedule = schedule[r.id] || [];
+      const activeStart = r.activeWeekStart ?? 0;
+      const activeEnd = r.activeWeekEnd ?? resSchedule.length;
       resSchedule.forEach((weekObj, weekIdx) => {
+        // Skip weeks where this resident is not active (multi-year unified grids)
+        if (weekIdx < activeStart || weekIdx >= activeEnd) return;
         const type = weekObj?.assignment;
         if (type && counts[r.id][type]) {
           counts[r.id][type].count++;
@@ -121,7 +108,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
 
   // Compute maximum weeks of any rotation assigned to any single resident for normalization
   const maxWeeksAcrossResidents = useMemo(() => {
-    const maxs: Record<AssignmentType, number> = {} as any;
+    const maxs: Record<string, number> = {} as any;
     sortedAssignmentTypes.forEach(type => {
       let max = 0;
       sortedResidents.forEach(r => {
@@ -133,7 +120,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
     return maxs;
   }, [sortedResidents, sortedAssignmentTypes, assignmentCounts]);
 
-  const handleCellEnter = (e: React.MouseEvent, r: Resident, type: AssignmentType) => {
+  const handleCellEnter = (e: React.MouseEvent, r: Resident, type: string) => {
     const cellData = assignmentCounts[r.id]?.[type] || { count: 0, weeks: [] };
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     
@@ -141,7 +128,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
       x: rect.left + window.scrollX + rect.width / 2,
       y: rect.top + window.scrollY,
       residentName: r.name,
-      type: ASSIGNMENT_LABELS[type],
+      type: rotations.get(type)?.label || type,
       count: cellData.count,
       weeks: cellData.weeks
     });
@@ -194,12 +181,13 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
                     className="sticky left-0 z-20 bg-light-1/90 backdrop-blur-md border-b border-r px-3 py-1.5 font-medium text-primary whitespace-nowrap transition-all"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
                   >
-                    <span className="truncate">{ASSIGNMENT_LABELS[type]}</span>
+                    <span className="truncate">{rotations.get(type)?.label || type}</span>
                   </td>
                   {sortedResidents.map(r => {
                     const cellData = assignmentCounts[r.id]?.[type] || { count: 0, weeks: [] };
                     const count = cellData.count;
-                    const style = getBaseColorStyle(type, count, maxWeeksAcrossResidents[type]);
+                    const rotation = rotations.get(type);
+                    const style = getBaseColorStyle(count, maxWeeksAcrossResidents[type], rotation?.color || 0, rotation?.intensity || 1);
 
                     return (
                       <td

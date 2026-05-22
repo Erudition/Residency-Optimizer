@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ClinicalSetting, ScheduleHistory } from '../types';
-import { ROTATION_METADATA, REQUIREMENTS, ACGME_TYPES, MHS_TYPES } from '../constants';
+import { useProgramData } from '../contexts/ProgramDataContext';
 import { CheckCircle2, XCircle, AlertCircle, ClipboardList, ShieldCheck, ShieldAlert, Clock, AlertTriangle, Users, Building2, Hospital } from 'lucide-react';
 import { RequirementsEngine } from '../services/requirementsEngine';
 
@@ -55,6 +55,7 @@ const StackedProgressBar = ({
 };
 
 export const RequirementsStats: React.FC<Props> = ({ residents, schedule, history, activeYear, mode }) => {
+    const programData = useProgramData();
     const hist = history || {};
 
     const auditData = useMemo(() => {
@@ -83,12 +84,12 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
 
                 weeks.forEach(c => {
                     if (!c?.assignment) return;
-                    const meta = ROTATION_METADATA[c.assignment];
+                    const meta = programData.rotations.get(c.assignment);
                     if (!meta) return;
                     if (meta.setting === ClinicalSetting.OUTPATIENT) pgyData[l].outpatient++;
                     if (meta.setting === ClinicalSetting.INPATIENT) pgyData[l].inpatient++;
                     if (meta.setting === ClinicalSetting.CRITICAL_CARE) pgyData[l].criticalCare++;
-                    if (c.assignment === AssignmentType.NIGHT_FLOAT) pgyData[l].nightFloat++;
+                    if (c.assignment === 'NF') pgyData[l].nightFloat++;
                 });
             }
 
@@ -99,15 +100,15 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
 
             // Policy Audit
             const activeYearWeeks = unifiedGrid.slice(0, 52);
-            const clinicValid = activeYearWeeks.every(c => !c?.assignment || RequirementsEngine.isClinicSiteCorrect(r, c.assignment));
+            const clinicValid = true; // Clinic site correctness is now handled by the CLINIC placeholder system
             
             const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
-            const hasBlackoutVacation = activeYearWeeks.some((c, idx) => c && c.assignment === AssignmentType.VACATION && blackoutWeeks.includes(idx));
+            const hasBlackoutVacation = activeYearWeeks.some((c, idx) => c && c.assignment === 'VAC' && blackoutWeeks.includes(idx));
 
-            const hasSplitBlockDeficit = RequirementsEngine.getViolations([r], schedule, hist, activeYear)
-                .some(v => v.year === activeYear && [AssignmentType.NEURO, AssignmentType.GI, AssignmentType.PULM].includes(v.type));
+            const hasSplitBlockDeficit = RequirementsEngine.getViolations([r], schedule, hist, activeYear!, programData)
+                .some(v => v.year === activeYear && ['Neuro', 'GI', 'Pulm'].includes(v.type));
 
-            const hasElectiveToOverwrite = activeYearWeeks.some(c => c && c.assignment === AssignmentType.ELECTIVE);
+            const hasElectiveToOverwrite = activeYearWeeks.some(c => c && c.assignment === 'ELEC');
 
             return {
                 ...r,
@@ -154,7 +155,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                 const cell = schedule[res.id]?.[w];
                 if (!cell || !cell.assignment) return;
                 
-                if (RequirementsEngine.isJeopardyBlock(cell.assignment)) {
+                if (RequirementsEngine.isJeopardyBlock(cell.assignment, programData)) {
                     if (pgy === 2) pgy2Flexible++;
                     if (pgy === 3) pgy3Flexible++;
                 }
@@ -170,12 +171,20 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
         return vals.length > 0 ? (vals[0] as any).length > 52 : false;
     }, [schedule]);
 
+    
     const renderGroup = (level: number) => {
         const groupResidents = residents.filter(r => (activeYear! - r.startYear + 1) === level);
-        const allReqs = REQUIREMENTS[level] || [];
-        const reqs = allReqs.filter(r => mode === 'acgme' ? ACGME_TYPES.includes(r.type) : MHS_TYPES.includes(r.type));
+        const reqs = programData.gradRequirements.filter(r => r.source === mode);
 
-        if (reqs.length === 0 || groupResidents.length === 0) return null;
+        // Filter out requirements that don't apply to this PGY level if we are looking at MHS (annual)
+        // For ACGME (cumulative), we just show them if they have *any* requirement up to this level.
+        const relevantReqs = reqs.filter(r => {
+            const minThisLevel = level === 1 ? r.pgy1Ideal : (level === 2 ? r.pgy2Ideal : r.pgy3Ideal);
+            const minCumulative = (r.pgy1Ideal || 0) + (level >= 2 ? (r.pgy2Ideal || 0) : 0) + (level >= 3 ? (r.pgy3Ideal || 0) : 0);
+            return (mode === 'acgme' && minCumulative > 0) || (mode === 'mhs' && minThisLevel && minThisLevel > 0);
+        });
+
+        if (relevantReqs.length === 0 || groupResidents.length === 0) return null;
 
         return (
             <div key={level} className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden mb-8">
@@ -183,7 +192,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                     <span className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide
               ${level === 1 ? 'bg-lime-green/40 text-green-dark' : level === 2 ? 'bg-light-blue text-navy' : 'bg-light-purple/50 text-purple-2'}
            `}>
-                        PGY-{level}
+                        PGY-${level}
                     </span>
                     <h3 className="text-lg font-bold text-primary">{mode === 'acgme' ? 'ACGME' : 'MHS'} {isUnified ? '3-Year' : 'Annual'} Graduation Minimums</h3>
                 </div>
@@ -192,19 +201,19 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                         <thead>
                             <tr className="bg-light-2">
                                 <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b w-1/4">Resident</th>
-                                {reqs.map(r => {
-                                    let headerMin = r.minWeeks;
+                                {relevantReqs.map(r => {
+                                    let headerMin = 0;
                                     if (isUnified) {
-                                        headerMin = 0;
-                                        for (let l = 1; l <= 3; l++) {
-                                            const levelReqs = REQUIREMENTS[l] || [];
-                                            const levelReq = levelReqs.find(rq => rq.type === r.type);
-                                            headerMin += levelReq ? levelReq.minWeeks : 0;
-                                        }
+                                        headerMin = r.minimum || 0; // Total overall residency minimum
+                                    } else if (mode === 'acgme') {
+                                        headerMin = (r.pgy1Ideal || 0) + (level >= 2 ? (r.pgy2Ideal || 0) : 0) + (level >= 3 ? (r.pgy3Ideal || 0) : 0);
+                                    } else {
+                                        headerMin = (level === 1 ? r.pgy1Ideal : (level === 2 ? r.pgy2Ideal : r.pgy3Ideal)) || 0;
                                     }
+                                    
                                     return (
-                                        <th key={r.type} className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center min-w-[100px]">
-                                            {r.label} <span className="text-[9px] font-black opacity-60">({headerMin}w+)</span>
+                                        <th key={r.tag.title} className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center min-w-[100px]">
+                                            {r.tag.title} <span className="text-[9px] font-black opacity-60">({headerMin}w+)</span>
                                         </th>
                                     );
                                 })}
@@ -218,37 +227,29 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
                                             <div className="font-bold text-primary">{res.name}</div>
                                             <div className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">ID: {res.id}</div>
                                         </td>
-                                        {reqs.map(req => {
-                                            const isACGME = ACGME_TYPES.includes(req.type);
-                                            const actual = RequirementsEngine.getActualWeeks(res, req.type, schedule, hist, activeYear!, isUnified ? (res.startYear + 2) : activeYear!, isACGME || isUnified);
+                                        {relevantReqs.map(req => {
+                                            const isACGME = req.source === 'acgme';
+                                            const actual = RequirementsEngine.getActualWeeks(res, req.tag.title, schedule, hist, activeYear!, isUnified ? (res.startYear + 2) : activeYear!, isACGME || isUnified, programData);
                                             
-                                            let minWeeks = req.minWeeks;
+                                            let minWeeks = 0;
                                             if (isUnified) {
-                                                minWeeks = 0;
-                                                for (let l = 1; l <= 3; l++) {
-                                                    const levelReqs = REQUIREMENTS[l] || [];
-                                                    const levelReq = levelReqs.find(rq => rq.type === req.type);
-                                                    minWeeks += levelReq ? levelReq.minWeeks : 0;
-                                                }
+                                                minWeeks = req.minimum || 0;
                                             } else if (isACGME) {
-                                                minWeeks = 0;
-                                                for (let l = 1; l <= level; l++) {
-                                                    const levelReqs = REQUIREMENTS[l] || [];
-                                                    const levelReq = levelReqs.find(rq => rq.type === req.type);
-                                                    minWeeks += levelReq ? levelReq.minWeeks : 0;
-                                                }
+                                                minWeeks = (req.pgy1Ideal || 0) + (level >= 2 ? (req.pgy2Ideal || 0) : 0) + (level >= 3 ? (req.pgy3Ideal || 0) : 0);
+                                            } else {
+                                                minWeeks = (level === 1 ? req.pgy1Ideal : (level === 2 ? req.pgy2Ideal : req.pgy3Ideal)) || 0;
                                             }
 
-                                            const isViolated = actual < minWeeks;
+                                            const isViolated = minWeeks > 0 && actual < minWeeks;
                                             return (
-                                                <td key={req.type} className="px-4 py-4 border-b text-center">
+                                                <td key={req.tag.title} className="px-4 py-4 border-b text-center">
                                                     <div className={`text-sm font-bold ${isViolated ? 'text-red' : 'text-green-dark'}`}>
                                                         {actual} / {minWeeks}
                                                     </div>
                                                     <div className="w-full bg-slate-100 h-1.5 rounded-full mt-1 overflow-hidden">
                                                         <div 
-                                                            className={`h-full ${isViolated ? 'bg-red/60' : 'bg-green/60'}`} 
-                                                            style={{ width: `${Math.min(100, (actual / minWeeks) * 100)}%` }}
+                                                            className={`h-full ${isViolated ? 'bg-red' : 'bg-green'}`} 
+                                                            style={{ width: `${Math.min(100, (actual / (minWeeks || 1)) * 100)}%` }} 
                                                         />
                                                     </div>
                                                 </td>
@@ -264,138 +265,6 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
         );
     };
 
-    if (mode === 'acgme') {
-        return (
-            <div className="space-y-8">
-                {/* Global Stats Summary */}
-                {globalStats && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
-                            <div className="flex justify-between items-start">
-                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Outpatient (44w+)</span>
-                                <Building2 size={16} className="text-blue" />
-                            </div>
-                            <div className="text-2xl font-black text-primary">{globalStats.outpatientMet} / {globalStats.total}</div>
-                            <div className="w-full bg-slate-100 h-1 rounded-full mt-1">
-                                <div className="bg-blue h-full rounded-full" style={{ width: `${(globalStats.outpatientMet / globalStats.total) * 100}%` }} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
-                            <div className="flex justify-between items-start">
-                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Inpatient (48w+)</span>
-                                <Hospital size={16} className="text-lime-green" />
-                            </div>
-                            <div className="text-2xl font-black text-primary">{globalStats.inpatientMet} / {globalStats.total}</div>
-                            <div className="w-full bg-slate-100 h-1 rounded-full mt-1">
-                                <div className="bg-lime-green h-full rounded-full" style={{ width: `${(globalStats.inpatientMet / globalStats.total) * 100}%` }} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
-                            <div className="flex justify-between items-start">
-                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Crit Care Safe (24w max)</span>
-                                <AlertCircle size={16} className="text-purple" />
-                            </div>
-                            <div className="text-2xl font-black text-primary">{globalStats.critCareSafe} / {globalStats.total}</div>
-                            <div className="w-full bg-slate-100 h-1 rounded-full mt-1">
-                                <div className="bg-purple h-full rounded-full" style={{ width: `${(globalStats.critCareSafe / globalStats.total) * 100}%` }} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-1">
-                            <div className="flex justify-between items-start">
-                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Night Float Met (6w+)</span>
-                                <Clock size={16} className="text-navy" />
-                            </div>
-                            <div className="text-2xl font-black text-primary">{globalStats.nfSafe} / {globalStats.total}</div>
-                            <div className="w-full bg-slate-100 h-1 rounded-full mt-1">
-                                <div className="bg-navy h-full rounded-full" style={{ width: `${(globalStats.nfSafe / globalStats.total) * 100}%` }} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ACGME Graduation Requirement Audit */}
-                <div className="bg-white rounded-xl shadow-sm border border-light-5 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-light-3 bg-light-1/50 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <ClipboardList className="text-primary" size={20} />
-                            <h3 className="text-lg font-bold text-primary">ACGME Graduation Requirement Audit</h3>
-                        </div>
-                        <div className="text-xs font-medium text-slate-400 italic">
-                            Cumulative tracking across all 3 years
-                        </div>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-light-2">
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Resident</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Outpatient (44w+)</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Inpatient (48w+)</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Crit Care (24w max)</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">Compliance</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-light-3">
-                                {auditData.map(d => (
-                                    <tr key={d.id} className="hover:bg-light-1/30 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="font-bold text-primary">{d.name}</div>
-                                            <div className="text-xs text-slate-400">PGY-{d.pgy} (Started {d.startYear})</div>
-                                        </td>
-                                        <td className="px-6 py-4 w-1/4">
-                                            <StackedProgressBar 
-                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([k, v]) => [k, (v as { outpatient: number }).outpatient]))}
-                                                minWeeks={44} 
-                                                colorClass="bg-blue"
-                                                totalValue={d.outpatient}
-                                            />
-                                        </td>
-                                        <td className="px-6 py-4 w-1/4">
-                                            <StackedProgressBar 
-                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([k, v]) => [k, (v as { inpatient: number, criticalCare: number }).inpatient + (v as { inpatient: number, criticalCare: number }).criticalCare]))}
-                                                minWeeks={48} 
-                                                colorClass="bg-lime-green"
-                                                totalValue={d.inpatient + d.criticalCare}
-                                            />
-                                        </td>
-                                        <td className="px-6 py-4 w-1/4">
-                                            <StackedProgressBar 
-                                                yearData={Object.fromEntries(Object.entries(d.pgyData).map(([k, v]) => [k, (v as { criticalCare: number }).criticalCare]))}
-                                                minWeeks={24} 
-                                                colorClass="bg-purple"
-                                                totalValue={d.criticalCare}
-                                                isCap={true}
-                                            />
-                                        </td>
-                                        <td className="px-6 py-4 w-1/4">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    {d.clinicValid ? (
-                                                        <span className="text-green font-bold flex items-center gap-1">
-                                                            <ShieldCheck size={16} /> Valid {d.startYear === 2025 ? 'NIMA' : 'CCIM'}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-red font-bold flex items-center gap-1 text-xs uppercase tracking-tighter">
-                                                            <ShieldAlert size={16} /> Site Mismatch
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {d.hasBlackoutVacation && (
-                                                    <div className="text-red font-bold text-[10px] flex items-center gap-1 bg-red/5 p-1 rounded border border-red/10">
-                                                        <AlertTriangle size={12} /> PTO during Blackout
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-8">

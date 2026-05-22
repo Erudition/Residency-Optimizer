@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
-import { TOTAL_WEEKS, ASSIGNMENT_COLORS, ASSIGNMENT_LABELS, ASSIGNMENT_ABBREVIATIONS, ASSIGNMENT_HEX_COLORS, getAssignmentColor } from '../constants';
+import { TOTAL_WEEKS } from '../constants';
+import { useProgramData } from '../contexts/ProgramDataContext';
+import { getAssignmentColor } from '../utils/colorUtils';
 import { User, Lock, Calendar, Sparkles } from 'lucide-react';
 
 interface Props {
@@ -54,6 +56,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   onLockResident,
   onToggleLock
 }) => {
+  const programData = useProgramData();
   const totalWeeks = useMemo(() => {
     const vals = Object.values(schedule);
     return vals.length > 0 ? (vals[0] as any).length : TOTAL_WEEKS;
@@ -164,7 +167,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       setTooltip({
         x: rect.left + window.scrollX + rect.width / 2,
         y: rect.top + window.scrollY,
-        assignmentName: ASSIGNMENT_LABELS[assignment],
+        assignmentName: (programData.rotations.get(assignment)?.label || assignment),
 
         weekIdx: weekIdx,
         peers,
@@ -283,8 +286,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                   {WEEKS.map((w, idx) => {
                     const cell = residentSchedule[idx];
                     const assign = cell?.assignment;
-                    const isPast = isReadOnly || isPastWeek(w, startYear);
-                    const bgHex = assign ? getAssignmentColor(assign, isPast) : '#ffffff';
+                    const weekIsPast = isReadOnly || isPastWeek(w, startYear);
+                    const rotation = assign ? programData.rotations.get(assign) : undefined;
+                    // Null (unassigned) and placeholder slots remain editable
+                    // even in past weeks, so admins can resolve them retroactively.
+                    const isEditable = !assign || programData.placeholderCodenames.has(assign);
+                    const isPast = isEditable ? false : weekIsPast;
+                    const intensity = rotation?.intensity ?? 1;
+                    const bgHex = assign ? getAssignmentColor(rotation?.color || 0, intensity, isPast) : '#ffffff';
 
                     // Compute active bounds from startYear (always available),
                     // not the transient activeWeekStart/activeWeekEnd properties
@@ -326,12 +335,12 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           }}
                           onMouseEnter={(e) => assign && !isOutOfBounds && handleMouseEnter(e, resident, idx, assign)}
                           onMouseLeave={handleMouseLeave}
-                          title={isOutOfBounds ? "Outside residency period" : (isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock"))}
+                          title={isOutOfBounds ? "Outside residency period" : (isEditable ? "Click to resolve" : (isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock")))}
                           disabled={isOutOfBounds}
                         >
                           {assign && !isOutOfBounds ? (
                             <span className="truncate w-full block">
-                              {ASSIGNMENT_ABBREVIATIONS[assign] || assign}
+                              {programData.placeholderCodenames.has(assign) ? `${assign}?` : assign}
                             </span>
                           ) : (
                             <span className="text-light-5 select-none" style={{ filter: 'grayscale(100%)' }}>

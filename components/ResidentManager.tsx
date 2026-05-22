@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Resident, PgyLevel } from '../types';
 import { Trash2, Plus, UserPlus, Upload, Pencil, Check, X, Download, FileText, Info } from 'lucide-react';
-import { COHORT_COUNT } from '../constants';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';

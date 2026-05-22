@@ -1,5 +1,9 @@
+import { buildLevelRequirements } from './reqBuilder';
+import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator, ScheduleCell } from '../../types';
-import { TOTAL_WEEKS, ROTATION_METADATA, REQUIREMENTS, fulfillsRequirement, COHORT_COUNT } from '../../constants';
+import type { ProgramData } from '../api/client';
+import { TOTAL_WEEKS, ACTIVE_START_YEAR } from '../../constants';
+import { getAllCodenames } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
 
@@ -17,7 +21,7 @@ class SeededRNG {
 
 export const StaffingFirstGenerator: ScheduleGenerator = {
     name: "Staffing First",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
 
         // Determine total weeks from existing schedule or default
@@ -37,7 +41,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         // Ensure all residents have rows and helper functions for PGY calculation
         const firstRes = residents.find(res => res.startYear && res.startYear > 0);
-        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
+        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : ACTIVE_START_YEAR;
         const getPgy = (res: Resident, week: number): number => {
             if (res.startYear && res.startYear > 0) {
                 return Math.min(3, gridStartYear + Math.floor(week / 52) - res.startYear + 1);
@@ -60,9 +64,9 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
             }
         });
 
-        let validCohortAssignments = cohortAssignments;
+        let validCohortAssignments: Record<string, number> | Record<number, Record<string, number>> = cohortAssignments || programData?.cycleConfig?.assignments;
         if (!validCohortAssignments || Object.keys(validCohortAssignments).length === 0) {
-            validCohortAssignments = getStandardCohortMap(residents);
+            validCohortAssignments = getStandardCohortMap(residents, programData);
         }
 
         // 1. Initialize & Clinic Lock
@@ -76,10 +80,10 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     }
                     continue;
                 }
-                if (w % COHORT_COUNT === getCohortAtWeek(r, w, validCohortAssignments)) {
+                if (w % programData.cycleConfig.cohortCount === getCohortAtWeek(r, w, validCohortAssignments)) {
                     if (row[w].locked) continue;
                     const level = getPgy(r, w);
-                    const clinicType = (r.startYear === 2025) ? AssignmentType.NIMA_CLINIC : AssignmentType.CLINIC;
+                    const clinicType = 'CLINIC';
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
 
                 }
@@ -89,22 +93,22 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         // 2. Staffing Sweep FIRST (Foundation) - Mandatory Minima
         const criticalTypes = [
-            AssignmentType.MICU,
-            AssignmentType.WARDS_RED,
-            AssignmentType.WARDS_BLUE,
-            AssignmentType.NIGHT_FLOAT,
-            AssignmentType.EM,
-            AssignmentType.WARDS_METRO,
-            AssignmentType.JR_HOSPITALIST,
-            AssignmentType.CARDS,
-            AssignmentType.NEPH,
-            AssignmentType.ID
+            'ICU',
+            'W-RED',
+            'W-BLUE',
+            'NF',
+            'EM',
+            'METRO',
+            'JH',
+            'CARDS',
+            'NEPH',
+            'ID'
         ];
 
         const historicalCounts = priorRequirementCounts || {};
 
         criticalTypes.forEach(type => {
-            const meta = ROTATION_METADATA[type];
+            const meta = programData.rotations.get(type);
             if (!meta) return;
             const dur = meta.duration || 4;
 
@@ -119,11 +123,11 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                         return isActive(r, w, dur) &&
                                currentPgy === 1 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, cohort, dur) &&
+                               isAligned(w, cohort, dur, programData) &&
                                getAssignedCount(newSchedule, residents, w, type, 1) < (meta.maxInterns || 99);
                     })).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
+                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
+                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
                         return countA - countB;
                     });
                     
@@ -141,11 +145,11 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                         return isActive(r, w, dur) &&
                                currentPgy >= 2 && 
                                canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, cohort, dur) &&
+                               isAligned(w, cohort, dur, programData) &&
                                getAssignedCount(newSchedule, residents, w, type, 2) < (meta.maxSeniors || 99);
                     })).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, w) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, w) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
+                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
+                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
                         return countA - countB;
                     });
                     
@@ -164,25 +168,25 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
             const pgyLevels: (1|2|3)[] = [1, 2, 3];
             pgyLevels.forEach(level => {
-                const reqs = seededShuffle(REQUIREMENTS[level] || []);
+                const reqs = seededShuffle(buildLevelRequirements(programData, level) || []);
                 reqs.forEach(req => {
-                    const compatibleTypes = Object.values(AssignmentType).filter(t => fulfillsRequirement(t, req.type));
+                    const compatibleTypes = getAllCodenames(programData).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
                     
                     const eligibleResidents = seededShuffle(residents.filter(r => {
                         return isActive(r, yearStart) && getPgy(r, yearStart) === level;
                     })).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd) + getPriorRequirementCount(historicalCounts[b.id] || {}, req.type);
+                        const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type);
+                        const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, req.type);
                         return countA - countB;
                     });
 
 
                     eligibleResidents.forEach(res => {
 
-                        const dur = ROTATION_METADATA[req.type]?.duration || 4;
+                        const dur = (programData.rotations.get(req.type)?.duration || programData.cycleConfig.X);
 
                         let safety = 0;
-                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd) < req.minWeeks && safety < 100) {
+                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd, programData) < req.minWeeks && safety < 100) {
                             safety++;
                             let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
 
@@ -193,12 +197,12 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
                             for (const w of possibleWeeks) {
                                 const cohort = getCohortAtWeek(res, w, validCohortAssignments);
-                                if (!isAligned(w, cohort, dur)) continue;
+                                if (!isAligned(w, cohort, dur, programData)) continue;
                                 if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
                                 if (!isActive(res, w, dur)) continue;
 
                                 for (const type of compatibleTypes) {
-                                    const meta = ROTATION_METADATA[type];
+                                    const meta = programData.rotations.get(type);
                                     let score = 0;
                                     let possible = true;
 
@@ -236,7 +240,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
             for (let w = 0; w < row.length; w++) {
                 if (row[w].locked) continue;
                 if (isActive(r, w) && !row[w].assignment) {
-                    newSchedule[r.id][w] = { assignment: AssignmentType.ELECTIVE, locked: false };
+                    newSchedule[r.id][w] = { assignment: 'ELEC', locked: false };
                 }
             }
         });

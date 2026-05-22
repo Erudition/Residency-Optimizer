@@ -1,4 +1,17 @@
+Frontend:
 
+- [ ] A way to edit historical schedules and have it persist in the database properly
+
+
+Payload Admin:
+ - Rotations screen - set default columns to Title, Codename, Outpatient Percentage, Is Flexible, Tags
+ - Clinic Cycles screen - add `Residents` to default columns
+ - Add `canonicalSchedule` relationship field to AcademicYears collection (nullable → Schedules)
+ - Add `CandidatePlans` collection to group 3-year collaborative planning sessions
+ - Export dialog: default-on checkbox to promote year 1 as canonical historical schedule
+
+Seed Data:
+    - Set "Clinic" tag's title to "Continuity Clinic"
 
 TBD
 
@@ -11,9 +24,7 @@ TBD
     - Electives (all non-core electives, not just the ELEC placeholder)
     - Core blocks
 
-- All core rotations should be listed first in the Coverage view. Currently, Met Wards and Pulmonology are down with the electives.
 
+- "July 1st is a wednesday" problem - how are week-shift starts decided?
 
-- the acgme requirements are still not cumulative. 
-
-- augment all mentions of duration requirements in the requirements screens, with specification of limit type (min or max).
+- a way to swap two residents' assignments entirely for a given week range
