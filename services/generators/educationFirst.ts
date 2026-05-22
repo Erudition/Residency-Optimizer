@@ -21,7 +21,7 @@ class SeededRNG {
 
 export const EducationFirstGenerator: ScheduleGenerator = {
     name: "Strict (Education First)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
         const totalWeeks = Object.values(existingSchedule)[0]?.length || TOTAL_WEEKS;
         const numYears = Math.floor(totalWeeks / 52);
@@ -38,7 +38,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
 
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
-        let validCohortAssignments = { ...(programData?.cycleConfig?.assignments || {}) };
+        let validCohortAssignments: Record<string, number> | Record<number, Record<string, number>> = cohortAssignments || { ...(programData?.cycleConfig?.assignments || {}) };
         if (Object.keys(validCohortAssignments).length === 0) {
             validCohortAssignments = getStandardCohortMap(residents, programData);
         }

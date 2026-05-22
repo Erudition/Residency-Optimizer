@@ -81,7 +81,7 @@ onmessage = async (e: MessageEvent) => {
            // Run healer on the unified grid
            // 150 iterations per result for fast execution
            console.log("Starting Healer phase for result", idx);
-           const healedUnified = await healSchedule(res.unifiedSchedule, unifiedResidents, programData, e.data.year, undefined, e.data.historicalSchedules, undefined, (step, max, v) => {
+           const healedUnified = await healSchedule(res.unifiedSchedule, unifiedResidents, programData, e.data.year, undefined, e.data.historicalSchedules, e.data.constraints?.cohortAssignments, (step, max, v) => {
              if (step % 10000 === 0) console.log("Healer progress:", step, "/", max, "Violations:", v);
              postMessage({ 
                type: 'progress', 

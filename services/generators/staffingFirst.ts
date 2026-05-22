@@ -2,7 +2,7 @@ import { buildLevelRequirements } from './reqBuilder';
 import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator, ScheduleCell } from '../../types';
 import type { ProgramData } from '../api/client';
-import { TOTAL_WEEKS } from '../../constants';
+import { TOTAL_WEEKS, ACTIVE_START_YEAR } from '../../constants';
 import { getAllCodenames } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
@@ -21,7 +21,7 @@ class SeededRNG {
 
 export const StaffingFirstGenerator: ScheduleGenerator = {
     name: "Staffing First",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
 
         // Determine total weeks from existing schedule or default
@@ -41,7 +41,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         // Ensure all residents have rows and helper functions for PGY calculation
         const firstRes = residents.find(res => res.startYear && res.startYear > 0);
-        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2026;
+        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : ACTIVE_START_YEAR;
         const getPgy = (res: Resident, week: number): number => {
             if (res.startYear && res.startYear > 0) {
                 return Math.min(3, gridStartYear + Math.floor(week / 52) - res.startYear + 1);
@@ -64,7 +64,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
             }
         });
 
-        let validCohortAssignments = programData?.cycleConfig?.assignments;
+        let validCohortAssignments: Record<string, number> | Record<number, Record<string, number>> = cohortAssignments || programData?.cycleConfig?.assignments;
         if (!validCohortAssignments || Object.keys(validCohortAssignments).length === 0) {
             validCohortAssignments = getStandardCohortMap(residents, programData);
         }

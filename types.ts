@@ -212,7 +212,8 @@ export interface ScheduleGenerator {
     existing: ScheduleGrid,
     programData: ProgramData,
     attemptIndex?: number,
-    priorRequirementCounts?: Record<string, Record<string, number>>,  // replaces historicalSchedules
+    priorRequirementCounts?: Record<string, Record<string, number>>,
+    cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>,
     onProgress?: (step: number, maxSteps: number, currentPenalty?: number) => void
   ) => ScheduleGrid | Promise<ScheduleGrid>;
 }

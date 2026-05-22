@@ -21,7 +21,7 @@ class SeededRNG {
 
 export const StochasticGenerator: ScheduleGenerator = {
     name: "Stochastic (Balanced Search)",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
 
         const seededShuffle = <T>(array: T[]): T[] => {
@@ -37,7 +37,7 @@ export const StochasticGenerator: ScheduleGenerator = {
         const totalWeeks = Object.values(newSchedule)[0]?.length || 52;
         const numYears = Math.max(1, Math.floor(totalWeeks / 52));
 
-        let validCohortAssignments = { ...(programData?.cycleConfig?.assignments || {}) };
+        let validCohortAssignments: Record<string, number> | Record<number, Record<string, number>> = cohortAssignments || { ...(programData?.cycleConfig?.assignments || {}) };
         if (Object.keys(validCohortAssignments).length === 0) {
             validCohortAssignments = getStandardCohortMap(residents, programData);
         }

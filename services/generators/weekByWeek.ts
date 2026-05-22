@@ -20,7 +20,7 @@ class SeededRNG {
 
 export const WeekByWeekGenerator: ScheduleGenerator = {
     name: "Week By Week",
-    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>): ScheduleGrid => {
+    generate: (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number> | Record<number, Record<string, number>>): ScheduleGrid => {
         const rng = new SeededRNG(42 + attemptIndex);
 
         const totalWeeks = Object.values(existingSchedule)[0]?.length || TOTAL_WEEKS;
@@ -36,7 +36,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
         const newSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
 
-        let validCohortAssignments: any = programData?.cycleConfig?.assignments || {};
+        let validCohortAssignments: any = cohortAssignments || programData?.cycleConfig?.assignments || {};
         if (!validCohortAssignments || Object.keys(validCohortAssignments).length === 0) {
             validCohortAssignments = {};
             const sorted = [...residents].sort((a, b) => {
