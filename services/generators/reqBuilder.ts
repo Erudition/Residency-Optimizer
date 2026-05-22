@@ -1,7 +1,7 @@
 import { ProgramData } from '../../services/api/client';
 
-export function buildLevelRequirements(programData: ProgramData, level: number): { type: string, label: string, minWeeks: number }[] {
-    const reqs: { type: string, label: string, minWeeks: number }[] = [];
+export function buildLevelRequirements(programData: ProgramData, level: number): { type: string, label: string, minWeeks: number, source: string }[] {
+    const reqs: { type: string, label: string, minWeeks: number, source: string }[] = [];
     
     // Convert gradRequirements into the shape generators expect
     programData.gradRequirements.forEach(r => {
@@ -32,10 +32,12 @@ export function buildLevelRequirements(programData: ProgramData, level: number):
             reqs.push({
                 type,
                 label: r.tag.title,
-                minWeeks: ideal
+                minWeeks: ideal,
+                source: r.source
             });
         }
     });
 
     return reqs;
 }
+
