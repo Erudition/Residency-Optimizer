@@ -92,9 +92,9 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         // 2. Staffing Sweep FIRST (Foundation) - Mandatory Minima
         const criticalTypes = [
-            'MICU',
-            'RED',
-            'BLUE',
+            'ICU',
+            'W-RED',
+            'W-BLUE',
             'NF',
             'EM',
             'METRO',
@@ -239,7 +239,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
             for (let w = 0; w < row.length; w++) {
                 if (row[w].locked) continue;
                 if (isActive(r, w) && !row[w].assignment) {
-                    newSchedule[r.id][w] = { assignment: 'ELECTIVE', locked: false };
+                    newSchedule[r.id][w] = { assignment: 'ELEC', locked: false };
                 }
             }
         });

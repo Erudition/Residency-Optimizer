@@ -75,9 +75,9 @@ export const EducationFirstGenerator: ScheduleGenerator = {
                 const reqs = seededShuffle(buildLevelRequirements(programData, level as 1|2|3) || []);
                 // Sort by duration descending, then by capacity ascending (harder rotations first)
                 const criticalPriority: AssignmentType[] = [
-                    'MICU',
-                    'RED',
-                    'BLUE',
+                    'ICU',
+                    'W-RED',
+                    'W-BLUE',
                     'METRO',
                     'GERI',
                     'EM',
@@ -183,9 +183,9 @@ export const EducationFirstGenerator: ScheduleGenerator = {
 
         // 3. Staffing Sweep (Foundation) - Mandatory Minima
         const criticalTypes = [
-            'MICU',
-            'RED',
-            'BLUE',
+            'ICU',
+            'W-RED',
+            'W-BLUE',
             'NF',
             'EM',
             'METRO',
@@ -253,7 +253,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
             const end = r.activeWeekEnd ?? totalWeeks;
             for (let w = start; w < end; w++) {
                 if (!newSchedule[r.id][w]?.assignment) {
-                    newSchedule[r.id][w] = { assignment: 'ELECTIVE', locked: false };
+                    newSchedule[r.id][w] = { assignment: 'ELEC', locked: false };
                 }
             }
         });

@@ -130,9 +130,9 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
         // 2. Sequential Temporal Placement
         const criticalStaffingTypes = [
-            'MICU',
-            'RED',
-            'BLUE',
+            'ICU',
+            'W-RED',
+            'W-BLUE',
             'NF',
             'EM',
             'METRO',
@@ -210,7 +210,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             const row = newSchedule[r.id];
             for (let w = 0; w < row.length; w++) {
                 if (isResidentActive(r, w) && !row[w]?.assignment) {
-                    row[w] = { assignment: 'ELECTIVE', locked: false };
+                    row[w] = { assignment: 'ELEC', locked: false };
                 }
             }
         });

@@ -8,7 +8,6 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "validate-history": "tsx scripts/validateHistory.ts",
     "codegen": "graphql-codegen --config codegen.ts"
   },
   "dependencies": {

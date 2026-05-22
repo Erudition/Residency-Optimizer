@@ -18,6 +18,14 @@ export const ROTATIONS_QUERY = /* GraphQL */ `
         color
         isFlexible
         isPlaceholder
+        availableSince {
+          id
+          startingYear
+        }
+        availableUntil {
+          id
+          startingYear
+        }
         tags {
           id
           title
@@ -126,10 +134,9 @@ export const AVOIDANCE_RULES_QUERY = /* GraphQL */ `
         resident {
           id
         }
-        avoidResident {
+        avoidedResident {
           id
         }
-        reason
       }
     }
   }
@@ -141,6 +148,30 @@ export const TAGS_QUERY = /* GraphQL */ `
       docs {
         id
         title
+      }
+    }
+  }
+`
+
+export const SCHEDULE_ASSIGNMENTS_QUERY = /* GraphQL */ `
+  query ScheduleAssignments($where: ScheduleAssignment_where) {
+    ScheduleAssignments(where: $where, limit: 10000) {
+      docs {
+        id
+        schedule {
+          id
+          academicYear {
+            startingYear
+          }
+        }
+        resident {
+          id
+        }
+        week
+        rotation {
+          codename
+        }
+        locked
       }
     }
   }

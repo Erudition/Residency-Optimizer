@@ -1,40 +1,48 @@
-export const oklchToHex = (l: number, c: number, h: number): string => {
-  const labL = l * 100;
-  const a = c * Math.cos((h * Math.PI) / 180) * 100;
-  const b = c * Math.sin((h * Math.PI) / 180) * 100;
+export const oklchToHex = (L: number, C: number, H: number): string => {
+  const a = C * Math.cos((H * Math.PI) / 180);
+  const b = C * Math.sin((H * Math.PI) / 180);
 
-  let y = (labL + 16) / 116;
-  let x = a / 500 + y;
-  let z = y - b / 200;
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.2914855378 * b;
 
-  const y3 = Math.pow(y, 3);
-  const x3 = Math.pow(x, 3);
-  const z3 = Math.pow(z, 3);
+  const l = Math.pow(Math.max(0, l_), 3);
+  const m = Math.pow(Math.max(0, m_), 3);
+  const s = Math.pow(Math.max(0, s_), 3);
 
-  y = y3 > 0.008856 ? y3 : (y - 16 / 116) / 7.787;
-  x = x3 > 0.008856 ? x3 : (x - 16 / 116) / 7.787;
-  z = z3 > 0.008856 ? z3 : (z - 16 / 116) / 7.787;
+  const r_linear = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+  const g_linear = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+  const b_linear = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
 
-  x *= 0.95047;
-  y *= 1.0;
-  z *= 1.08883;
-
-  let r = x * 3.2406 + y * -1.5372 + z * -0.4986;
-  let g = x * -0.9689 + y * 1.8758 + z * 0.0415;
-  let b_rgb = x * 0.0557 + y * -0.204 + z * 1.057;
-
-  r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
-  g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
-  b_rgb = b_rgb > 0.0031308 ? 1.055 * Math.pow(b_rgb, 1 / 2.4) - 0.055 : 12.92 * b_rgb;
+  const r_val = r_linear <= 0.0031308 ? 12.92 * r_linear : 1.055 * Math.pow(r_linear, 1 / 2.4) - 0.055;
+  const g_val = g_linear <= 0.0031308 ? 12.92 * g_linear : 1.055 * Math.pow(g_linear, 1 / 2.4) - 0.055;
+  const b_val = b_linear <= 0.0031308 ? 12.92 * b_linear : 1.055 * Math.pow(b_linear, 1 / 2.4) - 0.055;
 
   const toHex = (c: number) => {
-    const hex = Math.max(0, Math.min(255, Math.round(c * 255))).toString(16);
-    return hex.length === 1 ? '0' + hex : hex;
+    const value = Math.max(0, Math.min(255, Math.round(c * 255)));
+    return value.toString(16).padStart(2, '0').toUpperCase();
   };
 
-  return '#' + toHex(r) + toHex(g) + toHex(b_rgb);
+  return `#${toHex(r_val)}${toHex(g_val)}${toHex(b_val)}`;
 };
 
-export const getAssignmentColor = (hue: number, isCompleted: boolean) => {
-  return oklchToHex(isCompleted ? 0.95 : 0.85, 0.1, hue);
+export const getAssignmentColor = (
+  hue: number,
+  intensityOrIsPast?: number | boolean,
+  isPast?: boolean
+): string => {
+  let intensity = 1;
+  let past = false;
+
+  if (typeof intensityOrIsPast === 'boolean') {
+    past = intensityOrIsPast;
+    intensity = 1;
+  } else if (typeof intensityOrIsPast === 'number') {
+    intensity = intensityOrIsPast;
+    past = isPast ?? false;
+  }
+
+  const chroma = intensity === 0 ? 0.015 : 0.01 + intensity * 0.038;
+  const lightness = past ? 0.62 : 0.84;
+  return oklchToHex(lightness, chroma, hue);
 };

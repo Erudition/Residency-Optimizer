@@ -55,7 +55,7 @@ export const healer: HealerSolver = {
             return m && (m.minInterns > 0 || m.maxInterns < 10 || m.minSeniors > 0 || m.maxSeniors < 10);
         });
         const superCriticalTypes = [
-            'MICU', 'RED', 'BLUE',
+            'ICU', 'W-RED', 'W-BLUE',
             'NF', 'EM', 'METRO'
         ];
 
@@ -97,7 +97,7 @@ export const healer: HealerSolver = {
             return c;
         };
 
-        const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS_CONSULTS'];
+        const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS'];
         const getWeekPenalty = (w: number, wc: any, sched: ScheduleGrid): number => {
             let total = 0; 
             constrainedTypes.forEach(t => total += getTypeStaffingPenalty(t, wc.interns[t] || 0, wc.seniors[t] || 0));
@@ -167,7 +167,7 @@ export const healer: HealerSolver = {
                         const clinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
                         currentSchedule[r.id][w] = { assignment: clinicType, locked: true };
                     } else {
-                        currentSchedule[r.id][w] = { assignment: 'ELECTIVE', locked: false };
+                        currentSchedule[r.id][w] = { assignment: 'ELEC', locked: false };
                     }
                 }
             }

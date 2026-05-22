@@ -14,7 +14,6 @@ import {
 import {
   ACTIVE_START_YEAR, TOTAL_WEEKS
 } from './constants';
-import historicalGridData from './specification/historical_schedules_grid_v2.json';
 import { 
   generateSchedule, 
   calculateStats, 
@@ -27,7 +26,6 @@ import {
   getUnifiedResidents,
   getAugmentedResidents
 } from './services/scheduler';
-import { preloadHistoricalData } from './services/generators/historyPreloader';
 import { loadProgramData, ProgramData, serializeProgramData } from './services/api/client';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
@@ -436,11 +434,12 @@ const AppContent: React.FC = () => {
   );
   // Dynamic history detection
   const historicalYears = useMemo(() => 
-    Object.keys(historicalGridData)
+    Object.keys(programData.historicalSchedules)
       .map(Number)
       .filter(y => y < ACTIVE_START_YEAR)
       .sort((a, b) => a - b),
-  []);
+    [programData.historicalSchedules]
+  );
 
   // All academic years: historical + current + future
   const allAcademicYears = useMemo(() => [
@@ -454,9 +453,11 @@ const AppContent: React.FC = () => {
   const isFutureYear = activeYear >= ACTIVE_START_YEAR;
 
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => {
-    console.log('[DEBUG] residents structure:', Array.isArray(residents), residents);
-    return preloadHistoricalData(Array.isArray(residents) ? residents : []);
-  }, [residents]);
+    return {
+      history: programData.historicalSchedules,
+      cohortAssignments: programData.historicalCohorts,
+    };
+  }, [programData.historicalSchedules, programData.historicalCohorts]);
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'acgme_requirements' | 'mhs_requirements' | 'audit' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cohorts' | 'totals'>('schedule');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);

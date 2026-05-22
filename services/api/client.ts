@@ -16,8 +16,9 @@ import {
   GRAD_REQUIREMENTS_QUERY,
   AVOIDANCE_RULES_QUERY,
   TAGS_QUERY,
+  SCHEDULE_ASSIGNMENTS_QUERY,
 } from './queries'
-import type { RotationConfig, Resident, PgyLevel } from '../../types'
+import type { RotationConfig, Resident, PgyLevel, ScheduleHistory } from '../../types'
 
 // ── Client Setup ──
 
@@ -109,6 +110,20 @@ interface GqlAvoidanceRule {
   avoidedResident: { id: number }
 }
 
+interface GqlSchedule {
+  id: number
+  academicYear: GqlAcademicYear
+}
+
+interface GqlScheduleAssignment {
+  id: number
+  schedule: GqlSchedule
+  resident: { id: number }
+  week: number
+  rotation: { codename: string }
+  locked: boolean
+}
+
 // ── Cycle Config ──
 
 export interface CycleConfig {
@@ -139,6 +154,8 @@ export interface ProgramData {
   placeholderCodenames: Set<string>
   /** Set of codenames that are flexible (jeopardy-eligible) */
   flexibleCodenames: Set<string>
+  historicalSchedules: ScheduleHistory
+  historicalCohorts: Record<number, Record<string, number>>
 }
 
 export function serializeProgramData(data: ProgramData): any {
@@ -178,6 +195,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     gradReqsRes,
     avoidanceRes,
     tagsRes,
+    assignmentsRes,
   ] = await Promise.all([
     client.request<{ Rotations: { docs: GqlRotation[] } }>(ROTATIONS_QUERY),
     client.request<{ Residents: { docs: GqlResident[] } }>(RESIDENTS_QUERY),
@@ -188,15 +206,18 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     client.request<{ GradRequirements: { docs: GqlGradRequirement[] } }>(GRAD_REQUIREMENTS_QUERY),
     client.request<{ AvoidanceRules: { docs: GqlAvoidanceRule[] } }>(AVOIDANCE_RULES_QUERY),
     client.request<{ Tags: { docs: GqlTag[] } }>(TAGS_QUERY),
+    client.request<{ ScheduleAssignments: { docs: GqlScheduleAssignment[] } }>(SCHEDULE_ASSIGNMENTS_QUERY),
   ])
 
   let gqlRotations = rotationsRes.Rotations.docs
   let gqlResidents = residentsRes.Residents.docs
-  let gqlCycles = cyclesRes.ClinicCycles.docs
+  const allGqlCycles = cyclesRes.ClinicCycles.docs
+  let gqlCycles = [...allGqlCycles]
   const ay = ayRes.AcademicYears.docs[0]
   let gqlGradReqs = gradReqsRes.GradRequirements.docs
   const gqlAvoidance = avoidanceRes.AvoidanceRules.docs
   const tags = tagsRes.Tags.docs
+  const gqlAssignments = assignmentsRes.ScheduleAssignments.docs
 
   if (!ay) {
     throw new Error(`Academic year ${academicYear} not found in the backend`)
@@ -322,6 +343,42 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     assignments: cycleAssignments,
   }
 
+  // ── Construct Historical Cohorts ──
+  const historicalCohorts: Record<number, Record<string, number>> = {}
+  for (const cycle of allGqlCycles) {
+    const year = cycle.academicYear?.startingYear
+    if (year && year < academicYear) {
+      if (!historicalCohorts[year]) historicalCohorts[year] = {}
+      for (const resident of cycle.residents) {
+        historicalCohorts[year][resident.id.toString()] = cycle.number - 1
+      }
+    }
+  }
+
+  // ── Transform Historical Schedules ──
+  const historicalSchedules: ScheduleHistory = {}
+  for (const assign of gqlAssignments) {
+    const year = assign.schedule?.academicYear?.startingYear
+    if (year && year < academicYear) {
+      const residentId = assign.resident.id.toString()
+      const weekIndex = assign.week - 1
+      const codename = assign.rotation.codename
+      const isFullyCompleted = year < academicYear - 1
+
+      if (!historicalSchedules[year]) historicalSchedules[year] = {}
+      if (!historicalSchedules[year][residentId]) {
+        historicalSchedules[year][residentId] = Array.from({ length: 52 }, () => ({
+          assignment: 'ELEC',
+          locked: isFullyCompleted,
+        }))
+      }
+      historicalSchedules[year][residentId][weekIndex] = {
+        assignment: codename,
+        locked: isFullyCompleted || assign.locked,
+      }
+    }
+  }
+
   return {
     rotations,
     residents,
@@ -332,6 +389,8 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     rotationTags,
     placeholderCodenames,
     flexibleCodenames,
+    historicalSchedules,
+    historicalCohorts,
   }
 }
 

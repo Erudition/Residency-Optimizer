@@ -22,7 +22,7 @@ export const sliceIntoYears = (unifiedGrid: ScheduleGrid, sYear: number, numYear
     const yearGrid: ScheduleGrid = {};
     const yearStart = y * WEEKS_PER_YEAR;
     const yearEnd = (y + 1) * WEEKS_PER_YEAR;
-    Object.entries(unifiedGrid).forEach(([rId, row]) => {
+    Object.entries(unifiedGrid)?.forEach(([rId, row]) => {
       yearGrid[rId] = row.slice(yearStart, yearEnd);
     });
     years[sYear + y] = yearGrid;
@@ -101,14 +101,14 @@ export const generateSchedule = async (
   // Base unified grid with existing/continuity
   const buildBaseUnifiedGrid = (): ScheduleGrid => {
     const grid: ScheduleGrid = {};
-    unifiedResidents.forEach(r => {
+    unifiedResidents?.forEach(r => {
       grid[r.id] = Array.from({ length: totalSpanWeeks }, () => ({ assignment: null as any, locked: false }));
       
       // Fill existing
       for (let y = startYear; y < startYear + totalYears; y++) {
         const yearOffset = (y - startYear) * WEEKS_PER_YEAR;
         if (existing[y] && existing[y][r.id]) {
-          existing[y][r.id].forEach((cell, w) => {
+          existing[y][r.id]?.forEach((cell, w) => {
             if (cell && cell.assignment) {
               grid[r.id][yearOffset + w] = { ...cell };
             }
@@ -161,7 +161,7 @@ export const generateSchedule = async (
     totalAttempts: number
   }> = {};
 
-  selectedGenerators.forEach(g => {
+  selectedGenerators?.forEach(g => {
     algoState[g.id] = {
       bestScore: -Infinity,
       lastBestIteration: 0,
@@ -173,11 +173,11 @@ export const generateSchedule = async (
 
   // PRE-COMPUTE combined prior counts once (Efficiency fix)
   const combinedPriorCounts: Record<string, Record<string, number>> = {};
-  unifiedResidents.forEach(r => {
+  unifiedResidents?.forEach(r => {
     combinedPriorCounts[r.id] = {};
-    Object.entries(historicalSchedules).forEach(([yStr, grid]) => {
+    Object.entries(historicalSchedules)?.forEach(([yStr, grid]) => {
       if (parseInt(yStr) < startYear && grid[r.id]) {
-        grid[r.id].forEach(c => {
+        grid[r.id]?.forEach(c => {
           if (c && c.assignment) {
             combinedPriorCounts[r.id][c.assignment] = (combinedPriorCounts[r.id][c.assignment] || 0) + 1;
           }
@@ -299,7 +299,7 @@ export const generateSchedule = async (
     const exhaustionPoints: Record<string, number> = {};
     let exhaustedCount = 0;
 
-    selectedGenerators.forEach(g => {
+    selectedGenerators?.forEach(g => {
       const state = algoState[g.id];
       const isActuallyExhausted = isAlgorithmCanceled(g.id) || state.exhausted;
       if (isActuallyExhausted) exhaustedCount++;
@@ -325,10 +325,10 @@ export const generateSchedule = async (
 export const calculateStats = (residents: Resident[], schedule: ScheduleGrid): ScheduleStats => {
   const stats: ScheduleStats = {};
   const safeGrid = schedule || {};
-  residents.forEach(r => {
+  residents?.forEach(r => {
     stats[r.id] = {} as Record<AssignmentType, number>;
-    Object.values(CODENAMES).forEach(t => stats[r.id][t] = 0);
-    (safeGrid[r.id] || []).forEach(cell => { if (cell && cell.assignment) stats[r.id][cell.assignment]++; });
+    Object.values(CODENAMES)?.forEach(t => stats[r.id][t] = 0);
+    (safeGrid[r.id] || [])?.forEach(cell => { if (cell && cell.assignment) stats[r.id][cell.assignment]++; });
   });
   return stats;
 };
@@ -354,7 +354,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       violations.push({ week, type: 'CCIM', issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
 
-    Array.from(programData.rotations.keys()).forEach(type => {
+    Array.from(programData.rotations.keys())?.forEach(type => {
       const meta = programData.rotations.get(type);
       if (!meta) return;
 
@@ -376,7 +376,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
       }
     });
     // T6.2: Jeopardy Pool Monitoring
-    const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS_CONSULTS'];
+    const flexibleAssigns = [...ELECTIVE_TYPES, 'AMCS'];
     const jeopardyPgy2 = residents.filter(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       const assign = safeGrid[r.id]?.[week]?.assignment;
@@ -390,15 +390,15 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     }).length;
 
     if (jeopardyPgy2 < 1) {
-      violations.push({ week, type: 'ELECTIVE', issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
+      violations.push({ week, type: 'ELEC', issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
     if (jeopardyPgy3 < 1) {
-      violations.push({ week, type: 'ELECTIVE', issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
+      violations.push({ week, type: 'ELEC', issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
   }
 
   // PTO Policy, Clinic Site validations, and Jeopardy Pool Monitoring
-  residents.forEach(r => {
+  residents?.forEach(r => {
     const cohort = cohortMap[r.id] ?? 0;
     const blockStartOffset = (cohort + Y) % cohortCount;
 
@@ -454,11 +454,10 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
 
       const hasVacation = assignmentsInBlock.includes('VAC');
       const hasCore = assignmentsInBlock.some(a => a && [
-        'RED',
-        'BLUE',
+        'W-RED',
+        'W-BLUE',
         'METRO',
-        'MICU',
-        'METRO_ICU'
+        'ICU'
       ].includes(a));
 
       if (hasVacation && hasCore) {
@@ -477,7 +476,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   // Jeopardy Pool Monitoring: Monitor senior residents available on flexible blocks
   for (let week = 0; week < totalWeeks; week++) {
     let seniorFlexibleCount = 0;
-    residents.forEach(r => {
+    residents?.forEach(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       if (pgy > 1) { // Senior resident
         const cell = safeGrid[r.id]?.[week];
@@ -494,7 +493,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
     if (seniorFlexibleCount === 0) {
       violations.push({
         week,
-        type: 'ELECTIVE',
+        type: 'ELEC',
         issue: `Jeopardy Gap: No senior residents available on flexible time`,
         year: Math.floor(week / 52) + currentYear
       });
@@ -507,20 +506,20 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
 export const getAuditViolations = (residents: Resident[], history: ScheduleHistory, programData: ProgramData, activeYear?: number): number => {
     let violationCount = 0;
 
-    residents.forEach(r => {
+    residents?.forEach(r => {
         let outpatient = 0;
         let inpatient = 0;
         let totalCriticalCare = 0;
         let criticalCareCore = 0;
         let nightFloat = 0;
 
-        Object.entries(history).forEach(([yStr, grid]) => {
+        Object.entries(history)?.forEach(([yStr, grid]) => {
             const year = parseInt(yStr);
             const pgy = year - r.startYear + 1;
             if (pgy < 1 || pgy > 3) return;
 
             const weeks = grid[r.id] || [];
-            weeks.forEach(c => {
+            weeks?.forEach(c => {
                 if (!c || !c.assignment) return;
                 const meta = programData.rotations.get(c.assignment as any);
                 if (!meta) return;
@@ -529,7 +528,7 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
                 if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
                 if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
                     totalCriticalCare++;
-                    if (c.assignment !== 'AMCS_CONSULTS') {
+                    if (c.assignment !== 'AMCS') {
                         criticalCareCore++;
                     }
                 }
@@ -569,7 +568,7 @@ export const calculateFairnessMetrics = (residents: Resident[], schedule: Schedu
       let streakSummary: string[] = [];
       let currentStreakSummary: string[] = [];
 
-      weeks.forEach((c, idx) => {
+      weeks?.forEach((c, idx) => {
         if (!c || !c.assignment) return;
         const m = programData.rotations.get(c.assignment as any);
         if (!m) return;
@@ -645,12 +644,12 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
   const diversity: Record<string, number> = {};
   const safeGrid = schedule || {};
 
-  residents.forEach(r => {
+  residents?.forEach(r => {
     const partners = new Set<string>();
     const clinicalTypes = [
-      'RED',
-      'BLUE',
-      'MICU',
+      'W-RED',
+      'W-BLUE',
+      'ICU',
       'NF',
       'EM',
       'METRO',
@@ -660,7 +659,7 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
     for (let w = 0; w < TOTAL_WEEKS; w++) {
       const myAssign = safeGrid[r.id]?.[w]?.assignment;
       if (myAssign && clinicalTypes.includes(myAssign)) {
-        residents.forEach(peer => {
+        residents?.forEach(peer => {
           if (peer.id !== r.id && safeGrid[peer.id]?.[w]?.assignment === myAssign) {
             partners.add(peer.id);
           }
@@ -690,14 +689,14 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   let educationDenominator = 0;
   let educationNumerator = 0;
 
-  residents.forEach(r => {
+  residents?.forEach(r => {
     for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
       const currentYear = ACTIVE_START_YEAR + yearIdx;
       const pgy = currentYear - r.startYear + 1;
       if (pgy < 1 || pgy > 3) continue;
 
       const pgyReqs = buildLevelRequirements(programData, pgy as any) || [];
-      pgyReqs.forEach(req => {
+      pgyReqs?.forEach(req => {
         const isACGME = ACGME_TYPES.includes(req.type);
         let minWeeks = req.minWeeks;
         let actual = 0;
@@ -736,7 +735,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
     staffingDenominator += 1;
     staffingNumerator += clinicCount >= 1 ? 1 : 0;
 
-    Array.from(programData.rotations.keys()).forEach(type => {
+    Array.from(programData.rotations.keys())?.forEach(type => {
       const meta = programData.rotations.get(type);
       if (!meta) return;
 
@@ -798,7 +797,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
     staffingNumerator += seniorFlexibleCount >= 1 ? 1 : 0;
   }
 
-  residents.forEach(r => {
+  residents?.forEach(r => {
     const cohort = cohortMap[r.id] ?? 0;
     const blockStartOffset = (cohort + Y) % cohortCount;
 
@@ -830,11 +829,10 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
       const hasVacation = assignmentsInBlock.includes('VAC');
       const hasCore = assignmentsInBlock.some(a => a && [
-        'RED',
-        'BLUE',
+        'W-RED',
+        'W-BLUE',
         'METRO',
-        'MICU',
-        'METRO_ICU'
+        'ICU'
       ].includes(a));
 
       if (hasCore) {
@@ -851,7 +849,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   let minPossibleIntensity = 0;
   let maxPossibleIntensity = 0;
 
-  residents.forEach(r => {
+  residents?.forEach(r => {
     for (let week = 0; week < totalWeeks; week++) {
       const assign = safeGrid[r.id]?.[week]?.assignment;
       if (!assign) continue;
@@ -879,7 +877,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
     const weeks = safeGrid[r.id] || [];
     let currentStreak = 0;
     let maxStreak = 0;
-    weeks.forEach(c => {
+    weeks?.forEach(c => {
       if (!c || !c.assignment) return;
       const m = programData.rotations.get(c.assignment as any);
       if (!m) return;
@@ -904,15 +902,15 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   let weightedActualDiversity = 0;
   let weightedMaxDiversity = 0;
 
-  residents.forEach(r => {
+  residents?.forEach(r => {
     const pgy = r.level || 1;
     const weight = pgy === 1 ? 3 : pgy === 2 ? 2 : 1;
 
     const partners = new Set<string>();
     const clinicalTypes = [
-      'RED',
-      'BLUE',
-      'MICU',
+      'W-RED',
+      'W-BLUE',
+      'ICU',
       'NF',
       'EM',
       'METRO',
@@ -922,7 +920,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
     for (let w = 0; w < totalWeeks; w++) {
       const myAssign = safeGrid[r.id]?.[w]?.assignment;
       if (myAssign && clinicalTypes.includes(myAssign)) {
-        residents.forEach(peer => {
+        residents?.forEach(peer => {
           if (peer.id !== r.id && safeGrid[peer.id]?.[w]?.assignment === myAssign) {
             partners.add(peer.id);
           }
@@ -942,7 +940,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   const jeopardyPoolSizes: number[] = [];
   for (let week = 0; week < totalWeeks; week++) {
     let size = 0;
-    residents.forEach(r => {
+    residents?.forEach(r => {
       const pgy = (r.startYear > 0 ? (currentYear - r.startYear + 1) : Number(r.level)) + Math.floor(week / 52);
       if (pgy > 1) {
         const assign = safeGrid[r.id]?.[week]?.assignment;
@@ -965,7 +963,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   // Components 7-9: Cohort Fairness (PGY-1/2/3 Weights: 0.001 / 0.002 / 0.003)
   const cohortFairnessScores: Record<number, number> = {};
 
-  [1, 2, 3].forEach(level => {
+  [1, 2, 3]?.forEach(level => {
     const cohortResidents = residents.filter(r => r.level === level);
     if (cohortResidents.length === 0) {
       cohortFairnessScores[level] = 100;
@@ -978,7 +976,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       let electiveCount = 0;
       let vacationCount = 0;
 
-      weeks.forEach(c => {
+      weeks?.forEach(c => {
         if (!c || !c.assignment) return;
         if (CORE_TYPES.includes(c.assignment)) coreCount++;
         if (ELECTIVE_TYPES.includes(c.assignment)) electiveCount++;

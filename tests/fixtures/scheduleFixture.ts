@@ -2,7 +2,6 @@ import { generateSchedule } from '../../services/scheduler';
 import { healSchedule } from '../../services/healer';
 import { Resident, ScheduleGrid, CompetitionPriority, AssignmentType } from '../../types';
 import { TOTAL_WEEKS, GENERATE_RESIDENTS_FOR_YEAR } from '../../constants';
-import { preloadHistoricalData } from '../../services/generators/historyPreloader';
 
 let cachedFixture: {
     residents: Resident[];
@@ -19,7 +18,14 @@ export async function getScheduleFixture() {
     const mockCohortMap: Record<string, number> = residents.reduce((acc, r, idx) => ({ ...acc, [r.id]: idx % 5 }), {});
     const lockedResId = residents[0].id;
 
-    const { history: preloadedHistory } = preloadHistoricalData(residents);
+    // Build mock preloaded history
+    const preloadedHistory: any = {};
+    for (const r of residents) {
+      preloadedHistory[r.id] = Array.from({ length: 52 }, () => ({
+        assignment: 'ELEC',
+        locked: true,
+      }));
+    }
 
     const initialSchedule: ScheduleGrid = {};
     initialSchedule[lockedResId] = Array(TOTAL_WEEKS).fill(null).map(() => ({ assignment: null as any, locked: false }));
@@ -68,6 +74,8 @@ export const getMockProgramData = (): ProgramData => {
     tags: [],
     rotationTags: new Map(),
     placeholderCodenames: new Set(),
-    flexibleCodenames: new Set()
+    flexibleCodenames: new Set(),
+    historicalSchedules: {},
+    historicalCohorts: {}
   };
 };

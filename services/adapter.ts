@@ -7,7 +7,7 @@ import { buildLevelRequirements } from './generators/reqBuilder';
 const isModifiable = (cell: ScheduleCell, params: AdaptationParams): boolean => {
     if (cell.locked) return false;
     if (cell.assignment === null) return true;
-    if (cell.assignment === 'ELECTIVE') return true;
+    if (cell.assignment === 'ELEC') return true;
     if (params.allowResearchOverride && cell.assignment === 'Research') return true;
     if (params.allowVacationOverride && cell.assignment === 'VAC') return true;
     return false;
@@ -146,7 +146,7 @@ export const adaptSchedule = (
 
     // 3. FIX OVERSTAFFING (Max Constraints)
     // Strategy: Identify weeks where a service is over max.
-    // Find unlocked residents on this service and move them to ELECTIVE.
+    // Find unlocked residents on this service and move them to ELEC.
     // Preference: Lower level residents first.
     if (params.fixOverstaffing) {
         for (let w = 0; w < totalWeeks; w++) {
@@ -166,7 +166,7 @@ export const adaptSchedule = (
                     
                     for (const cand of candidates) {
                         if (excess <= 0) break;
-                        schedule[cand.id][w] = { assignment: 'ELECTIVE', locked: false };
+                        schedule[cand.id][w] = { assignment: 'ELEC', locked: false };
                         plannedChanges.push(`Moved ${cand.name} from ${meta.label} to Elective (W${w+1})`);
                         excess--;
                         changes++;
@@ -185,7 +185,7 @@ export const adaptSchedule = (
                     
                     for (const cand of candidates) {
                         if (excess <= 0) break;
-                        schedule[cand.id][w] = { assignment: 'ELECTIVE', locked: false };
+                        schedule[cand.id][w] = { assignment: 'ELEC', locked: false };
                         plannedChanges.push(`Moved ${cand.name} from ${meta.label} to Elective (W${w+1})`);
                         excess--;
                         changes++;

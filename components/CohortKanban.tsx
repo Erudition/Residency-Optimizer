@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Users, GripHorizontal, ArrowRightLeft } from 'lucide-react';
 import { Resident, PgyLevel } from '../types';
-import { COHORT_COUNT } from '../constants';
+import { useProgramData } from '../contexts/ProgramDataContext';
 import { Badge } from './ui/Badge';
 
 interface Props {
@@ -17,6 +17,8 @@ export const CohortKanban: React.FC<Props> = ({
   cohortAssignments, 
   onAssignCohort 
 }) => {
+  const programData = useProgramData();
+  const cohortCount = programData.cycleConfig.cohortCount;
   const [dragOverCohort, setDragOverCohort] = React.useState<number | null>(null);
 
   const handleDragStart = (e: React.DragEvent, residentId: string) => {
@@ -43,7 +45,7 @@ export const CohortKanban: React.FC<Props> = ({
   };
 
   const cohorts = useMemo(() => {
-    const cohortsList = Array.from({ length: COHORT_COUNT }, (_, i) => ({
+    const cohortsList = Array.from({ length: cohortCount }, (_, i) => ({
       index: i,
       name: `Cohort ${String.fromCharCode(65 + i)}`,
       residents: [] as Resident[],

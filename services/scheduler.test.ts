@@ -67,15 +67,15 @@ let residents: Resident[];
 
             // Check for Wards Red/Blue/Met/Jr Hosp (Total 8+ weeks)
             const wards = assignments.filter(a => 
-                a === 'RED' || 
-                a === 'BLUE' || 
-                a === 'METRO' ||
+                a === 'W-RED' || 
+                a === 'W-BLUE' || 
+                a === 'MET' ||
                 a === 'JH'
             ).length;
             expect(wards).toBeGreaterThanOrEqual(8);
 
             // Check for ICU (4 weeks)
-            const icu = assignments.filter(a => a === 'MICU' || a === 'METRO_ICU').length;
+            const icu = assignments.filter(a => a === 'ICU' || a === 'METRO').length;
             expect(icu).toBeGreaterThanOrEqual(4);
 
             // Check for Night Float (2 weeks minimum per metadata)

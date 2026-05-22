@@ -68,8 +68,8 @@ export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
     return GENERATE_RESIDENTS_FOR_YEAR(ACTIVE_START_YEAR);
 };
 
-export const CORE_TYPES: AssignmentType[] = ['RED', 'BLUE', 'MICU', 'NF', 'EM', 'CCIM'];
+export const CORE_TYPES: AssignmentType[] = ['W-RED', 'W-BLUE', 'ICU', 'NF', 'EM', 'CCIM'];
 export const REQUIRED_TYPES: AssignmentType[] = ['CARDS', 'ID', 'NEPH', 'PULM', 'ONC', 'NEURO', 'RHEUM', 'GI', 'ADDM', 'ENDO', 'GERI', 'HPC', 'NIMA'];
-export const ELECTIVE_TYPES: AssignmentType[] = ['ELECTIVE', 'RSCH', 'HF', 'CCMA', 'ENT', 'PMNR'];
+export const ELECTIVE_TYPES: AssignmentType[] = ['ELEC', 'RSCH', 'HF', 'CCMA', 'ENT', 'PMNR'];
 export const VACATION_TYPE: AssignmentType = 'VAC';
-export const ACGME_TYPES: AssignmentType[] = ['RED', 'MICU', 'EM', 'CARDS', 'ID', 'NEPH', 'PULM', 'ONC', 'NEURO', 'RHEUM', 'GI', 'ENDO', 'GERI'];
+export const ACGME_TYPES: AssignmentType[] = ['W-RED', 'ICU', 'EM', 'CARDS', 'ID', 'NEPH', 'PULM', 'ONC', 'NEURO', 'RHEUM', 'GI', 'ENDO', 'GERI'];

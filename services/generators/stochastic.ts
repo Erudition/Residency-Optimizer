@@ -211,7 +211,7 @@ export const StochasticGenerator: ScheduleGenerator = {
             const end = r.activeWeekEnd ?? totalWeeks;
             for (let w = start; w < end; w++) {
                 if (!newSchedule[r.id][w]?.assignment) {
-                    newSchedule[r.id][w] = { assignment: 'ELECTIVE', locked: false };
+                    newSchedule[r.id][w] = { assignment: 'ELEC', locked: false };
                 }
             }
         });

@@ -5,6 +5,7 @@ import {
   getAuditViolations 
 } from './scheduler';
 import { healSchedule } from './healer';
+import { deserializeProgramData } from './api/client';
 
 let cancelledAlgorithmIds = new Set<string>();
 let isPromoteTriggered = false;
@@ -42,7 +43,8 @@ const postProgress = (iteration: number, scores: (number | null)[], attempts: Re
 };
 
 onmessage = async (e: MessageEvent) => {
-  const { type, totalYears, residents, historicalSchedules, constraints, programData, params, algorithmIds } = e.data;
+  const { type, totalYears, residents, historicalSchedules, constraints, params, algorithmIds } = e.data;
+  const programData = deserializeProgramData(e.data.programData);
 
   if (type === 'generate') {
     cancelledAlgorithmIds.clear();
@@ -79,7 +81,7 @@ onmessage = async (e: MessageEvent) => {
            // Run healer on the unified grid
            // 150 iterations per result for fast execution
            console.log("Starting Healer phase for result", idx);
-           const healedUnified = await healSchedule(res.unifiedSchedule, unifiedResidents, e.data.year, undefined, e.data.historicalSchedules, programData, (step, max, v) => {
+           const healedUnified = await healSchedule(res.unifiedSchedule, unifiedResidents, programData, e.data.year, undefined, e.data.historicalSchedules, undefined, (step, max, v) => {
              if (step % 10000 === 0) console.log("Healer progress:", step, "/", max, "Violations:", v);
              postMessage({ 
                type: 'progress', 
@@ -130,7 +132,7 @@ onmessage = async (e: MessageEvent) => {
   } else if (type === 'cancelAlgorithm') {
     cancelledAlgorithmIds.add(e.data.algoId);
   } else if (type === 'start-heal') {
-    const { grid, residents, historicalSchedules, startYear, totalYears, programData } = e.data;
+    const { grid, residents, historicalSchedules, startYear, totalYears } = e.data;
     isHealingActive = true;
     runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1, programData);
   } else if (type === 'stop-heal') {

@@ -69,7 +69,7 @@ const StackedProgressBar = ({
 };
 
 export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, activeYear }) => {
-    const { rotations } = useProgramData();
+    const { rotations, rotationTags } = useProgramData();
 
     const auditData = useMemo(() => {
         return residents.map(r => {
@@ -96,23 +96,24 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                     const meta = rotations.get(c.assignment);
                     if (!meta) return;
 
-                    if (meta.setting === ClinicalSetting.OUTPATIENT) {
+                    const tags = rotationTags.get(c.assignment) || [];
+                    if (tags.includes('Outpatient')) {
                         pgyData[pgy].outpatient++;
                         totalOutpatient++;
                     }
-                    if (meta.setting === ClinicalSetting.INPATIENT) {
+                    if (tags.includes('Inpatient')) {
                         pgyData[pgy].inpatient++;
                         totalInpatient++;
                     }
-                    if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
+                    if (tags.includes('Critical Care')) {
                         pgyData[pgy].criticalCare++;
                         totalCriticalCare++;
-                        if (c.assignment !== 'AMCS_CONSULTS') {
+                        if (c.assignment !== 'AMCS') {
                             pgyData[pgy].criticalCareCore++;
                             totalCriticalCareCore++;
                         }
                     }
-                    if (c.assignment === 'NF') {
+                    if (c.assignment === 'NF' || tags.includes('Night Float')) {
                         pgyData[pgy].nightFloat++;
                         totalNightFloat++;
                     }
@@ -133,7 +134,7 @@ export const ACGMEAudit: React.FC<Props> = React.memo(({ residents, history, act
                 nfViolation: totalNightFloat < 6 // MHS/ACGME min is 6 weeks total
             };
         });
-    }, [residents, history, rotations]);
+    }, [residents, history, rotations, rotationTags]);
 
     const globalStats = useMemo(() => {
         const total = auditData.length;

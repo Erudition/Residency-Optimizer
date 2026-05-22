@@ -79,7 +79,7 @@ export class RequirementsEngine {
         
         if (pgy < 1 || pgy > 3) continue;
 
-        programData.gradRequirements.forEach(req => {
+        (programData.gradRequirements || []).forEach(req => {
           const isACGME = req.source === 'acgme';
           
           let minWeeks = 0;

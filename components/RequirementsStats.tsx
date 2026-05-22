@@ -108,7 +108,7 @@ export const RequirementsStats: React.FC<Props> = ({ residents, schedule, histor
             const hasSplitBlockDeficit = RequirementsEngine.getViolations([r], schedule, hist, activeYear!, programData)
                 .some(v => v.year === activeYear && ['Neuro', 'GI', 'Pulm'].includes(v.type));
 
-            const hasElectiveToOverwrite = activeYearWeeks.some(c => c && c.assignment === 'ELECTIVE');
+            const hasElectiveToOverwrite = activeYearWeeks.some(c => c && c.assignment === 'ELEC');
 
             return {
                 ...r,

@@ -27,9 +27,9 @@ export interface Resident {
 export const CODENAMES = {
   WARDS_RED: 'W-RED',
   WARDS_BLUE: 'W-BLUE',
-  WARDS_METRO: 'MET',
+  WARDS_METRO: 'W-MET',
   MICU: 'ICU',
-  METRO_ICU: 'METRO',
+  METRO_ICU: 'MET-ICU',
   AMCS_CONSULTS: 'AMCS',
   NIGHT_FLOAT: 'NF',
   EM: 'EM',
