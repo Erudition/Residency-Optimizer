@@ -26,7 +26,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
   const [sourceFilter, setSourceFilter] = useState<'all' | 'acgme' | 'mhs'>('all');
 
   // Sorting / Grouping residents (in 1-year view only)
-  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cohort'>('pgy');
+  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>('pgy');
 
   // Draggable Left Column Width State
   const [colWidth, setColWidth] = useState(180);
@@ -280,10 +280,10 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                 </Button>
                 <Button
                   variant="ghost"
-                  onClick={() => setResidentSortOrder('cohort')}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                  onClick={() => setResidentSortOrder('cycle')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
                 >
-                  Cohort
+                  Clinic Cycle
                 </Button>
               </div>
             </div>
@@ -378,12 +378,12 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                     return (
                       <td
                         key={res.id}
-                        className={`border-b text-center cursor-default relative p-1 border-light-3 w-11 min-w-[44px] h-7 ${cellBgClass}`}
+                        className={`border-b text-center cursor-default relative p-0 border-light-3 w-11 min-w-[44px] h-7 ${cellBgClass}`}
                         onMouseEnter={(e) => handleCellEnter(e, res, req)}
                         onMouseLeave={() => setCellTooltip(null)}
                       >
                         <div className="w-full h-full flex items-center justify-center">
-                          <span className={`text-[10px] font-black tracking-tighter ${textClass}`}>{cellText}</span>
+                          <span className={`text-[12px] font-extrabold tracking-tight ${textClass}`}>{cellText}</span>
                         </div>
                       </td>
                     );

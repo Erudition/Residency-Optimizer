@@ -454,19 +454,11 @@ export const calculateDiversityStats = (residents: Resident[], schedule: Schedul
 
   residents?.forEach(r => {
     const partners = new Set<string>();
-    const clinicalTypes = [
-      'W-RED',
-      'W-BLUE',
-      'ICU',
-      'NF',
-      'EM',
-      'METRO',
-      'Jr Hosp'
-    ];
+    const nonCoWorkingTypes = ['VAC', 'ELEC', 'RSCH'];
 
     for (let w = 0; w < TOTAL_WEEKS; w++) {
       const myAssign = safeGrid[r.id]?.[w]?.assignment;
-      if (myAssign && clinicalTypes.includes(myAssign)) {
+      if (myAssign && !nonCoWorkingTypes.includes(myAssign)) {
         residents?.forEach(peer => {
           if (peer.id !== r.id && safeGrid[peer.id]?.[w]?.assignment === myAssign) {
             partners.add(peer.id);

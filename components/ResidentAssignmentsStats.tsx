@@ -30,13 +30,13 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
   const programData = useProgramData();
   const { rotations } = programData;
 
-  // Sort residents by level and cohort so the columns are beautifully grouped
+  // Sort residents by level and clinic cycle so the columns are beautifully grouped
   const sortedResidents = useMemo(() => {
     return [...residents].sort((a, b) => {
       if (a.level !== b.level) return a.level - b.level;
-      const cohortA = a.cohort ?? 0;
-      const cohortB = b.cohort ?? 0;
-      if (cohortA !== cohortB) return cohortA - cohortB;
+      const cycleA = a.cohort ?? 0;
+      const cycleB = b.cohort ?? 0;
+      if (cycleA !== cycleB) return cycleA - cycleB;
       return a.name.localeCompare(b.name);
     });
   }, [residents]);

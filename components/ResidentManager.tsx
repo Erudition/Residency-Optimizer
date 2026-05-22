@@ -115,7 +115,7 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
   };
 
   const handleDownloadTemplate = () => {
-    const csvContent = `Name,StartYear,Cohort
+    const csvContent = `Name,StartYear,Cycle
 John Doe,${activeYear},0
 Jane Smith,${activeYear - 1},1
 Robert Brown,${activeYear - 2},2`;
@@ -150,7 +150,7 @@ Robert Brown,${activeYear - 2},2`;
     // Check for header row
     let startIndex = 0;
     const firstLineLower = lines[0].trim().toLowerCase();
-    if (firstLineLower.startsWith('name') || firstLineLower.includes('startyear') || firstLineLower.includes('level') || firstLineLower.includes('cohort')) {
+    if (firstLineLower.startsWith('name') || firstLineLower.includes('startyear') || firstLineLower.includes('level') || firstLineLower.includes('cohort') || firstLineLower.includes('cycle')) {
         startIndex = 1;
     }
 
@@ -190,7 +190,7 @@ Robert Brown,${activeYear - 2},2`;
             alert(`Imported ${newResidents.length} residents successfully.`);
         }
     } else {
-        alert("Import Failed: No valid residents found in the file.\n\nPlease ensure your CSV matches the template:\nName, StartYear, Cohort (0-4)");
+        alert("Import Failed: No valid residents found in the file.\n\nPlease ensure your CSV matches the template:\nName, StartYear, Cycle (0-4)");
     }
   };
 
@@ -235,8 +235,8 @@ Robert Brown,${activeYear - 2},2`;
 	                        <li><strong>Column 2 (StartYear):</strong> Start Year of residency (Required, e.g. {activeYear}).</li>
 	                    </ul>
 	                    <ul className="list-disc list-inside space-y-1">
-	                        <li><strong>Column 3 (Cohort):</strong> 0-4 (Optional). 0=A, 1=B, etc.</li>
-	                        <li>If cohort is blank, it will be auto-assigned.</li>
+	                        <li><strong>Column 3 (Cycle):</strong> 0-4 (Optional). 0 = Cycle 1, 1 = Cycle 2, etc.</li>
+	                        <li>If cycle is blank, it will be auto-assigned.</li>
 	                    </ul>
 	                </div>
 	                <div className="mt-2 text-xs font-mono bg-white/50 p-1.5 rounded border border-light-blue/40 inline-block text-blue-2-dark">

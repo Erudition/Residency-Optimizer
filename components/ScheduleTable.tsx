@@ -10,7 +10,7 @@ interface Props {
   residents: Resident[];
   schedule: ScheduleGrid;
   startYear: number;
-  cohortAssignments?: Record<string, number>;
+  cycleAssignments?: Record<string, number>;
   isReadOnly?: boolean;
 
   onCellClick: (residentId: string, week: number, rect?: DOMRect) => void;
@@ -49,7 +49,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   residents,
   schedule,
   startYear,
-  cohortAssignments,
+  cycleAssignments,
   isReadOnly = false,
 
   onCellClick,
