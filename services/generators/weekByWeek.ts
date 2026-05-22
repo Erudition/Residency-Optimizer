@@ -116,7 +116,9 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
             for (let w = 0; w < row.length; w++) {
                 if (!isResidentActive(r, w)) continue;
                 const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                if (w % programData.cycleConfig.cohortCount === cohort) {
+                const { Y, Z } = programData.cycleConfig;
+                const isClinic = Math.floor((w % Z) / Y) === cohort;
+                if (isClinic) {
                     if (row[w].locked) continue;
                     if (!row[w].assignment) {
                         const pgy = getPgyAtWeek(r, w);
