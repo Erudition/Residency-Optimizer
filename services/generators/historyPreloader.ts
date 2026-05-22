@@ -19,8 +19,16 @@ const LEGACY_MAPPING: Record<string, AssignmentType> = {
     'Met Wards': 'METRO',
     'MICU 1': 'MICU',
     'MICU Metro': 'METRO_ICU',
-    'Add Med': 'Add Med',
-    'Jr Hosp': 'Jr Hosp',
+    'Add Med': 'ADDM',
+    'Jr Hosp': 'JH',
+    'Cards': 'CARDS',
+    'Neph': 'NEPH',
+    'Pulm': 'PULM',
+    'Neuro': 'NEURO',
+    'Onc': 'ONC',
+    'Rheum': 'RHEUM',
+    'Geri': 'GERI',
+    'NIMA (Clinic)': 'NIMA_CLINIC',
 };
 
 const HISTORICAL_COHORTS: Record<number, Record<string, number>> = {
@@ -108,7 +116,7 @@ export const preloadHistoricalData = (residents: Resident[]): PreloadedHistory =
 
     const years = Object.keys(historicalGridData).map(Number).filter(y => y < ACTIVE_START_YEAR);
 
-    years.forEach(year => {
+    years?.forEach(year => {
         history[year] = {};
         cohortAssignments[year] = {};
         const yearData = (historicalGridData as any)[year];
@@ -116,7 +124,7 @@ export const preloadHistoricalData = (residents: Resident[]): PreloadedHistory =
 
         const isFullyCompleted = year < ACTIVE_START_YEAR - 1;
 
-        Object.entries(yearData).forEach(([name, assignments]) => {
+        Object.entries(yearData)?.forEach(([name, assignments]) => {
             const id = findId(name);
             if (!id) {
                 console.warn(`[HistoryPreloader] Resident "${name}" from historical data (Year ${year}) not found in master list. Skipping.`);
