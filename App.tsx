@@ -539,7 +539,9 @@ const AppContent: React.FC = () => {
 
   // ── Sync Service ──
   const syncService = useMemo(() => getScheduleSyncService(), []);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('disconnected');
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(
+    isAuthenticated() ? 'connected' : 'local-only'
+  );
 
 
 
@@ -979,7 +981,7 @@ const AppContent: React.FC = () => {
     if (!activeSyncId) return;
 
     syncService.connect(activeSyncId);
-    setSyncStatus('syncing');
+    setSyncStatus('connected');
 
     // Poll sync status periodically
     const statusInterval = setInterval(() => {
@@ -1046,7 +1048,7 @@ const AppContent: React.FC = () => {
       clearInterval(statusInterval);
       unsubscribe();
       syncService.disconnect();
-      setSyncStatus('disconnected');
+      setSyncStatus(isAuthenticated() ? 'connected' : 'local-only');
     };
   }, [activeSyncId, syncService]);
 
@@ -1804,44 +1806,38 @@ const AppContent: React.FC = () => {
           <div
             className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border cursor-default"
             style={{
-              backgroundColor: syncStatus === 'connected' ? 'rgba(16,185,129,0.1)'
-                : syncStatus === 'syncing' ? 'rgba(245,158,11,0.1)'
-                : syncStatus === 'offline' ? 'rgba(239,68,68,0.1)'
+              backgroundColor: syncStatus === 'live' ? 'rgba(139,92,246,0.1)'
+                : syncStatus === 'connected' ? 'rgba(16,185,129,0.1)'
                 : 'rgba(156,163,175,0.1)',
-              borderColor: syncStatus === 'connected' ? 'rgba(16,185,129,0.2)'
-                : syncStatus === 'syncing' ? 'rgba(245,158,11,0.2)'
-                : syncStatus === 'offline' ? 'rgba(239,68,68,0.2)'
+              borderColor: syncStatus === 'live' ? 'rgba(139,92,246,0.2)'
+                : syncStatus === 'connected' ? 'rgba(16,185,129,0.2)'
                 : 'rgba(156,163,175,0.2)',
             }}
             title={
-              syncStatus === 'connected' ? 'Synced — changes are saved to the server'
-              : syncStatus === 'syncing' ? 'Syncing — connecting to server...'
-              : syncStatus === 'offline' ? 'Offline — changes are local only'
-              : 'Local — not connected to a planning session'
+              syncStatus === 'live' ? 'Live — real-time sync active with other clients'
+              : syncStatus === 'connected' ? 'Connected — authenticated with server'
+              : 'Local Only — not connected to a server'
             }
           >
             <span
               className="inline-block w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: syncStatus === 'connected' ? '#10b981'
-                  : syncStatus === 'syncing' ? '#f59e0b'
-                  : syncStatus === 'offline' ? '#ef4444'
+                backgroundColor: syncStatus === 'live' ? '#8b5cf6'
+                  : syncStatus === 'connected' ? '#10b981'
                   : '#9ca3af',
               }}
             />
             <span
               className="text-[9px] font-black uppercase tracking-tighter"
               style={{
-                color: syncStatus === 'connected' ? '#10b981'
-                  : syncStatus === 'syncing' ? '#f59e0b'
-                  : syncStatus === 'offline' ? '#ef4444'
+                color: syncStatus === 'live' ? '#8b5cf6'
+                  : syncStatus === 'connected' ? '#10b981'
                   : '#9ca3af',
               }}
             >
-              {syncStatus === 'connected' ? 'Synced'
-                : syncStatus === 'syncing' ? 'Syncing'
-                : syncStatus === 'offline' ? 'Offline'
-                : 'Local'}
+              {syncStatus === 'live' ? 'Live'
+                : syncStatus === 'connected' ? 'Connected'
+                : 'Local Only'}
             </span>
           </div>
         </div>

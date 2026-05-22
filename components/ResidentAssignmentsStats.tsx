@@ -149,7 +149,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
             <tr>
               <th
                 className="sticky left-0 z-40 bg-light-1/90 backdrop-blur-md border-b border-r p-0 text-left transition-all"
-                style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
+                style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth, zIndex: 150 }}
               >
                 <div className="flex items-center justify-between h-full px-3 py-2 relative">
                   <span className="truncate pr-2">Assignment</span>
@@ -159,12 +159,19 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
                   />
                 </div>
               </th>
-              {sortedResidents.map(r => (
-                <th key={r.id} className="border-b border-light-5 w-8 min-w-[32px] h-28 p-0 bg-light-1 relative text-center">
-                  <div className="h-full flex items-end justify-center pb-3">
+              {sortedResidents.map((r, idx) => (
+                <th
+                  key={r.id}
+                  className="border-b border-light-5 w-8 min-w-[32px] h-28 p-0 bg-light-1 relative"
+                  style={{ zIndex: 100 - idx }}
+                >
+                  <div className="h-full flex items-end justify-start pb-4 relative overflow-visible">
                     <span
-                      className="text-[11px] font-bold text-primary select-none whitespace-nowrap"
-                      style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                      className="text-[11px] font-bold text-primary select-none whitespace-nowrap absolute bottom-3 left-3"
+                      style={{
+                        transform: 'rotate(-45deg)',
+                        transformOrigin: 'left bottom',
+                      }}
                     >
                       {r.name}
                     </span>

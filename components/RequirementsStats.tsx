@@ -298,7 +298,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             <tr>
               <th
                 className="sticky left-0 z-40 bg-light-1/90 backdrop-blur-md border-b border-r p-0 text-left transition-all"
-                style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
+                style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth, zIndex: 150 }}
               >
                 <div className="flex items-center justify-between h-full px-3 py-2 relative">
                   <span className="truncate pr-2 font-bold text-primary">Requirement</span>
@@ -308,12 +308,19 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                   />
                 </div>
               </th>
-              {sortedResidents.map(res => (
-                <th key={res.id} className="border-b border-light-5 w-8 min-w-[32px] h-28 p-0 bg-light-1 relative text-center">
-                  <div className="h-full flex items-end justify-center pb-3">
+              {sortedResidents.map((res, idx) => (
+                <th
+                  key={res.id}
+                  className="border-b border-light-5 w-11 min-w-[44px] h-28 p-0 bg-light-1 relative"
+                  style={{ zIndex: 100 - idx }}
+                >
+                  <div className="h-full flex items-end justify-start pb-4 relative overflow-visible">
                     <span
-                      className="text-[11px] font-bold text-primary select-none whitespace-nowrap"
-                      style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                      className="text-[11px] font-bold text-primary select-none whitespace-nowrap absolute bottom-3 left-4"
+                      style={{
+                        transform: 'rotate(-45deg)',
+                        transformOrigin: 'left bottom',
+                      }}
                     >
                       {res.name}
                     </span>
@@ -328,17 +335,17 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                 <tr key={req.id} className="hover:bg-light-1 group transition-colors">
                   {/* Left row header: matches schedule screen name cell structure */}
                   <td
-                    className="sticky left-0 z-20 bg-light-1/90 backdrop-blur-md border-b border-r p-2 font-medium text-black transition-colors"
+                    className="sticky left-0 z-20 bg-light-1/90 backdrop-blur-md border-b border-r p-1 px-2 font-medium text-black transition-colors"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
                   >
-                    <div className="flex flex-col truncate justify-center">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span
+                        className={`px-1 py-0.2 rounded text-[7px] font-black uppercase tracking-wider shrink-0 ${req.source === 'acgme' ? 'bg-blue/15 text-blue' : 'bg-emerald-500/15 text-emerald-700'}`}
+                      >
+                        {req.source === 'acgme' ? 'ACGME' : 'CURR'}
+                      </span>
                       <span className="text-[11px] font-bold text-slate-800 tracking-tight leading-tight truncate" title={req.tag.title}>
                         {req.tag.title}
-                      </span>
-                      <span
-                        className={`w-max px-1 py-0.2 rounded text-[7px] font-black uppercase mt-0.5 tracking-wider ${req.source === 'acgme' ? 'bg-blue/15 text-blue' : 'bg-emerald-500/15 text-emerald-700'}`}
-                      >
-                        {req.source === 'acgme' ? 'ACGME' : 'Curriculum'}
                       </span>
                     </div>
                   </td>
@@ -371,21 +378,12 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                     return (
                       <td
                         key={res.id}
-                        className={`border-b text-center cursor-default relative p-0 border-light-3 w-8 min-w-[32px] h-10 ${cellBgClass}`}
+                        className={`border-b text-center cursor-default relative p-1 border-light-3 w-11 min-w-[44px] h-7 ${cellBgClass}`}
                         onMouseEnter={(e) => handleCellEnter(e, res, req)}
                         onMouseLeave={() => setCellTooltip(null)}
                       >
-                        <div className="w-full h-full flex flex-col items-center justify-center relative">
+                        <div className="w-full h-full flex items-center justify-center">
                           <span className={`text-[10px] font-black tracking-tighter ${textClass}`}>{cellText}</span>
-                          {/* Mini visual indicator under text for active requirements */}
-                          {minWeeks > 0 && (
-                            <div className="absolute bottom-1 left-1.5 right-1.5 h-[2px] bg-slate-200/50 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full ${actual >= minWeeks ? 'bg-emerald-500' : isUnified ? 'bg-rose-500' : 'bg-orange-500'}`}
-                                style={{ width: `${Math.min(100, (actual / minWeeks) * 100)}%` }}
-                              />
-                            </div>
-                          )}
                         </div>
                       </td>
                     );

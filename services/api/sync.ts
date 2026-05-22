@@ -33,7 +33,7 @@ import {
 
 // ── Types ──
 
-export type SyncStatus = 'connected' | 'syncing' | 'offline' | 'disconnected'
+export type SyncStatus = 'local-only' | 'connected' | 'live'
 
 export interface AssignmentChangeEvent {
   type: 'assignment-change'
@@ -98,7 +98,7 @@ export class ScheduleSyncService {
   private eventSource: EventSource | null = null
   private handlers: Set<EventHandler> = new Set()
   private _candidateId: number | null = null
-  private _status: SyncStatus = 'disconnected'
+  private _status: SyncStatus = 'local-only'
   private reconnectAttempts = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private pendingWrites: Map<string, PendingCellWrite> = new Map()
@@ -130,7 +130,7 @@ export class ScheduleSyncService {
   // ── Connection Management ──
 
   get isConnected(): boolean {
-    return this._status === 'connected'
+    return this._status === 'live'
   }
 
   get syncStatus(): SyncStatus {
@@ -151,7 +151,7 @@ export class ScheduleSyncService {
     }
 
     this._candidateId = candidateId
-    this._status = 'syncing'
+    this._status = 'connected'
     this.reconnectAttempts = 0
 
     this.openEventSource()
@@ -169,7 +169,7 @@ export class ScheduleSyncService {
       this.eventSource.close()
       this.eventSource = null
     }
-    this._status = 'disconnected'
+    this._status = isAuthenticated() ? 'connected' : 'local-only'
     this._candidateId = null
     this.reconnectAttempts = 0
   }
@@ -561,7 +561,7 @@ export class ScheduleSyncService {
       this.eventSource = new EventSource(url)
 
       this.eventSource.addEventListener('connected', () => {
-        this._status = 'connected'
+        this._status = 'live'
         this.reconnectAttempts = 0
       })
 
@@ -587,13 +587,13 @@ export class ScheduleSyncService {
       })
 
       this.eventSource.onerror = () => {
-        this._status = 'offline'
+        this._status = 'connected'
         this.eventSource?.close()
         this.eventSource = null
         this.scheduleReconnect()
       }
     } catch {
-      this._status = 'offline'
+      this._status = 'connected'
       this.scheduleReconnect()
     }
   }
