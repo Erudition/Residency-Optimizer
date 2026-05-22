@@ -3,7 +3,7 @@ import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory, ScheduleGenerator } from '../../types';
 import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
-import { getAllCodenames } from '../programDataUtils';
+import { getAllCodenames, isClinicRotation } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
 
@@ -73,7 +73,7 @@ export const StochasticGenerator: ScheduleGenerator = {
             const yearEnd = Math.min(totalWeeks, (yIdx + 1) * 52);
 
             for (let pgyLevel = 1; pgyLevel <= 3; pgyLevel++) {
-                const reqs = seededShuffle(buildLevelRequirements(programData, pgyLevel as 1 | 2 | 3) || []);
+                const reqs = seededShuffle(buildLevelRequirements(programData, pgyLevel as 1 | 2 | 3) || []).filter(r => !isClinicRotation(programData, r.type));
                 
                 // Residents who are this level in THIS year
                 const activeResidentsAtLevel = residents.filter(r => {

@@ -3,7 +3,7 @@ import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../../types';
 import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
-import { getAllCodenames } from '../programDataUtils';
+import { getAllCodenames, isClinicRotation } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getCumulativeRequirementCount, isAligned, getAssignedCount, getYearRequirementCount, getPriorRequirementCount, getStandardCohortMap, getCohortAtWeek } from './utils';
 
@@ -75,7 +75,7 @@ export const EducationFirstGenerator: ScheduleGenerator = {
 
             const allLevels = [1, 2, 3];
             allLevels.forEach(level => {
-                const reqs = seededShuffle(buildLevelRequirements(programData, level as 1|2|3) || []);
+                const reqs = seededShuffle(buildLevelRequirements(programData, level as 1|2|3) || []).filter(r => !isClinicRotation(programData, r.type));
                 // Sort by duration descending, then by capacity ascending (harder rotations first)
                 const criticalPriority: AssignmentType[] = [
                     'ICU',

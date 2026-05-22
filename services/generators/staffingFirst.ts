@@ -3,7 +3,7 @@ import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator, ScheduleCell } from '../../types';
 import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS, ACTIVE_START_YEAR } from '../../constants';
-import { getAllCodenames } from '../programDataUtils';
+import { getAllCodenames, isClinicRotation } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
 
@@ -171,7 +171,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
             const pgyLevels: (1|2|3)[] = [1, 2, 3];
             pgyLevels.forEach(level => {
-                const reqs = seededShuffle(buildLevelRequirements(programData, level) || []);
+                const reqs = seededShuffle(buildLevelRequirements(programData, level) || []).filter(r => !isClinicRotation(programData, r.type));
                 reqs.forEach(req => {
                     const compatibleTypes = getAllCodenames(programData).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
                     
