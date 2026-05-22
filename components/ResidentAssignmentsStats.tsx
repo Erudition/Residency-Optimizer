@@ -84,7 +84,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
       'NF',
       'EM',
       'CCIM',
-      'NIMA (Clinic)',
+      'NIMA',
       'ELEC',
       'VAC',
     ];

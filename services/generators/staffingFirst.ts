@@ -82,7 +82,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 if (w % COHORT_COUNT === getCohortAtWeek(r, w, validCohortAssignments)) {
                     if (row[w].locked) continue;
                     const level = getPgy(r, w);
-                    const clinicType = (r.startYear === 2025) ? 'NIMA_CLINIC' : 'CCIM';
+                    const clinicType = (r.startYear === 2025) ? 'NIMA' : 'CCIM';
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
 
                 }

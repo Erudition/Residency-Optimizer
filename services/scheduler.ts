@@ -349,7 +349,7 @@ export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGri
   
   for (let week = 0; week < totalWeeks; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
-    const clinicCount = assignments.filter(a => a === 'CCIM' || a === 'NIMA (Clinic)').length;
+    const clinicCount = assignments.filter(a => a === 'CCIM' || a === 'NIMA').length;
     if (clinicCount === 0) {
       violations.push({ week, type: 'CCIM', issue: `No residents in clinic in week ${week + 1}`, year: Math.floor(week / 52) + currentYear, instances: 1 });
     }
@@ -730,7 +730,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
 
   for (let week = 0; week < totalWeeks; week++) {
     const assignments = residents.map(r => safeGrid[r.id]?.[week]?.assignment);
-    const clinicCount = assignments.filter(a => a === 'CCIM' || a === 'NIMA (Clinic)').length;
+    const clinicCount = assignments.filter(a => a === 'CCIM' || a === 'NIMA').length;
     
     staffingDenominator += 1;
     staffingNumerator += clinicCount >= 1 ? 1 : 0;
@@ -857,7 +857,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       const intensity = programData.rotations.get(assign as any)?.intensity || 0;
       actualTotalIntensity += intensity;
 
-      if (assign === 'CCIM' || assign === 'NIMA (Clinic)' || assign === 'VAC') {
+      if (assign === 'CCIM' || assign === 'NIMA' || assign === 'VAC') {
         minPossibleIntensity += intensity;
         maxPossibleIntensity += intensity;
       } else {

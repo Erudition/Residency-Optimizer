@@ -46,9 +46,9 @@ export const healer: HealerSolver = {
         const typeFulfillment: Record<string, AssignmentType[]> = {};
         Object.values(CODENAMES).forEach(type => { typeFulfillment[type] = relevantReqTypes.filter(req => RequirementsEngine.fulfills(type, req, programData)); });
         const assignmentsByLevel: Record<number, AssignmentType[]> = {
-            1: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA_CLINIC' && t !== 'VAC' && (programData.rotations[t]?.maxInterns || 0) > 0),
-            2: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA_CLINIC' && t !== 'VAC' && (programData.rotations[t]?.maxSeniors || 0) > 0),
-            3: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA_CLINIC' && t !== 'VAC' && (programData.rotations[t]?.maxSeniors || 0) > 0),
+            1: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA' && t !== 'VAC' && (programData.rotations[t]?.maxInterns || 0) > 0),
+            2: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA' && t !== 'VAC' && (programData.rotations[t]?.maxSeniors || 0) > 0),
+            3: Object.values(CODENAMES).filter(t => t !== 'CCIM' && t !== 'NIMA' && t !== 'VAC' && (programData.rotations[t]?.maxSeniors || 0) > 0),
         };
         const constrainedTypes = Object.values(CODENAMES).filter(type => {
             const m = programData.rotations[type];
@@ -164,7 +164,7 @@ export const healer: HealerSolver = {
                 if (!currentSchedule[r.id][w] || currentSchedule[r.id][w].assignment === null) {
                     const isClinic = w % programData.cycleConfig.cohortCount === getCohortAtWeek(r, w, validCohortAssignments);
                     if (isClinic) {
-                        const clinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
+                        const clinicType = (r.startYear === 2025) ? 'NIMA' : 'CCIM';
                         currentSchedule[r.id][w] = { assignment: clinicType, locked: true };
                     } else {
                         currentSchedule[r.id][w] = { assignment: 'ELEC', locked: false };

@@ -58,7 +58,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                 if (w % COHORT_COUNT === cohort) {
                     if (row[w].locked) continue;
                     const pgy = Math.min(3, r.level + Math.floor(w / 52));
-                    const weeklyClinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
+                    const weeklyClinicType = (r.startYear === 2025) ? 'NIMA' : 'CCIM';
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }

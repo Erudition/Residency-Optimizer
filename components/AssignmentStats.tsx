@@ -78,7 +78,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
       'NF',
       'EM',
       'CCIM',
-      'NIMA (Clinic)',
+      'NIMA',
       'ELEC',
       'VAC',
     ];

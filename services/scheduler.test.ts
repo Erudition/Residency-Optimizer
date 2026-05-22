@@ -43,7 +43,7 @@ let residents: Resident[];
             for (let w = 0; w < TOTAL_WEEKS; w++) {
                 if (w % 5 === cohort) {
                     const assignment = weeks[w].assignment;
-                    expect(['CCIM', 'NIMA_CLINIC', 'VAC']).toContain(assignment);
+                    expect(['CCIM', 'NIMA', 'VAC']).toContain(assignment);
                 }
             }
         });

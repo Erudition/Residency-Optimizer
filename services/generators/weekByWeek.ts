@@ -120,7 +120,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                     if (row[w].locked) continue;
                     if (!row[w].assignment) {
                         const pgy = getPgyAtWeek(r, w);
-                        const weeklyClinicType = (r.startYear === 2025) ? 'NIMA (Clinic)' : 'CCIM';
+                        const weeklyClinicType = (r.startYear === 2025) ? 'NIMA' : 'CCIM';
                         newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                         updateCounts(r.id, r.level, w, weeklyClinicType, 1);
                     }
