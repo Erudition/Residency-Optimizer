@@ -6,6 +6,11 @@ Note: for all "minimum" requirements, use the word "minimum" in the code, not "t
 *   **Human Ownership**: Only human users may assign vacation time.
 *   **Algorithmic Behavior**: The scheduling engine should only fill core inpatient blocks, mandatory subspecialties, and "Elective" blocks. Residents will manually replace elective blocks with their chosen subspecialties or vacation weeks.
 
+### Placeholder Rotation Scheduling
+*   **Placeholder Identity**: Placeholder rotations have an `isPlaceholder` relationship pointing to a `Tag` that identifies the category they stand in for (e.g., `ELEC` → `Elective` tag, `CLINIC` → `Clinic` tag). Their title is `"Unspecified {Tag}"` and the schedule grid appends `?` to their codename.
+*   **Scheduling Constraint**: The engine should only schedule a placeholder rotation when its associated tag has **more than one** non-placeholder rotation. If the tag has only one non-placeholder rotation, the engine should schedule that specific rotation directly instead.
+*   **Resolution**: Placeholders are scheduled as proxies. The admin or resident resolves them to a specific rotation afterward. Placeholder cells remain unlocked even in historical/past schedule views to enable retroactive resolution.
+
 ### Deficit Recovery & Scheduling Engine Logic
 The application must programmatically enforce the following recovery rules when a resident takes PTO or extended leave:
 *   **Competency Override:** If PTO reduces a 4-week mandatory block to 3 weeks, do NOT force a makeup.

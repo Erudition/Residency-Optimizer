@@ -17,7 +17,10 @@ export const ROTATIONS_QUERY = /* GraphQL */ `
         outpatientPercentage
         color
         isFlexible
-        isPlaceholder
+        isPlaceholder {
+          id
+          title
+        }
         availableSince {
           id
           startingYear

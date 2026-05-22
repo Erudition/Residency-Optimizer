@@ -12,7 +12,7 @@ The frontend communicates with the backend via **GraphQL** (Payload's built-in e
 The `codename` field on Rotations is the universal identifier used across both repos. It serves as both the schedule grid label and the primary key for lookups. The frontend's `AssignmentType` enum is being replaced with runtime strings matching these codenames.
 
 ### Placeholder Rotations
-Rotations with `isPlaceholder: true` (e.g., unspecified Elective, unspecified Clinic) are scheduled by the engine as proxies. The admin or resident resolves them to a specific rotation afterward. The frontend should visually distinguish placeholder cells from finalized assignments.
+Rotations with `isPlaceholder` set (a relationship to a `Tag`) are scheduled by the engine as proxies for their tag category. Examples: `ELEC` → Elective tag, `CLINIC` → Clinic tag. Their display title is `"Unspecified {Tag}"` (e.g., "Unspecified Elective"). The schedule grid appends `?` to their codename (e.g., `ELEC?`). The admin or resident resolves them to a specific rotation afterward. Placeholder cells remain unlocked even in historical/past views. See `specification/engine.md` for the scheduling constraint.
 
 ### X+Y Clinic Cycle Model
 Clinic scheduling uses an X+Y model stored in `ClinicCycles` (cohort documents) and `AcademicYears.clinicWeeksPerCycle` (Y):

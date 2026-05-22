@@ -340,7 +340,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                         >
                           {assign && !isOutOfBounds ? (
                             <span className="truncate w-full block">
-                              {assign}
+                              {programData.placeholderCodenames.has(assign) ? `${assign}?` : assign}
                             </span>
                           ) : (
                             <span className="text-light-5 select-none" style={{ filter: 'grayscale(100%)' }}>

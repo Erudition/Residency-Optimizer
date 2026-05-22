@@ -64,7 +64,7 @@ interface GqlRotation {
   outpatientPercentage: number
   color: string | null
   isFlexible: boolean
-  isPlaceholder: boolean
+  isPlaceholder: { id: number; title: string } | null
   availableSince: GqlAcademicYear
   availableUntil?: GqlAcademicYear | null
   tags: GqlTag[]
