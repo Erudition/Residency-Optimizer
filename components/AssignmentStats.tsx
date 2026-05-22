@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
 import { AlertTriangle } from 'lucide-react';
 import { useProgramData } from '../contexts/ProgramDataContext';
+import { getDisplayOrderedCodenames } from '../services/programDataUtils';
 import { oklchToHex } from '../utils/colorUtils';
 
 interface Props {
@@ -68,32 +69,8 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
 
   // Define Row Order
   const sortedAssignmentTypes = useMemo(() => {
-    const priorityOrder = [
-      'W-RED',
-      'W-BLUE',
-      'MET',
-      'ICU',
-      'METRO',
-      'Pulm',
-      'NF',
-      'EM',
-      'CCIM',
-      'NIMA',
-      'ELEC',
-      'VAC',
-    ];
-
-    const allTypes = Array.from(rotations.keys());
-    const remainingTypes = allTypes
-      .filter(type => !priorityOrder.includes(type))
-      .sort((a, b) => {
-        const labelA = rotations.get(a)?.label || '';
-        const labelB = rotations.get(b)?.label || '';
-        return labelA.localeCompare(labelB);
-      });
-
-    return [...priorityOrder.filter(t => rotations.has(t)), ...remainingTypes];
-  }, [rotations]);
+    return getDisplayOrderedCodenames(programData);
+  }, [programData]);
 
   // Group data
   const data: Record<string, Resident[][]> = useMemo(() => {

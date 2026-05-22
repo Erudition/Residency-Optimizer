@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
 import { useProgramData } from '../contexts/ProgramDataContext';
+import { getDisplayOrderedCodenames } from '../services/programDataUtils';
 import { oklchToHex } from '../utils/colorUtils';
 import { Table, Users, Info } from 'lucide-react';
 
@@ -26,7 +27,8 @@ const getBaseColorStyle = (count: number, max: number, hue: number, intensitySco
 };
 
 export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
-  const { rotations } = useProgramData();
+  const programData = useProgramData();
+  const { rotations } = programData;
 
   // Sort residents by level and cohort so the columns are beautifully grouped
   const sortedResidents = useMemo(() => {
@@ -74,32 +76,8 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
 
   // Define Row Order matching Coverage Tab
   const sortedAssignmentTypes = useMemo(() => {
-    const priorityOrder = [
-      'W-RED',
-      'W-BLUE',
-      'MET',
-      'ICU',
-      'METRO',
-      'Pulm',
-      'NF',
-      'EM',
-      'CCIM',
-      'NIMA',
-      'ELEC',
-      'VAC',
-    ];
-
-    const allTypes = Array.from(rotations.keys());
-    const remainingTypes = allTypes
-      .filter(type => !priorityOrder.includes(type))
-      .sort((a, b) => {
-        const labelA = rotations.get(a)?.label || '';
-        const labelB = rotations.get(b)?.label || '';
-        return labelA.localeCompare(labelB);
-      });
-
-    return [...priorityOrder.filter(t => rotations.has(t)), ...remainingTypes];
-  }, [rotations]);
+    return getDisplayOrderedCodenames(programData);
+  }, [programData]);
 
   // Compute assign-weeks for each resident and rotation
   const assignmentCounts = useMemo(() => {

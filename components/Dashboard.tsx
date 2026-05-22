@@ -3,6 +3,7 @@ import React from 'react';
 import { Resident, ScheduleStats, AssignmentType } from '../types';
 import { oklchToHex } from '../utils/colorUtils';
 import { useProgramData } from '../contexts/ProgramDataContext';
+import { getDisplayOrderedCodenames } from '../services/programDataUtils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface Props {
@@ -24,45 +25,21 @@ const getHighChromaColor = (type: AssignmentType, rotations: Map<string, any>): 
 export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
   const programData = useProgramData();
 
-  // Transform data for Recharts - Memoized to prevent animation resets on App re-render
+  // Get the display-ordered codenames dynamically
+  const orderedCodenames = React.useMemo(() => getDisplayOrderedCodenames(programData), [programData]);
+
+  // Transform data for Recharts - fully dynamic from programData
   const data = React.useMemo(() => residents.map(r => {
     const s = stats[r.id] || {};
-    return {
+    const row: Record<string, any> = {
       name: r.name,
       pgy: `PGY${r.level}`,
-      ['W-RED']: s['W-RED'] || 0,
-      ['W-BLUE']: s['W-BLUE'] || 0,
-      ['ICU']: s['ICU'] || 0,
-      ['NF']: s['NF'] || 0,
-      ['EM']: s['EM'] || 0,
-      ['CCIM']: s['CCIM'] || 0,
-      ['ELEC']: s['ELEC'] || 0,
-      ['VAC']: s['VAC'] || 0,
-      ['MET']: s['MET'] || 0,
-      ['CARDS']: s['CARDS'] || 0,
-      ['ID']: s['ID'] || 0,
-      ['NEPH']: s['NEPH'] || 0,
-      ['PULM']: s['PULM'] || 0,
-      ['METRO']: s['METRO'] || 0,
-      ['ONC']: s['ONC'] || 0,
-      ['NEURO']: s['NEURO'] || 0,
-      ['RHEUM']: s['RHEUM'] || 0,
-      ['GI']: s['GI'] || 0,
-
-      ['ADDM']: s['ADDM'] || 0,
-      ['ENDO']: s['ENDO'] || 0,
-      ['GERI']: s['GERI'] || 0,
-      ['HPC']: s['HPC'] || 0,
-
-      ['RSCH']: s['RSCH'] || 0,
-      ['CCMA']: s['CCMA'] || 0,
-      ['HF']: s['HF'] || 0,
-      ['AMCS']: s['AMCS'] || 0,
-      ['ENT']: s['ENT'] || 0,
-      ['PMNR']: s['PMNR'] || 0,
-      ['JH']: s['JH'] || 0,
     };
-  }), [residents, stats]);
+    orderedCodenames.forEach(codename => {
+      row[codename] = s[codename] || 0;
+    });
+    return row;
+  }), [residents, stats, orderedCodenames]);
 
   // Split by PGY for cleaner charts - Memoized references
   const pgy1Data = React.useMemo(() => data.filter(d => d.pgy === 'PGY1'), [data]);
@@ -96,28 +73,19 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
                 wrapperStyle={{ zIndex: 100 }}
               />
 
-              <Bar isAnimationActive={false} dataKey={'METRO'} stackId="a" fill={getHighChromaColor('METRO', programData.rotations)} name="Metro ICU" />
-              <Bar isAnimationActive={false} dataKey={'ONC'} stackId="a" fill={getHighChromaColor('ONC', programData.rotations)} name="Heme/Onc" />
-              <Bar isAnimationActive={false} dataKey={'NEURO'} stackId="a" fill={getHighChromaColor('NEURO', programData.rotations)} name="Neurology" />
-              <Bar isAnimationActive={false} dataKey={'RHEUM'} stackId="a" fill={getHighChromaColor('RHEUM', programData.rotations)} name="Rheumatology" />
-              <Bar isAnimationActive={false} dataKey={'GI'} stackId="a" fill={getHighChromaColor('GI', programData.rotations)} name="GI" />
-
-              <Bar isAnimationActive={false} dataKey={'ADDM'} stackId="a" fill={getHighChromaColor('ADDM', programData.rotations)} name="Addiction Med" />
-              <Bar isAnimationActive={false} dataKey={'ENDO'} stackId="a" fill={getHighChromaColor('ENDO', programData.rotations)} name="Endocrinology" />
-              <Bar isAnimationActive={false} dataKey={'GERI'} stackId="a" fill={getHighChromaColor('GERI', programData.rotations)} name="Geriatrics" />
-              <Bar isAnimationActive={false} dataKey={'HPC'} stackId="a" fill={getHighChromaColor('HPC', programData.rotations)} name="Palliative" />
-
-              <Bar isAnimationActive={false} dataKey={'RSCH'} stackId="a" fill={getHighChromaColor('RSCH', programData.rotations)} name="Research" />
-              <Bar isAnimationActive={false} dataKey={'CCMA'} stackId="a" fill={getHighChromaColor('CCMA', programData.rotations)} name="CCMA" />
-              <Bar isAnimationActive={false} dataKey={'HF'} stackId="a" fill={getHighChromaColor('HF', programData.rotations)} name="Heart Failure" />
-              <Bar isAnimationActive={false} dataKey={'AMCS'} stackId="a" fill={getHighChromaColor('AMCS', programData.rotations)} name="AMCS Consults" />
-              <Bar isAnimationActive={false} dataKey={'ENT'} stackId="a" fill={getHighChromaColor('ENT', programData.rotations)} name="ENT" />
-              <Bar isAnimationActive={false} dataKey={'PMNR'} stackId="a" fill={getHighChromaColor('PMNR', programData.rotations)} name="PMNR" />
-
-              <Bar isAnimationActive={false} dataKey={'ELEC'} stackId="a" fill={getHighChromaColor('ELEC', programData.rotations)} name="Elective" />
-              <Bar isAnimationActive={false} dataKey={'VAC'} stackId="a" fill={getHighChromaColor('VAC', programData.rotations)} name="Vacation" />
-              <Bar isAnimationActive={false} dataKey={'MET'} stackId="a" fill={getHighChromaColor('MET', programData.rotations)} name="Metro Wards" />
-              <Bar isAnimationActive={false} dataKey={'JH'} stackId="a" fill={getHighChromaColor('JH', programData.rotations)} name="Jr Hospitalist" />
+              {orderedCodenames.map(codename => {
+                const meta = programData.rotations.get(codename);
+                return (
+                  <Bar
+                    key={codename}
+                    isAnimationActive={false}
+                    dataKey={codename}
+                    stackId="a"
+                    fill={getHighChromaColor(codename, programData.rotations)}
+                    name={meta?.label || codename}
+                  />
+                );
+              })}
 
             </BarChart>
           </ResponsiveContainer>
@@ -136,3 +104,4 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
     </div>
   );
 });
+
