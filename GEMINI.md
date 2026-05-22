@@ -41,6 +41,14 @@ Do not use the word "target" in code, comments, specs, or conversation — it co
 *   **Property Mapping** — Programmatically, minimum requirements are stored in the `minWeeks` property. The legacy `target` property has been deprecated and must not be used.
 *   **Matriculation Year** — The academic year a resident entered PGY-1 (stored as `startYear`). Graduation requirements are resolved against this year. Prefer "matriculation year" in documentation and specs; `startYear` remains the code-level field name for brevity.
 
+# Academic Year Convention
+All year keys, variables, and data structures across both the frontend and backend use the **starting calendar year** of the academic year. Academic years begin on July 1.
+
+*   AY 2025-26 → year key `2025` (July 2025 – June 2026)
+*   AY 2024-25 → year key `2024` (July 2024 – June 2025)
+
+This applies to: schedule data keys, `activeYear` state, `ACTIVE_START_YEAR`, `deriveActiveStartYear()`, `Resident.startYear`, `AcademicYear.startingYear` (backend), historical schedule keys, and any new code that references academic years. Never use the ending calendar year as a key.
+
 # Specification
 The files found in the `specification/` folder are the authoritative sources of truth for the application code you write. Report, and then correct, any code that is out of sync with the spec.
 
