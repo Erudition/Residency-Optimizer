@@ -140,3 +140,9 @@ Candidate schedules are synchronized between multiple frontend clients and the P
 *   **Candidate Transparency** — `Candidates` are internal backend groupings (3-year planning horizons). Users never see or manage them directly — the sync service auto-creates them on first save via `ensureCandidate()`.
 *   **Conflict Resolution** — Last-write-wins for simultaneous cell edits. No conflict UI.
 *   **Sync Status UI** — A status indicator in the header shows: 🟢 Synced, 🟡 Syncing, 🔴 Offline, ⚪ Local.
+
+## Clinic Block Scheduling Guardrail
+*   **Clinic Assignment Exclusivity**: Clinic assignments (`CLINIC` or specific clinic codenames) must never be scheduled, generated, or mutated on non-clinic (flexible) weeks.
+*   **Continuity Clinic Tag Integration**: The scheduling helper `isClinicRotation` must check for both `'Clinic'` and `'Continuity Clinic'` tags to align with the seeded tag titles in the database.
+*   **Generator Requirement Checks**: All generator algorithms must explicitly filter out clinic rotations from their educational block-placement loops to prevent clinic assignments from being scheduled as blocks on non-clinic weeks.
+
