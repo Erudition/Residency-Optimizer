@@ -356,7 +356,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   const cycleAssignments: Record<string, number> = {}
   for (const cycle of gqlCycles) {
     for (const resident of cycle.residents) {
-      cycleAssignments[`${resident.id}`] = cycle.number
+      cycleAssignments[`${resident.id}`] = cycle.number - 1
     }
   }
 
