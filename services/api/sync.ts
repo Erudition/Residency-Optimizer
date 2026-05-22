@@ -85,7 +85,7 @@ interface PendingCellWrite {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 const GRAPHQL_ENDPOINT = `${API_URL}/api/graphql`
-const SSE_BASE = `${API_URL}/api/schedules/stream`
+const SSE_BASE = `${API_URL}/api/sync/stream`
 
 const DEBOUNCE_MS = 300
 const RECONNECT_BASE_MS = 1000
@@ -251,7 +251,7 @@ export class ScheduleSyncService {
       }
 
       // Use the bulk endpoint
-      const response = await fetch(`${API_URL}/api/schedules/bulk`, {
+      const response = await fetch(`${API_URL}/api/sync/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
