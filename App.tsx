@@ -448,7 +448,8 @@ const AppContent: React.FC = () => {
     ...historicalYears,
     ACTIVE_START_YEAR,
     ACTIVE_START_YEAR + 1,
-    ACTIVE_START_YEAR + 2
+    ACTIVE_START_YEAR + 2,
+    ACTIVE_START_YEAR + 3
   ], [historicalYears]);
 
   const isHistoricalYear = activeYear <= ACTIVE_START_YEAR;
