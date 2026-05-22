@@ -9,10 +9,9 @@ interface Props {
   schedule: ScheduleGrid;
 }
 
-const getBaseColorStyle = (assignment: string, count: number, max: number, hueMap: Map<string, number>, intensity: number): React.CSSProperties => {
+const getBaseColorStyle = (count: number, max: number, hue: number, intensity: number): React.CSSProperties => {
   if (count === 0) return { backgroundColor: '#ffffff' };
 
-  const hue = hueMap.get(assignment) ?? 180;
   const chroma = intensity === 0 ? 0.015 : 0.01 + intensity * 0.038;
   const baseHex = oklchToHex(0.84, chroma, hue);
 
@@ -27,7 +26,7 @@ const getBaseColorStyle = (assignment: string, count: number, max: number, hueMa
 
 export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
   const programData = useProgramData();
-  const { rotations, hueMap } = programData;
+  const { rotations } = programData;
 
   const totalWeeks = useMemo(() => (Object.values(schedule)[0] as any)?.length || 52, [schedule]);
   const WEEKS = useMemo(() => Array.from({ length: totalWeeks }, (_, i) => i + 1), [totalWeeks]);
@@ -70,17 +69,17 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
   // Define Row Order
   const sortedAssignmentTypes = useMemo(() => {
     const priorityOrder = [
-      'RED',
-      'BLUE',
+      'W-RED',
+      'W-BLUE',
+      'MET',
+      'ICU',
       'METRO',
-      'MICU',
-      'METRO_ICU',
       'Pulm',
       'NF',
       'EM',
       'CCIM',
       'NIMA (Clinic)',
-      'ELECTIVE',
+      'ELEC',
       'VAC',
     ];
 
@@ -247,7 +246,8 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                   {WEEKS.map((w, i) => {
                     const assignees = data[type][i];
                     const count = assignees.length;
-                    const style = getBaseColorStyle(type, count, maxCounts[type], hueMap, meta.intensity);
+                    const rotation = rotations.get(type);
+                    const style = getBaseColorStyle(count, maxCounts[type], rotation?.color || 0, meta.intensity);
 
                     const error = checkConstraints(type, assignees, i);
 

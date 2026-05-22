@@ -10,41 +10,10 @@ interface Props {
   stats: ScheduleStats;
 }
 
-const getHighChromaColor = (type: AssignmentType, hueMap: Map<string, number>): string => {
-  const hue = hueMap.get(type) ?? 180;
-  
-  let intensity = 1;
-  switch (type) {
-    case 'MICU':
-    case 'METRO_ICU':
-      intensity = 5;
-      break;
-    case 'RED':
-    case 'NF':
-      intensity = 4;
-      break;
-    case 'BLUE':
-    case 'EM':
-    case 'METRO':
-    case 'AMCS_CONSULTS':
-    case 'CCMA':
-    case 'ANAESTHESIA':
-    case 'Jr Hosp':
-      intensity = 3;
-      break;
-    case 'CCIM':
-    case 'NIMA (Clinic)':
-    case 'Cards':
-    case 'NIMA':
-    case 'PMNR':
-      intensity = 2;
-      break;
-    case 'VAC':
-      intensity = 0;
-      break;
-    default:
-      intensity = 1;
-  }
+const getHighChromaColor = (type: AssignmentType, rotations: Map<string, any>): string => {
+  const rotation = rotations.get(type);
+  const hue = rotation?.color ?? 180;
+  const intensity = rotation?.intensity ?? 1;
 
   const chroma = intensity === 0 ? 0.04 : 0.07 + intensity * 0.045;
   const lightness = 0.76;
@@ -61,37 +30,37 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
     return {
       name: r.name,
       pgy: `PGY${r.level}`,
-      ['RED']: s['RED'] || 0,
-      ['BLUE']: s['BLUE'] || 0,
-      ['MICU']: s['MICU'] || 0,
+      ['W-RED']: s['W-RED'] || 0,
+      ['W-BLUE']: s['W-BLUE'] || 0,
+      ['ICU']: s['ICU'] || 0,
       ['NF']: s['NF'] || 0,
       ['EM']: s['EM'] || 0,
       ['CCIM']: s['CCIM'] || 0,
-      ['ELECTIVE']: s['ELECTIVE'] || 0,
+      ['ELEC']: s['ELEC'] || 0,
       ['VAC']: s['VAC'] || 0,
-      ['METRO']: s['METRO'] || 0,
-      ['Cards']: s['Cards'] || 0,
+      ['MET']: s['MET'] || 0,
+      ['CARDS']: s['CARDS'] || 0,
       ['ID']: s['ID'] || 0,
-      ['Neph']: s['Neph'] || 0,
-      ['Pulm']: s['Pulm'] || 0,
-      ['METRO_ICU']: s['METRO_ICU'] || 0,
-      ['Onc']: s['Onc'] || 0,
-      ['Neuro']: s['Neuro'] || 0,
-      ['Rheum']: s['Rheum'] || 0,
+      ['NEPH']: s['NEPH'] || 0,
+      ['PULM']: s['PULM'] || 0,
+      ['METRO']: s['METRO'] || 0,
+      ['ONC']: s['ONC'] || 0,
+      ['NEURO']: s['NEURO'] || 0,
+      ['RHEUM']: s['RHEUM'] || 0,
       ['GI']: s['GI'] || 0,
 
-      ['Add Med']: s['Add Med'] || 0,
-      ['Endo']: s['Endo'] || 0,
-      ['Geri']: s['Geri'] || 0,
+      ['ADDM']: s['ADDM'] || 0,
+      ['ENDO']: s['ENDO'] || 0,
+      ['GERI']: s['GERI'] || 0,
       ['HPC']: s['HPC'] || 0,
 
-      ['Research']: s['Research'] || 0,
+      ['RSCH']: s['RSCH'] || 0,
       ['CCMA']: s['CCMA'] || 0,
-      ['Heart Failure']: s['Heart Failure'] || 0,
-      ['AMCS_CONSULTS']: s['AMCS_CONSULTS'] || 0,
+      ['HF']: s['HF'] || 0,
+      ['AMCS']: s['AMCS'] || 0,
       ['ENT']: s['ENT'] || 0,
       ['PMNR']: s['PMNR'] || 0,
-      ['Jr Hosp']: s['Jr Hosp'] || 0,
+      ['JH']: s['JH'] || 0,
     };
   }), [residents, stats]);
 
@@ -127,28 +96,28 @@ export const Dashboard: React.FC<Props> = React.memo(({ residents, stats }) => {
                 wrapperStyle={{ zIndex: 100 }}
               />
 
-              <Bar isAnimationActive={false} dataKey={'METRO_ICU'} stackId="a" fill={getHighChromaColor('METRO_ICU', programData.hueMap)} name="Metro ICU" />
-              <Bar isAnimationActive={false} dataKey={'Onc'} stackId="a" fill={getHighChromaColor('Onc', programData.hueMap)} name="Heme/Onc" />
-              <Bar isAnimationActive={false} dataKey={'Neuro'} stackId="a" fill={getHighChromaColor('Neuro', programData.hueMap)} name="Neurology" />
-              <Bar isAnimationActive={false} dataKey={'Rheum'} stackId="a" fill={getHighChromaColor('Rheum', programData.hueMap)} name="Rheumatology" />
-              <Bar isAnimationActive={false} dataKey={'GI'} stackId="a" fill={getHighChromaColor('GI', programData.hueMap)} name="GI" />
+              <Bar isAnimationActive={false} dataKey={'METRO'} stackId="a" fill={getHighChromaColor('METRO', programData.rotations)} name="Metro ICU" />
+              <Bar isAnimationActive={false} dataKey={'ONC'} stackId="a" fill={getHighChromaColor('ONC', programData.rotations)} name="Heme/Onc" />
+              <Bar isAnimationActive={false} dataKey={'NEURO'} stackId="a" fill={getHighChromaColor('NEURO', programData.rotations)} name="Neurology" />
+              <Bar isAnimationActive={false} dataKey={'RHEUM'} stackId="a" fill={getHighChromaColor('RHEUM', programData.rotations)} name="Rheumatology" />
+              <Bar isAnimationActive={false} dataKey={'GI'} stackId="a" fill={getHighChromaColor('GI', programData.rotations)} name="GI" />
 
-              <Bar isAnimationActive={false} dataKey={'Add Med'} stackId="a" fill={getHighChromaColor('Add Med', programData.hueMap)} name="Addiction Med" />
-              <Bar isAnimationActive={false} dataKey={'Endo'} stackId="a" fill={getHighChromaColor('Endo', programData.hueMap)} name="Endocrinology" />
-              <Bar isAnimationActive={false} dataKey={'Geri'} stackId="a" fill={getHighChromaColor('Geri', programData.hueMap)} name="Geriatrics" />
-              <Bar isAnimationActive={false} dataKey={'HPC'} stackId="a" fill={getHighChromaColor('HPC', programData.hueMap)} name="Palliative" />
+              <Bar isAnimationActive={false} dataKey={'ADDM'} stackId="a" fill={getHighChromaColor('ADDM', programData.rotations)} name="Addiction Med" />
+              <Bar isAnimationActive={false} dataKey={'ENDO'} stackId="a" fill={getHighChromaColor('ENDO', programData.rotations)} name="Endocrinology" />
+              <Bar isAnimationActive={false} dataKey={'GERI'} stackId="a" fill={getHighChromaColor('GERI', programData.rotations)} name="Geriatrics" />
+              <Bar isAnimationActive={false} dataKey={'HPC'} stackId="a" fill={getHighChromaColor('HPC', programData.rotations)} name="Palliative" />
 
-              <Bar isAnimationActive={false} dataKey={'Research'} stackId="a" fill={getHighChromaColor('Research', programData.hueMap)} name="Research" />
-              <Bar isAnimationActive={false} dataKey={'CCMA'} stackId="a" fill={getHighChromaColor('CCMA', programData.hueMap)} name="CCMA" />
-              <Bar isAnimationActive={false} dataKey={'Heart Failure'} stackId="a" fill={getHighChromaColor('Heart Failure', programData.hueMap)} name="Heart Failure" />
-              <Bar isAnimationActive={false} dataKey={'AMCS_CONSULTS'} stackId="a" fill={getHighChromaColor('AMCS_CONSULTS', programData.hueMap)} name="AMCS Consults" />
-              <Bar isAnimationActive={false} dataKey={'ENT'} stackId="a" fill={getHighChromaColor('ENT', programData.hueMap)} name="ENT" />
-              <Bar isAnimationActive={false} dataKey={'PMNR'} stackId="a" fill={getHighChromaColor('PMNR', programData.hueMap)} name="PMNR" />
+              <Bar isAnimationActive={false} dataKey={'RSCH'} stackId="a" fill={getHighChromaColor('RSCH', programData.rotations)} name="Research" />
+              <Bar isAnimationActive={false} dataKey={'CCMA'} stackId="a" fill={getHighChromaColor('CCMA', programData.rotations)} name="CCMA" />
+              <Bar isAnimationActive={false} dataKey={'HF'} stackId="a" fill={getHighChromaColor('HF', programData.rotations)} name="Heart Failure" />
+              <Bar isAnimationActive={false} dataKey={'AMCS'} stackId="a" fill={getHighChromaColor('AMCS', programData.rotations)} name="AMCS Consults" />
+              <Bar isAnimationActive={false} dataKey={'ENT'} stackId="a" fill={getHighChromaColor('ENT', programData.rotations)} name="ENT" />
+              <Bar isAnimationActive={false} dataKey={'PMNR'} stackId="a" fill={getHighChromaColor('PMNR', programData.rotations)} name="PMNR" />
 
-              <Bar isAnimationActive={false} dataKey={'ELECTIVE'} stackId="a" fill={getHighChromaColor('ELECTIVE', programData.hueMap)} name="Elective" />
-              <Bar isAnimationActive={false} dataKey={'VAC'} stackId="a" fill={getHighChromaColor('VAC', programData.hueMap)} name="Vacation" />
-              <Bar isAnimationActive={false} dataKey={'METRO'} stackId="a" fill={getHighChromaColor('METRO', programData.hueMap)} name="Metro Wards" />
-              <Bar isAnimationActive={false} dataKey={'Jr Hosp'} stackId="a" fill={getHighChromaColor('Jr Hosp', programData.hueMap)} name="Jr Hospitalist" />
+              <Bar isAnimationActive={false} dataKey={'ELEC'} stackId="a" fill={getHighChromaColor('ELEC', programData.rotations)} name="Elective" />
+              <Bar isAnimationActive={false} dataKey={'VAC'} stackId="a" fill={getHighChromaColor('VAC', programData.rotations)} name="Vacation" />
+              <Bar isAnimationActive={false} dataKey={'MET'} stackId="a" fill={getHighChromaColor('MET', programData.rotations)} name="Metro Wards" />
+              <Bar isAnimationActive={false} dataKey={'JH'} stackId="a" fill={getHighChromaColor('JH', programData.rotations)} name="Jr Hospitalist" />
 
             </BarChart>
           </ResponsiveContainer>

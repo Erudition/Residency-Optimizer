@@ -9,10 +9,9 @@ interface Props {
   schedule: ScheduleGrid;
 }
 
-const getBaseColorStyle = (assignment: string, count: number, max: number, hueMap: Map<string, number>, intensityScore: number): React.CSSProperties => {
+const getBaseColorStyle = (count: number, max: number, hue: number, intensityScore: number): React.CSSProperties => {
   if (count === 0) return { backgroundColor: '#ffffff' };
 
-  const hue = hueMap.get(assignment) ?? 180;
   const chroma = intensityScore === 0 ? 0.015 : 0.01 + intensityScore * 0.038;
   const baseHex = oklchToHex(0.84, chroma, hue);
 
@@ -27,7 +26,7 @@ const getBaseColorStyle = (assignment: string, count: number, max: number, hueMa
 };
 
 export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
-  const { rotations, hueMap } = useProgramData();
+  const { rotations } = useProgramData();
 
   // Sort residents by level and cohort so the columns are beautifully grouped
   const sortedResidents = useMemo(() => {
@@ -76,17 +75,17 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
   // Define Row Order matching Coverage Tab
   const sortedAssignmentTypes = useMemo(() => {
     const priorityOrder = [
-      'RED',
-      'BLUE',
+      'W-RED',
+      'W-BLUE',
+      'MET',
+      'ICU',
       'METRO',
-      'MICU',
-      'METRO_ICU',
       'Pulm',
       'NF',
       'EM',
       'CCIM',
       'NIMA (Clinic)',
-      'ELECTIVE',
+      'ELEC',
       'VAC',
     ];
 
@@ -205,7 +204,8 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
                   {sortedResidents.map(r => {
                     const cellData = assignmentCounts[r.id]?.[type] || { count: 0, weeks: [] };
                     const count = cellData.count;
-                    const style = getBaseColorStyle(type, count, maxWeeksAcrossResidents[type], hueMap, rotations.get(type)?.intensity || 1);
+                    const rotation = rotations.get(type);
+                    const style = getBaseColorStyle(count, maxWeeksAcrossResidents[type], rotation?.color || 0, rotation?.intensity || 1);
 
                     return (
                       <td

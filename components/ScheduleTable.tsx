@@ -287,8 +287,9 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     const cell = residentSchedule[idx];
                     const assign = cell?.assignment;
                     const isPast = isReadOnly || isPastWeek(w, startYear);
-                    const intensity = assign ? (programData.rotations.get(assign)?.intensity ?? 1) : 1;
-                    const bgHex = assign ? getAssignmentColor(programData.hueMap.get(assign) || 0, intensity, isPast) : '#ffffff';
+                    const rotation = assign ? programData.rotations.get(assign) : undefined;
+                    const intensity = rotation?.intensity ?? 1;
+                    const bgHex = assign ? getAssignmentColor(rotation?.color || 0, intensity, isPast) : '#ffffff';
 
                     // Compute active bounds from startYear (always available),
                     // not the transient activeWeekStart/activeWeekEnd properties

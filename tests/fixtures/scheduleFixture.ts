@@ -30,7 +30,7 @@ export async function getScheduleFixture() {
         2026, 
         1, 
         residents, 
-        preloadedHistory, getMockProgramData(), { existing: { 2026: initialSchedule }, cohortAssignments: { 2026: mockCohortMap } }, 
+        preloadedHistory, { existing: { 2026: initialSchedule } }, getMockProgramData(), 
         { tries: 50, priority: CompetitionPriority.BEST_SCORE, topN: 1 }, ['weekByWeek', 'staffingFirst', 'stochastic', 'educationFirst'], 
         () => false, 
         () => {}
@@ -66,7 +66,6 @@ export const getMockProgramData = (): ProgramData => {
     gradRequirements: [],
     avoidanceRules: [],
     tags: [],
-    hueMap: new Map(),
     rotationTags: new Map(),
     placeholderCodenames: new Set(),
     flexibleCodenames: new Set()

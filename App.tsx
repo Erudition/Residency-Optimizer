@@ -191,7 +191,7 @@ const AssignmentModal = ({
         <div className="grid grid-cols-4 gap-1.5 select-none">
           {Array.from(programData.rotations.entries()).map(([key, config]) => {
             const label = config.label;
-            const bgHex = getAssignmentColor(programData.hueMap.get(key) || 0, config.intensity, false);
+            const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
             return (
               <button
                 key={key}
@@ -1312,8 +1312,8 @@ const AppContent: React.FC = () => {
         for (let i = 0; i < totalWeeksInGrid; i++) {
           const cell = displayGrid[r.id]?.[i];
           if (cell?.assignment) {
-            const intensity = programData.rotations.get(cell.assignment)?.intensity ?? 1;
-            const hex = getAssignmentColor(programData.hueMap.get(cell.assignment) || 0, intensity, false).replace('#', '');
+            const rotation = programData.rotations.get(cell.assignment);
+            const hex = getAssignmentColor(rotation?.color || 0, rotation?.intensity ?? 1, false).replace('#', '');
             row.getCell(4 + i).fill = {
               type: 'pattern',
               pattern: 'solid',

@@ -25,17 +25,17 @@ export interface Resident {
 }
 
 export const CODENAMES = {
-  WARDS_RED: 'RED',
-  WARDS_BLUE: 'BLUE',
-  WARDS_METRO: 'METRO',
-  MICU: 'MICU',
-  METRO_ICU: 'METRO_ICU',
-  AMCS_CONSULTS: 'AMCS_CONSULTS',
+  WARDS_RED: 'W-RED',
+  WARDS_BLUE: 'W-BLUE',
+  WARDS_METRO: 'MET',
+  MICU: 'ICU',
+  METRO_ICU: 'METRO',
+  AMCS_CONSULTS: 'AMCS',
   NIGHT_FLOAT: 'NF',
   EM: 'EM',
   CLINIC: 'CCIM',
   NIMA_BLOCK: 'NIMA',
-  ELECTIVE: 'ELECTIVE',
+  ELECTIVE: 'ELEC',
   VACATION: 'VAC',
 
   // PGY1 Required Electives
@@ -62,7 +62,7 @@ export const CODENAMES = {
   HF: 'HF',
   ENT: 'ENT',
   PMNR: 'PMNR',
-  ANAESTHESIA: 'ANAESTHESIA',
+  ANAESTHESIA: 'ANES',
   NIMA_CLINIC: 'NIMA_CLINIC',
 } as const;
 
@@ -103,6 +103,7 @@ export interface RotationConfig {
   minWeeksPGY3?: number;   // Specific PGY3 minimum
 
   notes?: string;
+  color?: number; // OKLCH hue value configured in the backend
 }
 
 export interface ResidentFairnessMetrics {

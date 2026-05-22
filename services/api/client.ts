@@ -64,6 +64,8 @@ interface GqlRotation {
   color: string | null
   isFlexible: boolean
   isPlaceholder: boolean
+  availableSince: GqlAcademicYear
+  availableUntil?: GqlAcademicYear | null
   tags: GqlTag[]
   staffingConfigurations: GqlStaffingConfig[]
 }
@@ -104,8 +106,7 @@ interface GqlGradRequirement {
 interface GqlAvoidanceRule {
   id: number
   resident: { id: number }
-  avoidResident: { id: number }
-  reason?: string
+  avoidedResident: { id: number }
 }
 
 // ── Cycle Config ──
@@ -132,14 +133,33 @@ export interface ProgramData {
   gradRequirements: GqlGradRequirement[]
   avoidanceRules: GqlAvoidanceRule[]
   tags: GqlTag[]
-  /** Hue values keyed by codename */
-  hueMap: Map<string, number>
   /** Tag titles per rotation codename (for requirement fulfillment) */
   rotationTags: Map<string, string[]>
   /** Set of codenames that are placeholder rotations */
   placeholderCodenames: Set<string>
   /** Set of codenames that are flexible (jeopardy-eligible) */
   flexibleCodenames: Set<string>
+}
+
+export function serializeProgramData(data: ProgramData): any {
+  return {
+    ...data,
+    rotations: Array.from(data.rotations.entries()),
+    rotationTags: Array.from(data.rotationTags.entries()),
+    placeholderCodenames: Array.from(data.placeholderCodenames),
+    flexibleCodenames: Array.from(data.flexibleCodenames)
+  };
+}
+
+export function deserializeProgramData(data: any): ProgramData {
+  if (!data) return data;
+  return {
+    ...data,
+    rotations: new Map(data.rotations),
+    rotationTags: new Map(data.rotationTags),
+    placeholderCodenames: new Set(data.placeholderCodenames),
+    flexibleCodenames: new Set(data.flexibleCodenames)
+  };
 }
 
 // ── Data Fetching ──
@@ -159,39 +179,22 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     avoidanceRes,
     tagsRes,
   ] = await Promise.all([
-    client.request<{ Rotations: { docs: GqlRotation[] } }>(ROTATIONS_QUERY, {
-      where: {
-        'availableSince.startingYear': { less_than_equal: academicYear },
-        or: [
-          { availableUntil: { exists: false } },
-          { 'availableUntil.startingYear': { greater_than_equal: academicYear } },
-        ],
-      },
-    }),
-    client.request<{ Residents: { docs: GqlResident[] } }>(RESIDENTS_QUERY, {
-      where: {
-        'startYear.startingYear': { less_than_equal: academicYear },
-        'pgy3Year.startingYear': { greater_than_equal: academicYear },
-      },
-    }),
-    client.request<{ ClinicCycles: { docs: GqlClinicCycle[] } }>(CLINIC_CYCLES_QUERY, {
-      where: { 'academicYear.startingYear': { equals: academicYear } },
-    }),
+    client.request<{ Rotations: { docs: GqlRotation[] } }>(ROTATIONS_QUERY),
+    client.request<{ Residents: { docs: GqlResident[] } }>(RESIDENTS_QUERY),
+    client.request<{ ClinicCycles: { docs: GqlClinicCycle[] } }>(CLINIC_CYCLES_QUERY),
     client.request<{ AcademicYears: { docs: GqlAcademicYear[] } }>(ACADEMIC_YEAR_QUERY, {
       where: { startingYear: { equals: academicYear } },
     }),
-    client.request<{ GradRequirements: { docs: GqlGradRequirement[] } }>(GRAD_REQUIREMENTS_QUERY, {
-      where: { 'academicYear.startingYear': { equals: academicYear } },
-    }),
+    client.request<{ GradRequirements: { docs: GqlGradRequirement[] } }>(GRAD_REQUIREMENTS_QUERY),
     client.request<{ AvoidanceRules: { docs: GqlAvoidanceRule[] } }>(AVOIDANCE_RULES_QUERY),
     client.request<{ Tags: { docs: GqlTag[] } }>(TAGS_QUERY),
   ])
 
-  const gqlRotations = rotationsRes.Rotations.docs
-  const gqlResidents = residentsRes.Residents.docs
-  const gqlCycles = cyclesRes.ClinicCycles.docs
+  let gqlRotations = rotationsRes.Rotations.docs
+  let gqlResidents = residentsRes.Residents.docs
+  let gqlCycles = cyclesRes.ClinicCycles.docs
   const ay = ayRes.AcademicYears.docs[0]
-  const gqlGradReqs = gradReqsRes.GradRequirements.docs
+  let gqlGradReqs = gradReqsRes.GradRequirements.docs
   const gqlAvoidance = avoidanceRes.AvoidanceRules.docs
   const tags = tagsRes.Tags.docs
 
@@ -199,9 +202,20 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     throw new Error(`Academic year ${academicYear} not found in the backend`)
   }
 
+  // Locally filter relationship data to bypass Payload GraphQL nested operator limitations
+  gqlRotations = gqlRotations.filter(r => 
+    r.availableSince?.startingYear <= academicYear &&
+    (!r.availableUntil || r.availableUntil.startingYear >= academicYear)
+  )
+
+  // Keep all residents in the master list so the frontend can dynamically filter by the active year
+  // (to support multi-year generation and viewing historical/future schedules).
+
+  gqlCycles = gqlCycles.filter(c => c.academicYear?.startingYear === academicYear)
+  gqlGradReqs = gqlGradReqs.filter(g => g.academicYear?.startingYear === academicYear)
+
   // ── Transform Rotations ──
   const rotations = new Map<string, RotationConfig>()
-  const hueMap = new Map<string, number>()
   const rotationTags = new Map<string, string[]>()
   const placeholderCodenames = new Set<string>()
   const flexibleCodenames = new Set<string>()
@@ -221,13 +235,10 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
       maxInterns: staffing?.preferences[staffing.preferences.length - 1]?.internCount ?? 0,
       minSeniors: staffing?.preferences[0]?.seniorCount ?? 0,
       maxSeniors: staffing?.preferences[staffing.preferences.length - 1]?.seniorCount ?? 0,
+      color: r.color ? parseInt(r.color, 10) : undefined,
     }
 
     rotations.set(r.codename, config)
-
-    if (r.color) {
-      hueMap.set(r.codename, parseInt(r.color, 10))
-    }
 
     rotationTags.set(r.codename, r.tags.map(t => t.title))
 
@@ -240,7 +251,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   const avoidMap = new Map<number, Set<number>>()
   for (const rule of gqlAvoidance) {
     if (!avoidMap.has(rule.resident.id)) avoidMap.set(rule.resident.id, new Set())
-    avoidMap.get(rule.resident.id)!.add(rule.avoidResident.id)
+    avoidMap.get(rule.resident.id)!.add(rule.avoidedResident.id)
   }
 
   // Map backend IDs to frontend string IDs
@@ -252,13 +263,21 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
 
     const pgyLevel = Math.min(3, Math.max(1, academicYear - r.startYear.startingYear + 1)) as PgyLevel
 
-    // Compute transferOutYear from leaveDate
+    // Compute transferOutYear from leaveDate.
+    // The academic year starting in year Y ends on June 30 of Y+1.
+    // If they leave on or after June 15 of Y+1, they completed academic year Y,
+    // and should be excluded starting academic year Y+1.
     let transferOutYear: number | undefined
     if (r.leaveDate) {
-      const leaveYearNum = new Date(r.leaveDate).getFullYear()
-      // If they leave before July, it's the prior academic year
-      const leaveMonth = new Date(r.leaveDate).getMonth()
-      transferOutYear = leaveMonth < 6 ? leaveYearNum - 1 : leaveYearNum
+      const date = new Date(r.leaveDate)
+      const leaveYearNum = date.getFullYear()
+      const leaveMonth = date.getMonth()
+      const leaveDay = date.getDate()
+      if (leaveMonth < 5 || (leaveMonth === 5 && leaveDay < 15)) {
+        transferOutYear = leaveYearNum - 1
+      } else {
+        transferOutYear = leaveYearNum
+      }
     }
 
     return {
@@ -310,7 +329,6 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     gradRequirements: gqlGradReqs,
     avoidanceRules: gqlAvoidance,
     tags,
-    hueMap,
     rotationTags,
     placeholderCodenames,
     flexibleCodenames,
