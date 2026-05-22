@@ -9,7 +9,11 @@ import {
   AssignmentType,
   ScheduleCell,
   ConvergenceDataPoint,
-  CandidateSchedule
+  CandidateSchedule,
+  DraftCandidate,
+  PublishedCandidate,
+  isDraft,
+  isPublished
 } from './types';
 import {
   TOTAL_WEEKS
@@ -239,7 +243,7 @@ const RenameModal = ({
   return (
     <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-6 w-96">
-        <h3 className="text-lg font-bold mb-4">Rename Schedule</h3>
+        <h3 className="text-lg font-bold mb-4">Rename Candidate</h3>
         <input
           type="text"
           value={name}
@@ -366,16 +370,31 @@ const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): Candid
     ? sanitizeScheduleGrid(rawUnified as ScheduleGrid, residentsList, undefined, startYear) 
     : undefined;
 
-  return {
-    ...s,
+  // Preserve kind if already set (e.g. from a previous session), default to draft
+  const kind = s.kind === 'published' ? 'published' : 'draft';
+  const base = {
     id,
     name,
     data: sanitizedData,
     unifiedData: sanitizedUnifiedData,
     startYear,
     createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
-    isGenerating: false
+    isGenerating: false,
+    metrics: s.metrics,
+    cohortAssignments: s.cohortAssignments,
+    isHistory: s.isHistory,
+    lockedUntilWeek: s.lockedUntilWeek,
   };
+  if (kind === 'published') {
+    return {
+      ...base,
+      kind: 'published' as const,
+      candidateId: s.candidateId,
+      scheduleIds: s.scheduleIds || {},
+      lastSyncedAt: s.lastSyncedAt ? new Date(s.lastSyncedAt) : undefined,
+    };
+  }
+  return { ...base, kind: 'draft' as const };
 };
 
 const syncResidentsWithBackend = (cached: Resident[], backendResidents: Resident[]): Resident[] => {
@@ -947,7 +966,9 @@ const AppContent: React.FC = () => {
 
   useEffect(() => { 
     try {
-      const pruned = schedules.slice(-3).map(sch => {
+      // Only persist draft candidates to localStorage — published ones live on the server
+      const drafts = schedules.filter(s => isDraft(s));
+      const pruned = drafts.slice(-3).map(sch => {
         if (!sch.metrics) return sch;
         return {
           ...sch,
@@ -976,7 +997,7 @@ const AppContent: React.FC = () => {
   // ── SSE Sync Lifecycle ──
   // Derive candidateId from the active tab's backendId
   const activeSched = schedules.find(s => s.id === activeScheduleId);
-  const activeSyncId = activeSched?.backendId ?? null;
+  const activeSyncId = (activeSched && isPublished(activeSched)) ? activeSched.candidateId : null;
 
   useEffect(() => {
     if (!activeSyncId) return;
@@ -1090,14 +1111,14 @@ const AppContent: React.FC = () => {
           }
 
           newCandidates.push({
-            id: `backend-${candidate.candidateId}`,
+            kind: 'published' as const,
+            id: `pub-${candidate.candidateId}`,
             name: candidate.title,
             data,
             createdAt: new Date(),
             startYear: candidate.startYear,
-            backendId: candidate.candidateId,
+            candidateId: candidate.candidateId,
             scheduleIds: candidate.scheduleIds,
-            syncStatus: 'synced',
             lastSyncedAt: new Date(),
           });
         }
@@ -1215,7 +1236,8 @@ const AppContent: React.FC = () => {
           });
         }
         setSchedules(prev => {
-          const finalResults = results.map((res: any, idx: number) => ({
+          const finalResults: DraftCandidate[] = results.map((res: any, idx: number) => ({
+            kind: 'draft' as const,
             id: newIds[idx],
             name: `${res.winnerName} (${idx === 0 ? 'Optimal' : `Rank ${idx + 1}`})`,
             data: res.schedule,
@@ -1225,7 +1247,6 @@ const AppContent: React.FC = () => {
             startYear: activeYear,
             createdAt: new Date(),
             isGenerating: false,
-            syncStatus: 'local-only' as const,
           }));
 
           return [...prev, ...finalResults];
@@ -1258,9 +1279,9 @@ const AppContent: React.FC = () => {
   const handleRename = (newName: string) => {
     if (scheduleToRename && newName.trim()) {
       setSchedules(prev => prev.map(s => s.id === scheduleToRename.id ? { ...s, name: newName } : s));
-      // Sync rename to backend if the schedule has a backend ID
-      if (scheduleToRename.backendId) {
-        syncService.renameSchedule(scheduleToRename.backendId, newName.trim());
+      // Sync rename to backend if published
+      if (isPublished(scheduleToRename)) {
+        syncService.renameSchedule(scheduleToRename.candidateId, newName.trim());
       }
     }
     setRenameModalOpen(false);
@@ -1349,47 +1370,79 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const [isPublishing, setIsPublishing] = useState(false);
 
-  const handlePublish = async () => {
-    const sched = activeSchedule;
-    if (!sched || sched.backendId || !sched.startYear) return;
+  // Publish state: 'idle' | 'naming' (modal open) | 'saving' (network)
+  const [publishState, setPublishState] = useState<'idle' | 'naming' | 'saving'>('idle');
+
+  const handlePublishClick = () => {
+    if (!activeSchedule || !isDraft(activeSchedule) || !activeSchedule.startYear) return;
     if (!isAuthenticated()) return;
+    // Open the rename modal pre-filled with the draft's name for the user to confirm/edit
+    setScheduleToRename(activeSchedule);
+    setPublishState('naming');
+    setRenameModalOpen(true);
+  };
 
-    setIsPublishing(true);
+  const handlePublishSave = async (candidateName: string) => {
+    const sched = scheduleToRename;
+    setRenameModalOpen(false);
+    setScheduleToRename(null);
+
+    if (!sched || !isDraft(sched) || !sched.startYear || !candidateName.trim()) {
+      setPublishState('idle');
+      return;
+    }
+
+    setPublishState('saving');
     try {
-      const result = await syncService.createCandidate(sched.startYear, sched.name);
+      const result = await syncService.createCandidate(sched.startYear, candidateName.trim());
       if (!result) {
         console.error('[Publish] Failed to create candidate');
         return;
       }
       const { candidateId } = result;
-
       const scheduleIds = await syncService.saveCandidateGrids(
         candidateId,
-        sched.name,
+        candidateName.trim(),
         sched.data,
       );
 
-      // Update local state with backend IDs
-      setSchedules(prev => prev.map(s =>
-        s.id === sched.id
-          ? {
-              ...s,
-              backendId: candidateId,
-              scheduleIds,
-              syncStatus: 'synced' as const,
-              lastSyncedAt: new Date(),
-            }
-          : s
-      ));
+      // Replace the draft with a published candidate
+      const published: PublishedCandidate = {
+        kind: 'published',
+        id: `pub-${candidateId}`,
+        candidateId,
+        scheduleIds,
+        name: candidateName.trim(),
+        data: sched.data,
+        unifiedData: sched.unifiedData,
+        createdAt: sched.createdAt,
+        metrics: sched.metrics,
+        cohortAssignments: sched.cohortAssignments,
+        startYear: sched.startYear,
+        lastSyncedAt: new Date(),
+      };
 
-      console.log(`[Publish] Published "${sched.name}" as candidate ${candidateId}`);
+      setSchedules(prev => prev.map(s => s.id === sched.id ? published : s));
+      setActiveScheduleId(published.id);
+      console.log(`[Publish] Published "${candidateName}" as candidate ${candidateId}`);
     } catch (err) {
       console.error('[Publish] Failed:', err);
     } finally {
-      setIsPublishing(false);
+      setPublishState('idle');
     }
+  };
+
+  const handleDeleteSchedule = async (sched: CandidateSchedule) => {
+    if (isPublished(sched)) {
+      const confirmed = window.confirm(
+        `Delete "${sched.name}"?\n\nThis will permanently remove this candidate for all users.`
+      );
+      if (!confirmed) return;
+      await syncService.deleteCandidate(sched.candidateId);
+    }
+    setSchedules(prev => prev.filter(x => x.id !== sched.id));
+    if (activeScheduleId === sched.id) setActiveScheduleId('all');
   };
 
   const handleCellClick = (resId: string, week: number, rect?: DOMRect) => {
@@ -1588,22 +1641,20 @@ const AppContent: React.FC = () => {
 
   const handleDuplicateSchedule = (sched: CandidateSchedule) => {
     const newId = Math.random().toString(36).substring(2, 9);
-    const duplicated: CandidateSchedule = {
-      ...sched,
+    // Duplicates always start as drafts — user must Publish explicitly
+    const duplicated: DraftCandidate = {
+      kind: 'draft',
       id: newId,
       name: `${sched.name} (Copy)`,
       data: JSON.parse(JSON.stringify(sched.data)),
       unifiedData: sched.unifiedData ? JSON.parse(JSON.stringify(sched.unifiedData)) : undefined,
       createdAt: new Date(),
       cohortAssignments: sched.cohortAssignments ? JSON.parse(JSON.stringify(sched.cohortAssignments)) : undefined,
-      // Duplicates start as local-only — no backendId until saved
-      backendId: undefined,
-      syncStatus: 'local-only',
+      startYear: sched.startYear,
+      metrics: sched.metrics,
     };
     setSchedules(prev => [...prev, duplicated]);
     setActiveScheduleId(newId);
-
-    // Duplicates start as local drafts — user must Publish explicitly
   };
 
   const handleToggleLock = (residentId: string, weekIdx: number) => {
@@ -2105,9 +2156,9 @@ const AppContent: React.FC = () => {
                           )}
                         </Button>
                       )}
-                      {/* Publish button — only for unpublished, non-history schedules when authenticated */}
-                      {!activeSchedule?.isHistory && isAuthenticated() && (
-                        activeSchedule?.backendId ? (
+                      {/* Publish button — only for draft, non-history schedules when authenticated */}
+                      {!activeSchedule?.isHistory && isAuthenticated() && activeSchedule && (
+                        isPublished(activeSchedule) ? (
                           <span className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
                             <CloudUpload size={13} />
                             Published
@@ -2116,11 +2167,11 @@ const AppContent: React.FC = () => {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={handlePublish}
-                            disabled={isPublishing || !activeSchedule?.startYear}
+                            onClick={handlePublishClick}
+                            disabled={publishState !== 'idle' || !activeSchedule?.startYear}
                             className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
                           >
-                            {isPublishing ? (
+                            {publishState === 'saving' ? (
                               <>
                                 <Loader2 size={14} className="animate-spin" />
                                 Publishing…
@@ -2361,10 +2412,9 @@ const AppContent: React.FC = () => {
                       </Button>
                       <Button variant="ghost" size="sm" onClick={(e) => { 
                         e.stopPropagation(); 
-                        setSchedules(s => s.filter(x => x.id !== sched.id)); 
-                        if (activeScheduleId === sched.id) setActiveScheduleId('all'); 
-                      }} className="p-0.5 rounded text-muted hover:text-red transition-colors">
-                        <X size={10} />
+                        handleDeleteSchedule(sched);
+                      }} className="p-0.5 rounded text-muted hover:text-red transition-colors" title={isPublished(sched) ? 'Delete candidate for all users' : 'Remove draft'}>
+                        <Trash2 size={10} />
                       </Button>
                     </div>
                   </div>
@@ -2400,7 +2450,7 @@ const AppContent: React.FC = () => {
       )}
 
       <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} anchorRect={anchorRect} />
-      <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => setRenameModalOpen(false)} onSave={handleRename} />
+      <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => { setRenameModalOpen(false); setPublishState('idle'); setScheduleToRename(null); }} onSave={publishState === 'naming' ? handlePublishSave : handleRename} />
     </div>
   );
 };

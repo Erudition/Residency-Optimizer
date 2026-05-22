@@ -287,6 +287,14 @@ export const DELETE_SCHEDULE_MUTATION = /* GraphQL */ `
   }
 `
 
+export const DELETE_CANDIDATE_MUTATION = /* GraphQL */ `
+  mutation DeleteCandidate($id: Int!) {
+    deleteCandidate(id: $id) {
+      id
+    }
+  }
+`
+
 export const UPSERT_SCHEDULE_ASSIGNMENT_MUTATION = /* GraphQL */ `
   mutation UpsertScheduleAssignment($data: mutationScheduleAssignmentInput!) {
     createScheduleAssignment(data: $data) {

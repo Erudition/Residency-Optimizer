@@ -24,6 +24,7 @@ import {
   SCHEDULE_ASSIGNMENTS_QUERY,
   UPDATE_SCHEDULE_MUTATION,
   DELETE_SCHEDULE_MUTATION,
+  DELETE_CANDIDATE_MUTATION,
   FIND_ASSIGNMENT_QUERY,
   UPDATE_SCHEDULE_ASSIGNMENT_MUTATION,
   CREATE_SCHEDULE_ASSIGNMENT_MUTATION,
@@ -247,6 +248,21 @@ export class ScheduleSyncService {
       })
     } catch (err) {
       console.error('[Sync] Delete failed:', err)
+    }
+  }
+
+  /**
+   * Delete a Candidate and all its child documents (cascade via backend hook).
+   */
+  async deleteCandidate(candidateId: number): Promise<void> {
+    if (!isAuthenticated()) return
+    try {
+      this.refreshAuthHeaders()
+      await this.client.request(DELETE_CANDIDATE_MUTATION, {
+        id: candidateId,
+      })
+    } catch (err) {
+      console.error('[Sync] Delete candidate failed:', err)
     }
   }
 

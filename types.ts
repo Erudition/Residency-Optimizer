@@ -217,7 +217,8 @@ export interface ScheduleGenerator {
     onProgress?: (step: number, maxSteps: number, currentPenalty?: number) => void
   ) => ScheduleGrid | Promise<ScheduleGrid>;
 }
-export interface CandidateSchedule {
+/** Shared shape for both draft and published candidates */
+interface CandidateBase {
   id: string;
   name: string;
   data: ScheduleHistory;
@@ -240,15 +241,30 @@ export interface CandidateSchedule {
   isHistory?: boolean;
   startYear?: number;
   lockedUntilWeek?: number;
-  /** Backend Candidate doc ID (null/undefined for local-only candidates) */
-  backendId?: number;
+}
+
+/** Local-only candidate, persisted in localStorage */
+export interface DraftCandidate extends CandidateBase {
+  kind: 'draft';
+}
+
+/** Payload-backed candidate, always auto-synced */
+export interface PublishedCandidate extends CandidateBase {
+  kind: 'published';
+  /** Payload Candidate doc ID */
+  candidateId: number;
   /** Per-year Schedule doc IDs keyed by starting year */
-  scheduleIds?: Record<number, number>;
+  scheduleIds: Record<number, number>;
   /** Timestamp of last confirmed server write */
   lastSyncedAt?: Date;
-  /** Sync status: synced, pending, error, or local-only */
-  syncStatus?: 'synced' | 'pending' | 'error' | 'local-only';
 }
+
+export type CandidateSchedule = DraftCandidate | PublishedCandidate;
+
+/** Type guard: is this a local draft? */
+export const isDraft = (s: CandidateSchedule): s is DraftCandidate => s.kind === 'draft';
+/** Type guard: is this a published (backend-synced) candidate? */
+export const isPublished = (s: CandidateSchedule): s is PublishedCandidate => s.kind === 'published';
 
 export interface DetailedScore {
   finalScore: number;

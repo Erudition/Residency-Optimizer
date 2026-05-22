@@ -18,6 +18,7 @@ describe.skip('Backup and Restore Integrity', () => {
         // 1. Setup real session data
         const mockSchedules: CandidateSchedule[] = [
             {
+                kind: 'draft',
                 id: 'real-schedule-AY26',
                 name: 'Realistic Generated Schedule',
                 data: schedule,
