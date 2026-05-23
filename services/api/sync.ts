@@ -100,7 +100,10 @@ export class ScheduleSyncService {
   private eventSource: EventSource | null = null
   private handlers: Set<EventHandler> = new Set()
   private _candidateId: number | null = null
-  private _status: SyncStatus = 'local-only'
+  // Seed from auth state so the badge is correct immediately on first render.
+  // isAuthenticated() does a localStorage read-through, so this is reliable
+  // even if the module IIFE ran before storage was fully populated.
+  private _status: SyncStatus = isAuthenticated() ? 'connected' : 'local-only'
   private reconnectAttempts = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private pendingWrites: Map<string, PendingCellWrite> = new Map()
