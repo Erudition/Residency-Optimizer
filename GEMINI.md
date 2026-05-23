@@ -165,4 +165,6 @@ Future-year schedules require placeholder ("synthetic") residents for years with
 ## Unified Requirements Violations Telemetry
 *   **Deficit-Based Calculation**: To prevent discrepancies in requirement counts, the scheduler UI, background healer worker, and progress telemetry must always measure requirements violations as literal deficit weeks (computed via `getRequirementsViolationsCount`) rather than the number of unique rules violated, matching the display states of the Requirements spreadsheet grid.
 *   **Historical Year Preloading in Worker**: The background worker solver must preload historical schedule data (`fullHistory`) in the same manner as the UI to correctly resolve multi-year requirements and avoid phantom violations.
+*   **Planning Horizon Scaled Graduation Minimums**: To prevent phantom graduation deficits for future cohorts who do not yet have their entire 3-year residency completed within a given planning horizon (such as a 3-year unified grid spanning weeks 1–156), the required graduation minimums evaluated by the `RequirementsEngine` and displayed in the spreadsheet tooltip/grid must scale dynamically based on the resident's active years inside the grid planning horizon (yielding scaled targets of `pgy1Ideal` for PGY-1, `pgy1Ideal + pgy2Ideal` for PGY-2, and full `minimum` only for PGY-3 or above).
+
 
