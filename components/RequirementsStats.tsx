@@ -26,7 +26,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
   const [sourceFilter, setSourceFilter] = useState<'all' | 'acgme' | 'mhs'>('all');
 
   // Sorting / Grouping residents (in 1-year view only)
-  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>('pgy');
+  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>('cycle');
 
   // Draggable Left Column Width State
   const [colWidth, setColWidth] = useState(180);
@@ -279,17 +279,17 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
               <div className="flex bg-light-2 p-0.5 rounded-lg border border-light-5">
                 <Button
                   variant="ghost"
-                  onClick={() => setResidentSortOrder('pgy')}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                >
-                  PGY Level
-                </Button>
-                <Button
-                  variant="ghost"
                   onClick={() => setResidentSortOrder('cycle')}
                   className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
                 >
-                  Clinic Cycle
+                  Cycle
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setResidentSortOrder('pgy')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                >
+                  PGY
                 </Button>
               </div>
             </div>

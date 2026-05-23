@@ -314,18 +314,18 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
             <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
             <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
               <button
-                onClick={() => setGroupBy('pgy')}
-                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all ${groupBy === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-              >
-                <LayoutGrid size={14} />
-                PGY Level
-              </button>
-              <button
                 onClick={() => setGroupBy('cycle')}
                 className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all ${groupBy === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
               >
                 <Users size={14} />
-                Clinic Cycle
+                Cycle
+              </button>
+              <button
+                onClick={() => setGroupBy('pgy')}
+                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all ${groupBy === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+              >
+                <LayoutGrid size={14} />
+                PGY
               </button>
             </div>
           </div>

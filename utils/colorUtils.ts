@@ -28,21 +28,21 @@ export const oklchToHex = (L: number, C: number, H: number): string => {
 
 export const getAssignmentColor = (
   hue: number,
-  intensityOrIsPast?: number | boolean,
-  isPast?: boolean
+  intensityOrIsLocked?: number | boolean,
+  isLocked?: boolean
 ): string => {
   let intensity = 1;
-  let past = false;
+  let locked = false;
 
-  if (typeof intensityOrIsPast === 'boolean') {
-    past = intensityOrIsPast;
+  if (typeof intensityOrIsLocked === 'boolean') {
+    locked = intensityOrIsLocked;
     intensity = 1;
-  } else if (typeof intensityOrIsPast === 'number') {
-    intensity = intensityOrIsPast;
-    past = isPast ?? false;
+  } else if (typeof intensityOrIsLocked === 'number') {
+    intensity = intensityOrIsLocked;
+    locked = isLocked ?? false;
   }
 
   const chroma = intensity === 0 ? 0.015 : 0.01 + intensity * 0.038;
-  const lightness = past ? 0.62 : 0.84;
+  const lightness = locked ? 0.62 : 0.84;
   return oklchToHex(lightness, chroma, hue);
 };
