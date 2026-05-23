@@ -33,7 +33,7 @@ import {
   getAugmentedResidents
 } from './services/scheduler';
 import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
-import { getScheduleSyncService, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
+import { getScheduleSyncService, SyncError, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
 import { extractTokenFromURL, isAuthenticated } from './services/api/auth';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
@@ -631,6 +631,13 @@ const AppContent: React.FC = () => {
         });
       } catch (err) {
         console.error('[App] Failed to load candidates from backend:', err);
+        if (!cancelled) {
+          toast.warning(
+            err instanceof SyncError
+              ? `Could not load published schedules: ${err.message}`
+              : 'Could not load published schedules from server. Working in local-only mode.',
+          );
+        }
       }
     })();
 
@@ -1139,9 +1146,15 @@ const AppContent: React.FC = () => {
       }
     });
 
+    // Surface batched cell upsert failures as toast warnings
+    const unsubscribeErrors = syncService.onError((error) => {
+      toast.warning(error.message);
+    });
+
     return () => {
       clearInterval(statusInterval);
       unsubscribe();
+      unsubscribeErrors();
       syncService.disconnect();
       setSyncStatus(isAuthenticated() ? 'connected' : 'local-only');
     };
@@ -1273,6 +1286,7 @@ const AppContent: React.FC = () => {
         console.log('Generation canceled');
       } else {
         console.error('Generation failed:', err);
+        toast.error(`Schedule generation failed: ${err instanceof Error ? err.message : 'unknown error'}`);
       }
     } finally {
       isGeneratingRef.current = false;
@@ -1454,12 +1468,7 @@ const AppContent: React.FC = () => {
 
     setPublishState('saving');
     try {
-      const result = await syncService.createCandidate(sched.startYear, candidateName.trim());
-      if (!result) {
-        console.error('[Publish] Failed to create candidate');
-        return;
-      }
-      const { candidateId } = result;
+      const { candidateId } = await syncService.createCandidate(sched.startYear, candidateName.trim());
       const scheduleIds = await syncService.saveCandidateGrids(
         candidateId,
         candidateName.trim(),
@@ -1484,9 +1493,14 @@ const AppContent: React.FC = () => {
 
       setSchedules(prev => prev.map(s => s.id === sched.id ? published : s));
       setActiveScheduleId(published.id);
-      console.log(`[Publish] Published "${candidateName}" as candidate ${candidateId}`);
+      toast.success(`Published "${candidateName}" to server`);
     } catch (err) {
       console.error('[Publish] Failed:', err);
+      toast.error(
+        err instanceof SyncError
+          ? `Publish failed: ${err.message}`
+          : 'Failed to publish schedule to server',
+      );
     } finally {
       setPublishState('idle');
     }
@@ -1498,7 +1512,17 @@ const AppContent: React.FC = () => {
         `Delete "${sched.name}"?\n\nThis will permanently remove this candidate for all users.`
       );
       if (!confirmed) return;
-      await syncService.deleteCandidate(sched.candidateId);
+      try {
+        await syncService.deleteCandidate(sched.candidateId);
+      } catch (err) {
+        console.error('[Delete] Failed:', err);
+        toast.error(
+          err instanceof SyncError
+            ? `Delete failed: ${err.message}`
+            : 'Failed to delete candidate from server',
+        );
+        return; // Don't remove tab if backend delete failed
+      }
     }
     setSchedules(prev => prev.filter(x => x.id !== sched.id));
     if (activeScheduleId === sched.id) setActiveScheduleId('all');
@@ -1582,7 +1606,7 @@ const AppContent: React.FC = () => {
       setTimeout(() => URL.revokeObjectURL(url), 500);
     } catch (err) {
       console.error("Export JSON failed", err);
-      alert("Failed to generate backup file.");
+      toast.error('Failed to generate backup file.');
     }
   };
 
@@ -1606,10 +1630,10 @@ const AppContent: React.FC = () => {
         }
         setSchedules(patchedSchedules);
         setActiveScheduleId('all');
-        alert("Backup imported successfully!");
+        toast.success(`Imported ${patchedSchedules.length} schedule(s) from backup`);
       } catch (err) {
         console.error("Import failed", err);
-        alert("Failed to import backup. Please ensure it's a valid JSON file.");
+        toast.error("Failed to import backup. Please ensure it's a valid JSON file.");
       }
     };
     reader.readAsText(file);
@@ -1662,7 +1686,7 @@ const AppContent: React.FC = () => {
       setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (e) {
       console.error("Export failed", e);
-      alert("Failed to export Excel file. See console for details.");
+      toast.error('Failed to export Excel file');
     } finally {
       setIsExporting(false);
     }
@@ -1688,10 +1712,10 @@ const AppContent: React.FC = () => {
           grid: activeSchedule.data[activeYear],
           title: `Official: ${activeSchedule.name} (AY ${activeYear}-${(activeYear + 1).toString().slice(-2)})`,
         });
-        alert(`✓ Schedule promoted to official record for AY ${activeYear}-${(activeYear + 1).toString().slice(-2)}`);
+        toast.success(`Schedule promoted to official record for AY ${activeYear}-${(activeYear + 1).toString().slice(-2)}`);
       } catch (e) {
         console.error('Promotion failed', e);
-        alert(`Excel export succeeded, but promotion to official schedule failed: ${e}`);
+        toast.error(`Excel export succeeded, but promotion to official schedule failed: ${e instanceof Error ? e.message : String(e)}`);
       } finally {
         setIsPromoting(false);
       }
@@ -1916,15 +1940,18 @@ const AppContent: React.FC = () => {
           <div
             className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border cursor-default"
             style={{
-              backgroundColor: syncStatus === 'live' ? 'rgba(139,92,246,0.1)'
+              backgroundColor: syncStatus === 'error' ? 'rgba(239,68,68,0.1)'
+                : syncStatus === 'live' ? 'rgba(139,92,246,0.1)'
                 : syncStatus === 'connected' ? 'rgba(16,185,129,0.1)'
                 : 'rgba(156,163,175,0.1)',
-              borderColor: syncStatus === 'live' ? 'rgba(139,92,246,0.2)'
+              borderColor: syncStatus === 'error' ? 'rgba(239,68,68,0.2)'
+                : syncStatus === 'live' ? 'rgba(139,92,246,0.2)'
                 : syncStatus === 'connected' ? 'rgba(16,185,129,0.2)'
                 : 'rgba(156,163,175,0.2)',
             }}
             title={
-              syncStatus === 'live' ? 'Live — real-time sync active with other clients'
+              syncStatus === 'error' ? 'Sync Error — server communication failed'
+              : syncStatus === 'live' ? 'Live — real-time sync active with other clients'
               : syncStatus === 'connected' ? 'Connected — authenticated with server'
               : 'Local Only — not connected to a server'
             }
@@ -1932,7 +1959,8 @@ const AppContent: React.FC = () => {
             <span
               className="inline-block w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: syncStatus === 'live' ? '#8b5cf6'
+                backgroundColor: syncStatus === 'error' ? '#ef4444'
+                  : syncStatus === 'live' ? '#8b5cf6'
                   : syncStatus === 'connected' ? '#10b981'
                   : '#9ca3af',
               }}
@@ -1940,12 +1968,14 @@ const AppContent: React.FC = () => {
             <span
               className="text-[9px] font-black uppercase tracking-tighter"
               style={{
-                color: syncStatus === 'live' ? '#8b5cf6'
+                color: syncStatus === 'error' ? '#ef4444'
+                  : syncStatus === 'live' ? '#8b5cf6'
                   : syncStatus === 'connected' ? '#10b981'
                   : '#9ca3af',
               }}
             >
-              {syncStatus === 'live' ? 'Live'
+              {syncStatus === 'error' ? 'Sync Error'
+                : syncStatus === 'live' ? 'Live'
                 : syncStatus === 'connected' ? 'Connected'
                 : 'Local Only'}
             </span>
