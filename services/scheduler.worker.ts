@@ -63,59 +63,12 @@ onmessage = async (e: MessageEvent) => {
         algorithmIds,
         (id) => cancelledAlgorithmIds.has(id),
         (iteration, scores, attempts, exhaustionPoints, exhaustedCount) => {
-          overallProgress = (exhaustedCount / algorithmIds.length) * 0.8; // 80% for generation
+          overallProgress = (exhaustedCount / algorithmIds.length) * 1.0; // 100% for generation
           postProgress(iteration, scores, attempts, exhaustionPoints, exhaustedCount);
         },
         () => isPromoteTriggered
       );
-      // Reset promote flag before healer phase
       isPromoteTriggered = false;
-      
-      // Phase 2: Healer Phase (Off-thread)
-      const healedResults = [];
-      const unifiedResidents = result.unifiedResidents;
-      
-      for (let idx = 0; idx < result.results.length; idx++) {
-        const res = result.results[idx];
-        if (res.unifiedSchedule && idx < 1) {
-           // Run healer on the unified grid
-           // 150 iterations per result for fast execution
-           console.log("Starting Healer phase for result", idx);
-           const healedUnified = await healSchedule(res.unifiedSchedule, unifiedResidents, programData, e.data.year, undefined, e.data.historicalSchedules, e.data.constraints?.cohortAssignments, (step, max, v) => {
-             if (step % 10000 === 0) console.log("Healer progress:", step, "/", max, "Violations:", v);
-             postMessage({ 
-               type: 'progress', 
-               overallProgress: 0.8 + (0.2 * (step / max)),
-               healerProgress: Math.round((step / max) * 100),
-               violations: v
-             });
-           });
-           console.log("Healer phase complete");
-           const reSliced = sliceIntoYears(healedUnified, e.data.year, totalYears);
-           healedResults.push({
-             ...res,
-             schedule: reSliced,
-             unifiedSchedule: healedUnified
-           });
-        } else {
-           healedResults.push(res);
-        }
-        
-        // Progress: Last 20% is healing
-        overallProgress = 0.8 + (0.2 * ((idx + 1) / result.results.length));
-        postMessage({ 
-          type: 'progress', 
-          iteration: 2000, 
-          overallProgress, 
-          healerProgress: Math.round(((idx + 1) / result.results.length) * 100),
-          attempts: lastAttempts,
-          exhaustionPoints: lastExhaustionPoints,
-          exhaustedCount: lastExhaustedCount
-        });
-      }
-
-      result.results = healedResults;
-
 
       // Flush any pending progress
       if (pendingProgress) {
@@ -132,20 +85,19 @@ onmessage = async (e: MessageEvent) => {
   } else if (type === 'cancelAlgorithm') {
     cancelledAlgorithmIds.add(e.data.algoId);
   } else if (type === 'start-heal') {
-    const { grid, residents, historicalSchedules, startYear, totalYears } = e.data;
+    const { grid, residents, historicalSchedules, startYear, totalYears, strategy } = e.data;
     isHealingActive = true;
-    runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1, programData);
+    runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1, programData, strategy);
   } else if (type === 'stop-heal') {
     isHealingActive = false;
   } else if (type === 'cancel') {
     isHealingActive = false;
-    // Abort is handled by the main thread terminating the worker, 
-    // but we can also use a flag if we wanted more graceful exit
   }
 
 };
 
 let isHealingActive = false;
+(globalThis as any).checkInterrupt = () => !isHealingActive;
 
 async function runHeal(
   grid: any, 
@@ -153,7 +105,8 @@ async function runHeal(
   historicalSchedules: any,
   startYear: number,
   totalYears: number,
-  programData?: any
+  programData?: any,
+  strategy?: string
 ) {
   let currentBest = JSON.parse(JSON.stringify(grid));
   currentBest = await healSchedule(
@@ -170,7 +123,8 @@ async function runHeal(
         healerProgress: Math.round((step / max) * 100),
         violations: v
       });
-    }
+    },
+    strategy
   );
     
     // Calculate violations for reporting

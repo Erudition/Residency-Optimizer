@@ -19,7 +19,8 @@ export const healSchedule = async (
     maxIterations?: number,
     historicalSchedules: any = {},
     cohortAssignmentsParam: any = {},
-    onProgress?: (step: number, maxSteps: number, violations?: number) => void
+    onProgress?: (step: number, maxSteps: number, violations?: number) => void,
+    strategy?: string
 ): Promise<ScheduleGrid> => {
 
     let currentSchedule = JSON.parse(JSON.stringify(schedule));
@@ -74,7 +75,8 @@ export const healSchedule = async (
         0,
         historicalSchedules,
         cohortAssignments,
-        onProgress
+        onProgress,
+        strategy
     );
     return currentSchedule;
 };

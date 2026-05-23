@@ -89,11 +89,11 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
         if (RequirementsEngine.isJeopardyBlock(cell.assignment, programData)) {
           if (pgy === 2) {
             pgy2FlexibleCount++;
-            pgy2FlexibleNames.push(`${res.firstName} ${res.lastName}`);
+            pgy2FlexibleNames.push(res.name);
           }
           if (pgy === 3) {
             pgy3FlexibleCount++;
-            pgy3FlexibleNames.push(`${res.firstName} ${res.lastName}`);
+            pgy3FlexibleNames.push(res.name);
           }
         }
       });

@@ -100,7 +100,7 @@ describe.skip('Algorithm Stress Tests', () => {
                 });
             });
 
-            const yearSchedule = await healer.solve(yearResidents, {}, mockProgramData, 0, priorCounts, cohortAssignments);
+            const yearSchedule = await healer.solve(yearResidents, {}, mockProgramData, 0, runningHistory, cohortAssignments);
 
             const weeklyViolations = getWeeklyViolations(yearResidents, yearSchedule, mockProgramData, year);
             if (year === 2026 && weeklyViolations.length > 0) {

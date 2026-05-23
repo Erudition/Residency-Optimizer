@@ -51,6 +51,7 @@ import { CompetitorStudio } from './components/CompetitorStudio';
 import { CycleKanban } from './components/CycleKanban';
 import { GenerationDashboard } from './components/GenerationDashboard';
 import { SettingsOverlay } from './components/SettingsOverlay';
+import { HealerPanel } from './components/HealerPanel';
 import { Button } from './components/ui/Button';
 import { Input } from './components/ui/Input';
 import {
@@ -527,6 +528,11 @@ const AppContent: React.FC = () => {
   const [bestHealCount, setBestHealCount] = useState<number | null>(null);
   const [bestHealGrid, setBestHealGrid] = useState<ScheduleGrid | null>(null);
   const healWorkerRef = useRef<Worker | null>(null);
+  
+  const [isHealerPanelOpen, setIsHealerPanelOpen] = useState(false);
+  const [isHealerRunning, setIsHealerRunning] = useState(false);
+  const [originalHealCount, setOriginalHealCount] = useState<number | null>(null);
+  const [originalHealGrid, setOriginalHealGrid] = useState<ScheduleGrid | null>(null);
 
 
 
@@ -1294,87 +1300,131 @@ const AppContent: React.FC = () => {
     setRenameModalOpen(false);
     setScheduleToRename(null);
   };
-  const handleToggleHeal = () => {
-    if (isHealing) {
-      // STOP
-      if (healWorkerRef.current) {
-        healWorkerRef.current.postMessage({ type: 'stop-heal' });
-        healWorkerRef.current.terminate();
-        healWorkerRef.current = null;
-      }
-      
-      if (bestHealGrid && activeScheduleId) {
-        const activeSched = schedules.find(s => s.id === activeScheduleId);
-        const useUnified = activeSched?.unifiedData;
-        const startYear = useUnified ? (activeSched?.startYear || ACTIVE_START_YEAR) : activeYear;
+  const handleOpenHealerPanel = () => {
+    if (!activeScheduleId) return;
+    const activeSched = schedules.find(s => s.id === activeScheduleId);
+    if (!activeSched) return;
 
-        setSchedules(prev => prev.map(s => {
-          if (s.id !== activeScheduleId) return s;
-          if (useUnified) {
-            const newSliced = sliceIntoYears(bestHealGrid, startYear, 3);
-            return { ...s, data: newSliced, unifiedData: bestHealGrid };
-          }
-          return { ...s, data: { ...s.data, [activeYear]: bestHealGrid } };
-        }));
-      }
+    const useUnified = !!activeSched.unifiedData;
+    const gridToHeal = useUnified ? activeSched.unifiedData! : activeSched.data[activeYear];
+    if (!gridToHeal) return;
 
-      setIsHealing(false);
-      setBestHealGrid(null);
-      setBestHealCount(null);
-      setHealerProgress(undefined);
-    } else {
-      // START
-      if (!activeScheduleId) return;
-      const activeSched = schedules.find(s => s.id === activeScheduleId);
-      if (!activeSched) return;
+    const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+    const totalYears = useUnified ? 3 : 1;
 
-      const useUnified = !!activeSched.unifiedData;
-      const gridToHeal = useUnified ? activeSched.unifiedData! : activeSched.data[activeYear];
-      if (!gridToHeal) return;
+    setIsHealerPanelOpen(true);
+    setIsHealing(true);
+    setBestHealGrid(gridToHeal);
+    setOriginalHealGrid(gridToHeal);
+    setOriginalHealCount(activeViolationsCount);
+    setBestHealCount(activeViolationsCount);
+    setHealerProgress(0);
+    setIsHealerRunning(false);
+  };
 
-      const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
-      const totalYears = useUnified ? 3 : 1;
-      
-      const healingResidents = useUnified 
-        ? getUnifiedResidents(residents, startYear, totalYears)
-        : getResidentsForYear(startYear);
+  const handleStartHealerStrategy = (strategy: string) => {
+    if (!activeScheduleId) return;
+    const activeSched = schedules.find(s => s.id === activeScheduleId);
+    if (!activeSched) return;
 
-      const initialCount = activeViolationsCount;
-      setBestHealCount(initialCount);
-      setBestHealGrid(gridToHeal);
+    const useUnified = !!activeSched.unifiedData;
+    const gridToHeal = bestHealGrid || (useUnified ? activeSched.unifiedData! : activeSched.data[activeYear]);
+    if (!gridToHeal) return;
 
-      const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
-      healWorkerRef.current = worker;
+    const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+    const totalYears = useUnified ? 3 : 1;
 
-      worker.onmessage = (e) => {
-        const { type, schedule, violations: count, healerProgress } = e.data;
-        console.log('Heal worker message:', type, count);
-        if (type === 'heal-update') {
-          setBestHealGrid(schedule);
-          setBestHealCount(count);
-          if (healerProgress !== undefined) setHealerProgress(healerProgress);
+    const healingResidents = useUnified 
+      ? getUnifiedResidents(residents, startYear, totalYears)
+      : getResidentsForYear(startYear);
 
-        } else if (type === 'heal-ping') {
-          setBestHealCount(count);
-          if (healerProgress !== undefined) setHealerProgress(healerProgress);
-        } else if (type === 'heal-complete') {
-          handleToggleHeal();
-        }
-      };
-
-      worker.postMessage({
-        type: 'start-heal',
-        grid: gridToHeal,
-        residents: healingResidents,
-        historicalSchedules: historySchedules,
-        startYear,
-        totalYears,
-        cohortAssignments: activeSched.cohortAssignments,
-        programData: serializeProgramData(programData)
-      });
-
-      setIsHealing(true);
+    // Stop current worker if running
+    if (healWorkerRef.current) {
+      healWorkerRef.current.terminate();
+      healWorkerRef.current = null;
     }
+
+    const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
+    healWorkerRef.current = worker;
+    setIsHealerRunning(true);
+
+    worker.onmessage = (e) => {
+      const { type, schedule, violations: count, healerProgress: hProgress } = e.data;
+      console.log('Heal worker message:', type, count);
+      if (type === 'heal-update') {
+        setBestHealGrid(schedule);
+        setBestHealCount(count);
+        if (hProgress !== undefined) setHealerProgress(hProgress);
+      } else if (type === 'heal-ping') {
+        setBestHealCount(count);
+        if (hProgress !== undefined) setHealerProgress(hProgress);
+      } else if (type === 'heal-complete') {
+        setIsHealerRunning(false);
+        setHealerProgress(100);
+      }
+    };
+
+    worker.postMessage({
+      type: 'start-heal',
+      grid: gridToHeal,
+      residents: healingResidents,
+      historicalSchedules: historySchedules,
+      startYear,
+      totalYears,
+      cohortAssignments: activeSched.cohortAssignments,
+      programData: serializeProgramData(programData),
+      strategy
+    });
+  };
+
+  const handleStopHealerStrategy = () => {
+    if (healWorkerRef.current) {
+      healWorkerRef.current.postMessage({ type: 'stop-heal' });
+      healWorkerRef.current.terminate();
+      healWorkerRef.current = null;
+    }
+    setIsHealerRunning(false);
+  };
+
+  const handleApplyHealedSchedule = () => {
+    handleStopHealerStrategy();
+
+    if (bestHealGrid && activeScheduleId) {
+      const activeSched = schedules.find(s => s.id === activeScheduleId);
+      const useUnified = activeSched?.unifiedData;
+      const startYear = useUnified ? (activeSched?.startYear || ACTIVE_START_YEAR) : activeYear;
+
+      setSchedules(prev => prev.map(s => {
+        if (s.id !== activeScheduleId) return s;
+        if (useUnified) {
+          const newSliced = sliceIntoYears(bestHealGrid, startYear, 3);
+          return { ...s, data: newSliced, unifiedData: bestHealGrid };
+        }
+        return { ...s, data: { ...s.data, [activeYear]: bestHealGrid } };
+      }));
+    }
+
+    setIsHealing(false);
+    setIsHealerPanelOpen(false);
+    setIsHealerRunning(false);
+    setBestHealGrid(null);
+    setOriginalHealGrid(null);
+    setOriginalHealCount(null);
+    setBestHealCount(null);
+    setHealerProgress(undefined);
+  };
+
+  const handleCancelHealedSchedule = () => {
+    handleStopHealerStrategy();
+
+    setIsHealing(false);
+    setIsHealerPanelOpen(false);
+    setIsHealerRunning(false);
+    setBestHealGrid(null);
+    setOriginalHealGrid(null);
+    setOriginalHealCount(null);
+    setBestHealCount(null);
+    setHealerProgress(undefined);
   };
 
 
@@ -2146,14 +2196,18 @@ const AppContent: React.FC = () => {
                         <Button
                           variant={isHealing ? 'ghost' : 'secondary'}
                           size="sm"
-                          onClick={handleToggleHeal}
+                          onClick={handleOpenHealerPanel}
                           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isHealing ? 'bg-light-3 text-primary shadow-inner' : 'text-muted hover:text-primary'}`}
                         >
-                          {isHealing ? (
+                          {isHealerRunning ? (
                             <>
-                              <Loader2 size={14} className="animate-spin" />
-                              Heal {bestHealCount ?? activeViolationsCount} {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
-
+                              <Loader2 size={14} className="animate-spin text-violet" />
+                              Healing {bestHealCount ?? activeViolationsCount} {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
+                            </>
+                          ) : isHealing ? (
+                            <>
+                              <Sparkles size={14} className="text-violet animate-pulse" />
+                              Healer Mode ({bestHealCount ?? activeViolationsCount})
                             </>
                           ) : (
                             <>
@@ -2330,6 +2384,19 @@ const AppContent: React.FC = () => {
         onDeleteAllSchedules={handleDeleteAllSchedules}
         onUnpinAllWeeks={handleUnpinAllWeeks}
         onResetResidents={handleResetResidents}
+      />
+
+      <HealerPanel
+        isOpen={isHealerPanelOpen}
+        onClose={handleCancelHealedSchedule}
+        isRunning={isHealerRunning}
+        progress={healerProgress ?? 0}
+        originalViolations={originalHealCount}
+        currentViolations={bestHealCount}
+        onStart={handleStartHealerStrategy}
+        onStop={handleStopHealerStrategy}
+        onApply={handleApplyHealedSchedule}
+        onCancel={handleCancelHealedSchedule}
       />
 
       {activeScheduleId !== 'settings' && !isHistoricalYear && (
