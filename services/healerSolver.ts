@@ -119,8 +119,11 @@ export const healer: HealerSolver = {
                         isCumulative,
                         programData
                     );
-                    if (actual < req.minWeeks) {
-                        totalPen += (req.minWeeks - actual) * W_REQUIREMENT;
+                    const targetWeeks = isCumulative && rawReq
+                        ? (rawReq.pgy1Ideal || 0) + (level >= 2 ? (rawReq.pgy2Ideal || 0) : 0) + (level >= 3 ? (rawReq.pgy3Ideal || 0) : 0)
+                        : req.minWeeks;
+                    if (actual < targetWeeks) {
+                        totalPen += (targetWeeks - actual) * W_REQUIREMENT;
                     }
                 });
             }
