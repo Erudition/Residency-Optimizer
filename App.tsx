@@ -54,6 +54,7 @@ import { SettingsOverlay } from './components/SettingsOverlay';
 import { HealerPanel } from './components/HealerPanel';
 import { Button } from './components/ui/Button';
 import { Input } from './components/ui/Input';
+import { ToastProvider, useToast } from './components/ui/Toast';
 import {
   CompetitionParams,
   CompetitionPriority,
@@ -438,6 +439,7 @@ extractTokenFromURL();
 
 const AppContent: React.FC = () => {
   const programData = useProgramData();
+  const toast = useToast();
 
   const [residents, setResidents] = useState<Resident[]>(() => {
     const cached = loadState<Resident[]>('rsp_residents_v4', []);
@@ -2621,9 +2623,11 @@ const App: React.FC = () => {
   }
 
   return (
-    <ProgramDataProvider programData={programData}>
-      <AppContent />
-    </ProgramDataProvider>
+    <ToastProvider>
+      <ProgramDataProvider programData={programData}>
+        <AppContent />
+      </ProgramDataProvider>
+    </ToastProvider>
   );
 };
 
