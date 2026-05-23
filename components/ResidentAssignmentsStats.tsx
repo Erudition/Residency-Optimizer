@@ -32,6 +32,16 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
 
   // Sort residents by level and clinic cycle so the columns are beautifully grouped
   const sortedResidents = useMemo(() => {
+    const isUnified = Object.values(schedule).some(row => (row as any)?.length > 52);
+    if (isUnified) {
+      return [...residents].sort((a, b) => {
+        if (a.startYear !== b.startYear) return a.startYear - b.startYear;
+        const cycleA = a.cohort ?? 0;
+        const cycleB = b.cohort ?? 0;
+        if (cycleA !== cycleB) return cycleA - cycleB;
+        return a.name.localeCompare(b.name);
+      });
+    }
     return [...residents].sort((a, b) => {
       if (a.level !== b.level) return a.level - b.level;
       const cycleA = a.cohort ?? 0;
@@ -39,7 +49,7 @@ export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents
       if (cycleA !== cycleB) return cycleA - cycleB;
       return a.name.localeCompare(b.name);
     });
-  }, [residents]);
+  }, [residents, schedule]);
 
   // Resizable Left Column State
   const [colWidth, setColWidth] = useState(160);
