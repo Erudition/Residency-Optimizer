@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Resident, ScheduleGrid, AssignmentType, ScheduleCell } from '../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleCell, SelectionRange } from '../types';
 import { TOTAL_WEEKS } from '../constants';
 import { useProgramData } from '../contexts/ProgramDataContext';
 import { getAssignmentColor } from '../utils/colorUtils';
@@ -12,6 +12,9 @@ interface Props {
   startYear: number;
   cycleAssignments?: Record<string, number>;
   isReadOnly?: boolean;
+
+  selection: SelectionRange | null;
+  onSelectionChange: (sel: SelectionRange | null) => void;
 
   onCellClick: (residentId: string, week: number, rect?: DOMRect) => void;
   onLockWeek: (weekIdx: number) => void;
@@ -51,6 +54,9 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   startYear,
   cycleAssignments,
   isReadOnly = false,
+
+  selection,
+  onSelectionChange,
 
   onCellClick,
   onLockWeek,
@@ -128,6 +134,109 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       if (tooltipLeaveTimeoutRef.current) clearTimeout(tooltipLeaveTimeoutRef.current);
     };
   }, []);
+
+  // Multi-selection drag states
+  const [localSelection, setLocalSelection] = useState<SelectionRange | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const dragStartRef = useRef<{ residentId: string; weekIdx: number } | null>(null);
+  const isDraggingRef = useRef(false);
+
+  // Multi-selection handlers
+  const handleCellMouseDown = (e: React.MouseEvent, residentId: string, weekIdx: number) => {
+    if (isReadOnly || e.button !== 0) return; // Left click only
+    setIsSelecting(true);
+    isDraggingRef.current = false;
+    dragStartRef.current = { residentId, weekIdx };
+    
+    const initialSel: SelectionRange = {
+      startResidentId: residentId,
+      startWeekIdx: weekIdx,
+      endResidentId: residentId,
+      endWeekIdx: weekIdx
+    };
+    setLocalSelection(initialSel);
+  };
+
+  const handleCellMouseEnterDrag = (residentId: string, weekIdx: number) => {
+    if (!isSelecting || !dragStartRef.current) return;
+    
+    if (residentId !== dragStartRef.current.residentId || weekIdx !== dragStartRef.current.weekIdx) {
+      isDraggingRef.current = true;
+    }
+    
+    setLocalSelection({
+      startResidentId: dragStartRef.current.residentId,
+      startWeekIdx: dragStartRef.current.weekIdx,
+      endResidentId: residentId,
+      endWeekIdx: weekIdx
+    });
+  };
+
+  useEffect(() => {
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      if (!isSelecting) return;
+      setIsSelecting(false);
+
+      if (localSelection) {
+        const startRowIdx = residents.findIndex(r => r.id === localSelection.startResidentId);
+        const endRowIdx = residents.findIndex(r => r.id === localSelection.endResidentId);
+        const minRow = Math.min(startRowIdx, endRowIdx);
+        const maxRow = Math.max(startRowIdx, endRowIdx);
+        const minCol = Math.min(localSelection.startWeekIdx, localSelection.endWeekIdx);
+        const maxCol = Math.max(localSelection.startWeekIdx, localSelection.endWeekIdx);
+
+        if (minRow === maxRow && minCol === maxCol && !isDraggingRef.current) {
+          onSelectionChange(null);
+          const cell = schedule[localSelection.startResidentId]?.[localSelection.startWeekIdx];
+          
+          const weekNum = localSelection.startWeekIdx + 1;
+          const weekIsPast = isReadOnly || isPastWeek(weekNum, startYear);
+          const assign = cell?.assignment;
+          const isEditable = !assign || programData.placeholderCodenames.has(assign);
+          const isPast = isEditable ? false : weekIsPast;
+
+          const target = e.target as HTMLElement;
+          const buttonElement = target.closest('button');
+          const rect = buttonElement?.getBoundingClientRect() || target?.getBoundingClientRect?.();
+
+          handleCellClick(
+            localSelection.startResidentId,
+            localSelection.startWeekIdx,
+            !!cell?.locked,
+            isPast,
+            rect
+          );
+        } else {
+          onSelectionChange(localSelection);
+        }
+      }
+      dragStartRef.current = null;
+    };
+
+    if (isSelecting) {
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isSelecting, localSelection, residents, schedule, isReadOnly, startYear, programData]);
+
+  const activeSelection = isSelecting ? localSelection : selection;
+
+  const selectionBounds = useMemo(() => {
+    if (!activeSelection) return null;
+    
+    const startRowIdx = residents.findIndex(r => r.id === activeSelection.startResidentId);
+    const endRowIdx = residents.findIndex(r => r.id === activeSelection.endResidentId);
+    if (startRowIdx === -1 || endRowIdx === -1) return null;
+
+    return {
+      minRow: Math.min(startRowIdx, endRowIdx),
+      maxRow: Math.max(startRowIdx, endRowIdx),
+      minCol: Math.min(activeSelection.startWeekIdx, activeSelection.endWeekIdx),
+      maxCol: Math.max(activeSelection.startWeekIdx, activeSelection.endWeekIdx),
+    };
+  }, [activeSelection, residents]);
 
   const handleCellClick = (residentId: string, weekIdx: number, isLocked: boolean, isPast: boolean, rect?: DOMRect) => {
     const key = `${residentId}-${weekIdx}`;
@@ -320,7 +429,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
             </tr>
           </thead>
           <tbody className="text-sm">
-            {residents.map((resident) => {
+            {residents.map((resident, rowIdx) => {
               const residentSchedule = schedule[resident.id] || [];
 
               return (
@@ -347,7 +456,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     const isEditable = !assign || programData.placeholderCodenames.has(assign);
                     const isPast = isEditable ? false : weekIsPast;
                     const intensity = rotation?.intensity ?? 1;
-                    const bgHex = assign ? getAssignmentColor(rotation?.color || 0, intensity, isPast) : '#ffffff';
+                    const bgHex = assign ? getAssignmentColor(rotation?.color || 0, intensity, !!cell?.locked) : '#ffffff';
 
                     // Compute active bounds from startYear (always available),
                     // not the transient activeWeekStart/activeWeekEnd properties
@@ -373,25 +482,51 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     }
                     const isOutOfBounds = idx < activeStart || idx >= activeEnd;
 
+                    const isCellSelected = selectionBounds &&
+                      rowIdx >= selectionBounds.minRow &&
+                      rowIdx <= selectionBounds.maxRow &&
+                      idx >= selectionBounds.minCol &&
+                      idx <= selectionBounds.maxCol;
+
+                    const isTopBorder = isCellSelected && rowIdx === selectionBounds!.minRow;
+                    const isBottomBorder = isCellSelected && rowIdx === selectionBounds!.maxRow;
+                    const isLeftBorder = isCellSelected && idx === selectionBounds!.minCol;
+                    const isRightBorder = isCellSelected && idx === selectionBounds!.maxCol;
+
                     return (
                       <td
                         key={`${resident.id}-${w}`}
                         className="p-1 text-center select-none relative"
                         style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                       >
+                        {isCellSelected && (
+                          <div className="absolute inset-0 pointer-events-none z-20">
+                            {isTopBorder && <div className="absolute top-0 left-0 right-0 h-[2px] marching-ants-x" />}
+                            {isBottomBorder && <div className="absolute bottom-0 left-0 right-0 h-[2px] marching-ants-x" style={{ animationDirection: 'reverse' }} />}
+                            {isLeftBorder && <div className="absolute top-0 bottom-0 left-0 w-[2px] marching-ants-y" />}
+                            {isRightBorder && <div className="absolute top-0 bottom-0 right-0 w-[2px] marching-ants-y" style={{ animationDirection: 'reverse' }} />}
+                          </div>
+                        )}
                         <button
                           className={isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')}
                           style={{ '--slot-bg': isOutOfBounds ? '#f1f5f9' : bgHex } as React.CSSProperties}
-                          onClick={(e) => {
+                          onMouseDown={(e) => {
                             if (isOutOfBounds) return;
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            handleCellClick(resident.id, idx, !!cell?.locked, isPast, rect);
+                            handleCellMouseDown(e, resident.id, idx);
                           }}
-                          onMouseEnter={(e) => assign && !isOutOfBounds && handleMouseEnter(e, resident, idx, assign)}
+                          onMouseEnter={(e) => {
+                            if (isOutOfBounds) return;
+                            if (isSelecting) {
+                              handleCellMouseEnterDrag(resident.id, idx);
+                            } else if (assign) {
+                              handleMouseEnter(e, resident, idx, assign);
+                            }
+                          }}
                           onMouseLeave={handleMouseLeave}
-                          title={isOutOfBounds ? "Outside residency period" : (isEditable ? "Click to resolve" : (isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click to edit, Double-click to toggle lock")))}
+                          title={isOutOfBounds ? "Outside residency period" : (isEditable ? "Click to resolve" : (isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click and drag to select, Double-click to toggle lock")))}
                           disabled={isOutOfBounds}
                         >
+                          {isCellSelected && <div className="absolute inset-0 bg-blue/15 pointer-events-none rounded-[4px] z-10" />}
                           {assign && !isOutOfBounds ? (
                             <span className="truncate w-full block">
                               {programData.placeholderCodenames.has(assign) ? `${assign}?` : assign}

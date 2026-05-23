@@ -277,3 +277,10 @@ export interface DetailedScore {
   cohortFairnessScores: Record<number, number>;
 }
 
+export interface SelectionRange {
+  startResidentId: string;
+  startWeekIdx: number;
+  endResidentId: string;
+  endWeekIdx: number;
+}
+
