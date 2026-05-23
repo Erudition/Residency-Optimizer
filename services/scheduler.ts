@@ -489,7 +489,8 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   let educationDenominator = 0;
   let educationNumerator = 0;
 
-  const baseYear = deriveActiveStartYear();
+  const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
+  const baseYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveActiveStartYear();
 
   residents?.forEach(r => {
     for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
