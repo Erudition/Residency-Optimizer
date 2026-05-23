@@ -99,8 +99,10 @@ const loadState = <T,>(key: string, fallback: T): T => {
   try {
     const storedVersion = localStorage.getItem('rsp_app_version');
     if (storedVersion && parseInt(storedVersion) < APP_DATA_VERSION) {
-      console.warn("New version detected, clearing localStorage");
-      localStorage.clear();
+      console.warn("New version detected, clearing versioned localStorage keys");
+      // Only wipe data keys — never the auth token, which is version-independent
+      const DATA_KEYS = ['rsp_schedules_v4', 'rsp_residents_v4', 'rsp_active_id', 'rsp_sort_order'];
+      DATA_KEYS.forEach(k => localStorage.removeItem(k));
       localStorage.setItem('rsp_app_version', APP_DATA_VERSION.toString());
       return fallback;
     }
