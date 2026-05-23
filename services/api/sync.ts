@@ -35,7 +35,28 @@ import {
 
 // ── Types ──
 
-export type SyncStatus = 'local-only' | 'connected' | 'live'
+export type SyncStatus = 'local-only' | 'connected' | 'live' | 'error'
+
+/** Typed error thrown by sync operations so callers can surface user-facing messages. */
+export class SyncError extends Error {
+  constructor(
+    message: string,
+    public code:
+      | 'AUTH_REQUIRED'
+      | 'CACHE_FAILED'
+      | 'CREATE_FAILED'
+      | 'SAVE_FAILED'
+      | 'DELETE_FAILED'
+      | 'LOAD_FAILED'
+      | 'UPSERT_FAILED',
+    public cause?: unknown,
+  ) {
+    super(message)
+    this.name = 'SyncError'
+  }
+}
+
+export type SyncErrorHandler = (error: SyncError) => void
 
 export interface AssignmentChangeEvent {
   type: 'assignment-change'
@@ -107,6 +128,11 @@ export class ScheduleSyncService {
   private reconnectAttempts = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private pendingWrites: Map<string, PendingCellWrite> = new Map()
+  private errorHandlers: Set<SyncErrorHandler> = new Set()
+  /** Accumulates failed upsert count for batched error reporting */
+  private _failedUpsertCount = 0
+  private _failedUpsertTimer: ReturnType<typeof setTimeout> | null = null
+  private static readonly UPSERT_ERROR_BATCH_MS = 3_000
 
   // Cache: rotation codename → backend ID
   private rotationIdCache: Map<string, number> | null = null
@@ -189,6 +215,21 @@ export class ScheduleSyncService {
     return () => this.handlers.delete(handler)
   }
 
+  /**
+   * Register a handler for batched background errors (cell upserts).
+   * Returns an unsubscribe function.
+   */
+  onError(handler: SyncErrorHandler): () => void {
+    this.errorHandlers.add(handler)
+    return () => this.errorHandlers.delete(handler)
+  }
+
+  private emitError(error: SyncError): void {
+    for (const h of this.errorHandlers) {
+      try { h(error) } catch { /* don't let handler errors propagate */ }
+    }
+  }
+
   // ── Writes ──
 
   /**
@@ -238,7 +279,11 @@ export class ScheduleSyncService {
         data: { title },
       })
     } catch (err) {
-      console.error('[Sync] Rename failed:', err)
+      throw new SyncError(
+        `Failed to rename schedule: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'SAVE_FAILED',
+        err,
+      )
     }
   }
 
@@ -253,7 +298,11 @@ export class ScheduleSyncService {
         id: backendId,
       })
     } catch (err) {
-      console.error('[Sync] Delete failed:', err)
+      throw new SyncError(
+        `Failed to delete schedule: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'DELETE_FAILED',
+        err,
+      )
     }
   }
 
@@ -268,7 +317,11 @@ export class ScheduleSyncService {
         id: candidateId,
       })
     } catch (err) {
-      console.error('[Sync] Delete candidate failed:', err)
+      throw new SyncError(
+        `Failed to delete candidate: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'DELETE_FAILED',
+        err,
+      )
     }
   }
 
@@ -281,18 +334,20 @@ export class ScheduleSyncService {
   async createCandidate(
     startYear: number,
     title: string,
-  ): Promise<{ candidateId: number } | null> {
-    if (!isAuthenticated()) return null
+  ): Promise<{ candidateId: number }> {
+    if (!isAuthenticated()) throw new SyncError('Not authenticated', 'AUTH_REQUIRED')
+    this.refreshAuthHeaders()
+    await this.ensureCaches()
+
+    const ayId = this.ayIdCache?.get(startYear)
+    if (!ayId) {
+      throw new SyncError(
+        `Academic year ${startYear} not found in backend`,
+        'CREATE_FAILED',
+      )
+    }
+
     try {
-      this.refreshAuthHeaders()
-      await this.ensureCaches()
-
-      const ayId = this.ayIdCache?.get(startYear)
-      if (!ayId) {
-        console.warn(`[Sync] Cannot create candidate: AY ${startYear} not found`)
-        return null
-      }
-
       const createRes = await this.client.request<{
         createCandidate: { id: number; title: string }
       }>(CREATE_CANDIDATE_MUTATION, {
@@ -308,8 +363,11 @@ export class ScheduleSyncService {
       console.log(`[Sync] Created candidate ${candidateId}: "${title}"`)
       return { candidateId }
     } catch (err) {
-      console.error('[Sync] createCandidate failed:', err)
-      return null
+      throw new SyncError(
+        `Failed to create candidate: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'CREATE_FAILED',
+        err,
+      )
     }
   }
 
@@ -323,47 +381,48 @@ export class ScheduleSyncService {
     title: string,
     data: Record<number, ScheduleGrid>,
   ): Promise<Record<number, number>> {
-    if (!isAuthenticated()) return {}
+    if (!isAuthenticated()) throw new SyncError('Not authenticated', 'AUTH_REQUIRED')
     this.refreshAuthHeaders()
     const scheduleIds: Record<number, number> = {}
+    const errors: string[] = []
 
-    try {
-      await this.ensureCaches()
+    await this.ensureCaches()
 
-      for (const [yearStr, grid] of Object.entries(data)) {
-        const year = parseInt(yearStr, 10)
-        if (!grid) continue
+    for (const [yearStr, grid] of Object.entries(data)) {
+      const year = parseInt(yearStr, 10)
+      if (!grid) continue
 
-        const ayId = this.ayIdCache?.get(year)
-        if (!ayId) {
-          console.warn(`[Sync] Skipping year ${year}: AY not found`)
-          continue
+      const ayId = this.ayIdCache?.get(year)
+      if (!ayId) {
+        errors.push(`AY ${year} not found`)
+        continue
+      }
+
+      const assignments: Array<{
+        residentId: number
+        week: number
+        rotationId: number
+        locked: boolean
+      }> = []
+
+      for (const [residentId, cells] of Object.entries(grid)) {
+        for (let w = 0; w < cells.length; w++) {
+          const cell = cells[w]
+          if (!cell?.assignment) continue
+
+          const rotId = this.rotationIdCache?.get(cell.assignment)
+          if (!rotId) continue
+
+          assignments.push({
+            residentId: parseInt(residentId, 10),
+            week: w + 1,
+            rotationId: rotId,
+            locked: cell.locked,
+          })
         }
+      }
 
-        const assignments: Array<{
-          residentId: number
-          week: number
-          rotationId: number
-          locked: boolean
-        }> = []
-
-        for (const [residentId, cells] of Object.entries(grid)) {
-          for (let w = 0; w < cells.length; w++) {
-            const cell = cells[w]
-            if (!cell?.assignment) continue
-
-            const rotId = this.rotationIdCache?.get(cell.assignment)
-            if (!rotId) continue
-
-            assignments.push({
-              residentId: parseInt(residentId, 10),
-              week: w + 1,
-              rotationId: rotId,
-              locked: cell.locked,
-            })
-          }
-        }
-
+      try {
         const response = await fetch(`${API_URL}/api/sync/bulk`, {
           method: 'POST',
           headers: {
@@ -384,11 +443,24 @@ export class ScheduleSyncService {
           console.log(`[Sync] Saved year ${year} → schedule ${result.scheduleId} (${assignments.length} assignments)`)
         } else {
           const err = await response.json().catch(() => ({ error: 'unknown' }))
-          console.error(`[Sync] Bulk save failed for year ${year}:`, err)
+          errors.push(`Year ${year}: ${err.error || response.statusText}`)
         }
+      } catch (err) {
+        errors.push(`Year ${year}: ${err instanceof Error ? err.message : 'network error'}`)
       }
-    } catch (err) {
-      console.error('[Sync] saveCandidateGrids error:', err)
+    }
+
+    // If no years succeeded, throw
+    if (Object.keys(scheduleIds).length === 0) {
+      throw new SyncError(
+        `Failed to save any schedule data: ${errors.join('; ')}`,
+        'SAVE_FAILED',
+      )
+    }
+
+    // If some years failed, log but return partial success
+    if (errors.length > 0) {
+      console.warn(`[Sync] Partial save — ${errors.length} year(s) failed: ${errors.join('; ')}`)
     }
 
     return scheduleIds
@@ -418,9 +490,9 @@ export class ScheduleSyncService {
     }>
   > {
     if (!isAuthenticated()) return []
-    try {
-      this.refreshAuthHeaders()
+    this.refreshAuthHeaders()
 
+    try {
       const res = await this.client.request<{
         Candidates: {
           docs: Array<{
@@ -501,8 +573,11 @@ export class ScheduleSyncService {
       console.log(`[Sync] Loaded ${results.length} candidates from backend`)
       return results
     } catch (err) {
-      console.error('[Sync] loadAllCandidates failed:', err)
-      return []
+      throw new SyncError(
+        `Failed to load candidates: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'LOAD_FAILED',
+        err,
+      )
     }
   }
 
@@ -569,8 +644,11 @@ export class ScheduleSyncService {
 
       return results
     } catch (err) {
-      console.error('[Sync] loadCandidateSchedules failed:', err)
-      return []
+      throw new SyncError(
+        `Failed to load schedules for candidate ${candidateId}: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'LOAD_FAILED',
+        err,
+      )
     }
   }
 
@@ -718,6 +796,18 @@ export class ScheduleSyncService {
       }
     } catch (err) {
       console.error('[Sync] Cell upsert failed:', err)
+      // Batch upsert failures and emit as a single error event after a quiet period
+      this._failedUpsertCount++
+      if (this._failedUpsertTimer) clearTimeout(this._failedUpsertTimer)
+      this._failedUpsertTimer = setTimeout(() => {
+        const count = this._failedUpsertCount
+        this._failedUpsertCount = 0
+        this._failedUpsertTimer = null
+        this.emitError(new SyncError(
+          `${count} cell edit${count > 1 ? 's' : ''} failed to sync to server — changes are local only`,
+          'UPSERT_FAILED',
+        ))
+      }, ScheduleSyncService.UPSERT_ERROR_BATCH_MS)
     }
   }
 
@@ -726,17 +816,33 @@ export class ScheduleSyncService {
    */
   private async ensureCaches(): Promise<void> {
     if (!this.rotationIdCache) {
-      const res = await this.client.request<{
-        Rotations: { docs: Array<{ id: number; codename: string }> }
-      }>(ROTATIONS_QUERY)
-      this.rotationIdCache = new Map(res.Rotations.docs.map((r) => [r.codename, r.id]))
+      try {
+        const res = await this.client.request<{
+          Rotations: { docs: Array<{ id: number; codename: string }> }
+        }>(ROTATIONS_QUERY)
+        this.rotationIdCache = new Map(res.Rotations.docs.map((r) => [r.codename, r.id]))
+      } catch (err) {
+        throw new SyncError(
+          'Failed to load rotation data from server',
+          'CACHE_FAILED',
+          err,
+        )
+      }
     }
 
     if (!this.ayIdCache) {
-      const res = await this.client.request<{
-        AcademicYears: { docs: Array<{ id: number; startingYear: number }> }
-      }>(ACADEMIC_YEAR_QUERY, { where: {} })
-      this.ayIdCache = new Map(res.AcademicYears.docs.map((ay) => [ay.startingYear, ay.id]))
+      try {
+        const res = await this.client.request<{
+          AcademicYears: { docs: Array<{ id: number; startingYear: number }> }
+        }>(ACADEMIC_YEAR_QUERY, { where: {} })
+        this.ayIdCache = new Map(res.AcademicYears.docs.map((ay) => [ay.startingYear, ay.id]))
+      } catch (err) {
+        throw new SyncError(
+          'Failed to load academic year data from server',
+          'CACHE_FAILED',
+          err,
+        )
+      }
     }
 
     if (this.tenantIdCache === undefined) {
