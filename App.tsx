@@ -1689,12 +1689,32 @@ const AppContent: React.FC = () => {
         }
       }
 
+      // ── Safety gate: only promote to "published" if ALL years saved ──
+      // If any year failed, keep the schedule as a draft so localStorage
+      // continues to preserve it (published candidates are excluded from
+      // localStorage persistence). This prevents data loss when the backend
+      // rejects some or all assignments.
+      if (saveErrors.length > 0) {
+        // Clean up the orphaned backend candidate to avoid empty shells
+        try {
+          await syncService.deleteCandidate(candidateId);
+        } catch (cleanupErr) {
+          console.warn('[Publish] Failed to clean up orphaned candidate:', cleanupErr);
+        }
+        toast.error(
+          `Publish failed: ${saveErrors.length} year(s) could not be saved — ${saveErrors.join('; ')}. ` +
+          `Your schedule is preserved locally as a draft.`,
+        );
+        setPublishState('idle');
+        return;
+      }
+
       // Rebuild unifiedData from the (possibly remapped) publishData
       const publishUnifiedData = sched.startYear
         ? mergeYearsIntoUnified(publishData, sched.startYear, 3)
         : sched.unifiedData;
 
-      // Replace the draft with a published candidate
+      // All years saved — safe to promote draft → published
       const published: PublishedCandidate = {
         kind: 'published',
         id: `pub-${candidateId}`,
@@ -1742,13 +1762,7 @@ const AppContent: React.FC = () => {
         });
       }
 
-      if (saveErrors.length > 0) {
-        toast.warning(
-          `Published "${candidateName}" but ${saveErrors.length} year(s) failed to save: ${saveErrors.join('; ')}`,
-        );
-      } else {
-        toast.success(`Published "${candidateName}" to server`);
-      }
+      toast.success(`Published "${candidateName}" to server`);
     } catch (err) {
       console.error('[Publish] Failed:', err);
       toast.error(
