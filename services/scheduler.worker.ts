@@ -2,9 +2,11 @@ import { generateSchedule, sliceIntoYears } from './scheduler';
 import { 
   getRequirementViolations, 
   getWeeklyViolations, 
-  getAuditViolations 
+  getAuditViolations,
+  getRequirementsViolationsCount
 } from './scheduler';
 import { healSchedule } from './healer';
+import { getStandardCohortMap } from './generators/utils';
 import { deserializeProgramData } from './api/client';
 
 let cancelledAlgorithmIds = new Set<string>();
@@ -63,59 +65,12 @@ onmessage = async (e: MessageEvent) => {
         algorithmIds,
         (id) => cancelledAlgorithmIds.has(id),
         (iteration, scores, attempts, exhaustionPoints, exhaustedCount) => {
-          overallProgress = (exhaustedCount / algorithmIds.length) * 0.8; // 80% for generation
+          overallProgress = (exhaustedCount / algorithmIds.length) * 1.0; // 100% for generation
           postProgress(iteration, scores, attempts, exhaustionPoints, exhaustedCount);
         },
         () => isPromoteTriggered
       );
-      // Reset promote flag before healer phase
       isPromoteTriggered = false;
-      
-      // Phase 2: Healer Phase (Off-thread)
-      const healedResults = [];
-      const unifiedResidents = result.unifiedResidents;
-      
-      for (let idx = 0; idx < result.results.length; idx++) {
-        const res = result.results[idx];
-        if (res.unifiedSchedule && idx < 1) {
-           // Run healer on the unified grid
-           // 150 iterations per result for fast execution
-           console.log("Starting Healer phase for result", idx);
-           const healedUnified = await healSchedule(res.unifiedSchedule, unifiedResidents, programData, e.data.year, undefined, e.data.historicalSchedules, e.data.constraints?.cohortAssignments, (step, max, v) => {
-             if (step % 10000 === 0) console.log("Healer progress:", step, "/", max, "Violations:", v);
-             postMessage({ 
-               type: 'progress', 
-               overallProgress: 0.8 + (0.2 * (step / max)),
-               healerProgress: Math.round((step / max) * 100),
-               violations: v
-             });
-           });
-           console.log("Healer phase complete");
-           const reSliced = sliceIntoYears(healedUnified, e.data.year, totalYears);
-           healedResults.push({
-             ...res,
-             schedule: reSliced,
-             unifiedSchedule: healedUnified
-           });
-        } else {
-           healedResults.push(res);
-        }
-        
-        // Progress: Last 20% is healing
-        overallProgress = 0.8 + (0.2 * ((idx + 1) / result.results.length));
-        postMessage({ 
-          type: 'progress', 
-          iteration: 2000, 
-          overallProgress, 
-          healerProgress: Math.round(((idx + 1) / result.results.length) * 100),
-          attempts: lastAttempts,
-          exhaustionPoints: lastExhaustionPoints,
-          exhaustedCount: lastExhaustedCount
-        });
-      }
-
-      result.results = healedResults;
-
 
       // Flush any pending progress
       if (pendingProgress) {
@@ -132,20 +87,19 @@ onmessage = async (e: MessageEvent) => {
   } else if (type === 'cancelAlgorithm') {
     cancelledAlgorithmIds.add(e.data.algoId);
   } else if (type === 'start-heal') {
-    const { grid, residents, historicalSchedules, startYear, totalYears } = e.data;
+    const { grid, residents, historicalSchedules, startYear, totalYears, strategy } = e.data;
     isHealingActive = true;
-    runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1, programData);
+    runHeal(grid, residents, historicalSchedules || {}, startYear, totalYears || 1, programData, strategy);
   } else if (type === 'stop-heal') {
     isHealingActive = false;
   } else if (type === 'cancel') {
     isHealingActive = false;
-    // Abort is handled by the main thread terminating the worker, 
-    // but we can also use a flag if we wanted more graceful exit
   }
 
 };
 
 let isHealingActive = false;
+(globalThis as any).checkInterrupt = () => !isHealingActive;
 
 async function runHeal(
   grid: any, 
@@ -153,8 +107,39 @@ async function runHeal(
   historicalSchedules: any,
   startYear: number,
   totalYears: number,
-  programData?: any
+  programData?: any,
+  strategy?: string
 ) {
+  const getTrueViolations = (grid: any) => {
+    let total = 0;
+    const fullHistory = { ...historicalSchedules };
+    if (totalYears === 3) {
+      const sliced = sliceIntoYears(grid, startYear, 3);
+      Object.assign(fullHistory, sliced);
+      
+      const reqsDeficit = getRequirementsViolationsCount(residents, grid, fullHistory, startYear, true, programData);
+      const audit = getAuditViolations(residents, fullHistory, programData, startYear);
+      
+      const constraintsList = getWeeklyViolations(residents, grid, programData, startYear);
+      const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
+      
+      total = reqsDeficit + constraints + audit;
+    } else {
+      fullHistory[startYear] = grid;
+      const reqsDeficit = getRequirementsViolationsCount(residents, grid, fullHistory, startYear, false, programData);
+      const constraintsList = getWeeklyViolations(residents, grid, programData, startYear);
+      const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
+      const audit = getAuditViolations(residents, fullHistory, programData, startYear);
+      total = reqsDeficit + constraints + audit;
+      if ((globalThis as any)._lastLoggedTotal !== total) {
+        console.log(`[Healer Telemetry] Total: ${total} | Reqs: ${reqsDeficit} | Staff/PTO/Jeop: ${constraints} | Audits: ${audit}`);
+        (globalThis as any)._lastLoggedTotal = total;
+      }
+    }
+    return total;
+  };
+
+  const cohortMap = getStandardCohortMap(residents, programData);
   let currentBest = JSON.parse(JSON.stringify(grid));
   currentBest = await healSchedule(
     currentBest, 
@@ -163,41 +148,19 @@ async function runHeal(
     startYear,
     undefined,
     historicalSchedules,
-    undefined,
-    (step, max, v) => {
+    cohortMap,
+    (step, max, v, currentGrid) => {
       postMessage({ 
         type: 'heal-ping', 
         healerProgress: Math.round((step / max) * 100),
-        violations: v
+        violations: getTrueViolations(currentGrid || currentBest)
       });
-    }
+    },
+    strategy
   );
     
-    // Calculate violations for reporting
-    let total = 0;
-    const fullHistory = { ...historicalSchedules };
-    if (totalYears === 3) {
-      const sliced = sliceIntoYears(currentBest, startYear, 3);
-      Object.assign(fullHistory, sliced);
-      
-      for (let offset = 0; offset < 3; offset++) {
-        const y = startYear + offset;
-        const yrResidents = residents.filter((r: any) => {
-          const level = y - r.startYear + 1;
-          return level >= 1 && level <= 3;
-        });
-        const yrGrid = sliced[y] || {};
-        const reqs = getRequirementViolations(yrResidents, yrGrid, programData, fullHistory, y).length;
-        const constraints = getWeeklyViolations(yrResidents, yrGrid, programData, y).length;
-        const audit = getAuditViolations(yrResidents, fullHistory, programData, y);
-        total += reqs + constraints + audit;
-      }
-    } else {
-      const reqs = getRequirementViolations(residents, currentBest, programData, fullHistory, startYear).length;
-      const constraints = getWeeklyViolations(residents, currentBest, programData, startYear).length;
-      const audit = getAuditViolations(residents, fullHistory, programData, startYear);
-      total = reqs + constraints + audit;
-    }
+    // Calculate final violations for reporting
+    let total = getTrueViolations(currentBest);
 
     postMessage({ 
       type: 'heal-update', 

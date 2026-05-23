@@ -1,11 +1,10 @@
-import { Resident, ScheduleGrid, AssignmentType } from '../types';
+import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../types';
 import { RequirementsEngine } from './requirementsEngine';
 import { ProgramData } from './api/client';
 import { ACTIVE_START_YEAR } from '../constants';
 import { getAllCodenames, isClinicRotation } from './programDataUtils';
-import { getStandardCohortMap, getCohortAtWeek } from './generators/utils';
+import { getCohortAtWeek, getStandardCohortMap } from './generators/utils';
 import { buildLevelRequirements } from './generators/reqBuilder';
-import { StaffingFirstGenerator } from './generators/staffingFirst';
 
 class SeededRNG {
     private seed: number;
@@ -23,23 +22,23 @@ export interface HealerSolver {
         existingSchedule: ScheduleGrid,
         programData: ProgramData,
         attemptIndex?: number,
-        priorRequirementCounts?: Record<string, Record<string, number>>,
+        historicalSchedules?: ScheduleHistory,
         cohortAssignments?: Record<string, number>,
-        onProgress?: (step: number, maxSteps: number, currentPenalty: number) => void
+        onProgress?: (step: number, maxSteps: number, currentPenalty: number, currentSchedule?: ScheduleGrid) => void,
+        strategy?: string
     ) => Promise<ScheduleGrid>;
 }
 
 export const healer: HealerSolver = {
     name: "Annealing Healer Solver",
-    solve: async (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, priorRequirementCounts?: Record<string, Record<string, number>>, cohortAssignments?: Record<string, number>, onProgress?: (step: number, maxSteps: number, currentPenalty: number) => void): Promise<ScheduleGrid> => {
-                const existingRows = Object.values(existingSchedule);
+    solve: async (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>, onProgress?: (step: number, maxSteps: number, currentPenalty: number, currentSchedule?: ScheduleGrid) => void, strategy?: string): Promise<ScheduleGrid> => {
+        const existingRows = Object.values(existingSchedule);
         const totalWeeks = existingRows.length > 0 ? existingRows[0].length : 52;
         const rng = new SeededRNG(42 + attemptIndex);
-        const validCohortAssignments: Record<string, number> = { ...cohortAssignments };
-        if (Object.keys(validCohortAssignments).length === 0) {
-            const sorted = [...residents].sort((a, b) => (a.level !== b.level) ? a.level - b.level : a.name.localeCompare(b.name));
-            sorted.forEach((r, idx) => { validCohortAssignments[r.id] = idx % programData.cycleConfig.cohortCount; });
+        if (!cohortAssignments || Object.keys(cohortAssignments).length === 0) {
+            throw new Error("Healer requires a valid cohort map to correctly evaluate X+Y scheduling logic. Do not fall back to heuristics.");
         }
+        const validCohortAssignments: Record<string, number> = { ...cohortAssignments };
 
         const relevantReqTypesSet = new Set<AssignmentType>();
         [1, 2, 3].forEach(l => (buildLevelRequirements(programData, l) || []).forEach(r => relevantReqTypesSet.add(r.type)));
@@ -56,10 +55,6 @@ export const healer: HealerSolver = {
             const m = programData.rotations.get(type);
             return m && (m.minInterns > 0 || m.maxInterns < 10 || m.minSeniors > 0 || m.maxSeniors < 10);
         });
-        const superCriticalTypes = [
-            'ICU', 'W-RED', 'W-BLUE',
-            'NF', 'EM', 'W-MET'
-        ];
 
         const residentMap = new Map(residents.map(r => [r.id, r]));
         const flexibleWeeks: Record<string, number[]> = {};
@@ -90,143 +85,182 @@ export const healer: HealerSolver = {
         };
 
         const getTypeStaffingPenalty = (type: AssignmentType, interns: number, seniors: number): number => {
-            const m = programData.rotations.get(type); if (!m) return 0; let c = 0;
-            if (interns < m.minInterns) c += (m.minInterns - interns) * W_STAFFING;
-            if (interns > m.maxInterns) c += (interns - m.maxInterns) * W_STAFFING;
-            if (seniors < m.minSeniors) c += (m.minSeniors - seniors) * W_STAFFING;
-            if (seniors > m.maxSeniors) c += (seniors - m.maxSeniors) * W_STAFFING;
-            return c;
+            const defs = RequirementsEngine.getStaffingDeficits(type, interns, seniors, programData);
+            if (!defs) return 0;
+            return (defs.internMin + defs.internMax + defs.seniorMin + defs.seniorMax) * W_STAFFING;
         };
 
-        const flexibleAssigns = Array.from(programData.flexibleCodenames);
-        const getWeekPenalty = (w: number, wc: any, sched: ScheduleGrid): number => {
-            let total = 0; 
-            constrainedTypes.forEach(t => total += getTypeStaffingPenalty(t, wc.interns[t] || 0, wc.seniors[t] || 0));
+        let currentSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
+        let bestSchedule = JSON.parse(JSON.stringify(existingSchedule));
+
+        const getResPenalty = (resId: string, counts: Record<number, Record<string, number>>): { p: number, raw: number } => {
+            const r = residentMap.get(resId); if (!r) return { p: 0, raw: 0 };
+            let totalPen = 0;
+            let raw = 0;
+            const isUnified = Math.floor(totalWeeks / 52) === 3;
             
-            let pgy2Flexible = 0, pgy3Flexible = 0;
-            residents.forEach(r => {
-                const pgy = getPgyAtWeek(r, w);
-                const a = sched[r.id]?.[w]?.assignment;
-                if (a && flexibleAssigns.includes(a)) {
-                    if (pgy === 2) pgy2Flexible++;
-                    if (pgy === 3) pgy3Flexible++;
-                }
+            const violations = RequirementsEngine.getResidentViolations(
+                r,
+                currentSchedule,
+                historicalSchedules || {},
+                gridStartYear,
+                programData,
+                isUnified
+            );
+
+            violations.forEach(v => {
+                const diff = Math.max(0, v.minWeeks - v.actual);
+                totalPen += diff * W_REQUIREMENT;
+                raw += diff;
             });
-            if (pgy2Flexible < 1) total += W_JEOPARDY;
-            if (pgy3Flexible < 1) total += W_JEOPARDY;
-            return total;
+
+            const auditViolations = RequirementsEngine.getResidentAuditViolations(
+                r,
+                currentSchedule,
+                historicalSchedules || {},
+                gridStartYear,
+                programData,
+                isUnified
+            );
+            
+            totalPen += auditViolations * W_REQUIREMENT;
+            raw += auditViolations;
+
+            return { p: totalPen, raw };
         };
 
-        const getResPenalty = (rId: string, rcByLvl: Record<number, Record<string, number>>): number => {
-            const r = residentMap.get(rId)!;
-            const startLvl = getPgyAtWeek(r, 0);
-            const activeLevels = new Set<number>();
-            for (let w = 0; w < totalWeeks; w++) activeLevels.add(getPgyAtWeek(r, w));
+        const getCycleCont = (resId: string, sched: ScheduleGrid, cycleIdx: number): number => {
+            const r = residentMap.get(resId); if (!r) return 0;
+            const { Y, Z } = programData.cycleConfig;
+            const wStart = cycleIdx * Z;
+            let inpChain = 0, maxChain = 0, isChaining = false;
+            for (let i = 0; i < Z; i++) {
+                const w = wStart + i; if (w >= totalWeeks) break;
+                const cohort = getCohortAtWeek(r, w, validCohortAssignments);
+                const isClinic = Math.floor((w % Z) / Y) === cohort;
+                if (isClinic) {
+                    if (isChaining) { if (inpChain > maxChain) maxChain = inpChain; inpChain = 0; isChaining = false; }
+                } else {
+                    const type = sched[resId]?.[w]?.assignment;
+                    if (type && !isClinicRotation(programData, type) && type !== 'VAC') {
+                        isChaining = true; inpChain++;
+                    } else {
+                        if (isChaining) { if (inpChain > maxChain) maxChain = inpChain; inpChain = 0; isChaining = false; }
+                    }
+                }
+            }
+            if (isChaining && inpChain > maxChain) maxChain = inpChain;
+            let penalty = 0;
+            if (maxChain > 4) penalty += (maxChain - 4) * W_CONTINUITY;
+            return penalty;
+        };
+
+        const getWeekPenalty = (week: number, counts: { interns: Record<string, number>; seniors: Record<string, number> }, sched: ScheduleGrid): { p: number, raw: number } => {
             let p = 0;
-            activeLevels.forEach(lvl => {
-                (buildLevelRequirements(programData, lvl) || []).forEach(req => {
-                    if (req.source === 'ACGME') {
-                        let cumulativeRequired = 0;
-                        for (let l = 1; l <= lvl; l++) {
-                            const levelReqs = buildLevelRequirements(programData, l) || [];
-                            const reqObj = levelReqs.find(rq => rq.type === req.type);
-                            cumulativeRequired += reqObj ? reqObj.minWeeks : 0;
-                        }
-                        let cumulativeActual = priorRequirementCounts?.[rId]?.[req.type] || 0;
-                        for (let l = startLvl; l <= lvl; l++) cumulativeActual += rcByLvl[l]?.[req.type] || 0;
-                        if (cumulativeActual < cumulativeRequired) p += (cumulativeRequired - cumulativeActual) * W_REQUIREMENT;
-                    } else {
-                        const c = rcByLvl[lvl][req.type] || 0;
-                        if (c < req.minWeeks) p += (req.minWeeks - c) * W_REQUIREMENT;
-                    }
-                });
+            let raw = 0;
+
+            const activeResidentsAtWeek = residents.filter(r => {
+                const start = r.activeWeekStart ?? 0;
+                const end = r.activeWeekEnd ?? totalWeeks;
+                return week >= start && week < end;
             });
-            return p;
-        };
 
-        const getCycleCont = (rId: string, sched: ScheduleGrid, cycle: number): number => {
-            const start = cycle * programData.cycleConfig.Z;
-            let lastA: string | null = null, changes = 0;
-            for (let i = 0; i < programData.cycleConfig.Z; i++) {
-                const w = start + i;
-                if (w >= totalWeeks) continue;
-                const a = sched[rId]?.[w]?.assignment;
-                if (a && a !== lastA) { changes++; lastA = a; }
-            }
-            return changes * W_CONTINUITY;
-        };
+            const globalWeek = week;
 
-        const currentSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
-        residents.forEach(r => {
-            if (!currentSchedule[r.id]) {
-                currentSchedule[r.id] = Array.from({ length: totalWeeks }, () => ({ assignment: null as any, locked: false }));
-            }
-            for (let w = 0; w < totalWeeks; w++) {
-                if (!currentSchedule[r.id][w] || currentSchedule[r.id][w].assignment === null) {
-                    const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                    const { Y, Z } = programData.cycleConfig;
-                    const isClinic = Math.floor((w % Z) / Y) === cohort;
-                    if (isClinic) {
-                        const clinicType = 'CLINIC';
-                        currentSchedule[r.id][w] = { assignment: clinicType, locked: true };
-                    } else {
-                        currentSchedule[r.id][w] = { assignment: 'ELEC', locked: false };
-                    }
+            const weeklyViolations = RequirementsEngine.getViolationsForWeek(
+                week, globalWeek, totalWeeks, sched, residents, activeResidentsAtWeek, programData, gridStartYear, gridStartYear, validCohortAssignments as any, counts
+            );
+
+            weeklyViolations.forEach(v => {
+                raw += v.instances || 1;
+                if (v.issue.includes("Jeopardy Gap")) {
+                    p += W_JEOPARDY * (v.instances || 1);
+                } else if (v.type === 'CCIM' && v.issue.includes('clinic')) {
+                    // Empty clinic weeks are logged under staffing
+                    p += W_STAFFING * (v.instances || 1);
+                } else {
+                    p += W_STAFFING * (v.instances || 1);
                 }
-            }
-        });
-        const weekCounts: any[] = Array.from({ length: totalWeeks }, () => ({ interns: {}, seniors: {} }));
+            });
+
+            return { p, raw };
+        };
+
+        // Cache setup
+        const weekCounts: { interns: Record<string, number>; seniors: Record<string, number> }[] = Array(totalWeeks).fill(null).map(() => ({ interns: {}, seniors: {} }));
         const resCounts: Record<string, Record<number, Record<string, number>>> = {};
-        const resContCache: Record<string, number[]> = {};
-
-        const syncState = () => {
-            residents.forEach(r => {
-                resCounts[r.id] = { 1: {}, 2: {}, 3: {} };
-                resContCache[r.id] = Array(TOTAL_CYCLES).fill(0);
-                for (let w = 0; w < totalWeeks; w++) {
-                    const a = currentSchedule[r.id]?.[w]?.assignment;
-                    if (a) {
-                        const level = getPgyAtWeek(r, w);
-                        if (level === 1) weekCounts[w].interns[a] = (weekCounts[w].interns[a] || 0) + 1;
-                        else weekCounts[w].seniors[a] = (weekCounts[w].seniors[a] || 0) + 1;
-                        if (!existingSchedule?.[r.id]?.[w]?.locked) {
-                            typeFulfillment[a]?.forEach(t => resCounts[r.id][level][t] = (resCounts[r.id][level][t] || 0) + 1);
-                        }
-                    }
-                }
-                for (let c = 0; c < TOTAL_CYCLES; c++) resContCache[r.id][c] = getCycleCont(r.id, currentSchedule, c);
-            });
-        };
-        syncState();
-
-        const weekPenaltyCache: number[] = weekCounts.map((wc, w) => getWeekPenalty(w, wc, currentSchedule));
         const resReqPenaltyCache: Record<string, number> = {};
-        residents.forEach(r => resReqPenaltyCache[r.id] = getResPenalty(r.id, resCounts[r.id]));
-        let currentPenalty = 0; 
-        weekPenaltyCache.forEach(p => currentPenalty += p);
-        residents.forEach(r => { 
-            currentPenalty += resReqPenaltyCache[r.id]; 
-            resContCache[r.id].forEach(p => currentPenalty += p); 
+        const resContCache: Record<string, number[]> = {};
+        const weekPenaltyCache: number[] = Array(totalWeeks).fill(0);
+
+        residents.forEach(r => {
+            resCounts[r.id] = { 1: {}, 2: {}, 3: {} };
+            resContCache[r.id] = Array(TOTAL_CYCLES).fill(0);
         });
 
-        let bestSchedule = JSON.parse(JSON.stringify(currentSchedule));
-        let bestPenalty = currentPenalty;
-
-        if (currentPenalty === 0) {
-            if (onProgress) onProgress(200000, 200000, currentPenalty);
-            return currentSchedule;
+        // Initialize cache
+        for (let w = 0; w < totalWeeks; w++) {
+            residents.forEach(r => {
+                const cell = existingSchedule[r.id]?.[w];
+                const assignment = cell?.assignment || 'ELEC';
+                const start = r.activeWeekStart ?? 0;
+                const end = r.activeWeekEnd ?? totalWeeks;
+                if (w >= start && w < end) {
+                    const lvl = getPgyAtWeek(r, w);
+                    if (lvl === 1) {
+                        weekCounts[w].interns[assignment] = (weekCounts[w].interns[assignment] || 0) + 1;
+                    } else {
+                        weekCounts[w].seniors[assignment] = (weekCounts[w].seniors[assignment] || 0) + 1;
+                    }
+                    typeFulfillment[assignment]?.forEach(t => {
+                        resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) + 1;
+                    });
+                }
+            });
         }
+
+        let currentPenalty = 0;
+
+        const getRawTotals = (): number => {
+            let r = 0;
+            for (let w = 0; w < totalWeeks; w++) r += getWeekPenalty(w, weekCounts[w], currentSchedule).raw;
+            residents.forEach(res => r += getResPenalty(res.id, resCounts[res.id]).raw);
+            return r;
+        };
+
+        for (let w = 0; w < totalWeeks; w++) {
+            const { p } = getWeekPenalty(w, weekCounts[w], currentSchedule);
+            weekPenaltyCache[w] = p;
+            currentPenalty += p;
+        }
+
+        residents.forEach(r => {
+            const { p: reqP } = getResPenalty(r.id, resCounts[r.id]);
+            resReqPenaltyCache[r.id] = reqP;
+            currentPenalty += reqP;
+            for (let c = 0; c < TOTAL_CYCLES; c++) {
+                const contP = getCycleCont(r.id, currentSchedule, c);
+                resContCache[r.id][c] = contP;
+                currentPenalty += contP;
+            }
+        });
+
+        const activeMoves = strategy ? strategy.split(',').map(s => s.trim()).filter(Boolean) : ['3-way', '2-way', 'complete'];
+        let bestPenalty = currentPenalty;
+        console.log(`[Healer Start] Initial global penalty: ${currentPenalty.toLocaleString()} (Staffing: ${weekPenaltyCache.reduce((a, b) => a + b, 0).toLocaleString()}, Requirements: ${Object.values(resReqPenaltyCache).reduce((a, b) => a + b, 0).toLocaleString()})`);
 
         const maxSteps = 200000;
         let temp = 1.0;
         const coolRate = 0.99998;
 
+        let attempted2Way = 0, accepted2Way = 0;
+        let attempted3Way = 0, accepted3Way = 0;
+        let attemptedSingle = 0, acceptedSingle = 0;
+
         for (let step = 0; step < maxSteps; step++) {
             if (step % 2000 === 0) {
                 if (typeof (globalThis as any).checkInterrupt !== 'undefined' && (globalThis as any).checkInterrupt()) break;
-                const reqV = Object.values(resReqPenaltyCache).reduce((sum, p) => sum + Math.floor(p / W_REQUIREMENT), 0);
-                const staffV = weekPenaltyCache.reduce((sum, p) => sum + Math.floor(p / W_STAFFING), 0);
-                if (onProgress) onProgress(step, maxSteps, reqV + staffV);
+                if (onProgress) onProgress(step, maxSteps, getRawTotals(), currentSchedule);
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
 
@@ -237,100 +271,332 @@ export const healer: HealerSolver = {
                 console.log(`[Healer Step ${step}] Penalty: ${currentPenalty.toLocaleString()} | Staffing: ${staffV} | Jeopardy: ${jeopardyV} | Req: ${reqV} | Temp: ${temp.toFixed(4)}`);
             }
 
-            const r = residents[Math.floor(rng.next() * residents.length)];
-            const weeks = flexibleWeeks[r.id];
-            if (weeks.length === 0) continue;
+            let currentMove = 'single';
+            let activeStrategy = 'complete';
 
-            const phase = step / maxSteps;
-            let blockSize = 1;
-            const rand = rng.next();
-            if (phase < 0.5) {
-                if (rand < 0.7) blockSize = 4; else if (rand < 0.9) blockSize = 2; else blockSize = 1;
-            } else if (phase < 0.8) {
-                if (rand < 0.3) blockSize = 4; else if (rand < 0.7) blockSize = 2; else blockSize = 1;
-            } else {
-                if (rand < 0.1) blockSize = 4; else if (rand < 0.4) blockSize = 2; else blockSize = 1;
-            }
-
-            const startIdx = Math.floor(rng.next() * weeks.length);
-            const blockWeeks: number[] = [];
-            for (let i = 0; i < blockSize; i++) {
-                const wIdx = startIdx + i;
-                if (wIdx < weeks.length) {
-                    const w = weeks[wIdx];
-                    if (i > 0 && w !== blockWeeks[i - 1] + 1) break;
-                    if (isFlexible[r.id][w]) blockWeeks.push(w); else break;
-                }
-            }
-            if (blockWeeks.length === 0) continue;
-
-            const firstW = blockWeeks[0];
-            const level = getPgyAtWeek(r, firstW);
-            const a2 = assignmentsByLevel[level][Math.floor(rng.next() * assignmentsByLevel[level].length)];
-
-            const oldAssignments: AssignmentType[] = blockWeeks.map(w => currentSchedule[r.id]?.[w]?.assignment!);
-            if (oldAssignments.every(a => a === a2)) continue;
-
-            const oldWPs = blockWeeks.map(w => weekPenaltyCache[w]);
-            const oldRP = resReqPenaltyCache[r.id];
-            const affectedCycles = Array.from(new Set(blockWeeks.map(w => Math.floor(w / programData.cycleConfig.Z))));
-            const oldCPs = affectedCycles.map(c => resContCache[r.id][c]);
-
-            blockWeeks.forEach((w, i) => {
-                const a1 = oldAssignments[i];
-                const lvl = getPgyAtWeek(r, w);
-                if (lvl === 1) {
-                    weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) - 1;
-                    weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) + 1;
+            if (activeMoves.length > 0) {
+                activeStrategy = activeMoves[Math.floor(rng.next() * activeMoves.length)];
+                if (activeStrategy === '2-way') {
+                    currentMove = '2-way';
+                } else if (activeStrategy === '3-way') {
+                    currentMove = '3-way';
                 } else {
-                    weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) - 1;
-                    weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) + 1;
+                    currentMove = 'single';
                 }
-                typeFulfillment[a1]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) - 1);
-                typeFulfillment[a2]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) + 1);
-                currentSchedule[r.id][w].assignment = a2;
-            });
+            }
 
-            const newWPs = blockWeeks.map(w => getWeekPenalty(w, weekCounts[w], currentSchedule));
-            const newRP = getResPenalty(r.id, resCounts[r.id]);
-            const newCPs = affectedCycles.map(c => getCycleCont(r.id, currentSchedule, c));
+            if (currentMove === '2-way') {
+                // 2-Resident Swap Strategy (Staffing Neutral)
+                attempted2Way++;
+                const w = Math.floor(rng.next() * totalWeeks);
+                const candidates = residents.filter(res => isFlexible[res.id][w]);
+                if (candidates.length < 2) continue;
 
-            const delta = (newWPs.reduce((a, b) => a + b, 0) + newRP + newCPs.reduce((a, b) => a + b, 0)) -
-                (oldWPs.reduce((a, b) => a + b, 0) + oldRP + oldCPs.reduce((a, b) => a + b, 0));
+                const r1 = candidates[Math.floor(rng.next() * candidates.length)];
+                const lvl = getPgyAtWeek(r1, w);
+                const candidatesSameLvl = candidates.filter(res => res.id !== r1.id && getPgyAtWeek(res, w) === lvl);
+                if (candidatesSameLvl.length === 0) continue;
+                const r2 = candidatesSameLvl[Math.floor(rng.next() * candidatesSameLvl.length)];
 
-            if (delta <= 0 || Math.exp(-delta / (temp * 25000)) > rng.next()) {
-                currentPenalty += delta;
-                blockWeeks.forEach((w, i) => weekPenaltyCache[w] = newWPs[i]);
-                resReqPenaltyCache[r.id] = newRP;
-                affectedCycles.forEach((c, i) => {
-                    const idx = affectedCycles.indexOf(c);
-                    resContCache[r.id][c] = newCPs[idx];
+                let blockSize = 1;
+                const rand = rng.next();
+                if (rand < 0.5) blockSize = 4; else if (rand < 0.85) blockSize = 2; else blockSize = 1;
+
+                const blockWeeks: number[] = [];
+                let canSwap = true;
+                for (let i = 0; i < blockSize; i++) {
+                    const wk = w + i;
+                    if (wk >= totalWeeks) { canSwap = false; break; }
+                    if (!isFlexible[r1.id][wk] || !isFlexible[r2.id][wk]) { canSwap = false; break; }
+                    if (getPgyAtWeek(r1, wk) !== lvl || getPgyAtWeek(r2, wk) !== lvl) { canSwap = false; break; }
+                    blockWeeks.push(wk);
+                }
+                if (!canSwap || blockWeeks.length === 0) continue;
+
+                const oldA1 = blockWeeks.map(wk => currentSchedule[r1.id]?.[wk]?.assignment!);
+                const oldA2 = blockWeeks.map(wk => currentSchedule[r2.id]?.[wk]?.assignment!);
+                if (blockWeeks.every((wk, idx) => oldA1[idx] === oldA2[idx])) continue;
+
+                const oldRP1 = resReqPenaltyCache[r1.id];
+                const oldRP2 = resReqPenaltyCache[r2.id];
+                const affectedCycles = Array.from(new Set(blockWeeks.map(wk => Math.floor(wk / programData.cycleConfig.Z))));
+                const oldCPs1 = affectedCycles.map(c => resContCache[r1.id][c]);
+                const oldCPs2 = affectedCycles.map(c => resContCache[r2.id][c]);
+
+                // Swap
+                blockWeeks.forEach((wk, idx) => {
+                    const a1 = oldA1[idx];
+                    const a2 = oldA2[idx];
+
+                    typeFulfillment[a1]?.forEach(t => resCounts[r1.id][lvl][t] = (resCounts[r1.id][lvl][t] || 0) - 1);
+                    typeFulfillment[a2]?.forEach(t => resCounts[r1.id][lvl][t] = (resCounts[r1.id][lvl][t] || 0) + 1);
+
+                    typeFulfillment[a2]?.forEach(t => resCounts[r2.id][lvl][t] = (resCounts[r2.id][lvl][t] || 0) - 1);
+                    typeFulfillment[a1]?.forEach(t => resCounts[r2.id][lvl][t] = (resCounts[r2.id][lvl][t] || 0) + 1);
+
+                    currentSchedule[r1.id][wk].assignment = a2;
+                    currentSchedule[r2.id][wk].assignment = a1;
                 });
-                if (currentPenalty < bestPenalty) {
-                    bestPenalty = currentPenalty;
-                    bestSchedule = JSON.parse(JSON.stringify(currentSchedule));
+
+                const newRP1 = getResPenalty(r1.id, resCounts[r1.id]).p;
+                const newRP2 = getResPenalty(r2.id, resCounts[r2.id]).p;
+                const newCPs1 = affectedCycles.map(c => getCycleCont(r1.id, currentSchedule, c));
+                const newCPs2 = affectedCycles.map(c => getCycleCont(r2.id, currentSchedule, c));
+
+                const delta = (newRP1 + newRP2 + newCPs1.reduce((a, b) => a + b, 0) + newCPs2.reduce((a, b) => a + b, 0)) -
+                              (oldRP1 + oldRP2 + oldCPs1.reduce((a, b) => a + b, 0) + oldCPs2.reduce((a, b) => a + b, 0));
+
+                if (delta <= 0 || Math.exp(-delta / (temp * 25000)) > rng.next()) {
+                    accepted2Way++;
+                    currentPenalty += delta;
+                    resReqPenaltyCache[r1.id] = newRP1;
+                    resReqPenaltyCache[r2.id] = newRP2;
+                    affectedCycles.forEach((c, idx) => {
+                        resContCache[r1.id][c] = newCPs1[idx];
+                        resContCache[r2.id][c] = newCPs2[idx];
+                    });
+                    if (currentPenalty < bestPenalty) {
+                        bestPenalty = currentPenalty;
+                        bestSchedule = JSON.parse(JSON.stringify(currentSchedule));
+                    }
+                    if (currentPenalty === 0) break;
+                } else {
+                    // Revert
+                    blockWeeks.forEach((wk, idx) => {
+                        const a1 = oldA1[idx];
+                        const a2 = oldA2[idx];
+
+                        typeFulfillment[a2]?.forEach(t => resCounts[r1.id][lvl][t] = (resCounts[r1.id][lvl][t] || 0) - 1);
+                        typeFulfillment[a1]?.forEach(t => resCounts[r1.id][lvl][t] = (resCounts[r1.id][lvl][t] || 0) + 1);
+
+                        typeFulfillment[a1]?.forEach(t => resCounts[r2.id][lvl][t] = (resCounts[r2.id][lvl][t] || 0) - 1);
+                        typeFulfillment[a2]?.forEach(t => resCounts[r2.id][lvl][t] = (resCounts[r2.id][lvl][t] || 0) + 1);
+
+                        currentSchedule[r1.id][wk].assignment = a1;
+                        currentSchedule[r2.id][wk].assignment = a2;
+                    });
                 }
-                if (currentPenalty === 0) break;
+            } else if (currentMove === '3-way') {
+                // 3-Resident Cyclic Swap Strategy (Staffing Neutral)
+                attempted3Way++;
+                const w = Math.floor(rng.next() * totalWeeks);
+                const candidates = residents.filter(res => isFlexible[res.id][w]);
+                if (candidates.length < 3) continue;
+
+                const r1 = candidates[Math.floor(rng.next() * candidates.length)];
+                const lvl = getPgyAtWeek(r1, w);
+                const candidatesSameLvl = candidates.filter(res => res.id !== r1.id && getPgyAtWeek(res, w) === lvl);
+                if (candidatesSameLvl.length < 2) continue;
+
+                const r2Idx = Math.floor(rng.next() * candidatesSameLvl.length);
+                const r2 = candidatesSameLvl[r2Idx];
+                const candidatesRemaining = candidatesSameLvl.filter(res => res.id !== r2.id);
+                const r3 = candidatesRemaining[Math.floor(rng.next() * candidatesRemaining.length)];
+
+                let blockSize = 1;
+                const rand = rng.next();
+                if (rand < 0.5) blockSize = 4; else if (rand < 0.85) blockSize = 2; else blockSize = 1;
+
+                const blockWeeks: number[] = [];
+                let canSwap = true;
+                for (let i = 0; i < blockSize; i++) {
+                    const wk = w + i;
+                    if (wk >= totalWeeks) { canSwap = false; break; }
+                    if (!isFlexible[r1.id][wk] || !isFlexible[r2.id][wk] || !isFlexible[r3.id][wk]) { canSwap = false; break; }
+                    if (getPgyAtWeek(r1, wk) !== lvl || getPgyAtWeek(r2, wk) !== lvl || getPgyAtWeek(r3, wk) !== lvl) { canSwap = false; break; }
+                    blockWeeks.push(wk);
+                }
+                if (!canSwap || blockWeeks.length === 0) continue;
+
+                const oldA1 = blockWeeks.map(wk => currentSchedule[r1.id]?.[wk]?.assignment!);
+                const oldA2 = blockWeeks.map(wk => currentSchedule[r2.id]?.[wk]?.assignment!);
+                const oldA3 = blockWeeks.map(wk => currentSchedule[r3.id]?.[wk]?.assignment!);
+
+                if (blockWeeks.every((wk, idx) => oldA1[idx] === oldA2[idx] && oldA2[idx] === oldA3[idx])) continue;
+
+                const oldRP1 = resReqPenaltyCache[r1.id];
+                const oldRP2 = resReqPenaltyCache[r2.id];
+                const oldRP3 = resReqPenaltyCache[r3.id];
+                const affectedCycles = Array.from(new Set(blockWeeks.map(wk => Math.floor(wk / programData.cycleConfig.Z))));
+                const oldCPs1 = affectedCycles.map(c => resContCache[r1.id][c]);
+                const oldCPs2 = affectedCycles.map(c => resContCache[r2.id][c]);
+                const oldCPs3 = affectedCycles.map(c => resContCache[r3.id][c]);
+
+                // Cyclic Rotation: r1 gets r2, r2 gets r3, r3 gets r1
+                blockWeeks.forEach((wk, idx) => {
+                    const a1 = oldA1[idx];
+                    const a2 = oldA2[idx];
+                    const a3 = oldA3[idx];
+
+                    typeFulfillment[a1]?.forEach(t => resCounts[r1.id][lvl][t] = (resCounts[r1.id][lvl][t] || 0) - 1);
+                    typeFulfillment[a2]?.forEach(t => resCounts[r1.id][lvl][t] = (resCounts[r1.id][lvl][t] || 0) + 1);
+
+                    typeFulfillment[a2]?.forEach(t => resCounts[r2.id][lvl][t] = (resCounts[r2.id][lvl][t] || 0) - 1);
+                    typeFulfillment[a3]?.forEach(t => resCounts[r2.id][lvl][t] = (resCounts[r2.id][lvl][t] || 0) + 1);
+
+                    typeFulfillment[a3]?.forEach(t => resCounts[r3.id][lvl][t] = (resCounts[r3.id][lvl][t] || 0) - 1);
+                    typeFulfillment[a1]?.forEach(t => resCounts[r3.id][lvl][t] = (resCounts[r3.id][lvl][t] || 0) + 1);
+
+                    currentSchedule[r1.id][wk].assignment = a2;
+                    currentSchedule[r2.id][wk].assignment = a3;
+                    currentSchedule[r3.id][wk].assignment = a1;
+                });
+
+                const newRP1 = getResPenalty(r1.id, resCounts[r1.id]).p;
+                const newRP2 = getResPenalty(r2.id, resCounts[r2.id]).p;
+                const newRP3 = getResPenalty(r3.id, resCounts[r3.id]).p;
+                const newCPs1 = affectedCycles.map(c => getCycleCont(r1.id, currentSchedule, c));
+                const newCPs2 = affectedCycles.map(c => getCycleCont(r2.id, currentSchedule, c));
+                const newCPs3 = affectedCycles.map(c => getCycleCont(r3.id, currentSchedule, c));
+
+                const delta = (newRP1 + newRP2 + newRP3 + newCPs1.reduce((a, b) => a + b, 0) + newCPs2.reduce((a, b) => a + b, 0) + newCPs3.reduce((a, b) => a + b, 0)) -
+                              (oldRP1 + oldRP2 + oldRP3 + oldCPs1.reduce((a, b) => a + b, 0) + oldCPs2.reduce((a, b) => a + b, 0) + oldCPs3.reduce((a, b) => a + b, 0));
+
+                if (delta <= 0 || Math.exp(-delta / (temp * 25000)) > rng.next()) {
+                    accepted3Way++;
+                    currentPenalty += delta;
+                    resReqPenaltyCache[r1.id] = newRP1;
+                    resReqPenaltyCache[r2.id] = newRP2;
+                    resReqPenaltyCache[r3.id] = newRP3;
+                    affectedCycles.forEach((c, idx) => {
+                        resContCache[r1.id][c] = newCPs1[idx];
+                        resContCache[r2.id][c] = newCPs2[idx];
+                        resContCache[r3.id][c] = newCPs3[idx];
+                    });
+                    if (currentPenalty < bestPenalty) {
+                        bestPenalty = currentPenalty;
+                        bestSchedule = JSON.parse(JSON.stringify(currentSchedule));
+                    }
+                    if (currentPenalty === 0) break;
+                } else {
+                    // Revert
+                    blockWeeks.forEach((wk, idx) => {
+                        const a1 = oldA1[idx];
+                        const a2 = oldA2[idx];
+                        const a3 = oldA3[idx];
+
+                        typeFulfillment[a2]?.forEach(t => resCounts[r1.id][lvl][t] = (resCounts[r1.id][lvl][t] || 0) - 1);
+                        typeFulfillment[a1]?.forEach(t => resCounts[r1.id][lvl][t] = (resCounts[r1.id][lvl][t] || 0) + 1);
+
+                        typeFulfillment[a3]?.forEach(t => resCounts[r2.id][lvl][t] = (resCounts[r2.id][lvl][t] || 0) - 1);
+                        typeFulfillment[a2]?.forEach(t => resCounts[r2.id][lvl][t] = (resCounts[r2.id][lvl][t] || 0) + 1);
+
+                        typeFulfillment[a1]?.forEach(t => resCounts[r3.id][lvl][t] = (resCounts[r3.id][lvl][t] || 0) - 1);
+                        typeFulfillment[a3]?.forEach(t => resCounts[r3.id][lvl][t] = (resCounts[r3.id][lvl][t] || 0) + 1);
+
+                        currentSchedule[r1.id][wk].assignment = a1;
+                        currentSchedule[r2.id][wk].assignment = a2;
+                        currentSchedule[r3.id][wk].assignment = a3;
+                    });
+                }
             } else {
+                // Single resident block swap
+                attemptedSingle++;
+                const r = residents[Math.floor(rng.next() * residents.length)];
+                const weeks = flexibleWeeks[r.id];
+                if (weeks.length === 0) continue;
+
+                let blockSize = 1;
+                if (activeStrategy === '4-block') {
+                    blockSize = 4;
+                } else if (activeStrategy === '2-block') {
+                    blockSize = 2;
+                } else if (activeStrategy === '1-block') {
+                    blockSize = 1;
+                } else {
+                    const phase = step / maxSteps;
+                    const rand = rng.next();
+                    if (phase < 0.5) {
+                        if (rand < 0.7) blockSize = 4; else if (rand < 0.9) blockSize = 2; else blockSize = 1;
+                    } else if (phase < 0.8) {
+                        if (rand < 0.3) blockSize = 4; else if (rand < 0.7) blockSize = 2; else blockSize = 1;
+                    } else {
+                        if (rand < 0.1) blockSize = 4; else if (rand < 0.4) blockSize = 2; else blockSize = 1;
+                    }
+                }
+
+                const startIdx = Math.floor(rng.next() * weeks.length);
+                const blockWeeks: number[] = [];
+                for (let i = 0; i < blockSize; i++) {
+                    const wIdx = startIdx + i;
+                    if (wIdx < weeks.length) {
+                        const w = weeks[wIdx];
+                        if (i > 0 && w !== blockWeeks[i - 1] + 1) break;
+                        if (isFlexible[r.id][w]) blockWeeks.push(w); else break;
+                    }
+                }
+                if (blockWeeks.length === 0) continue;
+
+                const firstW = blockWeeks[0];
+                const level = getPgyAtWeek(r, firstW);
+                const a2 = assignmentsByLevel[level][Math.floor(rng.next() * assignmentsByLevel[level].length)];
+
+                const oldAssignments: AssignmentType[] = blockWeeks.map(w => currentSchedule[r.id]?.[w]?.assignment!);
+                if (oldAssignments.every(a => a === a2)) continue;
+
+                const oldWPs = blockWeeks.map(w => weekPenaltyCache[w]);
+                const oldRP = resReqPenaltyCache[r.id];
+                const affectedCycles = Array.from(new Set(blockWeeks.map(w => Math.floor(w / programData.cycleConfig.Z))));
+                const oldCPs = affectedCycles.map(c => resContCache[r.id][c]);
+
                 blockWeeks.forEach((w, i) => {
                     const a1 = oldAssignments[i];
                     const lvl = getPgyAtWeek(r, w);
                     if (lvl === 1) {
-                        weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) - 1;
-                        weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) + 1;
+                        weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) - 1;
+                        weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) + 1;
                     } else {
-                        weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) - 1;
-                        weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) + 1;
+                        weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) - 1;
+                        weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) + 1;
                     }
-                    typeFulfillment[a2]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) - 1);
-                    typeFulfillment[a1]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) + 1);
-                    currentSchedule[r.id][w].assignment = a1;
+                    typeFulfillment[a1]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) - 1);
+                    typeFulfillment[a2]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) + 1);
+                    currentSchedule[r.id][w].assignment = a2;
                 });
+
+                const newWPs = blockWeeks.map(w => getWeekPenalty(w, weekCounts[w], currentSchedule).p);
+                const { p: newRP } = getResPenalty(r.id, resCounts[r.id]);
+                const newCPs = affectedCycles.map(c => getCycleCont(r.id, currentSchedule, c));
+
+                const delta = (newWPs.reduce((a, b) => a + b, 0) + newRP + newCPs.reduce((a, b) => a + b, 0)) -
+                    (oldWPs.reduce((a, b) => a + b, 0) + oldRP + oldCPs.reduce((a, b) => a + b, 0));
+
+                if (delta <= 0 || Math.exp(-delta / (temp * 25000)) > rng.next()) {
+                    acceptedSingle++;
+                    currentPenalty += delta;
+                    blockWeeks.forEach((w, i) => weekPenaltyCache[w] = newWPs[i]);
+                    resReqPenaltyCache[r.id] = newRP;
+                    affectedCycles.forEach((c, i) => {
+                        const idx = affectedCycles.indexOf(c);
+                        resContCache[r.id][c] = newCPs[idx];
+                    });
+                    if (currentPenalty < bestPenalty) {
+                        bestPenalty = currentPenalty;
+                        bestSchedule = JSON.parse(JSON.stringify(currentSchedule));
+                    }
+                    if (currentPenalty === 0) break;
+                } else {
+                    blockWeeks.forEach((w, i) => {
+                        const a1 = oldAssignments[i];
+                        const lvl = getPgyAtWeek(r, w);
+                        if (lvl === 1) {
+                            weekCounts[w].interns[a2] = (weekCounts[w].interns[a2] || 0) - 1;
+                            weekCounts[w].interns[a1] = (weekCounts[w].interns[a1] || 0) + 1;
+                        } else {
+                            weekCounts[w].seniors[a2] = (weekCounts[w].seniors[a2] || 0) - 1;
+                            weekCounts[w].seniors[a1] = (weekCounts[w].seniors[a1] || 0) + 1;
+                        }
+                        typeFulfillment[a2]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) - 1);
+                        typeFulfillment[a1]?.forEach(t => resCounts[r.id][lvl][t] = (resCounts[r.id][lvl][t] || 0) + 1);
+                        currentSchedule[r.id][w].assignment = a1;
+                    });
+                }
             }
             temp *= coolRate;
         }
 
         console.log(`[Healer End] final penalty: ${bestPenalty} (annealed: ${currentPenalty}), weekly penalty: ${weekPenaltyCache.reduce((sum, p) => sum + p, 0)}, req penalty: ${Object.values(resReqPenaltyCache).reduce((sum, p) => sum + p, 0)}`);
+        console.log(`[Healer Stats] 2-Way: attempted=${attempted2Way}, accepted=${accepted2Way} | 3-Way: attempted=${attempted3Way}, accepted=${accepted3Way} | Single: attempted=${attemptedSingle}, accepted=${acceptedSingle}`);
         return bestSchedule;
     }
 }

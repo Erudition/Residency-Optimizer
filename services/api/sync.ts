@@ -18,10 +18,8 @@ import { GraphQLClient } from 'graphql-request'
 import type { ScheduleGrid } from '../../types'
 import { getAuthHeaders, getToken, isAuthenticated } from './auth'
 import {
-  CANDIDATES_QUERY,
+  CANDIDATES_WITH_SCHEDULES_QUERY,
   CREATE_CANDIDATE_MUTATION,
-  CANDIDATE_SCHEDULES_QUERY,
-  SCHEDULE_ASSIGNMENTS_QUERY,
   UPDATE_SCHEDULE_MUTATION,
   DELETE_SCHEDULE_MUTATION,
   DELETE_CANDIDATE_MUTATION,
@@ -35,7 +33,28 @@ import {
 
 // ── Types ──
 
-export type SyncStatus = 'local-only' | 'connected' | 'live'
+export type SyncStatus = 'local-only' | 'connected' | 'live' | 'error'
+
+/** Typed error thrown by sync operations so callers can surface user-facing messages. */
+export class SyncError extends Error {
+  constructor(
+    message: string,
+    public code:
+      | 'AUTH_REQUIRED'
+      | 'CACHE_FAILED'
+      | 'CREATE_FAILED'
+      | 'SAVE_FAILED'
+      | 'DELETE_FAILED'
+      | 'LOAD_FAILED'
+      | 'UPSERT_FAILED',
+    public cause?: unknown,
+  ) {
+    super(message)
+    this.name = 'SyncError'
+  }
+}
+
+export type SyncErrorHandler = (error: SyncError) => void
 
 export interface AssignmentChangeEvent {
   type: 'assignment-change'
@@ -100,10 +119,18 @@ export class ScheduleSyncService {
   private eventSource: EventSource | null = null
   private handlers: Set<EventHandler> = new Set()
   private _candidateId: number | null = null
-  private _status: SyncStatus = 'local-only'
+  // Seed from auth state so the badge is correct immediately on first render.
+  // isAuthenticated() does a localStorage read-through, so this is reliable
+  // even if the module IIFE ran before storage was fully populated.
+  private _status: SyncStatus = isAuthenticated() ? 'connected' : 'local-only'
   private reconnectAttempts = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private pendingWrites: Map<string, PendingCellWrite> = new Map()
+  private errorHandlers: Set<SyncErrorHandler> = new Set()
+  /** Accumulates failed upsert count for batched error reporting */
+  private _failedUpsertCount = 0
+  private _failedUpsertTimer: ReturnType<typeof setTimeout> | null = null
+  private static readonly UPSERT_ERROR_BATCH_MS = 3_000
 
   // Cache: rotation codename → backend ID
   private rotationIdCache: Map<string, number> | null = null
@@ -186,6 +213,21 @@ export class ScheduleSyncService {
     return () => this.handlers.delete(handler)
   }
 
+  /**
+   * Register a handler for batched background errors (cell upserts).
+   * Returns an unsubscribe function.
+   */
+  onError(handler: SyncErrorHandler): () => void {
+    this.errorHandlers.add(handler)
+    return () => this.errorHandlers.delete(handler)
+  }
+
+  private emitError(error: SyncError): void {
+    for (const h of this.errorHandlers) {
+      try { h(error) } catch { /* don't let handler errors propagate */ }
+    }
+  }
+
   // ── Writes ──
 
   /**
@@ -200,6 +242,10 @@ export class ScheduleSyncService {
     rotationCodename: string,
     locked: boolean,
   ): void {
+    // Synthetic residents (non-numeric IDs) can't be synced until the schedule
+    // is published and their grid keys are remapped to backend numeric IDs.
+    if (isNaN(residentId)) return
+
     const key = `${scheduleId}:${residentId}:${week}`
 
     // Cancel any pending write for this cell
@@ -235,7 +281,11 @@ export class ScheduleSyncService {
         data: { title },
       })
     } catch (err) {
-      console.error('[Sync] Rename failed:', err)
+      throw new SyncError(
+        `Failed to rename schedule: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'SAVE_FAILED',
+        err,
+      )
     }
   }
 
@@ -250,7 +300,11 @@ export class ScheduleSyncService {
         id: backendId,
       })
     } catch (err) {
-      console.error('[Sync] Delete failed:', err)
+      throw new SyncError(
+        `Failed to delete schedule: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'DELETE_FAILED',
+        err,
+      )
     }
   }
 
@@ -265,7 +319,11 @@ export class ScheduleSyncService {
         id: candidateId,
       })
     } catch (err) {
-      console.error('[Sync] Delete candidate failed:', err)
+      throw new SyncError(
+        `Failed to delete candidate: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'DELETE_FAILED',
+        err,
+      )
     }
   }
 
@@ -278,18 +336,20 @@ export class ScheduleSyncService {
   async createCandidate(
     startYear: number,
     title: string,
-  ): Promise<{ candidateId: number } | null> {
-    if (!isAuthenticated()) return null
+  ): Promise<{ candidateId: number }> {
+    if (!isAuthenticated()) throw new SyncError('Not authenticated', 'AUTH_REQUIRED')
+    this.refreshAuthHeaders()
+    await this.ensureCaches()
+
+    const ayId = this.ayIdCache?.get(startYear)
+    if (!ayId) {
+      throw new SyncError(
+        `Academic year ${startYear} not found in backend`,
+        'CREATE_FAILED',
+      )
+    }
+
     try {
-      this.refreshAuthHeaders()
-      await this.ensureCaches()
-
-      const ayId = this.ayIdCache?.get(startYear)
-      if (!ayId) {
-        console.warn(`[Sync] Cannot create candidate: AY ${startYear} not found`)
-        return null
-      }
-
       const createRes = await this.client.request<{
         createCandidate: { id: number; title: string }
       }>(CREATE_CANDIDATE_MUTATION, {
@@ -305,61 +365,130 @@ export class ScheduleSyncService {
       console.log(`[Sync] Created candidate ${candidateId}: "${title}"`)
       return { candidateId }
     } catch (err) {
-      console.error('[Sync] createCandidate failed:', err)
-      return null
+      throw new SyncError(
+        `Failed to create candidate: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'CREATE_FAILED',
+        err,
+      )
     }
   }
 
   /**
    * Save all 3 year grids for a candidate via the bulk endpoint.
    * Creates a Schedule for each year and saves all assignments.
-   * Returns the per-year schedule IDs.
+   *
+   * Synthetic residents (non-numeric IDs like "c2027-1") are automatically
+   * upserted in the backend with isSynthetic: true. The returned
+   * residentIdMap maps frontend synthetic keys → backend numeric IDs so
+   * the caller can remap in-memory grid keys for subsequent cell edits.
    */
   async saveCandidateGrids(
     candidateId: number,
     title: string,
     data: Record<number, ScheduleGrid>,
-  ): Promise<Record<number, number>> {
-    if (!isAuthenticated()) return {}
+    residents: Array<{ id: string; name: string; startYear: number }>,
+  ): Promise<{ scheduleIds: Record<number, number>; errors: string[]; residentIdMap: Record<string, number> }> {
+    if (!isAuthenticated()) throw new SyncError('Not authenticated', 'AUTH_REQUIRED')
+    this.refreshAuthHeaders()
     const scheduleIds: Record<number, number> = {}
+    const errors: string[] = []
+    const residentIdMap: Record<string, number> = {}
 
-    try {
-      await this.ensureCaches()
+    await this.ensureCaches()
 
-      for (const [yearStr, grid] of Object.entries(data)) {
-        const year = parseInt(yearStr, 10)
-        if (!grid) continue
+    // Build a lookup from resident ID → metadata (for synthetic resident creation)
+    const residentLookup = new Map(residents.map(r => [r.id, r]))
 
-        const ayId = this.ayIdCache?.get(year)
-        if (!ayId) {
-          console.warn(`[Sync] Skipping year ${year}: AY not found`)
-          continue
-        }
+    for (const [yearStr, grid] of Object.entries(data)) {
+      const year = parseInt(yearStr, 10)
+      if (!grid) continue
 
-        const assignments: Array<{
-          residentId: number
-          week: number
-          rotationId: number
-          locked: boolean
-        }> = []
+      const ayId = this.ayIdCache?.get(year)
+      if (!ayId) {
+        errors.push(`AY ${year} not found`)
+        continue
+      }
 
-        for (const [residentId, cells] of Object.entries(grid)) {
-          for (let w = 0; w < cells.length; w++) {
-            const cell = cells[w]
-            if (!cell?.assignment) continue
+      // Identify synthetic residents in this year's grid
+      const syntheticResidents: Array<{
+        frontendKey: string
+        firstName: string
+        lastName: string
+        startYearId: number
+      }> = []
 
-            const rotId = this.rotationIdCache?.get(cell.assignment)
-            if (!rotId) continue
+      const assignments: Array<{
+        residentId: number | string
+        week: number
+        rotationId: number
+        locked: boolean
+      }> = []
 
-            assignments.push({
-              residentId: parseInt(residentId, 10),
-              week: w + 1,
-              rotationId: rotId,
-              locked: cell.locked,
-            })
+      for (const [residentId, cells] of Object.entries(grid)) {
+        const isSynthetic = isNaN(parseInt(residentId, 10))
+
+        // Collect synthetic resident metadata for this year.
+        // We deduplicate within the current year's request array, but do NOT deduplicate
+        // across years (via residentIdMap) because the backend's /api/sync/bulk endpoint
+        // is stateless and expects all scheduled synthetic residents to be defined in each request.
+        if (isSynthetic && !syntheticResidents.some(sr => sr.frontendKey === residentId)) {
+          const resident = residentLookup.get(residentId)
+          if (resident) {
+            // Parse name like "New 2027 Resident 1" → firstName: "New 2027 Resident", lastName: "1"
+            const lastSpace = resident.name.lastIndexOf(' ')
+            const firstName = lastSpace > 0 ? resident.name.substring(0, lastSpace) : resident.name
+            const lastName = lastSpace > 0 ? resident.name.substring(lastSpace + 1) : '1'
+
+            const startYearId = this.ayIdCache?.get(resident.startYear)
+            if (startYearId) {
+              syntheticResidents.push({
+                frontendKey: residentId,
+                firstName,
+                lastName,
+                startYearId,
+              })
+            }
+          } else {
+            // Predictive fallback mapping: If a string ID like "c2027-1" is not in residentLookup,
+            // parse the cohort year and index directly from the ID string to reconstruct the metadata.
+            const match = residentId.match(/^c(\d+)-(\d+)$/)
+            if (match) {
+              const startYear = parseInt(match[1], 10)
+              const index = parseInt(match[2], 10)
+              const firstName = `New ${startYear} Resident`
+              const lastName = `${index}`
+              const startYearId = this.ayIdCache?.get(startYear)
+              if (startYearId) {
+                syntheticResidents.push({
+                  frontendKey: residentId,
+                  firstName,
+                  lastName,
+                  startYearId,
+                })
+              }
+            }
           }
         }
 
+        for (let w = 0; w < cells.length; w++) {
+          const cell = cells[w]
+          if (!cell?.assignment) continue
+
+          const rotId = this.rotationIdCache?.get(cell.assignment)
+          if (!rotId) continue
+
+          assignments.push({
+            // Send string key for synthetic residents — backend will remap
+            residentId: isSynthetic ? residentId : parseInt(residentId, 10),
+            week: w + 1,
+            rotationId: rotId,
+            locked: cell.locked,
+          })
+        }
+      }
+
+
+      try {
         const response = await fetch(`${API_URL}/api/sync/bulk`, {
           method: 'POST',
           headers: {
@@ -371,30 +500,43 @@ export class ScheduleSyncService {
             title: `${title} — AY ${year}`,
             academicYearId: ayId,
             assignments,
+            ...(syntheticResidents.length > 0 ? { syntheticResidents } : {}),
           }),
         })
 
         if (response.ok) {
           const result = await response.json()
           scheduleIds[year] = result.scheduleId
+          // Merge per-year residentIdMap into the cumulative one
+          if (result.residentIdMap) {
+            Object.assign(residentIdMap, result.residentIdMap)
+          }
           console.log(`[Sync] Saved year ${year} → schedule ${result.scheduleId} (${assignments.length} assignments)`)
         } else {
           const err = await response.json().catch(() => ({ error: 'unknown' }))
-          console.error(`[Sync] Bulk save failed for year ${year}:`, err)
+          errors.push(`AY ${year}: ${err.error || response.statusText}`)
         }
+      } catch (err) {
+        errors.push(`AY ${year}: ${err instanceof Error ? err.message : 'network error'}`)
       }
-    } catch (err) {
-      console.error('[Sync] saveCandidateGrids error:', err)
     }
 
-    return scheduleIds
+    // If no years succeeded, throw
+    if (Object.keys(scheduleIds).length === 0) {
+      throw new SyncError(
+        `Failed to save any schedule data: ${errors.join('; ')}`,
+        'SAVE_FAILED',
+      )
+    }
+
+    return { scheduleIds, errors, residentIdMap }
   }
 
   // ── Data Loading ──
 
   /**
-   * Load all active candidates from the backend.
-   * Returns data needed to reconstruct CandidateSchedule objects.
+   * Load all active candidates from the backend using a single nested GraphQL
+   * query. Fetches candidates → schedules → assignments in one round trip.
    */
   async loadAllCandidates(): Promise<
     Array<{
@@ -414,9 +556,9 @@ export class ScheduleSyncService {
     }>
   > {
     if (!isAuthenticated()) return []
-    try {
-      this.refreshAuthHeaders()
+    this.refreshAuthHeaders()
 
+    try {
       const res = await this.client.request<{
         Candidates: {
           docs: Array<{
@@ -424,151 +566,74 @@ export class ScheduleSyncService {
             title: string
             status: string
             startingYear: { id: number; startingYear: number }
+            schedules: {
+              docs: Array<{
+                id: number
+                title: string
+                academicYear: { id: number; startingYear: number }
+                scheduleAssignments: {
+                  docs: Array<{
+                    resident: { id: number }
+                    week: number
+                    rotation: { codename: string }
+                    locked: boolean
+                  }>
+                }
+              }>
+            }
           }>
         }
-      }>(CANDIDATES_QUERY, {
+      }>(CANDIDATES_WITH_SCHEDULES_QUERY, {
         where: { status: { equals: 'active' } },
       })
 
       const candidates = res.Candidates.docs
       if (candidates.length === 0) return []
 
-      const results = await Promise.all(
-        candidates.map(async (candidate) => {
-          const schedRes = await this.client.request<{
-            Schedules: {
-              docs: Array<{
-                id: number
-                title: string
-                academicYear: { id: number; startingYear: number }
-              }>
-            }
-          }>(CANDIDATE_SCHEDULES_QUERY, {
-            where: { candidate: { equals: candidate.id } },
-          })
-
-          const scheduleIds: Record<number, number> = {}
-          const yearData: Record<
-            number,
-            Array<{
-              residentId: number
-              week: number
-              rotation: string
-              locked: boolean
-            }>
-          > = {}
-
-          for (const sched of schedRes.Schedules.docs) {
-            const year = sched.academicYear.startingYear
-            scheduleIds[year] = sched.id
-
-            const assignRes = await this.client.request<{
-              ScheduleAssignments: {
-                docs: Array<{
-                  id: number
-                  resident: { id: number }
-                  week: number
-                  rotation: { codename: string }
-                  locked: boolean
-                }>
-              }
-            }>(SCHEDULE_ASSIGNMENTS_QUERY, {
-              where: { schedule: { equals: sched.id } },
-            })
-
-            yearData[year] = assignRes.ScheduleAssignments.docs.map((a) => ({
-              residentId: a.resident.id,
-              week: a.week,
-              rotation: a.rotation.codename,
-              locked: a.locked,
-            }))
-          }
-
-          return {
-            candidateId: candidate.id,
-            title: candidate.title,
-            startYear: candidate.startingYear.startingYear,
-            scheduleIds,
-            yearData,
-          }
-        }),
-      )
-
-      console.log(`[Sync] Loaded ${results.length} candidates from backend`)
-      return results
-    } catch (err) {
-      console.error('[Sync] loadAllCandidates failed:', err)
-      return []
-    }
-  }
-
-  /**
-   * Load all schedules and their assignments for a single candidate.
-   */
-  async loadCandidateSchedules(candidateId: number): Promise<
-    Array<{
-      backendId: number
-      title: string
-      academicYear: number
-      assignments: Array<{
-        residentId: number
-        week: number
-        rotation: string
-        locked: boolean
-      }>
-    }>
-  > {
-    try {
-      this.refreshAuthHeaders()
-      const schedRes = await this.client.request<{
-        Schedules: {
-          docs: Array<{
-            id: number
-            title: string
-            academicYear: { id: number; startingYear: number }
-            candidate: { id: number }
+      const results = candidates.map((candidate) => {
+        const scheduleIds: Record<number, number> = {}
+        const yearData: Record<
+          number,
+          Array<{
+            residentId: number
+            week: number
+            rotation: string
+            locked: boolean
           }>
+        > = {}
+
+        for (const sched of candidate.schedules.docs) {
+          const year = sched.academicYear.startingYear
+          scheduleIds[year] = sched.id
+
+          yearData[year] = sched.scheduleAssignments.docs.map((a) => ({
+            residentId: a.resident.id,
+            week: a.week,
+            rotation: a.rotation.codename,
+            locked: a.locked,
+          }))
         }
-      }>(CANDIDATE_SCHEDULES_QUERY, {
-        where: { candidate: { equals: candidateId } },
+
+        return {
+          candidateId: candidate.id,
+          title: candidate.title,
+          startYear: candidate.startingYear.startingYear,
+          scheduleIds,
+          yearData,
+        }
       })
 
-      const results = await Promise.all(
-        schedRes.Schedules.docs.map(async (sched) => {
-          const assignRes = await this.client.request<{
-            ScheduleAssignments: {
-              docs: Array<{
-                id: number
-                resident: { id: number }
-                week: number
-                rotation: { codename: string }
-                locked: boolean
-              }>
-            }
-          }>(SCHEDULE_ASSIGNMENTS_QUERY, {
-            where: { schedule: { equals: sched.id } },
-          })
-
-          return {
-            backendId: sched.id,
-            title: sched.title,
-            academicYear: sched.academicYear.startingYear,
-            assignments: assignRes.ScheduleAssignments.docs.map((a) => ({
-              residentId: a.resident.id,
-              week: a.week,
-              rotation: a.rotation.codename,
-              locked: a.locked,
-            })),
-          }
-        }),
-      )
-
+      console.log(`[Sync] Loaded ${results.length} candidates from backend (1 query)`)
       return results
     } catch (err) {
-      console.error('[Sync] loadCandidateSchedules failed:', err)
-      return []
+      throw new SyncError(
+        `Failed to load candidates: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'LOAD_FAILED',
+        err,
+      )
     }
   }
+
 
   // ── Private helpers ──
 
@@ -714,6 +779,18 @@ export class ScheduleSyncService {
       }
     } catch (err) {
       console.error('[Sync] Cell upsert failed:', err)
+      // Batch upsert failures and emit as a single error event after a quiet period
+      this._failedUpsertCount++
+      if (this._failedUpsertTimer) clearTimeout(this._failedUpsertTimer)
+      this._failedUpsertTimer = setTimeout(() => {
+        const count = this._failedUpsertCount
+        this._failedUpsertCount = 0
+        this._failedUpsertTimer = null
+        this.emitError(new SyncError(
+          `${count} cell edit${count > 1 ? 's' : ''} failed to sync to server — changes are local only`,
+          'UPSERT_FAILED',
+        ))
+      }, ScheduleSyncService.UPSERT_ERROR_BATCH_MS)
     }
   }
 
@@ -722,17 +799,33 @@ export class ScheduleSyncService {
    */
   private async ensureCaches(): Promise<void> {
     if (!this.rotationIdCache) {
-      const res = await this.client.request<{
-        Rotations: { docs: Array<{ id: number; codename: string }> }
-      }>(ROTATIONS_QUERY)
-      this.rotationIdCache = new Map(res.Rotations.docs.map((r) => [r.codename, r.id]))
+      try {
+        const res = await this.client.request<{
+          Rotations: { docs: Array<{ id: number; codename: string }> }
+        }>(ROTATIONS_QUERY)
+        this.rotationIdCache = new Map(res.Rotations.docs.map((r) => [r.codename, r.id]))
+      } catch (err) {
+        throw new SyncError(
+          'Failed to load rotation data from server',
+          'CACHE_FAILED',
+          err,
+        )
+      }
     }
 
     if (!this.ayIdCache) {
-      const res = await this.client.request<{
-        AcademicYears: { docs: Array<{ id: number; startingYear: number }> }
-      }>(ACADEMIC_YEAR_QUERY, { where: {} })
-      this.ayIdCache = new Map(res.AcademicYears.docs.map((ay) => [ay.startingYear, ay.id]))
+      try {
+        const res = await this.client.request<{
+          AcademicYears: { docs: Array<{ id: number; startingYear: number }> }
+        }>(ACADEMIC_YEAR_QUERY, { where: {} })
+        this.ayIdCache = new Map(res.AcademicYears.docs.map((ay) => [ay.startingYear, ay.id]))
+      } catch (err) {
+        throw new SyncError(
+          'Failed to load academic year data from server',
+          'CACHE_FAILED',
+          err,
+        )
+      }
     }
 
     if (this.tenantIdCache === undefined) {

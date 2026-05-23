@@ -63,16 +63,32 @@ export function setToken(token: string | null): void {
 
 /**
  * Get the current token, if any.
+ *
+ * Falls back to reading from localStorage if the in-memory token is null.
+ * This self-heals in cases where the module was re-evaluated by Vite's Fast
+ * Refresh (or any other re-evaluation path) before localStorage was populated,
+ * ensuring auth state survives page refreshes reliably.
  */
 export function getToken(): string | null {
+  if (_token !== null) return _token
+  // Fallback: re-read from localStorage to recover from any initialization race
+  try {
+    const stored = localStorage.getItem(AUTH_TOKEN_KEY)
+    if (stored) {
+      _token = stored // restore in-memory cache
+    }
+  } catch {
+    // localStorage unavailable — remain unauthenticated
+  }
   return _token
 }
 
 /**
  * Check if the user is authenticated (has a token).
+ * Delegates to getToken() so the localStorage fallback is always applied.
  */
 export function isAuthenticated(): boolean {
-  return _token !== null
+  return getToken() !== null
 }
 
 /**
@@ -80,8 +96,9 @@ export function isAuthenticated(): boolean {
  * Use this in GraphQL clients and fetch calls.
  */
 export function getAuthHeaders(): Record<string, string> {
-  if (!_token) return {}
-  return { Authorization: `JWT ${_token}` }
+  const tok = getToken()
+  if (!tok) return {}
+  return { Authorization: `JWT ${tok}` }
 }
 
 /**

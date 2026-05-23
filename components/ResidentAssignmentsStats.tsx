@@ -8,6 +8,8 @@ import { Table, Users, Info } from 'lucide-react';
 interface Props {
   residents: Resident[];
   schedule: ScheduleGrid;
+  activeYear?: number;
+  startYear?: number;
 }
 
 const getBaseColorStyle = (count: number, max: number, hue: number, intensityScore: number): React.CSSProperties => {
@@ -26,20 +28,39 @@ const getBaseColorStyle = (count: number, max: number, hue: number, intensitySco
   };
 };
 
-export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
+export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents, schedule, activeYear, startYear }) => {
   const programData = useProgramData();
   const { rotations } = programData;
 
+  const getCohortSortValue = (cohort: number, year: number) => {
+    const { Y, Z } = programData.cycleConfig;
+    const startYr = startYear ?? 2025;
+    const startWeek = (year - startYr) * 52;
+    const startingCohort = Math.floor((startWeek % Z) / Y);
+    return (cohort - startingCohort + Z) % Z;
+  };
+
   // Sort residents by level and clinic cycle so the columns are beautifully grouped
   const sortedResidents = useMemo(() => {
+    const isUnified = Object.values(schedule).some(row => (row as any)?.length > 52);
+    if (isUnified) {
+      return [...residents].sort((a, b) => {
+        if (a.startYear !== b.startYear) return a.startYear - b.startYear;
+        const cycleA = a.cohort ?? 0;
+        const cycleB = b.cohort ?? 0;
+        if (cycleA !== cycleB) return cycleA - cycleB;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    const currentYr = activeYear ?? 2025;
     return [...residents].sort((a, b) => {
       if (a.level !== b.level) return a.level - b.level;
-      const cycleA = a.cohort ?? 0;
-      const cycleB = b.cohort ?? 0;
-      if (cycleA !== cycleB) return cycleA - cycleB;
+      const cohortSortA = getCohortSortValue(a.cohort ?? 0, currentYr);
+      const cohortSortB = getCohortSortValue(b.cohort ?? 0, currentYr);
+      if (cohortSortA !== cohortSortB) return cohortSortA - cohortSortB;
       return a.name.localeCompare(b.name);
     });
-  }, [residents]);
+  }, [residents, schedule, activeYear, startYear, programData]);
 
   // Resizable Left Column State
   const [colWidth, setColWidth] = useState(160);

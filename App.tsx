@@ -13,12 +13,13 @@ import {
   DraftCandidate,
   PublishedCandidate,
   isDraft,
-  isPublished
+  isPublished,
+  SelectionRange
 } from './types';
 import {
   TOTAL_WEEKS
 } from './constants';
-import { deriveActiveStartYear } from './services/programDataUtils';
+import { deriveActiveStartYear, isClinicRotation, hasTag } from './services/programDataUtils';
 const ACTIVE_START_YEAR = deriveActiveStartYear();
 import { 
   generateSchedule, 
@@ -28,13 +29,15 @@ import {
   getRequirementViolations, 
   getWeeklyViolations, 
   getAuditViolations,
+  getRequirementsViolationsCount,
   sliceIntoYears,
+  mergeYearsIntoUnified,
   getUnifiedResidents,
   getAugmentedResidents
 } from './services/scheduler';
 import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
-import { getScheduleSyncService, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
-import { extractTokenFromURL, isAuthenticated } from './services/api/auth';
+import { getScheduleSyncService, SyncError, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
+import { extractTokenFromURL, isAuthenticated, verifyToken } from './services/api/auth';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
 import { healSchedule } from './services/healer';
@@ -51,8 +54,10 @@ import { CompetitorStudio } from './components/CompetitorStudio';
 import { CycleKanban } from './components/CycleKanban';
 import { GenerationDashboard } from './components/GenerationDashboard';
 import { SettingsOverlay } from './components/SettingsOverlay';
+import { HealerPanel } from './components/HealerPanel';
 import { Button } from './components/ui/Button';
 import { Input } from './components/ui/Input';
+import { ToastProvider, useToast } from './components/ui/Toast';
 import {
   CompetitionParams,
   CompetitionPriority,
@@ -88,7 +93,12 @@ import {
   Crown,
   CheckSquare,
   Square,
-  CloudUpload
+  CloudUpload,
+  ArrowUpDown,
+  ArrowLeftRight,
+  AlertTriangle,
+  Lock,
+  Unlock
 } from 'lucide-react';
 
 
@@ -437,6 +447,7 @@ extractTokenFromURL();
 
 const AppContent: React.FC = () => {
   const programData = useProgramData();
+  const toast = useToast();
 
   const [residents, setResidents] = useState<Resident[]>(() => {
     const cached = loadState<Resident[]>('rsp_residents_v4', []);
@@ -461,7 +472,7 @@ const AppContent: React.FC = () => {
 
   const [activeYear, setActiveYear] = useState<number>(ACTIVE_START_YEAR);
   const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>(() =>
-    loadState('rsp_sort_order', 'pgy')
+    loadState('rsp_sort_order', 'cycle')
   );
   // Dynamic history detection
   const historicalYears = useMemo(() => 
@@ -527,6 +538,16 @@ const AppContent: React.FC = () => {
   const [bestHealCount, setBestHealCount] = useState<number | null>(null);
   const [bestHealGrid, setBestHealGrid] = useState<ScheduleGrid | null>(null);
   const healWorkerRef = useRef<Worker | null>(null);
+  const [selection, setSelection] = useState<SelectionRange | null>(null);
+  const [swapSourceSelection, setSwapSourceSelection] = useState<SelectionRange | null>(null);
+  const [includeClinicInBatch, setIncludeClinicInBatch] = useState(false);
+  const [includeAbsencesInBatch, setIncludeAbsencesInBatch] = useState(false);
+  
+  const [isHealerPanelOpen, setIsHealerPanelOpen] = useState(false);
+  const [isHealerRunning, setIsHealerRunning] = useState(false);
+  const [originalHealCount, setOriginalHealCount] = useState<number | null>(null);
+  const [originalHealGrid, setOriginalHealGrid] = useState<ScheduleGrid | null>(null);
+  const [isHealerUnified, setIsHealerUnified] = useState(false);
 
 
 
@@ -611,6 +632,7 @@ const AppContent: React.FC = () => {
               scheduleIds: c.scheduleIds,
               name: c.title,
               data,
+              unifiedData: mergeYearsIntoUnified(data, c.startYear, 3),
               createdAt: new Date(),
               startYear: c.startYear,
               lastSyncedAt: new Date(),
@@ -623,6 +645,13 @@ const AppContent: React.FC = () => {
         });
       } catch (err) {
         console.error('[App] Failed to load candidates from backend:', err);
+        if (!cancelled) {
+          toast.warning(
+            err instanceof SyncError
+              ? `Could not load published schedules: ${err.message}`
+              : 'Could not load published schedules from server. Working in local-only mode.',
+          );
+        }
       }
     })();
 
@@ -735,6 +764,14 @@ const AppContent: React.FC = () => {
     return yearCohorts;
   }, [activeSchedule, activeYear, historicalCohortsByYear, residents]);
 
+  const getCohortSortValue = (cohort: number, year: number) => {
+    const { Y, Z } = programData.cycleConfig;
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+    const startWeek = (year - startYear) * 52;
+    const startingCohort = Math.floor((startWeek % Z) / Y);
+    return (cohort - startingCohort + Z) % Z;
+  };
+
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
     let yearCohorts = year === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year]);
@@ -774,7 +811,9 @@ const AppContent: React.FC = () => {
     }).sort((a, b) => {
 
       if (residentSortOrder === 'cycle') {
-        if (a.cohort !== b.cohort) return a.cohort - b.cohort;
+        const sortA = getCohortSortValue(a.cohort ?? 0, year);
+        const sortB = getCohortSortValue(b.cohort ?? 0, year);
+        if (sortA !== sortB) return sortA - sortB;
         if (a.level !== b.level) return a.level - b.level;
         return a.name.localeCompare(b.name);
       } else {
@@ -813,8 +852,8 @@ const AppContent: React.FC = () => {
   }, [currentGrid, isHealing, bestHealGrid, viewMode, activeSchedule]);
 
   const displayResidents = useMemo(() => {
-    if (viewMode === 'unified' && activeSchedule?.unifiedData) {
-       const startYear = activeSchedule.startYear || ACTIVE_START_YEAR;
+    if (viewMode === 'unified') {
+       const startYear = activeSchedule?.startYear || activeYear || ACTIVE_START_YEAR;
        return getUnifiedResidents(residents, startYear, 3).map(r => ({
            ...r,
            clinicType: r.startYear === 2025 ? 'NIMA' : 'CCIM',
@@ -826,7 +865,7 @@ const AppContent: React.FC = () => {
        });
     }
     return activeResidents;
-  }, [viewMode, activeSchedule, residents, activeResidents, historicalCohortsByYear]);
+  }, [viewMode, activeSchedule, residents, activeResidents, historicalCohortsByYear, activeYear]);
 
   const { stats, violations, fairness } = useMemo(() => {
     if ((!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') && !isHistoricalYear) {
@@ -838,41 +877,69 @@ const AppContent: React.FC = () => {
     }
 
     // For requirement violations, we need full history (historical + active session data)
-    const fullHistory = { ...historySchedules, ...(activeSchedule.data || {}) };
+    const activeScheduleData = (isHealing && bestHealGrid)
+      ? (viewMode === 'unified' 
+          ? sliceIntoYears(bestHealGrid, activeSchedule.startYear || ACTIVE_START_YEAR, 3)
+          : { ...activeSchedule.data, [activeYear]: bestHealGrid })
+      : (activeSchedule.data || {});
+
+    const fullHistory = { ...historySchedules, ...activeScheduleData };
 
     return {
       stats: calculateStats(activeResidents, currentGrid),
       violations: {
         reqs: getRequirementViolations(activeResidents, currentGrid, programData, fullHistory, activeYear),
-        constraints: getWeeklyViolations(activeResidents, currentGrid, programData),
+        constraints: getWeeklyViolations(activeResidents, currentGrid, programData, activeYear),
         audit: getAuditViolations(activeResidents, fullHistory, programData, activeYear)
       },
       fairness: calculateFairnessMetrics(activeResidents, currentGrid, programData)
     };
-  }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId, programData]);
+  }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId, programData, isHealing, bestHealGrid, viewMode]);
 
-  const activeViolationsCount = useMemo(() => {
+  const currentCoverageViolationsCount = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
-
-    const fullHistory = { ...historySchedules, ...(activeSchedule.data || {}) };
     const useUnified = viewMode === 'unified' && !!activeSchedule.unifiedData;
     const startYear = useUnified ? (activeSchedule.startYear || ACTIVE_START_YEAR) : activeYear;
-    const totalYears = useUnified ? 3 : 1;
 
-    let total = 0;
-    for (let offset = 0; offset < totalYears; offset++) {
-      const y = startYear + offset;
-      const yrResidents = getResidentsForYear(y);
-      const yrGrid = useUnified ? (activeSchedule.data[y] || {}) : currentGrid;
-      const reqsList = getRequirementViolations(yrResidents, yrGrid, programData, fullHistory, y);
-      const reqs = reqsList.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0);
-      const constraintsList = getWeeklyViolations(yrResidents, yrGrid, programData, y);
-      const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
-      const audit = getAuditViolations(yrResidents, fullHistory, programData, y);
-      total += reqs + constraints + audit;
+    if (useUnified) {
+      const unifiedGrid = (isHealing && bestHealGrid) ? bestHealGrid : (activeSchedule.unifiedData || {});
+      const constraintsList = getWeeklyViolations(displayResidents, unifiedGrid, programData, startYear);
+      return constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
+    } else {
+      return violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
     }
-    return total;
-  }, [activeSchedule, historySchedules, activeScheduleId, activeYear, viewMode, currentGrid, residents, programData]);
+  }, [activeSchedule, activeScheduleId, viewMode, activeYear, violations.constraints, residents, programData, getResidentsForYear, isHealing, bestHealGrid]);
+
+  const currentRequirementsViolationsCount = useMemo(() => {
+    if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
+    const useUnified = viewMode === 'unified' && !!activeSchedule.unifiedData;
+    const startYear = useUnified ? (activeSchedule.startYear || ACTIVE_START_YEAR) : activeYear;
+    
+    const activeScheduleData = (isHealing && bestHealGrid)
+      ? (useUnified 
+          ? sliceIntoYears(bestHealGrid, startYear, 3)
+          : { ...activeSchedule.data, [activeYear]: bestHealGrid })
+      : (activeSchedule.data || {});
+
+    const fullHistory = { ...historySchedules, ...activeScheduleData };
+
+    const reqsDeficit = getRequirementsViolationsCount(
+      useUnified ? displayResidents : activeResidents,
+      useUnified ? displayGrid : currentGrid,
+      fullHistory,
+      startYear,
+      useUnified,
+      programData
+    );
+
+    const audit = getAuditViolations(useUnified ? displayResidents : activeResidents, fullHistory, programData, startYear);
+
+    return reqsDeficit + audit;
+  }, [activeSchedule, activeScheduleId, viewMode, activeYear, historySchedules, displayResidents, activeResidents, displayGrid, currentGrid, residents, programData, getResidentsForYear, isHealing, bestHealGrid]);
+
+  const activeViolationsCount = useMemo(() => {
+    return currentCoverageViolationsCount + currentRequirementsViolationsCount;
+  }, [currentCoverageViolationsCount, currentRequirementsViolationsCount]);
 
   const hasViolations = activeViolationsCount > 0;
 
@@ -1131,72 +1198,20 @@ const AppContent: React.FC = () => {
       }
     });
 
+    // Surface batched cell upsert failures as toast warnings
+    const unsubscribeErrors = syncService.onError((error) => {
+      toast.warning(error.message);
+    });
+
     return () => {
       clearInterval(statusInterval);
       unsubscribe();
+      unsubscribeErrors();
       syncService.disconnect();
       setSyncStatus(isAuthenticated() ? 'connected' : 'local-only');
     };
   }, [activeSyncId, syncService]);
 
-  // ── Load existing backend candidates on startup ──
-  useEffect(() => {
-    if (!isAuthenticated()) return;
-
-    syncService.loadAllCandidates().then(candidates => {
-      if (candidates.length === 0) return;
-
-      setSchedules(prev => {
-        const existingBackendIds = new Set(prev.filter(s => s.backendId).map(s => s.backendId));
-        const newCandidates: CandidateSchedule[] = [];
-
-        for (const candidate of candidates) {
-          // Skip if we already have this candidate locally
-          if (existingBackendIds.has(candidate.candidateId)) continue;
-
-          // Build the ScheduleHistory (3-year grid) from backend data
-          const data: Record<number, any> = {};
-          const yearEntries = Object.entries(candidate.yearData) as [string, typeof candidate.yearData[number]][];
-          for (const [yearStr, assignments] of yearEntries) {
-            const year = parseInt(yearStr, 10);
-            const grid: any = {};
-            for (const a of assignments) {
-              const resId = a.residentId.toString();
-              if (!grid[resId]) {
-                grid[resId] = Array(52).fill(null).map(() => ({ assignment: null, locked: false }));
-              }
-              if (a.week >= 1 && a.week <= 52) {
-                grid[resId][a.week - 1] = {
-                  assignment: a.rotation,
-                  locked: a.locked,
-                };
-              }
-            }
-            data[year] = grid;
-          }
-
-          newCandidates.push({
-            kind: 'published' as const,
-            id: `pub-${candidate.candidateId}`,
-            name: candidate.title,
-            data,
-            createdAt: new Date(),
-            startYear: candidate.startYear,
-            candidateId: candidate.candidateId,
-            scheduleIds: candidate.scheduleIds,
-            lastSyncedAt: new Date(),
-          });
-        }
-
-        if (newCandidates.length > 0) {
-          console.log(`[Sync] Loaded ${newCandidates.length} candidates from backend`);
-          return [...prev, ...newCandidates];
-        }
-        return prev;
-      });
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncService]);
 
   const handleGenerate = async () => {
     if (isGeneratingRef.current) return;
@@ -1323,6 +1338,7 @@ const AppContent: React.FC = () => {
         console.log('Generation canceled');
       } else {
         console.error('Generation failed:', err);
+        toast.error(`Schedule generation failed: ${err instanceof Error ? err.message : 'unknown error'}`);
       }
     } finally {
       isGeneratingRef.current = false;
@@ -1352,87 +1368,248 @@ const AppContent: React.FC = () => {
     setRenameModalOpen(false);
     setScheduleToRename(null);
   };
-  const handleToggleHeal = () => {
-    if (isHealing) {
-      // STOP
-      if (healWorkerRef.current) {
-        healWorkerRef.current.postMessage({ type: 'stop-heal' });
-        healWorkerRef.current.terminate();
-        healWorkerRef.current = null;
-      }
-      
-      if (bestHealGrid && activeScheduleId) {
-        const activeSched = schedules.find(s => s.id === activeScheduleId);
-        const useUnified = activeSched?.unifiedData;
-        const startYear = useUnified ? (activeSched?.startYear || ACTIVE_START_YEAR) : activeYear;
+  const handleOpenHealerPanel = () => {
+    if (!activeScheduleId) return;
+    const activeSched = schedules.find(s => s.id === activeScheduleId);
+    if (!activeSched) return;
 
-        setSchedules(prev => prev.map(s => {
-          if (s.id !== activeScheduleId) return s;
-          if (useUnified) {
-            const newSliced = sliceIntoYears(bestHealGrid, startYear, 3);
-            return { ...s, data: newSliced, unifiedData: bestHealGrid };
-          }
-          return { ...s, data: { ...s.data, [activeYear]: bestHealGrid } };
-        }));
-      }
+    const useUnified = viewMode === 'unified' && !!activeSched.unifiedData;
+    const gridToHeal = useUnified ? activeSched.unifiedData! : activeSched.data[activeYear];
+    if (!gridToHeal) return;
 
-      setIsHealing(false);
-      setBestHealGrid(null);
-      setBestHealCount(null);
-      setHealerProgress(undefined);
-    } else {
-      // START
-      if (!activeScheduleId) return;
+    const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+    const totalYears = useUnified ? 3 : 1;
+
+    setIsHealerUnified(useUnified);
+    setIsHealerPanelOpen(true);
+    setIsHealing(true);
+    setBestHealGrid(gridToHeal);
+    setOriginalHealGrid(gridToHeal);
+    setOriginalHealCount(activeViolationsCount);
+    setBestHealCount(activeViolationsCount);
+    setHealerProgress(0);
+    setIsHealerRunning(false);
+  };
+
+  const handleStartHealerStrategy = (strategy: string) => {
+    if (!activeScheduleId) return;
+    const activeSched = schedules.find(s => s.id === activeScheduleId);
+    if (!activeSched) return;
+
+    const useUnified = isHealerUnified;
+    const gridToHeal = bestHealGrid || (useUnified ? activeSched.unifiedData! : activeSched.data[activeYear]);
+    if (!gridToHeal) return;
+
+    const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+    const totalYears = useUnified ? 3 : 1;
+
+    const healingResidents = useUnified 
+      ? getUnifiedResidents(residents, startYear, totalYears)
+      : getResidentsForYear(startYear);
+
+    // Stop current worker if running
+    if (healWorkerRef.current) {
+      healWorkerRef.current.terminate();
+      healWorkerRef.current = null;
+    }
+
+    const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
+    healWorkerRef.current = worker;
+    setIsHealerRunning(true);
+
+    worker.onmessage = (e) => {
+      const { type, schedule, violations: count, healerProgress: hProgress } = e.data;
+      console.log('Heal worker message:', type, count);
+      if (type === 'heal-update') {
+        setBestHealGrid(schedule);
+        setBestHealCount(count);
+        if (hProgress !== undefined) setHealerProgress(hProgress);
+      } else if (type === 'heal-ping') {
+        setBestHealCount(count);
+        if (hProgress !== undefined) setHealerProgress(hProgress);
+      } else if (type === 'heal-complete') {
+        setIsHealerRunning(false);
+        setHealerProgress(100);
+      }
+    };
+
+    worker.postMessage({
+      type: 'start-heal',
+      grid: gridToHeal,
+      residents: healingResidents,
+      historicalSchedules: historySchedules,
+      startYear,
+      totalYears,
+      cohortAssignments: activeSched.cohortAssignments,
+      programData: serializeProgramData(programData),
+      strategy
+    });
+  };
+
+  const handleStopHealerStrategy = () => {
+    if (healWorkerRef.current) {
+      healWorkerRef.current.postMessage({ type: 'stop-heal' });
+      healWorkerRef.current.terminate();
+      healWorkerRef.current = null;
+    }
+    setIsHealerRunning(false);
+  };
+
+  const handleApplyHealedSchedule = async () => {
+    handleStopHealerStrategy();
+
+    if (bestHealGrid && activeScheduleId) {
       const activeSched = schedules.find(s => s.id === activeScheduleId);
       if (!activeSched) return;
-
-      const useUnified = !!activeSched.unifiedData;
-      const gridToHeal = useUnified ? activeSched.unifiedData! : activeSched.data[activeYear];
-      if (!gridToHeal) return;
-
+      const useUnified = isHealerUnified;
       const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
-      const totalYears = useUnified ? 3 : 1;
-      
-      const healingResidents = useUnified 
-        ? getUnifiedResidents(residents, startYear, totalYears)
-        : getResidentsForYear(startYear);
 
-      const initialCount = activeViolationsCount;
-      setBestHealCount(initialCount);
-      setBestHealGrid(gridToHeal);
+      let newData = activeSched.data;
+      let newUnifiedData = activeSched.unifiedData;
 
-      const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
-      healWorkerRef.current = worker;
-
-      worker.onmessage = (e) => {
-        const { type, schedule, violations: count, healerProgress } = e.data;
-        console.log('Heal worker message:', type, count);
-        if (type === 'heal-update') {
-          setBestHealGrid(schedule);
-          setBestHealCount(count);
-          if (healerProgress !== undefined) setHealerProgress(healerProgress);
-
-        } else if (type === 'heal-ping') {
-          setBestHealCount(count);
-          if (healerProgress !== undefined) setHealerProgress(healerProgress);
-        } else if (type === 'heal-complete') {
-          handleToggleHeal();
+      if (useUnified) {
+        newData = sliceIntoYears(bestHealGrid, startYear, 3);
+        newUnifiedData = bestHealGrid;
+      } else {
+        newData = { ...activeSched.data, [activeYear]: bestHealGrid };
+        if (activeSched.unifiedData) {
+          const newUnified = { ...activeSched.unifiedData };
+          const offset = (activeYear - startYear) * TOTAL_WEEKS;
+          Object.entries(bestHealGrid).forEach(([rId, row]) => {
+            if (!newUnified[rId]) {
+              newUnified[rId] = new Array(TOTAL_WEEKS * 3).fill(null);
+            }
+            const fullRow = [...newUnified[rId]];
+            for (let i = 0; i < TOTAL_WEEKS; i++) {
+              fullRow[offset + i] = row[i];
+            }
+            newUnified[rId] = fullRow;
+          });
+          newUnifiedData = newUnified;
         }
+      }
+
+      // If it is a published schedule, save it to the backend!
+      let updatedScheduleIds = activeSched.kind === 'published' ? activeSched.scheduleIds : undefined;
+      if (activeSched.kind === 'published' && isAuthenticated()) {
+        try {
+          toast.info('Saving healed schedule to server...');
+          const augmentedResidents = getAugmentedResidents(residents, activeSched.startYear + 4, activeSched.startYear);
+          const { scheduleIds, errors: saveErrors } = await syncService.saveCandidateGrids(
+            activeSched.candidateId,
+            activeSched.name,
+            newData,
+            augmentedResidents,
+          );
+          if (saveErrors && saveErrors.length > 0) {
+            console.error('Failed to save healed schedule to server:', saveErrors);
+            toast.error(`Failed to save healed schedule to server: ${saveErrors.join(', ')}`);
+          } else {
+            updatedScheduleIds = scheduleIds;
+            toast.success('Healed schedule saved to server!');
+          }
+        } catch (e) {
+          console.error('Failed to save healed schedule to server:', e);
+          toast.error(`Failed to save healed schedule to server: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      setSchedules(prev => prev.map(s => {
+        if (s.id !== activeScheduleId) return s;
+        return { 
+          ...s, 
+          data: newData, 
+          unifiedData: newUnifiedData,
+          ...(s.kind === 'published' && updatedScheduleIds ? { scheduleIds: updatedScheduleIds } : {})
+        };
+      }));
+      toast.success('Healed schedule applied successfully!');
+    }
+
+    setIsHealing(false);
+    setIsHealerPanelOpen(false);
+    setIsHealerRunning(false);
+    setBestHealGrid(null);
+    setOriginalHealGrid(null);
+    setOriginalHealCount(null);
+    setBestHealCount(null);
+    setHealerProgress(undefined);
+  };
+
+  const handleApplyCopyHealedSchedule = () => {
+    handleStopHealerStrategy();
+
+    if (bestHealGrid && activeScheduleId) {
+      const activeSched = schedules.find(s => s.id === activeScheduleId);
+      if (!activeSched) return;
+      const useUnified = isHealerUnified;
+      const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+
+      let newData = activeSched.data;
+      let newUnifiedData = activeSched.unifiedData;
+
+      if (useUnified) {
+        newData = sliceIntoYears(bestHealGrid, startYear, 3);
+        newUnifiedData = bestHealGrid;
+      } else {
+        newData = { ...activeSched.data, [activeYear]: bestHealGrid };
+        if (activeSched.unifiedData) {
+          const newUnified = { ...activeSched.unifiedData };
+          const offset = (activeYear - startYear) * TOTAL_WEEKS;
+          Object.entries(bestHealGrid).forEach(([rId, row]) => {
+            if (!newUnified[rId]) {
+              newUnified[rId] = new Array(TOTAL_WEEKS * 3).fill(null);
+            }
+            const fullRow = [...newUnified[rId]];
+            for (let i = 0; i < TOTAL_WEEKS; i++) {
+              fullRow[offset + i] = row[i];
+            }
+            newUnified[rId] = fullRow;
+          });
+          newUnifiedData = newUnified;
+        }
+      }
+
+      const newId = Math.random().toString(36).substring(2, 9);
+      // Duplicates always start as drafts — user must Publish explicitly
+      const duplicated: DraftCandidate = {
+        kind: 'draft',
+        id: newId,
+        name: `${activeSched.name} (Healed)`,
+        data: JSON.parse(JSON.stringify(newData)),
+        unifiedData: newUnifiedData ? JSON.parse(JSON.stringify(newUnifiedData)) : undefined,
+        createdAt: new Date(),
+        cohortAssignments: activeSched.cohortAssignments ? JSON.parse(JSON.stringify(activeSched.cohortAssignments)) : undefined,
+        startYear: activeSched.startYear,
+        metrics: activeSched.metrics,
       };
 
-      worker.postMessage({
-        type: 'start-heal',
-        grid: gridToHeal,
-        residents: healingResidents,
-        historicalSchedules: historySchedules,
-        startYear,
-        totalYears,
-        cohortAssignments: activeSched.cohortAssignments,
-        programData: serializeProgramData(programData)
-      });
-
-      setIsHealing(true);
+      setSchedules(prev => [...prev, duplicated]);
+      setActiveScheduleId(newId);
+      toast.success(`Created healed copy: "${duplicated.name}"`);
     }
+
+    setIsHealing(false);
+    setIsHealerPanelOpen(false);
+    setIsHealerRunning(false);
+    setBestHealGrid(null);
+    setOriginalHealGrid(null);
+    setOriginalHealCount(null);
+    setBestHealCount(null);
+    setHealerProgress(undefined);
+  };
+
+  const handleCancelHealedSchedule = () => {
+    handleStopHealerStrategy();
+
+    setIsHealing(false);
+    setIsHealerPanelOpen(false);
+    setIsHealerRunning(false);
+    setBestHealGrid(null);
+    setOriginalHealGrid(null);
+    setOriginalHealCount(null);
+    setBestHealCount(null);
+    setHealerProgress(undefined);
   };
 
 
@@ -1460,17 +1637,62 @@ const AppContent: React.FC = () => {
 
     setPublishState('saving');
     try {
-      const result = await syncService.createCandidate(sched.startYear, candidateName.trim());
-      if (!result) {
-        console.error('[Publish] Failed to create candidate');
+      // Pre-flight: verify the token is still valid before making server calls.
+      // A stale token in localStorage causes a cryptic 403 on createCandidate.
+      const user = await verifyToken();
+      if (!user) {
+        toast.error('Your session has expired. Please re-authenticate from the admin panel.');
+        setSyncStatus('local-only');
+        setPublishState('idle');
         return;
       }
-      const { candidateId } = result;
-      const scheduleIds = await syncService.saveCandidateGrids(
+
+      const { candidateId } = await syncService.createCandidate(sched.startYear, candidateName.trim());
+      const augmentedResidents = getAugmentedResidents(residents, sched.startYear + 4, sched.startYear);
+      const { scheduleIds, errors: saveErrors, residentIdMap } = await syncService.saveCandidateGrids(
         candidateId,
         candidateName.trim(),
         sched.data,
+        augmentedResidents,
       );
+
+      // Remap synthetic frontend keys → backend numeric IDs in the grid data
+      // so subsequent cell edits sync correctly via real-time upserts.
+      let publishData = sched.data;
+      let publishCohortAssignments = sched.cohortAssignments;
+      if (Object.keys(residentIdMap).length > 0) {
+        publishData = { ...sched.data };
+        for (const [yearStr, grid] of Object.entries(publishData)) {
+          const remappedGrid = { ...grid };
+          for (const [synthKey, backendId] of Object.entries(residentIdMap)) {
+            if (remappedGrid[synthKey]) {
+              remappedGrid[backendId.toString()] = remappedGrid[synthKey];
+              delete remappedGrid[synthKey];
+            }
+          }
+          publishData[parseInt(yearStr, 10)] = remappedGrid;
+        }
+
+        // Remap cohortAssignments: { year → { residentId → cohortIndex } }
+        if (publishCohortAssignments) {
+          publishCohortAssignments = { ...publishCohortAssignments };
+          for (const [yearStr, yearMap] of Object.entries(publishCohortAssignments)) {
+            const remapped = { ...yearMap };
+            for (const [synthKey, backendId] of Object.entries(residentIdMap)) {
+              if (remapped[synthKey] !== undefined) {
+                remapped[backendId.toString()] = remapped[synthKey];
+                delete remapped[synthKey];
+              }
+            }
+            publishCohortAssignments[parseInt(yearStr, 10)] = remapped;
+          }
+        }
+      }
+
+      // Rebuild unifiedData from the (possibly remapped) publishData
+      const publishUnifiedData = sched.startYear
+        ? mergeYearsIntoUnified(publishData, sched.startYear, 3)
+        : sched.unifiedData;
 
       // Replace the draft with a published candidate
       const published: PublishedCandidate = {
@@ -1479,20 +1701,61 @@ const AppContent: React.FC = () => {
         candidateId,
         scheduleIds,
         name: candidateName.trim(),
-        data: sched.data,
-        unifiedData: sched.unifiedData,
+        data: publishData,
+        unifiedData: publishUnifiedData,
         createdAt: sched.createdAt,
         metrics: sched.metrics,
-        cohortAssignments: sched.cohortAssignments,
+        cohortAssignments: publishCohortAssignments,
         startYear: sched.startYear,
         lastSyncedAt: new Date(),
       };
 
       setSchedules(prev => prev.map(s => s.id === sched.id ? published : s));
       setActiveScheduleId(published.id);
-      console.log(`[Publish] Published "${candidateName}" as candidate ${candidateId}`);
+
+      // Update residents state: replace in-memory synthetic IDs (e.g. "c2027-1")
+      // with backend-assigned numeric IDs (e.g. "399") so getAugmentedResidents
+      // recognizes them on subsequent renders and grid lookups match.
+      if (Object.keys(residentIdMap).length > 0) {
+        setResidents(prev => {
+          const updated = prev.map(r => {
+            const backendId = residentIdMap[r.id];
+            if (backendId != null) {
+              return { ...r, id: backendId.toString() };
+            }
+            return r;
+          });
+          // Also add any synthetic residents from augmentedResidents that weren't
+          // already in the state (they were only in-memory during generation)
+          const existingIds = new Set(updated.map(r => r.id));
+          const newSynthetics: typeof prev = [];
+          for (const [synthKey, backendId] of Object.entries(residentIdMap)) {
+            const backendIdStr = backendId.toString();
+            if (!existingIds.has(backendIdStr)) {
+              const augmented = augmentedResidents.find(r => r.id === synthKey);
+              if (augmented) {
+                newSynthetics.push({ ...augmented, id: backendIdStr, isSynthetic: true });
+              }
+            }
+          }
+          return [...updated, ...newSynthetics];
+        });
+      }
+
+      if (saveErrors.length > 0) {
+        toast.warning(
+          `Published "${candidateName}" but ${saveErrors.length} year(s) failed to save: ${saveErrors.join('; ')}`,
+        );
+      } else {
+        toast.success(`Published "${candidateName}" to server`);
+      }
     } catch (err) {
       console.error('[Publish] Failed:', err);
+      toast.error(
+        err instanceof SyncError
+          ? `Publish failed: ${err.message}`
+          : 'Failed to publish schedule to server',
+      );
     } finally {
       setPublishState('idle');
     }
@@ -1504,13 +1767,24 @@ const AppContent: React.FC = () => {
         `Delete "${sched.name}"?\n\nThis will permanently remove this candidate for all users.`
       );
       if (!confirmed) return;
-      await syncService.deleteCandidate(sched.candidateId);
+      try {
+        await syncService.deleteCandidate(sched.candidateId);
+      } catch (err) {
+        console.error('[Delete] Failed:', err);
+        toast.error(
+          err instanceof SyncError
+            ? `Delete failed: ${err.message}`
+            : 'Failed to delete candidate from server',
+        );
+        return; // Don't remove tab if backend delete failed
+      }
     }
     setSchedules(prev => prev.filter(x => x.id !== sched.id));
     if (activeScheduleId === sched.id) setActiveScheduleId('all');
   };
 
   const handleCellClick = (resId: string, week: number, rect?: DOMRect) => {
+    if (isHealing) return; // Prevent manual editing in healer preview mode
     setSelectedCell({ resId, week });
     if (rect) setAnchorRect(rect);
     setModalOpen(true);
@@ -1547,6 +1821,505 @@ const AppContent: React.FC = () => {
       }));
     }
     setModalOpen(false);
+  };
+
+  const selectionBounds = useMemo(() => {
+    if (!selection) return null;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const startRowIdx = currentResidents.findIndex(r => r.id === selection.startResidentId);
+    const endRowIdx = currentResidents.findIndex(r => r.id === selection.endResidentId);
+    if (startRowIdx === -1 || endRowIdx === -1) return null;
+
+    return {
+      minRow: Math.min(startRowIdx, endRowIdx),
+      maxRow: Math.max(startRowIdx, endRowIdx),
+      minCol: Math.min(selection.startWeekIdx, selection.endWeekIdx),
+      maxCol: Math.max(selection.startWeekIdx, selection.endWeekIdx),
+    };
+  }, [selection, viewMode, displayResidents, activeResidents]);
+
+  const swapSourceSelectionBounds = useMemo(() => {
+    if (!swapSourceSelection) return null;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const startRowIdx = currentResidents.findIndex(r => r.id === swapSourceSelection.startResidentId);
+    const endRowIdx = currentResidents.findIndex(r => r.id === swapSourceSelection.endResidentId);
+    if (startRowIdx === -1 || endRowIdx === -1) return null;
+
+    return {
+      minRow: Math.min(startRowIdx, endRowIdx),
+      maxRow: Math.max(startRowIdx, endRowIdx),
+      minCol: Math.min(swapSourceSelection.startWeekIdx, swapSourceSelection.endWeekIdx),
+      maxCol: Math.max(swapSourceSelection.startWeekIdx, swapSourceSelection.endWeekIdx),
+    };
+  }, [swapSourceSelection, viewMode, displayResidents, activeResidents]);
+
+  const handleVerticalSwap = () => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const yearGrid = s.data?.[activeYear] || {};
+      const yearCopy = { ...yearGrid };
+
+      selectedWeeks.forEach(w => {
+        const currentAssignments = selectedResidentIds.map(rid => yearCopy[rid]?.[w]);
+        const reversedAssignments = [...currentAssignments].reverse();
+
+        selectedResidentIds.forEach((rid, index) => {
+          if (!yearCopy[rid]) yearCopy[rid] = [];
+          const updatedRow = [...yearCopy[rid]];
+          const newAssign = reversedAssignments[index];
+          updatedRow[w] = newAssign ? { ...newAssign, locked: true } : { assignment: null, locked: true };
+          yearCopy[rid] = updatedRow;
+
+          if (s.backendId && newAssign?.assignment) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              w + 1,
+              newAssign.assignment,
+              true
+            );
+          }
+        });
+      });
+
+      return {
+        ...s,
+        data: { ...s.data, [activeYear]: yearCopy }
+      };
+    }));
+    toast.success("Swapped assignments vertically!");
+  };
+
+  const handleHorizontalSwap = () => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const yearGrid = s.data?.[activeYear] || {};
+      const yearCopy = { ...yearGrid };
+
+      selectedResidentIds.forEach(rid => {
+        if (!yearCopy[rid]) yearCopy[rid] = [];
+        const currentRow = [...yearCopy[rid]];
+        
+        const selectedVals = selectedWeeks.map(w => currentRow[w]);
+        const reversedVals = [...selectedVals].reverse();
+
+        selectedWeeks.forEach((w, index) => {
+          const newVal = reversedVals[index];
+          currentRow[w] = newVal ? { ...newVal, locked: true } : { assignment: null, locked: true };
+          
+          if (s.backendId && newVal?.assignment) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              w + 1,
+              newVal.assignment,
+              true
+            );
+          }
+        });
+        yearCopy[rid] = currentRow;
+      });
+
+      return {
+        ...s,
+        data: { ...s.data, [activeYear]: yearCopy }
+      };
+    }));
+    toast.success("Swapped assignments horizontally!");
+  };
+
+  const isCellClinic = (assignment: string | null) => {
+    if (!assignment) return false;
+    return isClinicRotation(programData, assignment);
+  };
+
+  const isCellAbsence = (assignment: string | null) => {
+    if (!assignment) return false;
+    return assignment === 'VAC' || hasTag(programData, assignment, 'Vacation') || hasTag(programData, assignment, 'Absence');
+  };
+
+  const shouldIgnoreCell = (assignment: string | null) => {
+    if (isCellClinic(assignment) && !includeClinicInBatch) return true;
+    if (isCellAbsence(assignment) && !includeAbsencesInBatch) return true;
+    return false;
+  };
+
+  const handleDoubleSelectionSwap = () => {
+    if (!activeScheduleId || !swapSourceSelection || !selection || !swapSourceSelectionBounds || !selectionBounds) return;
+
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+
+    const getSelectionCells = (bounds: typeof selectionBounds) => {
+      const cells: { residentId: string; weekIdx: number; }[] = [];
+      for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+        const resident = currentResidents[r];
+        if (!resident) continue;
+        for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+          const displayCell = displayGrid[resident.id]?.[c];
+          if (displayCell && shouldIgnoreCell(displayCell.assignment)) {
+            continue;
+          }
+          cells.push({ residentId: resident.id, weekIdx: c });
+        }
+      }
+      return cells;
+    };
+
+    const cellsA = getSelectionCells(swapSourceSelectionBounds);
+    const cellsB = getSelectionCells(selectionBounds);
+
+    if (cellsA.length !== cellsB.length) {
+      toast.error("Selections must contain the same number of blocks to swap.");
+      return;
+    }
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      
+      const updatedData = { ...(s.data || {}) };
+      const updatedUnified = s.unifiedData ? { ...s.unifiedData } : undefined;
+
+      const getValueForCell = (cell: { residentId: string; weekIdx: number; }) => {
+        let targetYear = activeYear;
+        let weekIdxInYear = cell.weekIdx;
+
+        if (viewMode === 'unified' && s.unifiedData) {
+          targetYear = startYear + Math.floor(cell.weekIdx / TOTAL_WEEKS);
+          weekIdxInYear = cell.weekIdx % TOTAL_WEEKS;
+        }
+
+        const row = s.data?.[targetYear]?.[cell.residentId] || [];
+        return row[weekIdxInYear] ? { ...row[weekIdxInYear] } : { assignment: null, locked: false };
+      };
+
+      const valuesA = cellsA.map(getValueForCell);
+      const valuesB = cellsB.map(getValueForCell);
+
+      cellsA.forEach((cell, i) => {
+        let targetYear = activeYear;
+        let weekIdxInYear = cell.weekIdx;
+
+        if (viewMode === 'unified' && s.unifiedData) {
+          targetYear = startYear + Math.floor(cell.weekIdx / TOTAL_WEEKS);
+          weekIdxInYear = cell.weekIdx % TOTAL_WEEKS;
+        }
+
+        if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+          const uWeeks = [...(updatedUnified[cell.residentId] || [])];
+          uWeeks[cell.weekIdx] = { ...valuesB[i], locked: true };
+          updatedUnified[cell.residentId] = uWeeks;
+        }
+
+        updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
+        if (!updatedData[targetYear][cell.residentId]) updatedData[targetYear][cell.residentId] = [];
+        const weeks = [...updatedData[targetYear][cell.residentId]];
+        const val = { ...valuesB[i], locked: true };
+        weeks[weekIdxInYear] = val;
+        updatedData[targetYear][cell.residentId] = weeks;
+
+        if (s.backendId && val.assignment) {
+          syncService.upsertCell(
+            s.backendId,
+            parseInt(cell.residentId, 10),
+            weekIdxInYear + 1,
+            val.assignment,
+            true
+          );
+        }
+      });
+
+      cellsB.forEach((cell, i) => {
+        let targetYear = activeYear;
+        let weekIdxInYear = cell.weekIdx;
+
+        if (viewMode === 'unified' && s.unifiedData) {
+          targetYear = startYear + Math.floor(cell.weekIdx / TOTAL_WEEKS);
+          weekIdxInYear = cell.weekIdx % TOTAL_WEEKS;
+        }
+
+        if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+          const uWeeks = [...(updatedUnified[cell.residentId] || [])];
+          uWeeks[cell.weekIdx] = { ...valuesA[i], locked: true };
+          updatedUnified[cell.residentId] = uWeeks;
+        }
+
+        updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
+        if (!updatedData[targetYear][cell.residentId]) updatedData[targetYear][cell.residentId] = [];
+        const weeks = [...updatedData[targetYear][cell.residentId]];
+        const val = { ...valuesA[i], locked: true };
+        weeks[weekIdxInYear] = val;
+        updatedData[targetYear][cell.residentId] = weeks;
+
+        if (s.backendId && val.assignment) {
+          syncService.upsertCell(
+            s.backendId,
+            parseInt(cell.residentId, 10),
+            weekIdxInYear + 1,
+            val.assignment,
+            true
+          );
+        }
+      });
+
+      return {
+        ...s,
+        data: updatedData,
+        unifiedData: updatedUnified
+      };
+    }));
+
+    setSwapSourceSelection(null);
+    setSelection(null);
+    toast.success("Successfully swapped assignments!");
+  };
+
+  const handleSwapInit = () => {
+    setSwapSourceSelection(selection);
+    setSelection(null);
+  };
+
+  useEffect(() => {
+    if (swapSourceSelection && selection && swapSourceSelectionBounds && selectionBounds) {
+      const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+      
+      let countA = 0;
+      for (let r = swapSourceSelectionBounds.minRow; r <= swapSourceSelectionBounds.maxRow; r++) {
+        const resident = currentResidents[r];
+        if (resident) {
+          for (let c = swapSourceSelectionBounds.minCol; c <= swapSourceSelectionBounds.maxCol; c++) {
+            const displayCell = displayGrid[resident.id]?.[c];
+            if (!displayCell || !shouldIgnoreCell(displayCell.assignment)) {
+              countA++;
+            }
+          }
+        }
+      }
+
+      let countB = 0;
+      for (let r = selectionBounds.minRow; r <= selectionBounds.maxRow; r++) {
+        const resident = currentResidents[r];
+        if (resident) {
+          for (let c = selectionBounds.minCol; c <= selectionBounds.maxCol; c++) {
+            const displayCell = displayGrid[resident.id]?.[c];
+            if (!displayCell || !shouldIgnoreCell(displayCell.assignment)) {
+              countB++;
+            }
+          }
+        }
+      }
+
+      if (countA === countB && countA > 0) {
+        handleDoubleSelectionSwap();
+      }
+    }
+  }, [selection, swapSourceSelection, selectionBounds, swapSourceSelectionBounds]);
+
+  const handleBatchSetRotation = (newRotation: AssignmentType | null) => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      
+      const updatedData = { ...(s.data || {}) };
+      const updatedUnified = s.unifiedData ? { ...s.unifiedData } : undefined;
+
+      selectedResidentIds.forEach(rid => {
+        selectedWeeks.forEach(w => {
+          let targetYear = activeYear;
+          let weekIdxInYear = w;
+
+          if (viewMode === 'unified' && s.unifiedData) {
+            targetYear = startYear + Math.floor(w / TOTAL_WEEKS);
+            weekIdxInYear = w % TOTAL_WEEKS;
+          }
+
+          const displayCell = displayGrid[rid]?.[w];
+          if (displayCell && shouldIgnoreCell(displayCell.assignment)) {
+            return;
+          }
+
+          if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+            const uWeeks = [...(updatedUnified[rid] || [])];
+            uWeeks[w] = { assignment: newRotation as any, locked: true };
+            updatedUnified[rid] = uWeeks;
+          }
+
+          updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
+          if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
+          const weeks = [...updatedData[targetYear][rid]];
+          weeks[weekIdxInYear] = { assignment: newRotation as any, locked: true };
+          updatedData[targetYear][rid] = weeks;
+
+          if (s.backendId && newRotation) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              weekIdxInYear + 1,
+              newRotation,
+              true
+            );
+          }
+        });
+      });
+
+      return {
+        ...s,
+        data: updatedData,
+        unifiedData: updatedUnified
+      };
+    }));
+    toast.success(`Set selection to ${newRotation || 'Unassigned'}`);
+  };
+
+  const handleBatchLockSelection = () => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      
+      const updatedData = { ...(s.data || {}) };
+      const updatedUnified = s.unifiedData ? { ...s.unifiedData } : undefined;
+
+      selectedResidentIds.forEach(rid => {
+        selectedWeeks.forEach(w => {
+          let targetYear = activeYear;
+          let weekIdxInYear = w;
+
+          if (viewMode === 'unified' && s.unifiedData) {
+            targetYear = startYear + Math.floor(w / TOTAL_WEEKS);
+            weekIdxInYear = w % TOTAL_WEEKS;
+          }
+
+          const existingGrid = s.data?.[targetYear] || {};
+          const currentCell = existingGrid[rid]?.[weekIdxInYear] || { assignment: null };
+
+          if (shouldIgnoreCell(currentCell.assignment)) {
+            return;
+          }
+
+          if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+            const uWeeks = [...(updatedUnified[rid] || [])];
+            if (uWeeks[w]) {
+              uWeeks[w] = { ...uWeeks[w], locked: true };
+            } else {
+              uWeeks[w] = { assignment: null, locked: true };
+            }
+            updatedUnified[rid] = uWeeks;
+          }
+
+          updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
+          if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
+          const weeks = [...updatedData[targetYear][rid]];
+          const cell = weeks[weekIdxInYear] || { assignment: null };
+          weeks[weekIdxInYear] = { ...cell, locked: true };
+          updatedData[targetYear][rid] = weeks;
+
+          if (s.backendId && cell.assignment) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              weekIdxInYear + 1,
+              cell.assignment,
+              true
+            );
+          }
+        });
+      });
+
+      return {
+        ...s,
+        data: updatedData,
+        unifiedData: updatedUnified
+      };
+    }));
+    toast.success("Locked selection!");
+  };
+
+  const handleBatchUnlockSelection = () => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      
+      const updatedData = { ...(s.data || {}) };
+      const updatedUnified = s.unifiedData ? { ...s.unifiedData } : undefined;
+
+      selectedResidentIds.forEach(rid => {
+        selectedWeeks.forEach(w => {
+          let targetYear = activeYear;
+          let weekIdxInYear = w;
+
+          if (viewMode === 'unified' && s.unifiedData) {
+            targetYear = startYear + Math.floor(w / TOTAL_WEEKS);
+            weekIdxInYear = w % TOTAL_WEEKS;
+          }
+
+          const existingGrid = s.data?.[targetYear] || {};
+          const currentCell = existingGrid[rid]?.[weekIdxInYear] || { assignment: null };
+
+          if (shouldIgnoreCell(currentCell.assignment)) {
+            return;
+          }
+
+          if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+            const uWeeks = [...(updatedUnified[rid] || [])];
+            if (uWeeks[w]) {
+              uWeeks[w] = { ...uWeeks[w], locked: false };
+            } else {
+              uWeeks[w] = { assignment: null, locked: false };
+            }
+            updatedUnified[rid] = uWeeks;
+          }
+
+          updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
+          if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
+          const weeks = [...updatedData[targetYear][rid]];
+          const cell = weeks[weekIdxInYear] || { assignment: null };
+          weeks[weekIdxInYear] = { ...cell, locked: false };
+          updatedData[targetYear][rid] = weeks;
+
+          if (s.backendId && cell.assignment) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              weekIdxInYear + 1,
+              cell.assignment,
+              false
+            );
+          }
+        });
+      });
+
+      return {
+        ...s,
+        data: updatedData,
+        unifiedData: updatedUnified
+      };
+    }));
+    toast.success("Unlocked selection!");
   };
 
   const handleAssignCycle = (residentId: string, cycleIndex: number) => {
@@ -1588,7 +2361,7 @@ const AppContent: React.FC = () => {
       setTimeout(() => URL.revokeObjectURL(url), 500);
     } catch (err) {
       console.error("Export JSON failed", err);
-      alert("Failed to generate backup file.");
+      toast.error('Failed to generate backup file.');
     }
   };
 
@@ -1612,10 +2385,10 @@ const AppContent: React.FC = () => {
         }
         setSchedules(patchedSchedules);
         setActiveScheduleId('all');
-        alert("Backup imported successfully!");
+        toast.success(`Imported ${patchedSchedules.length} schedule(s) from backup`);
       } catch (err) {
         console.error("Import failed", err);
-        alert("Failed to import backup. Please ensure it's a valid JSON file.");
+        toast.error("Failed to import backup. Please ensure it's a valid JSON file.");
       }
     };
     reader.readAsText(file);
@@ -1668,7 +2441,7 @@ const AppContent: React.FC = () => {
       setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (e) {
       console.error("Export failed", e);
-      alert("Failed to export Excel file. See console for details.");
+      toast.error('Failed to export Excel file');
     } finally {
       setIsExporting(false);
     }
@@ -1694,10 +2467,10 @@ const AppContent: React.FC = () => {
           grid: activeSchedule.data[activeYear],
           title: `Official: ${activeSchedule.name} (AY ${activeYear}-${(activeYear + 1).toString().slice(-2)})`,
         });
-        alert(`✓ Schedule promoted to official record for AY ${activeYear}-${(activeYear + 1).toString().slice(-2)}`);
+        toast.success(`Schedule promoted to official record for AY ${activeYear}-${(activeYear + 1).toString().slice(-2)}`);
       } catch (e) {
         console.error('Promotion failed', e);
-        alert(`Excel export succeeded, but promotion to official schedule failed: ${e}`);
+        toast.error(`Excel export succeeded, but promotion to official schedule failed: ${e instanceof Error ? e.message : String(e)}`);
       } finally {
         setIsPromoting(false);
       }
@@ -1922,15 +2695,18 @@ const AppContent: React.FC = () => {
           <div
             className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border cursor-default"
             style={{
-              backgroundColor: syncStatus === 'live' ? 'rgba(139,92,246,0.1)'
+              backgroundColor: syncStatus === 'error' ? 'rgba(239,68,68,0.1)'
+                : syncStatus === 'live' ? 'rgba(139,92,246,0.1)'
                 : syncStatus === 'connected' ? 'rgba(16,185,129,0.1)'
                 : 'rgba(156,163,175,0.1)',
-              borderColor: syncStatus === 'live' ? 'rgba(139,92,246,0.2)'
+              borderColor: syncStatus === 'error' ? 'rgba(239,68,68,0.2)'
+                : syncStatus === 'live' ? 'rgba(139,92,246,0.2)'
                 : syncStatus === 'connected' ? 'rgba(16,185,129,0.2)'
                 : 'rgba(156,163,175,0.2)',
             }}
             title={
-              syncStatus === 'live' ? 'Live — real-time sync active with other clients'
+              syncStatus === 'error' ? 'Sync Error — server communication failed'
+              : syncStatus === 'live' ? 'Live — real-time sync active with other clients'
               : syncStatus === 'connected' ? 'Connected — authenticated with server'
               : 'Local Only — not connected to a server'
             }
@@ -1938,7 +2714,8 @@ const AppContent: React.FC = () => {
             <span
               className="inline-block w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: syncStatus === 'live' ? '#8b5cf6'
+                backgroundColor: syncStatus === 'error' ? '#ef4444'
+                  : syncStatus === 'live' ? '#8b5cf6'
                   : syncStatus === 'connected' ? '#10b981'
                   : '#9ca3af',
               }}
@@ -1946,12 +2723,14 @@ const AppContent: React.FC = () => {
             <span
               className="text-[9px] font-black uppercase tracking-tighter"
               style={{
-                color: syncStatus === 'live' ? '#8b5cf6'
+                color: syncStatus === 'error' ? '#ef4444'
+                  : syncStatus === 'live' ? '#8b5cf6'
                   : syncStatus === 'connected' ? '#10b981'
                   : '#9ca3af',
               }}
             >
-              {syncStatus === 'live' ? 'Live'
+              {syncStatus === 'error' ? 'Sync Error'
+                : syncStatus === 'live' ? 'Live'
                 : syncStatus === 'connected' ? 'Connected'
                 : 'Local Only'}
             </span>
@@ -2051,13 +2830,13 @@ const AppContent: React.FC = () => {
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label={viewMode === 'unified' ? "Schedule 3yr" : "Schedule"} icon={LayoutGrid} />
           {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
-          <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
+          <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={currentCoverageViolationsCount} />
           <NavButton id="totals" label={viewMode === 'unified' ? "Totals 3yr" : "Totals"} icon={Users} />
           <NavButton 
             id="requirements" 
             label={viewMode === 'unified' ? "Requirements 3yr" : "Requirements"} 
             icon={ClipboardList} 
-            badgeCount={violations.reqs.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} 
+            badgeCount={currentRequirementsViolationsCount} 
           />
           {viewMode !== 'unified' && (
             <>
@@ -2179,19 +2958,19 @@ const AppContent: React.FC = () => {
                           <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
                             <Button
                               variant="ghost"
+                              onClick={() => setResidentSortOrder('cycle')}
+                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                            >
+                              <Users size={14} />
+                              Cycle
+                            </Button>
+                            <Button
+                              variant="ghost"
                               onClick={() => setResidentSortOrder('pgy')}
                               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
                             >
                               <LayoutGrid size={14} />
-                              PGY Level
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              onClick={() => setResidentSortOrder('cohort')}
-                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                            >
-                              <Users size={14} />
-                              Cohort
+                              PGY
                             </Button>
                           </div>
                         </div>
@@ -2204,14 +2983,18 @@ const AppContent: React.FC = () => {
                         <Button
                           variant={isHealing ? 'ghost' : 'secondary'}
                           size="sm"
-                          onClick={handleToggleHeal}
+                          onClick={handleOpenHealerPanel}
                           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isHealing ? 'bg-light-3 text-primary shadow-inner' : 'text-muted hover:text-primary'}`}
                         >
-                          {isHealing ? (
+                          {isHealerRunning ? (
                             <>
-                              <Loader2 size={14} className="animate-spin" />
-                              Heal {bestHealCount ?? activeViolationsCount} {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
-
+                              <Loader2 size={14} className="animate-spin text-orange" />
+                              Healing {bestHealCount ?? activeViolationsCount} {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
+                            </>
+                          ) : isHealing ? (
+                            <>
+                              <Sparkles size={14} className="text-orange animate-pulse" />
+                              Healer Mode ({bestHealCount ?? activeViolationsCount})
                             </>
                           ) : (
                             <>
@@ -2252,18 +3035,288 @@ const AppContent: React.FC = () => {
                       )}
                     </div>
                   </div>
-                          <ScheduleTable
-                    residents={displayResidents}
-                    schedule={displayGrid}
-                    startYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
-                    cohortAssignments={activeYearCohorts}
-                    isReadOnly={activeSchedule?.isHistory}
+                  {isHealing && bestHealGrid && (
+                    <div className="bg-orange/10 border border-orange/20 px-4 py-3 rounded-xl flex items-center justify-between gap-3 text-orange font-bold text-xs mb-4 shadow-sm animate-fade-in mx-1 mt-1">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="animate-pulse text-orange shrink-0" size={14} />
+                        <span>Healer Preview Mode — showing solved schedule. These changes are temporary until applied.</span>
+                      </div>
+                      <span className="text-[10px] uppercase bg-orange text-black px-2 py-0.5 rounded font-black tracking-wider shrink-0">Unsaved Preview</span>
+                    </div>
+                  )}
+                  <div className="flex-1 flex overflow-hidden relative">
+                    <div className="flex-1 overflow-auto">
+                      <ScheduleTable
+                        residents={displayResidents}
+                        schedule={displayGrid}
+                        startYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
+                        cohortAssignments={activeYearCohorts}
+                        isReadOnly={activeSchedule?.isHistory || isHealing}
+                        selection={selection}
+                        onSelectionChange={setSelection}
+                        swapSourceSelection={swapSourceSelection}
 
-                    onCellClick={handleCellClick}
-                    onLockWeek={handleLockWeek}
-                    onLockResident={handleLockResident}
-                    onToggleLock={handleToggleLock}
-                  />
+                        onCellClick={handleCellClick}
+                        onLockWeek={handleLockWeek}
+                        onLockResident={handleLockResident}
+                        onToggleLock={handleToggleLock}
+                      />
+                    </div>
+
+                    {(selection || swapSourceSelection) && (() => {
+                      const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+
+                      const getNonIgnoredCount = (bounds: typeof selectionBounds) => {
+                        if (!bounds) return 0;
+                        let count = 0;
+                        for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+                          const resident = currentResidents[r];
+                          if (resident) {
+                            for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+                              const cell = displayGrid[resident.id]?.[c];
+                              if (!cell || !shouldIgnoreCell(cell.assignment)) {
+                                count++;
+                              }
+                            }
+                          }
+                        }
+                        return count;
+                      };
+
+                      const countA = getNonIgnoredCount(swapSourceSelectionBounds);
+                      const countB = getNonIgnoredCount(selectionBounds);
+                      const isSwapMode = !!swapSourceSelection;
+                      const activeBounds = selectionBounds || swapSourceSelectionBounds;
+
+                      if (!activeBounds) return null;
+
+                      let hasLockedBlocks = false;
+                      if (activeBounds) {
+                        for (let r = activeBounds.minRow; r <= activeBounds.maxRow; r++) {
+                          const resident = currentResidents[r];
+                          if (resident) {
+                            for (let c = activeBounds.minCol; c <= activeBounds.maxCol; c++) {
+                              const cell = displayGrid[resident.id]?.[c];
+                              if (cell?.locked && !shouldIgnoreCell(cell.assignment)) {
+                                hasLockedBlocks = true;
+                                break;
+                              }
+                            }
+                          }
+                          if (hasLockedBlocks) break;
+                        }
+                      }
+
+                      return (
+                        <div className="w-80 border-l border-light-5 bg-white/95 backdrop-blur-md flex flex-col shrink-0 animate-slide-in shadow-2xl relative z-30">
+                          <div className="p-4 border-b border-light-5 flex items-center justify-between">
+                            <div className="flex flex-col">
+                              <h3 className="text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2">
+                                <Sparkles size={16} className={isSwapMode && !hasLockedBlocks ? "text-emerald-500 animate-pulse" : "text-blue"} />
+                                {hasLockedBlocks ? "Locked Selection" : (isSwapMode ? "Block Swap Mode" : "Batch Actions")}
+                              </h3>
+                              <span className="text-[10px] font-bold text-muted mt-0.5">
+                                {hasLockedBlocks ? (
+                                  "Selection contains locked blocks"
+                                ) : (
+                                  isSwapMode ? (
+                                    <span>Step 2: Select destination block</span>
+                                  ) : (
+                                    `Selected: ${activeBounds.maxRow - activeBounds.minRow + 1} residents × ${activeBounds.maxCol - activeBounds.minCol + 1} weeks (${countB} blocks)`
+                                  )
+                                )}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setSelection(null);
+                                setSwapSourceSelection(null);
+                              }}
+                              className="text-muted hover:text-black font-bold p-1"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          {/* Batch Filters */}
+                          <div className="p-4 border-b border-light-5 bg-slate-50/50 flex flex-col gap-2 shrink-0">
+                            <h4 className="text-[10px] font-black text-muted uppercase tracking-wider mb-1">Batch Filters</h4>
+                            <div className="flex flex-col gap-2">
+                              <label className="flex items-center gap-2.5 cursor-pointer select-none text-[11px] font-bold text-slate-700 hover:text-slate-900 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={includeAbsencesInBatch}
+                                  onChange={(e) => setIncludeAbsencesInBatch(e.target.checked)}
+                                  className="w-3.5 h-3.5 rounded border-slate-300 text-blue focus:ring-blue/30 transition-all cursor-pointer accent-blue"
+                                />
+                                <span>Include absences (VAC)</span>
+                              </label>
+                              <label className="flex items-center gap-2.5 cursor-pointer select-none text-[11px] font-bold text-slate-700 hover:text-slate-900 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={includeClinicInBatch}
+                                  onChange={(e) => setIncludeClinicInBatch(e.target.checked)}
+                                  className="w-3.5 h-3.5 rounded border-slate-300 text-blue focus:ring-blue/30 transition-all cursor-pointer accent-blue"
+                                />
+                                <span>Include clinic blocks</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Lock / Unlock Selection Controls */}
+                          <div className="p-4 border-b border-light-5 bg-light-1/10 flex flex-col gap-2 shrink-0">
+                            {hasLockedBlocks ? (
+                              <Button
+                                variant="secondary"
+                                className="w-full flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/50 rounded-lg shadow-sm"
+                                onClick={handleBatchUnlockSelection}
+                              >
+                                <Unlock size={13} className="text-emerald-600" />
+                                Unlock Selection
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="secondary"
+                                className="w-full flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold text-slate-700 hover:text-slate-800 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg shadow-sm"
+                                onClick={handleBatchLockSelection}
+                              >
+                                <Lock size={13} className="text-slate-600" />
+                                Lock Selection
+                              </Button>
+                            )}
+                          </div>
+
+                          {hasLockedBlocks ? (
+                            /* Locked warning overlay prevents other actions */
+                            <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center text-center">
+                              <div className="p-6 bg-rose-50/20 border border-dashed border-rose-100 rounded-xl m-2 flex flex-col items-center">
+                                <Lock className="text-rose-500 mb-3 animate-pulse" size={32} />
+                                <h4 className="text-xs font-black text-primary uppercase tracking-wider mb-1">Editing Blocked</h4>
+                                <p className="text-[11px] text-muted leading-relaxed font-medium">
+                                  This selection contains locked assignments. Click the <strong>Unlock Selection</strong> button above to enable grid swaps, clear block, or rotation changes.
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="p-4 border-b border-light-5 bg-light-1/30">
+                                {isSwapMode ? (
+                                  <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex items-center justify-between text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg">
+                                        <span>1st Selection:</span>
+                                        <span className="bg-emerald-500 text-white px-2 py-0.5 rounded font-black">{countA} blocks</span>
+                                      </div>
+
+                                      {selectionBounds ? (
+                                        <div className={`flex items-center justify-between text-xs font-bold p-2.5 rounded-lg border ${countA === countB ? 'text-blue bg-blue/5 border-blue/10' : 'text-orange-800 bg-orange-50 border-orange-100'}`}>
+                                          <span>2nd Selection:</span>
+                                          <span className={`px-2 py-0.5 rounded font-black ${countA === countB ? 'bg-blue text-white' : 'bg-orange-500 text-white animate-pulse'}`}>{countB} blocks</span>
+                                        </div>
+                                      ) : (
+                                        <div className="text-[11px] text-muted font-bold border border-dashed border-light-4 p-3 rounded-lg text-center animate-pulse">
+                                          Click & drag another grid area to swap...
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {selectionBounds && countA !== countB && (
+                                      <div className="text-[10px] text-orange-700 bg-orange-50/50 p-2 rounded border border-orange-100 font-bold leading-relaxed flex items-start gap-1.5">
+                                        <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                                        <span>Size mismatch! Selections must contain the same number of blocks to swap.</span>
+                                      </div>
+                                    )}
+
+                                    <Button
+                                      variant="secondary"
+                                      className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-rose-50 transition-all border border-rose-100 rounded-lg bg-white mt-1"
+                                      onClick={() => {
+                                        setSwapSourceSelection(null);
+                                        setSelection(null);
+                                      }}
+                                    >
+                                      Cancel Swap Mode
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-2">
+                                    <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-1">Grid Swap</h4>
+                                    <Button
+                                      variant="secondary"
+                                      className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-white hover:opacity-95 transition-all border border-blue bg-blue rounded-lg shadow-sm"
+                                      onClick={handleSwapInit}
+                                    >
+                                      <ArrowLeftRight size={13} />
+                                      Initialize Block Swap
+                                    </Button>
+                                    <p className="text-[10px] text-muted font-medium mt-1 leading-relaxed">
+                                      Click <strong>Initialize Block Swap</strong>, then select a second block of the <strong>same size</strong> (e.g. swap a vertical column with a horizontal row) to exchange their assignments.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex-1 overflow-y-auto p-4 flex flex-col min-h-0">
+                                {isSwapMode ? (
+                                  <div className="flex flex-col items-center justify-center text-center p-6 bg-light-1/20 border border-dashed border-light-4 rounded-xl flex-1">
+                                    <ArrowLeftRight className="text-emerald-500 animate-pulse mb-3" size={32} />
+                                    <h4 className="text-xs font-black text-primary uppercase tracking-wider mb-1">Ready for Destination</h4>
+                                    <p className="text-[11px] text-muted leading-relaxed font-medium">
+                                      Select any area on the grid with exactly <strong>{countA} blocks</strong> to execute the swap automatically.
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-3">Set Rotation</h4>
+                                    <div className="grid grid-cols-2 gap-2 mb-3 shrink-0">
+                                      <button
+                                        onClick={() => handleBatchSetRotation(null)}
+                                        className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-light-4 hover:border-red-400 hover:bg-rose-50 text-left transition-all text-xs font-bold"
+                                      >
+                                        <div className="w-4 h-4 rounded bg-light-3 border border-light-4 flex items-center justify-center text-[9px] font-black text-muted">∅</div>
+                                        <span className="truncate text-muted hover:text-red-600">Clear Block</span>
+                                      </button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-1">
+                                      {Array.from(programData.rotations.entries()).map(([key, config]) => {
+                                        const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
+                                        return (
+                                          <button
+                                            key={key}
+                                            onClick={() => handleBatchSetRotation(key as AssignmentType)}
+                                            className="flex items-center gap-2 p-2 rounded-lg border border-light-4 hover:border-blue/50 hover:bg-light-1 text-left transition-all text-xs font-bold"
+                                          >
+                                            <div
+                                              className="w-4 h-4 rounded shrink-0 border border-black/10"
+                                              style={{ backgroundColor: bgHex }}
+                                            />
+                                            <span className="truncate" title={config.label}>{key}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          <div className="p-4 border-t border-light-5 shrink-0">
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                setSelection(null);
+                                setSwapSourceSelection(null);
+                              }}
+                              className="w-full py-2 text-xs font-bold text-muted hover:text-primary transition-all border border-light-5 rounded-lg bg-light-1 text-center"
+                            >
+                              Clear Selection
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
               {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
@@ -2280,6 +3333,8 @@ const AppContent: React.FC = () => {
                   <ResidentAssignmentsStats
                     residents={viewMode === 'unified' ? displayResidents : activeResidents}
                     schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                    activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
+                    startYear={activeSchedule?.startYear || ACTIVE_START_YEAR}
                   />
                 </div>
               )}
@@ -2290,6 +3345,7 @@ const AppContent: React.FC = () => {
                     schedule={viewMode === 'unified' ? displayGrid : currentGrid}
                     history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
                     activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
+                    startYear={activeSchedule?.startYear || ACTIVE_START_YEAR}
                   />
                 </div>
               )}
@@ -2303,7 +3359,7 @@ const AppContent: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'coworking' && <div className="flex-1 overflow-hidden"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'coworking' && <div className="flex-1 overflow-hidden"><RelationshipStats residents={activeResidents} schedule={currentGrid} activeYear={activeYear} startYear={activeSchedule?.startYear || ACTIVE_START_YEAR} /></div>}
               {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={fairness} /></div>}
               {activeTab === 'export' && (
                 <div className="flex-1 overflow-y-auto p-8 bg-light-1">
@@ -2388,6 +3444,20 @@ const AppContent: React.FC = () => {
         onDeleteAllSchedules={handleDeleteAllSchedules}
         onUnpinAllWeeks={handleUnpinAllWeeks}
         onResetResidents={handleResetResidents}
+      />
+
+      <HealerPanel
+        isOpen={isHealerPanelOpen}
+        onClose={handleCancelHealedSchedule}
+        isRunning={isHealerRunning}
+        progress={healerProgress ?? 0}
+        originalViolations={originalHealCount}
+        currentViolations={bestHealCount}
+        onStart={handleStartHealerStrategy}
+        onStop={handleStopHealerStrategy}
+        onApply={handleApplyHealedSchedule}
+        onApplyCopy={handleApplyCopyHealedSchedule}
+        onCancel={handleCancelHealedSchedule}
       />
 
       {activeScheduleId !== 'settings' && !isHistoricalYear && (
@@ -2612,9 +3682,11 @@ const App: React.FC = () => {
   }
 
   return (
-    <ProgramDataProvider programData={programData}>
-      <AppContent />
-    </ProgramDataProvider>
+    <ToastProvider>
+      <ProgramDataProvider programData={programData}>
+        <AppContent />
+      </ProgramDataProvider>
+    </ToastProvider>
   );
 };
 

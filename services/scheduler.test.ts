@@ -2,7 +2,7 @@ import { getMockProgramData } from '../tests/fixtures/scheduleFixture';
 const mockProgramData = getMockProgramData();
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { generateSchedule, getWeeklyViolations, getRequirementViolations } from './scheduler';
+import { generateSchedule, getWeeklyViolations, getRequirementViolations, getAugmentedResidents } from './scheduler';
 import { Resident, AssignmentType, ScheduleGrid, CompetitionPriority } from '../types';
 import { TOTAL_WEEKS } from '../constants';
 import { getScheduleFixture } from '../tests/fixtures/scheduleFixture';
@@ -119,3 +119,63 @@ let residents: Resident[];
         expect(JSON.stringify(schedule1)).not.toBe(JSON.stringify(schedule2));
     });
 });
+
+describe('getAugmentedResidents', () => {
+    const baseResidents: Resident[] = [
+        { id: '1', name: 'Real 2025 Resident 1', startYear: 2025, level: 1, avoidResidentIds: [] },
+        { id: '2', name: 'Real 2025 Resident 2', startYear: 2025, level: 1, avoidResidentIds: [] },
+    ];
+
+    it('should generate complete cohort of synthetic residents when no residents exist for a future year', () => {
+        const augmented = getAugmentedResidents(baseResidents, 2026, 2025);
+        // Real residents (2) + synthetic cohort for 2026 (size of 2025, which is 2) = 4
+        expect(augmented.length).toBe(4);
+        
+        const synthetic = augmented.filter(r => r.isSynthetic);
+        expect(synthetic.length).toBe(2);
+        expect(synthetic.map(r => r.name)).toContain('New 2026 Resident 1');
+        expect(synthetic.map(r => r.name)).toContain('New 2026 Resident 2');
+    });
+
+    it('should preserve existing synthetic residents and backfill missing ones to match previous cohort size', () => {
+        // Pre-populate one synthetic resident from the database
+        const withOneSynthetic: Resident[] = [
+            ...baseResidents,
+            { id: 'db-synth-1', name: 'New 2026 Resident 1', startYear: 2026, level: 1, avoidResidentIds: [], isSynthetic: true }
+        ];
+
+        const augmented = getAugmentedResidents(withOneSynthetic, 2026, 2025);
+        // Expect cohort size 2 in 2026. Since 1 is pre-populated, we should backfill 1 more.
+        expect(augmented.length).toBe(4);
+
+        const synthetic = augmented.filter(r => r.isSynthetic);
+        expect(synthetic.length).toBe(2);
+        
+        // The pre-populated one should be preserved exactly
+        const preserved = synthetic.find(r => r.id === 'db-synth-1');
+        expect(preserved).toBeDefined();
+        expect(preserved?.name).toBe('New 2026 Resident 1');
+
+        // The backfilled one should have been added
+        const backfilled = synthetic.find(r => r.id === 'c2026-2');
+        expect(backfilled).toBeDefined();
+        expect(backfilled?.name).toBe('New 2026 Resident 2');
+    });
+
+    it('should preserve all synthetic residents and not backfill if cohort is already full', () => {
+        const withTwoSynthetic: Resident[] = [
+            ...baseResidents,
+            { id: 'db-synth-1', name: 'New 2026 Resident 1', startYear: 2026, level: 1, avoidResidentIds: [], isSynthetic: true },
+            { id: 'db-synth-2', name: 'New 2026 Resident 2', startYear: 2026, level: 1, avoidResidentIds: [], isSynthetic: true }
+        ];
+
+        const augmented = getAugmentedResidents(withTwoSynthetic, 2026, 2025);
+        expect(augmented.length).toBe(4);
+
+        const synthetic = augmented.filter(r => r.isSynthetic);
+        expect(synthetic.length).toBe(2);
+        expect(synthetic.map(r => r.id)).toContain('db-synth-1');
+        expect(synthetic.map(r => r.id)).toContain('db-synth-2');
+    });
+});
+

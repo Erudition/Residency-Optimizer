@@ -10,9 +10,10 @@ interface Props {
   schedule: ScheduleGrid;
   history?: ScheduleHistory;
   activeYear?: number;
+  startYear?: number;
 }
 
-export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear }) => {
+export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear, startYear }) => {
   const programData = useProgramData();
   const hist = history || {};
 
@@ -26,7 +27,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
   const [sourceFilter, setSourceFilter] = useState<'all' | 'acgme' | 'mhs'>('all');
 
   // Sorting / Grouping residents (in 1-year view only)
-  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>('pgy');
+  const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>('cycle');
 
   // Draggable Left Column Width State
   const [colWidth, setColWidth] = useState(180);
@@ -73,7 +74,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
   // Filter and sort the rows of requirements
   const columns = useMemo(() => {
-    const reqs = programData.gradRequirements || [];
+    const reqs = programData.requirements || [];
     let filtered = reqs;
     if (sourceFilter !== 'all') {
       filtered = reqs.filter(r => r.source === sourceFilter);
@@ -83,7 +84,15 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       if (a.source !== b.source) return a.source.localeCompare(b.source);
       return a.tag.title.localeCompare(b.tag.title);
     });
-  }, [programData.gradRequirements, sourceFilter]);
+  }, [programData.requirements, sourceFilter]);
+
+  const getCohortSortValue = (cohort: number, year: number) => {
+    const { Y, Z } = programData.cycleConfig;
+    const startYr = startYear ?? 2025;
+    const startWeek = (year - startYr) * 52;
+    const startingCohort = Math.floor((startWeek % Z) / Y);
+    return (cohort - startingCohort + Z) % Z;
+  };
 
   // Sort and group residents dynamically (they represent the columns now)
   const sortedResidents = useMemo(() => {
@@ -99,26 +108,27 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     }
 
     // 1-Year view: sorted dynamically based on user toggle
+    const currentYr = activeYear ?? 2025;
     return [...residents].sort((a, b) => {
       if (residentSortOrder === 'pgy') {
-        const pgyA = activeYear! - a.startYear + 1;
-        const pgyB = activeYear! - b.startYear + 1;
+        const pgyA = currentYr - a.startYear + 1;
+        const pgyB = currentYr - b.startYear + 1;
         if (pgyA !== pgyB) return pgyA - pgyB;
-        const cohortA = a.cohort ?? 0;
-        const cohortB = b.cohort ?? 0;
-        if (cohortA !== cohortB) return cohortA - cohortB;
+        const cohortSortA = getCohortSortValue(a.cohort ?? 0, currentYr);
+        const cohortSortB = getCohortSortValue(b.cohort ?? 0, currentYr);
+        if (cohortSortA !== cohortSortB) return cohortSortA - cohortSortB;
         return a.name.localeCompare(b.name);
       } else {
-        const cohortA = a.cohort ?? 0;
-        const cohortB = b.cohort ?? 0;
-        if (cohortA !== cohortB) return cohortA - cohortB;
-        const pgyA = activeYear! - a.startYear + 1;
-        const pgyB = activeYear! - b.startYear + 1;
+        const cohortSortA = getCohortSortValue(a.cohort ?? 0, currentYr);
+        const cohortSortB = getCohortSortValue(b.cohort ?? 0, currentYr);
+        if (cohortSortA !== cohortSortB) return cohortSortA - cohortSortB;
+        const pgyA = currentYr - a.startYear + 1;
+        const pgyB = currentYr - b.startYear + 1;
         if (pgyA !== pgyB) return pgyA - pgyB;
         return a.name.localeCompare(b.name);
       }
     });
-  }, [residents, isUnified, residentSortOrder, activeYear]);
+  }, [residents, isUnified, residentSortOrder, activeYear, startYear, programData]);
 
   // Pre-calculate cells and values for each resident/requirement
   const cellCalculations = useMemo(() => {
@@ -129,24 +139,29 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       const level = activeYear! - res.startYear + 1;
 
       columns.forEach(req => {
-        const isACGME = req.source === 'acgme';
+        const isCumulative = req.isCumulative;
         let minWeeks = 0;
         let actual = 0;
 
         if (isUnified) {
-          minWeeks = req.minimum || 0;
+          const lastActiveYear = Math.min(res.startYear + 2, activeYear! + 2);
+          const lastLevel = lastActiveYear - res.startYear + 1;
+          minWeeks = lastLevel >= 3 
+            ? (req.minimum || 0)
+            : (req.pgy1Ideal || 0) + (lastLevel >= 2 ? (req.pgy2Ideal || 0) : 0);
+
           actual = RequirementsEngine.getActualWeeks(
             res,
             req.tag.title,
             schedule,
             hist,
             activeYear!,
-            res.startYear + 2,
+            lastActiveYear,
             true,
             programData
           );
         } else {
-          if (isACGME) {
+          if (isCumulative) {
             minWeeks = (req.pgy1Ideal || 0) + (level >= 2 ? (req.pgy2Ideal || 0) : 0) + (level >= 3 ? (req.pgy3Ideal || 0) : 0);
             actual = RequirementsEngine.getActualWeeks(
               res,
@@ -180,7 +195,8 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
         for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
           const year = activeYear! + yearIdx;
-          if ((isUnified && year <= res.startYear + 2) || (!isUnified && year === activeYear)) {
+          const lastActiveYear = isUnified ? Math.min(res.startYear + 2, activeYear! + 2) : activeYear!;
+          if ((isUnified && year <= lastActiveYear) || (!isUnified && year === activeYear)) {
             const yearStart = yearIdx * 52;
             const yearCells = resGrid.slice(yearStart, yearStart + 52);
             yearCells.forEach((c, idx) => {
@@ -273,17 +289,17 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
               <div className="flex bg-light-2 p-0.5 rounded-lg border border-light-5">
                 <Button
                   variant="ghost"
-                  onClick={() => setResidentSortOrder('pgy')}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                >
-                  PGY Level
-                </Button>
-                <Button
-                  variant="ghost"
                   onClick={() => setResidentSortOrder('cycle')}
                   className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
                 >
-                  Clinic Cycle
+                  Cycle
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setResidentSortOrder('pgy')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                >
+                  PGY
                 </Button>
               </div>
             </div>

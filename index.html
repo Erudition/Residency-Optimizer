@@ -725,6 +725,37 @@
     .border-rose-100 {
       border-color: #ffe4e6 !important;
     }
+
+    /* Marching Ants (Crawling Borders) */
+    .marching-ants-x {
+      background-image: linear-gradient(90deg, #3b82f6 50%, transparent 50%);
+      background-size: 10px 2px;
+      animation: marching-ants-h 0.3s linear infinite;
+    }
+    .marching-ants-y {
+      background-image: linear-gradient(180deg, #3b82f6 50%, transparent 50%);
+      background-size: 2px 10px;
+      animation: marching-ants-v 0.3s linear infinite;
+    }
+    .marching-ants-green-x {
+      background-image: linear-gradient(90deg, #10b981 50%, transparent 50%);
+      background-size: 10px 2px;
+      animation: marching-ants-h 0.3s linear infinite;
+    }
+    .marching-ants-green-y {
+      background-image: linear-gradient(180deg, #10b981 50%, transparent 50%);
+      background-size: 2px 10px;
+      animation: marching-ants-v 0.3s linear infinite;
+    }
+
+    @keyframes marching-ants-h {
+      0% { background-position-x: 0px; }
+      100% { background-position-x: 10px; }
+    }
+    @keyframes marching-ants-v {
+      0% { background-position-y: 0px; }
+      100% { background-position-y: 10px; }
+    }
   </style>
   <script type="importmap">
 {

@@ -5,7 +5,8 @@ import {
   RequirementViolation,
   WeeklyViolation,
   ClinicalSetting,
-  AssignmentType
+  AssignmentType,
+  ScheduleCell
 } from '../types';
 import { ProgramData } from './api/client';
 import { isClinicRotation, deriveActiveStartYear } from './programDataUtils';
@@ -62,42 +63,85 @@ export class RequirementsEngine {
     return total;
   }
 
-  /**
-   * Returns all requirement violations for a set of residents across all years in the schedule.
-   */
-  static getViolations(
-    residents: Resident[],
+  static getResidentViolations(
+    r: Resident,
     schedule: ScheduleGrid,
     historicalSchedules: ScheduleHistory = {},
     activeYear: number,
-    programData: ProgramData
+    programData: ProgramData,
+    isUnified: boolean = false
   ): RequirementViolation[] {
-    const violations: RequirementViolation[] = [];
-    const totalWeeks = Object.values(schedule)[0]?.length || 52;
-    const numYears = Math.ceil(totalWeeks / 52);
+    const numYears = Object.values(schedule)[0]?.length 
+      ? Math.ceil(Object.values(schedule)[0].length / 52) 
+      : (Object.keys(historicalSchedules || {}).length || (isUnified ? 3 : 1));
+    let isActive = false;
+    for (let offset = 0; offset < numYears; offset++) {
+      const pgy = (activeYear + offset) - r.startYear + 1;
+      if (pgy >= 1 && pgy <= 3) {
+        isActive = true;
+        break;
+      }
+    }
+    if (!isActive) return [];
 
-    residents.forEach(r => {
+    const violations: RequirementViolation[] = [];
+
+    if (isUnified) {
+      // Unified 3-year logic: evaluates total graduation minimum (req.minimum) scaled by PGY ideals for future resident classes
+      (programData.requirements || []).forEach(req => {
+        const lastActiveYear = Math.min(r.startYear + 2, activeYear + 2);
+        const lastLevel = lastActiveYear - r.startYear + 1;
+        const minWeeks = lastLevel >= 3 
+          ? (req.minimum || 0) 
+          : (req.pgy1Ideal || 0) + (lastLevel >= 2 ? (req.pgy2Ideal || 0) : 0);
+
+        const actual = this.getActualWeeks(
+          r,
+          req.tag.title,
+          schedule,
+          historicalSchedules,
+          activeYear,
+          lastActiveYear,
+          true,
+          programData
+        );
+
+        if (minWeeks > 0 && actual < minWeeks) {
+          violations.push({
+            residentId: r.id,
+            type: req.tag.title,
+            minWeeks,
+            actual,
+            year: activeYear
+          });
+        }
+      });
+    } else {
+      // Annual/cumulative 1-year logic
+      const totalWeeks = Object.values(schedule)[0]?.length || 52;
+      const numYears = Math.ceil(totalWeeks / 52);
+
       for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
         const currentYear = activeYear + yearIdx;
         const pgy = currentYear - r.startYear + 1;
         
         if (pgy < 1 || pgy > 3) continue;
 
-        (programData.gradRequirements || []).forEach(req => {
-          const isACGME = req.source === 'acgme';
+        (programData.requirements || []).forEach(req => {
+          const isCumulative = req.isCumulative;
           
           let minWeeks = 0;
           let actual = 0;
 
-          if (isACGME) {
-            // ACGME cumulative logic
+          if (isCumulative) {
+            // Cumulative graduation minimum logic
             minWeeks = (pgy >= 1 ? (req.pgy1Ideal || 0) : 0) + 
                        (pgy >= 2 ? (req.pgy2Ideal || 0) : 0) + 
                        (pgy >= 3 ? (req.pgy3Ideal || 0) : 0);
             
             actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, true, programData);
           } else {
-            // MHS annual logic
+            // Operational annual logic
             minWeeks = pgy === 1 ? (req.pgy1Ideal || 0) : 
                       (pgy === 2 ? (req.pgy2Ideal || 0) : 
                                    (req.pgy3Ideal || 0));
@@ -115,8 +159,26 @@ export class RequirementsEngine {
           }
         });
       }
-    });
+    }
 
+    return violations;
+  }
+
+  /**
+   * Returns all requirement violations for a set of residents across all years in the schedule.
+   */
+  static getViolations(
+    residents: Resident[],
+    schedule: ScheduleGrid,
+    historicalSchedules: ScheduleHistory = {},
+    activeYear: number,
+    programData: ProgramData,
+    isUnified: boolean = false
+  ): RequirementViolation[] {
+    const violations: RequirementViolation[] = [];
+    residents.forEach(r => {
+      violations.push(...this.getResidentViolations(r, schedule, historicalSchedules, activeYear, programData, isUnified));
+    });
     return violations;
   }
 
@@ -169,6 +231,25 @@ export class RequirementsEngine {
   }
 
   /**
+   * Returns precise numeric deficits for staffing rules. Used by both the UI and Healer Solver.
+   */
+  static getStaffingDeficits(
+    type: string,
+    interns: number,
+    seniors: number,
+    programData: ProgramData
+  ): { internMin: number; internMax: number; seniorMin: number; seniorMax: number } | null {
+    const meta = programData.rotations.get(type);
+    if (!meta) return null;
+    return {
+      internMin: meta.minInterns > 0 ? Math.max(0, meta.minInterns - interns) : 0,
+      internMax: meta.maxInterns < 10 ? Math.max(0, interns - meta.maxInterns) : 0,
+      seniorMin: meta.minSeniors > 0 ? Math.max(0, meta.minSeniors - seniors) : 0,
+      seniorMax: meta.maxSeniors < 10 ? Math.max(0, seniors - meta.maxSeniors) : 0
+    };
+  }
+
+  /**
    * Validates weekly staffing levels (intern/senior min/max) for a single rotation.
    * Returns a string violation description if unmet, otherwise null.
    *
@@ -193,12 +274,168 @@ export class RequirementsEngine {
     });
 
     const { interns, seniors } = this.getStaffingCounts(activeAssignees, weekIdx, gridStartYear);
+    const deficits = this.getStaffingDeficits(type, interns, seniors, programData);
+    if (!deficits) return null;
 
-    if (interns < meta.minInterns) return `Min Interns (${meta.minInterns}) unmet: ${interns}`;
-    if (interns > meta.maxInterns) return `Max Interns (${meta.maxInterns}) exceeded: ${interns}`;
-    if (seniors < meta.minSeniors) return `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`;
-    if (seniors > meta.maxSeniors) return `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`;
+    if (deficits.internMin > 0) return `Min Interns (${meta.minInterns}) unmet: ${interns}`;
+    if (deficits.internMax > 0) return `Max Interns (${meta.maxInterns}) exceeded: ${interns}`;
+    if (deficits.seniorMin > 0) return `Min Seniors (${meta.minSeniors}) unmet: ${seniors}`;
+    if (deficits.seniorMax > 0) return `Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`;
     return null;
+  }  /**
+   * Evaluates all weekly constraints (staffing, clinic, jeopardy, PTO) for a single week.
+   * Centralized helper used by both the UI telemetry and the background heuristic solver.
+   */
+  static getViolationsForWeek(
+    week: number,
+    globalWeek: number,
+    totalWeeks: number,
+    safeGrid: ScheduleGrid,
+    residents: Resident[],
+    activeResidentsAtWeek: Resident[],
+    programData: ProgramData,
+    currentYear: number,
+    validGridStartYear: number,
+    cohortMap: Record<string, number>,
+    precomputedCounts?: { interns: Record<string, number>; seniors: Record<string, number> }
+  ): WeeklyViolation[] {
+    const violations: WeeklyViolation[] = [];
+    const { Y, Z, X } = programData.cycleConfig;
+
+    const assignments = activeResidentsAtWeek.map(r => safeGrid[r.id]?.[week]?.assignment);
+    const clinicCount = assignments.filter(a => a && isClinicRotation(programData, a)).length;
+    if (clinicCount === 0 && activeResidentsAtWeek.length > 0) {
+      violations.push({ 
+        week, 
+        type: 'CCIM' as AssignmentType, 
+        issue: `No residents in clinic in week ${week + 1}`, 
+        year: Math.floor(week / 52) + currentYear, 
+        instances: 1 
+      });
+    }
+
+    Array.from(programData.rotations.keys())?.forEach(type => {
+      let interns = 0;
+      let seniors = 0;
+      
+      if (precomputedCounts) {
+        interns = precomputedCounts.interns[type] || 0;
+        seniors = precomputedCounts.seniors[type] || 0;
+      } else {
+        const assignees = activeResidentsAtWeek.filter(r => safeGrid[r.id]?.[week]?.assignment === type);
+        interns = assignees.filter(r => this.getPgyAtWeek(r, globalWeek, validGridStartYear) === 1).length;
+        seniors = assignees.filter(r => this.getPgyAtWeek(r, globalWeek, validGridStartYear) > 1).length;
+      }
+      
+      const deficits = this.getStaffingDeficits(type, interns, seniors, programData);
+      if (deficits) {
+        const meta = programData.rotations.get(type)!;
+        const pushViolation = (issue: string, instances: number) => {
+          violations.push({
+            week,
+            type: type as AssignmentType,
+            issue,
+            year: Math.floor(week / 52) + currentYear,
+            instances
+          });
+        };
+
+        if (deficits.internMin > 0) pushViolation(`Min Interns (${meta.minInterns}) unmet: ${interns}`, deficits.internMin);
+        if (deficits.internMax > 0) pushViolation(`Max Interns (${meta.maxInterns}) exceeded: ${interns}`, deficits.internMax);
+        if (deficits.seniorMin > 0) pushViolation(`Min Seniors (${meta.minSeniors}) unmet: ${seniors}`, deficits.seniorMin);
+        if (deficits.seniorMax > 0) pushViolation(`Max Seniors (${meta.maxSeniors}) exceeded: ${seniors}`, deficits.seniorMax);
+      }
+    });
+
+    // T6.2: Jeopardy Pool Monitoring
+    const jeopardyPgy2 = activeResidentsAtWeek.filter(r => {
+      const pgy = this.getPgyAtWeek(r, globalWeek, validGridStartYear);
+      const assign = safeGrid[r.id]?.[week]?.assignment;
+      return pgy === 2 && assign && this.isJeopardyBlock(assign, programData);
+    }).length;
+
+    const jeopardyPgy3 = activeResidentsAtWeek.filter(r => {
+      const pgy = this.getPgyAtWeek(r, globalWeek, validGridStartYear);
+      const assign = safeGrid[r.id]?.[week]?.assignment;
+      return pgy === 3 && assign && this.isJeopardyBlock(assign, programData);
+    }).length;
+
+    if (jeopardyPgy2 < 1 && activeResidentsAtWeek.some(r => this.getPgyAtWeek(r, globalWeek, validGridStartYear) === 2)) {
+      violations.push({ week, type: 'ELEC' as AssignmentType, issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
+    }
+
+    if (jeopardyPgy3 < 1 && activeResidentsAtWeek.some(r => this.getPgyAtWeek(r, globalWeek, validGridStartYear) === 3)) {
+      violations.push({ week, type: 'ELEC' as AssignmentType, issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
+    }
+
+    const seniorFlexibleCount = activeResidentsAtWeek.filter(r => {
+      const pgy = this.getPgyAtWeek(r, globalWeek, validGridStartYear);
+      const assign = safeGrid[r.id]?.[week]?.assignment;
+      return pgy > 1 && assign && this.isJeopardyBlock(assign, programData);
+    }).length;
+
+    const seniorCount = activeResidentsAtWeek.filter(r => this.getPgyAtWeek(r, globalWeek, validGridStartYear) > 1).length;
+    if (seniorFlexibleCount === 0 && seniorCount > 0) {
+      violations.push({ week, type: 'ELEC' as AssignmentType, issue: `Jeopardy Gap: No senior residents available on flexible time`, year: Math.floor(week / 52) + currentYear, instances: 1 });
+    }
+
+    // T6.4: PTO Policy Validator
+    activeResidentsAtWeek.forEach(r => {
+      const assign = safeGrid[r.id]?.[week]?.assignment;
+      if (assign === 'VAC') {
+        const cohort = cohortMap[r.id] ?? 0;
+        
+        // Prevent vacation on +1 clinic weeks
+        if (Math.floor((week % Z) / Y) === cohort) {
+          violations.push({
+            week,
+            type: 'VAC' as AssignmentType,
+            issue: `Vacation Policy: Vacation prohibited during +1 clinic week for ${r.name}`,
+            year: Math.floor(week / 52) + currentYear,
+            instances: 1
+          });
+        }
+
+        // Prevent vacation during blackout weeks [0, 5, 6, 7, 8, 9, 50, 51]
+        const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
+        if (blackoutWeeks.includes(week % 52)) {
+          violations.push({
+            week,
+            type: 'VAC' as AssignmentType,
+            issue: `Vacation Policy: Vacation prohibited during blackout week ${week % 52 + 1} for ${r.name}`,
+            year: Math.floor(week / 52) + currentYear,
+            instances: 1
+          });
+        }
+
+        // Prevent vacation inside core Wards/ICU blocks
+        const blockStartOffset = (cohort * Y + Y) % Z;
+        const offsetInCycle = (week - blockStartOffset) % Z;
+        const normalizedOffset = offsetInCycle < 0 ? offsetInCycle + Z : offsetInCycle;
+        
+        if (normalizedOffset < X) {
+          const cycleStart = week - normalizedOffset;
+          const blockWeeks = Array.from({ length: X }, (_, i) => cycleStart + i);
+          
+          const hasCore = blockWeeks.some(w => {
+            const a = safeGrid[r.id]?.[w]?.assignment;
+            return a && ['W-RED', 'W-BLUE', 'METRO', 'ICU'].includes(a);
+          });
+          
+          if (hasCore) {
+            violations.push({
+              week,
+              type: 'VAC' as AssignmentType,
+              issue: `Vacation Policy: Vacation prohibited inside core Wards/ICU block for ${r.name}`,
+              year: Math.floor(week / 52) + currentYear,
+              instances: 1
+            });
+          }
+        }
+      }
+    });
+
+    return violations;
   }
 
   /**
@@ -213,181 +450,136 @@ export class RequirementsEngine {
   ): WeeklyViolation[] {
     const violations: WeeklyViolation[] = [];
     const safeGrid = schedule || {};
-    const currentYear = activeYear || deriveActiveStartYear();
+    const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
+    const fallbackYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveActiveStartYear();
+    const currentYear = activeYear || fallbackYear;
     const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
     const { cohortCount, Y, Z, X, cohortCount: totalCohorts } = programData.cycleConfig;
     
     const cohortMap = getStandardCohortMap(residents, programData);
 
+    const gridStartYear = Math.min(...residents.filter(r => r.startYear > 0).map(r => r.startYear));
+    const validGridStartYear = isFinite(gridStartYear) ? gridStartYear : currentYear;
+    const offsetWeeks = Math.max(0, (currentYear - validGridStartYear)) * 52;
+
     for (let week = 0; week < totalWeeks; week++) {
+      const globalWeek = week + offsetWeeks;
+
       // Filter residents who are actually active during this specific week
       const activeResidentsAtWeek = residents.filter(r => {
         const start = r.activeWeekStart ?? 0;
-        const end = r.activeWeekEnd ?? totalWeeks;
-        return week >= start && week < end;
+        const end = r.activeWeekEnd ?? 9999;
+        return globalWeek >= start && globalWeek < end;
       });
 
-      const assignments = activeResidentsAtWeek.map(r => safeGrid[r.id]?.[week]?.assignment);
-      const clinicCount = assignments.filter(a => a && isClinicRotation(programData, a)).length;
-      if (clinicCount === 0 && activeResidentsAtWeek.length > 0) {
-        violations.push({ 
-          week, 
-          type: 'CCIM' as AssignmentType, 
-          issue: `No residents in clinic in week ${week + 1}`, 
-          year: Math.floor(week / 52) + currentYear, 
-          instances: 1 
-        });
-      }
-
-      Array.from(programData.rotations.keys())?.forEach(type => {
-        const assignees = activeResidentsAtWeek.filter(r => safeGrid[r.id]?.[week]?.assignment === type);
-        const error = this.getStaffingViolation(type, assignees, week, currentYear, programData);
-        if (error) {
-          const meta = programData.rotations.get(type);
-          if (meta) {
-            const interns = assignees.filter(r => this.getPgyAtWeek(r, week, currentYear) === 1).length;
-            const seniors = assignees.filter(r => this.getPgyAtWeek(r, week, currentYear) > 1).length;
-            let instances = 1;
-            if (error.includes('Min Interns')) instances = meta.minInterns - interns;
-            else if (error.includes('Max Interns')) instances = interns - meta.maxInterns;
-            else if (error.includes('Min Seniors')) instances = meta.minSeniors - seniors;
-            else if (error.includes('Max Seniors')) instances = seniors - meta.maxSeniors;
-
-            violations.push({
-              week,
-              type: type as AssignmentType,
-              issue: error,
-              year: Math.floor(week / 52) + currentYear,
-              instances
-            });
-          }
-        }
-      });
-
-      // T6.2: Jeopardy Pool Monitoring
-      const jeopardyPgy2 = activeResidentsAtWeek.filter(r => {
-        const pgy = this.getPgyAtWeek(r, week, currentYear);
-        const assign = safeGrid[r.id]?.[week]?.assignment;
-        return pgy === 2 && assign && this.isJeopardyBlock(assign, programData);
-      }).length;
-
-      const jeopardyPgy3 = activeResidentsAtWeek.filter(r => {
-        const pgy = this.getPgyAtWeek(r, week, currentYear);
-        const assign = safeGrid[r.id]?.[week]?.assignment;
-        return pgy === 3 && assign && this.isJeopardyBlock(assign, programData);
-      }).length;
-
-      if (jeopardyPgy2 < 1 && activeResidentsAtWeek.some(r => this.getPgyAtWeek(r, week, currentYear) === 2)) {
-        violations.push({ week, type: 'ELEC' as AssignmentType, issue: `Jeopardy Gap: Minimum 1 PGY-2 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
-      }
-      if (jeopardyPgy3 < 1 && activeResidentsAtWeek.some(r => this.getPgyAtWeek(r, week, currentYear) === 3)) {
-        violations.push({ week, type: 'ELEC' as AssignmentType, issue: `Jeopardy Gap: Minimum 1 PGY-3 on flexible block unmet`, year: Math.floor(week / 52) + currentYear, instances: 1 });
-      }
+      const weeklyViolations = this.getViolationsForWeek(
+        week, globalWeek, totalWeeks, safeGrid, residents, activeResidentsAtWeek, programData, currentYear, validGridStartYear, cohortMap
+      );
+      violations.push(...weeklyViolations);
     }
 
-    // PTO Policy, Clinic Site validations, and Jeopardy Pool Monitoring
-    residents?.forEach(r => {
-      const cohort = cohortMap[r.id] ?? 0;
-      const blockStartOffset = (cohort * Y + Y) % Z;
-      const start = r.activeWeekStart ?? 0;
-      const end = r.activeWeekEnd ?? totalWeeks;
 
-      for (let week = start; week < end; week++) {
-        const cell = safeGrid[r.id]?.[week];
-        if (!cell || !cell.assignment) continue;
 
-        const assign = cell.assignment;
 
-        // T6.4: PTO Policy Validator
-        if (assign === 'VAC') {
-          // Prevent vacation on +1 clinic weeks
-          if (Math.floor((week % Z) / Y) === cohort) {
-            violations.push({
-              week,
-              type: 'VAC' as AssignmentType,
-              issue: `Vacation Policy: Vacation prohibited during +1 clinic week for ${r.name}`,
-              year: Math.floor(week / 52) + currentYear
-            });
-          }
-
-          // Prevent vacation during blackout weeks [0, 5, 6, 7, 8, 9, 50, 51]
-          const blackoutWeeks = [0, 5, 6, 7, 8, 9, 50, 51];
-          if (blackoutWeeks.includes(week % 52)) {
-            violations.push({
-              week,
-              type: 'VAC' as AssignmentType,
-              issue: `Vacation Policy: Vacation prohibited during blackout week ${week % 52 + 1} for ${r.name}`,
-              year: Math.floor(week / 52) + currentYear
-            });
-          }
-        }
-      }
-
-      // Prevent vacation inside core Wards/ICU blocks
-      for (let cycle = 0; cycle < Math.floor(totalWeeks / Z); cycle++) {
-        const cycleStart = cycle * Z + blockStartOffset;
-        if (cycleStart + X > totalWeeks) continue;
-        if (cycleStart + (X - 1) < start || cycleStart >= end) continue;
-
-        const blockWeeks = Array.from({ length: X }, (_, i) => cycleStart + i);
-        const assignmentsInBlock = blockWeeks.map(w => safeGrid[r.id]?.[w]?.assignment);
-
-        const hasVacation = assignmentsInBlock.includes('VAC');
-        const hasCore = assignmentsInBlock.some(a => a && [
-          'W-RED',
-          'W-BLUE',
-          'METRO',
-          'ICU'
-        ].includes(a));
-
-        if (hasVacation && hasCore) {
-          const vacWeekIndex = blockWeeks.find(w => safeGrid[r.id]?.[w]?.assignment === 'VAC');
-          const weekNum = vacWeekIndex !== undefined ? vacWeekIndex : cycleStart;
-          violations.push({
-            week: weekNum,
-            type: 'VAC' as AssignmentType,
-            issue: `Vacation Policy: Vacation prohibited inside core Wards/ICU block for ${r.name}`,
-            year: Math.floor(weekNum / 52) + currentYear
-          });
-        }
-      }
-    });
-
-    // Jeopardy Pool Monitoring: Monitor senior residents available on flexible blocks
-    for (let week = 0; week < totalWeeks; week++) {
-      const activeResidentsAtWeek = residents.filter(r => {
-        const start = r.activeWeekStart ?? 0;
-        const end = r.activeWeekEnd ?? totalWeeks;
-        return week >= start && week < end;
-      });
-
-      let seniorFlexibleCount = 0;
-      activeResidentsAtWeek?.forEach(r => {
-        const pgy = this.getPgyAtWeek(r, week, currentYear);
-        if (pgy > 1) { // Senior resident
-          const cell = safeGrid[r.id]?.[week];
-          if (cell && cell.assignment) {
-            const assign = cell.assignment;
-            const isFlexible = this.isJeopardyBlock(assign, programData);
-            if (isFlexible) {
-              seniorFlexibleCount++;
-            }
-          }
-        }
-      });
-
-      const seniorCount = activeResidentsAtWeek.filter(r => this.getPgyAtWeek(r, week, currentYear) > 1).length;
-      if (seniorFlexibleCount === 0 && seniorCount > 0) {
-        violations.push({
-          week,
-          type: 'ELEC' as AssignmentType,
-          issue: `Jeopardy Gap: No senior residents available on flexible time`,
-          year: Math.floor(week / 52) + currentYear
-        });
-      }
-    }
 
     return violations;
+  }
+
+  /**
+   * Evaluates ACGME multi-year aggregate limits for a single resident.
+   */
+  static getResidentAuditViolations(
+    r: Resident,
+    currentGrid: ScheduleGrid,
+    historicalGrids: ScheduleHistory,
+    gridStartYear: number,
+    programData: ProgramData,
+    isMultiYearGrid: boolean = false
+  ): number {
+    const numYears = Object.values(currentGrid)[0]?.length 
+      ? Math.ceil(Object.values(currentGrid)[0].length / 52) 
+      : (Object.keys(historicalGrids || {}).length || (isMultiYearGrid ? 3 : 1));
+    let isActive = false;
+    for (let offset = 0; offset < numYears; offset++) {
+      const pgy = (gridStartYear + offset) - r.startYear + 1;
+      if (pgy >= 1 && pgy <= 3) {
+        isActive = true;
+        break;
+      }
+    }
+    if (!isActive) return 0;
+
+    let outpatient = 0;
+    let inpatient = 0;
+    let totalCriticalCare = 0;
+    let criticalCareCore = 0;
+    let nightFloat = 0;
+    let violationCount = 0;
+
+    let maxPgy = 0;
+    const evaluateWeeks = (weeks: ScheduleCell[], year: number) => {
+      const pgy = year - r.startYear + 1;
+      if (pgy < 1 || pgy > 3) return;
+      if (!weeks || weeks.length === 0) return;
+      maxPgy = Math.max(maxPgy, pgy);
+      weeks.forEach(c => {
+        if (!c || !c.assignment) return;
+
+        const meta = programData.rotations.get(c.assignment as any);
+        if (!meta) return;
+
+        if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
+        if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
+        if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
+          totalCriticalCare++;
+          if (c.assignment !== 'AMCS') {
+            criticalCareCore++;
+          }
+        }
+        if (c.assignment === 'NF') nightFloat++;
+      });
+    };
+
+    // 1. Evaluate historical
+    Object.entries(historicalGrids || {})?.forEach(([yStr, grid]) => {
+      evaluateWeeks(grid[r.id] || [], parseInt(yStr));
+    });
+
+    // 2. Evaluate current active grid
+    if (isMultiYearGrid) {
+      const totalWeeks = (currentGrid[r.id]?.length || 0);
+      for (let offset = 0; offset < 3; offset++) {
+        const y = gridStartYear + offset;
+        const startWeek = offset * 52;
+        const endWeek = Math.min(startWeek + 52, totalWeeks);
+        evaluateWeeks(currentGrid[r.id]?.slice(startWeek, endWeek) || [], y);
+      }
+    } else {
+      evaluateWeeks(currentGrid[r.id] || [], gridStartYear);
+    }
+
+    if (maxPgy === 0) return 0;
+
+    let targetOutpatient = 44;
+    let targetInpatient = 48;
+    let targetNightFloat = 6;
+
+    if (maxPgy === 1) {
+      targetOutpatient = 14;
+      targetInpatient = 16;
+      targetNightFloat = 2;
+    } else if (maxPgy === 2) {
+      targetOutpatient = 29;
+      targetInpatient = 32;
+      targetNightFloat = 4;
+    }
+
+    if (outpatient < targetOutpatient) violationCount += (targetOutpatient - outpatient);
+    if (inpatient + totalCriticalCare < targetInpatient) violationCount += (targetInpatient - (inpatient + totalCriticalCare));
+    if (criticalCareCore > 24) violationCount += (criticalCareCore - 24);
+    if (nightFloat < targetNightFloat) violationCount += (targetNightFloat - nightFloat);
+
+    return violationCount;
   }
 
   /**
@@ -403,39 +595,9 @@ export class RequirementsEngine {
     const currentYear = activeYear || 2026;
 
     residents?.forEach(r => {
-      let outpatient = 0;
-      let inpatient = 0;
-      let totalCriticalCare = 0;
-      let criticalCareCore = 0;
-      let nightFloat = 0;
-
-      Object.entries(history)?.forEach(([yStr, grid]) => {
-        const year = parseInt(yStr);
-        const pgy = year - r.startYear + 1;
-        if (pgy < 1 || pgy > 3) return;
-
-        const weeks = grid[r.id] || [];
-        weeks?.forEach(c => {
-          if (!c || !c.assignment) return;
-          const meta = programData.rotations.get(c.assignment as any);
-          if (!meta) return;
-
-          if (meta.setting === ClinicalSetting.OUTPATIENT) outpatient++;
-          if (meta.setting === ClinicalSetting.INPATIENT) inpatient++;
-          if (meta.setting === ClinicalSetting.CRITICAL_CARE) {
-            totalCriticalCare++;
-            if (c.assignment !== 'AMCS') {
-              criticalCareCore++;
-            }
-          }
-          if (c.assignment === 'NF') nightFloat++;
-        });
-      });
-
-      if (outpatient < 44) violationCount += (44 - outpatient);
-      if (inpatient + totalCriticalCare < 48) violationCount += (48 - (inpatient + totalCriticalCare));
-      if (criticalCareCore > 24) violationCount += (criticalCareCore - 24);
-      if (nightFloat < 6) violationCount += (6 - nightFloat);
+      // Since history includes the merged current grid when called from the UI,
+      // we pass it as historicalGrids and pass an empty currentGrid.
+      violationCount += this.getResidentAuditViolations(r, {}, history, currentYear, programData, false);
     });
 
     return violationCount;

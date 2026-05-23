@@ -31,25 +31,83 @@ export const sliceIntoYears = (unifiedGrid: ScheduleGrid, sYear: number, numYear
   return years;
 };
 
+// Helper to merge yearly grids into a unified grid
+export const mergeYearsIntoUnified = (yearsGrid: Record<number, ScheduleGrid>, sYear: number, numYears: number): ScheduleGrid => {
+  const unifiedGrid: ScheduleGrid = {};
+  const years = Array.from({ length: numYears }, (_, i) => sYear + i);
+  const allResidentIds = new Set<string>();
+  years.forEach(y => {
+    const grid = yearsGrid[y];
+    if (grid) {
+      Object.keys(grid).forEach(rId => allResidentIds.add(rId));
+    }
+  });
+
+  allResidentIds.forEach(rId => {
+    const row: ScheduleCell[] = [];
+    for (let y = 0; y < numYears; y++) {
+      const year = sYear + y;
+      const yearGrid = yearsGrid[year];
+      const yearRow = yearGrid?.[rId];
+      if (yearRow && yearRow.length === WEEKS_PER_YEAR) {
+        row.push(...yearRow);
+      } else {
+        row.push(...Array(WEEKS_PER_YEAR).fill(null).map(() => ({ assignment: null, locked: false })));
+      }
+    }
+    unifiedGrid[rId] = row;
+  });
+
+  return unifiedGrid;
+};
+
 
 
 export const getAugmentedResidents = (baseResidents: Resident[], maxYear: number, startYear?: number): Resident[] => {
   const derivedStartYear = startYear ?? deriveActiveStartYear();
-  const minYear = Math.min(...baseResidents.map(r => r.startYear), derivedStartYear);
-  const allResidents = [...baseResidents];
+  const realResidents = baseResidents.filter(r => !r.isSynthetic);
+  const minYear = realResidents.length > 0 ? Math.min(...realResidents.map(r => r.startYear), derivedStartYear) : derivedStartYear;
+  
+  const lastKnownYear = realResidents.length > 0 ? Math.max(...realResidents.map(r => r.startYear)) : derivedStartYear;
+  const size = realResidents.length > 0 ? realResidents.filter(r => r.startYear === lastKnownYear).length : 12;
+
+  const allResidents = [...realResidents];
+
   for (let currentY = minYear; currentY <= maxYear; currentY++) {
-    if (!allResidents.some(r => r.startYear === currentY)) {
-      const lastKnownYear = Math.max(...baseResidents.map(r => r.startYear));
-      const size = baseResidents.filter(r => r.startYear === lastKnownYear).length;
-      for (let i = 0; i < size; i++) {
-        allResidents.push({
-          id: `c${currentY}-${i+1}`,
-          name: `New ${currentY} Resident ${i+1}`,
-          startYear: currentY,
-          level: 1,
-          avoidResidentIds: [],
-        });
+    const hasReal = realResidents.some(r => r.startYear === currentY);
+    if (!hasReal) {
+      const existingSynthetic = baseResidents.filter(r => r.startYear === currentY && r.isSynthetic);
+      const cohort: Resident[] = [...existingSynthetic];
+      
+      const takenIndices = new Set<number>();
+      existingSynthetic.forEach(r => {
+        // Server-side synthetic names are formatted as "{index}, New {year} Resident"
+        // (displayName = "{lastName}, {firstName}" where lastName is the index).
+        // In-memory synthetic names are "New {year} Resident {index}".
+        const startMatch = r.name.match(/^(\d+)/);
+        const endMatch = r.name.match(/(\d+)$/);
+        const idx = startMatch ? parseInt(startMatch[1], 10) : endMatch ? parseInt(endMatch[1], 10) : null;
+        if (idx !== null) {
+          takenIndices.add(idx);
+        }
+      });
+
+      let nextIdx = 1;
+      while (cohort.length < size) {
+        if (!takenIndices.has(nextIdx)) {
+          cohort.push({
+            id: `c${currentY}-${nextIdx}`,
+            name: `New ${currentY} Resident ${nextIdx}`,
+            startYear: currentY,
+            level: 1,
+            avoidResidentIds: [],
+            isSynthetic: true,
+          });
+          takenIndices.add(nextIdx);
+        }
+        nextIdx++;
       }
+      allResidents.push(...cohort);
     }
   }
   return allResidents;
@@ -353,6 +411,25 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
   return RequirementsEngine.getAuditViolations(residents, history, programData, activeYear);
 };
 
+export const getRequirementsViolationsCount = (
+  residents: Resident[],
+  schedule: ScheduleGrid,
+  historicalSchedules: ScheduleHistory,
+  startYear: number,
+  isUnified: boolean,
+  programData: ProgramData
+): number => {
+  const violations = RequirementsEngine.getViolations(
+    residents,
+    schedule,
+    historicalSchedules,
+    startYear,
+    programData,
+    isUnified
+  );
+  return violations.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0);
+};
+
 
 
 const calculateSD = (values: number[], mean: number): number => {
@@ -489,7 +566,8 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   let educationDenominator = 0;
   let educationNumerator = 0;
 
-  const baseYear = deriveActiveStartYear();
+  const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
+  const baseYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveActiveStartYear();
 
   residents?.forEach(r => {
     for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {

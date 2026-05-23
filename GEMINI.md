@@ -102,6 +102,7 @@ See:
 @specification/interface
 
 For further UI presentation development, add items to interface.md, not GEMINI.md. Don't add items without permission from the developer - UI is particular.
+*   **Cycle and PGY Toggles and Labels**: All group-by sort toggles in the schedule grid, educational requirements grid, and overlap matrix must place **Cycle** first and say **Cycle** (rather than Cohort or Clinic Cycle), and place **PGY** second and say **PGY** (rather than PGY Level).
 
 # Process Management & Background Tasks
 *   **Vitest Testing:** When running Vitest tests via the shell, always use `--run` (or equivalent) to disable watch mode. This is especially critical when piping output to a file or running in the background, as watch mode can prevent the IDE from correctly terminating the process, leading to stale background tasks.
@@ -133,13 +134,23 @@ Candidate schedules are synchronized between multiple frontend clients and the P
 
 *   **Architecture** — Writes go through GraphQL mutations (individual cell upserts or bulk saves). The backend broadcasts SSE events to all connected clients via `afterChange` hooks on `Schedules` and `ScheduleAssignments` collections.
 *   **SSE Endpoint** — `GET /api/sync/stream/:candidateId` maintains persistent `text/event-stream` connections per candidate ID. Each client generates a unique `clientId` to deduplicate its own echoed events.
-*   **Bulk Endpoint** — `POST /api/sync/bulk` creates a Schedule with all assignments in one request, bypassing individual `afterChange` hooks and broadcasting a single `bulk-sync` event.
+*   **Bulk Endpoint** — `POST /api/sync/bulk` creates a Schedule with all assignments in one request, bypassing individual `afterChange` hooks and broadcasting a single `bulk-sync` event. Also accepts an optional `syntheticResidents` array to upsert placeholder residents (see below).
 *   **Frontend Service** — `services/api/sync.ts` exports `ScheduleSyncService` (singleton via `getScheduleSyncService()`). It manages EventSource connections, debounced cell upserts (300ms), transparent candidate auto-creation, and exponential-backoff reconnection.
 *   **Offline-first** — The app works fully without a backend. localStorage remains as a fallback cache. Backend sync is opportunistic.
 *   **Identity Mapping** — Schedules have a frontend `id` (string, e.g. `sched-...`) and an optional `backendId` (Payload Schedule doc ID). Unauthenticated users can generate and interact with schedules locally without ever touching the backend.
 *   **Candidate Transparency** — `Candidates` are internal backend groupings (3-year planning horizons). Users never see or manage them directly — the sync service auto-creates them on first save via `ensureCandidate()`.
 *   **Conflict Resolution** — Last-write-wins for simultaneous cell edits. No conflict UI.
 *   **Sync Status UI** — A status indicator in the header shows: 🟣 Live (SSE streaming), 🟢 Connected (authenticated), ⚪ Local Only (no auth).
+*   **GraphQL Loading** — `loadAllCandidates()` uses a single nested query (`CANDIDATES_WITH_SCHEDULES_QUERY`) that fetches candidates → schedules → assignments in one round trip via Payload's join field GraphQL args. Join limits: `schedules(limit: 10)`, `scheduleAssignments(limit: 3000)`.
+
+## Synthetic Resident Persistence
+Future-year schedules require placeholder ("synthetic") residents for years with no enrolled residents. These are handled differently in offline vs authenticated modes:
+
+*   **Offline mode** — `getAugmentedResidents()` creates in-memory placeholders with non-numeric IDs (e.g. `c2027-1`). These exist only in the frontend.
+*   **Publish mode** — At publish time, `saveCandidateGrids` identifies non-numeric resident IDs, extracts name/startYear from the resident list, and sends them as `syntheticResidents` in the bulk request. The backend upserts them with `isSynthetic: true` and returns a `residentIdMap` (frontendKey → backendId). The frontend then remaps in-memory grid keys from `c2027-1` → `55` so subsequent cell edits sync normally.
+*   **Idempotent upsert** — The backend finds synthetic residents by `firstName + lastName + startYear + isSynthetic` before creating, preventing duplicates on re-publish.
+*   **Auto-cleanup** — A `beforeChange` hook on Residents auto-deletes synthetic residents for a given startYear when a real (non-synthetic) resident is created for that year.
+*   **Cell edit guard** — `upsertCell()` silently skips `NaN` resident IDs; synthetic resident edits are local-only until the schedule is published and keys are remapped.
 
 ## Clinic Block Scheduling Guardrail
 *   **Clinic Assignment Exclusivity**: Clinic assignments (`CLINIC` or specific clinic codenames) must never be scheduled, generated, or mutated on non-clinic (flexible) weeks.
@@ -148,6 +159,31 @@ Candidate schedules are synchronized between multiple frontend clients and the P
 ## Unified Educational Requirements Spreadsheet Grid
 *   **Grid layout and columns**: All individual ACGME and Curriculum educational requirements from the backend are represented as columns, and residents as rows. Old ACGME, Curriculum, and ACGME Audit screens are consolidated into this single screen.
 *   **Sticky row header resizing**: The resident name row header column is sticky and can be horizontally resized by dragging the right border of the column.
-*   **Dynamic sorting**: In 1-year view, sorting can be toggled between "PGY Level" (consisting of PGY groups, cohorts, and then alphabetically) and "Cohort" (consisting of Cohort groups, PGYs, and then alphabetically). In 3-year unified view, the group controls are hidden, and residents are always sorted by matriculation year `startYear` first, then cohort, then alphabetically.
+*   **Dynamic sorting**: In 1-year view, sorting can be toggled between "PGY" (consisting of PGY groups, cohorts, and then alphabetically) and "Cycle" (consisting of Cohort groups, PGYs, and then alphabetically). In 3-year unified view, the group controls are hidden, and residents are always sorted by matriculation year `startYear` first, then cohort, then alphabetically.
 *   **Color coding**: Cells are color-coded based on compliance status: satisfied cells are emerald green (`bg-emerald-50 text-emerald-800 border-b border-emerald-100 font-bold`), unsatisfied annual soft targets/ideals in 1-year view are soft orange (`bg-orange-50 text-orange-800 border-b border-orange-100 font-bold`), and unsatisfied hard graduation minimums in 3-year view are rose/red (`bg-rose-50 text-rose-800 border-b border-rose-100 font-bold`). Non-applicable requirements (0 minimum/ideal weeks) display a simple dash (`-`).
 *   **Diagonally Tilted Headers**: Resident column headers across both the Requirements and Totals (Rotation Totals) grids must be tilted diagonally at a `-45deg` angle with absolute positioning (`absolute bottom-3`, `left-4` / `left-3`, `transform-origin: left bottom`) to optimize legibility and facilitate compact columns. To prevent subsequent column backgrounds from clipping or painting over the overflowing rotated text of preceding columns, the resident headers must be assigned a decreasing `zIndex` from left to right (`style={{ zIndex: 100 - idx }}`), while the sticky left row header must retain the highest z-index (`zIndex: 150`) to remain on top of scrolled resident columns.
+
+## Unified Requirements Violations Telemetry
+*   **Deficit-Based Calculation**: To prevent discrepancies in requirement counts, the scheduler UI, background healer worker, and progress telemetry must always measure requirements violations as literal deficit weeks (computed via `getRequirementsViolationsCount`) rather than the number of unique rules violated, matching the display states of the Requirements spreadsheet grid.
+*   **Historical Year Preloading in Worker**: The background worker solver must preload historical schedule data (`fullHistory`) in the same manner as the UI to correctly resolve multi-year requirements and avoid phantom violations.
+*   **Planning Horizon Scaled Graduation Minimums**: To prevent phantom graduation deficits for future cohorts who do not yet have their entire 3-year residency completed within a given planning horizon (such as a 3-year unified grid spanning weeks 1–156), the required graduation minimums evaluated by the `RequirementsEngine` and displayed in the spreadsheet tooltip/grid must scale dynamically based on the resident's active years inside the grid planning horizon (yielding scaled targets of `pgy1Ideal` for PGY-1, `pgy1Ideal + pgy2Ideal` for PGY-2, and full `minimum` only for PGY-3 or above).
+*   **Graduated and Unmatriculated Residents Exclusion**: To prevent phantom deficits, residents who have already graduated before the active schedule grid starts (i.e. their calculated PGY level in the grid start year is > 3), or who have not yet matriculated by the end of the grid horizon (i.e. their calculated PGY level in the grid end year is < 1), must be excluded from requirements, audit, and weekly constraint evaluations, resulting in 0 violations.
+
+## Grid Block Selection and Swap Mode
+*   **Two-Step Block Swap Flow**: The grid-swapping mechanism must support a single, unified "Block Swap" operation. 
+*   **Selection & Rendering Constraints**: Clicking "Initialize Block Swap" freezes the first block selection (highlighted in emerald green `#10b981` with crawling green marching ants). The user then clicks and drags a second target block (highlighted in standard blue with crawling blue marching ants).
+*   **Auto-Execution on Size Match**: As soon as the second block selection is completed, if the total number of blocks in both selections is identical, the engine must immediately and automatically swap all assignments element-by-element (flattened in standard reading order, i.e., row-by-row then week-by-week) and clear both selections. If the block counts differ, a clear size-mismatch message must be shown in the sidebar, and the user must be prompted to adjust their selection until it matches.
+
+
+
+
+## Healer Panel Customization & Strategy Layout
+*   **Strategy Order**: The heuristic strategies listed in the Healer Panel must be ordered as follows (from top to bottom):
+    1.  `4-block` (4-Block Swaps)
+    2.  `2-block` (2-Block Swaps)
+    3.  `2-way` (2-Resident Swaps)
+    4.  `3-way` (3-Resident Swaps)
+    5.  `1-block` (1-Week Swaps)
+    6.  `complete` (Complete Scan)
+*   **Default Selected Healer Strategies**: The Healer Panel must default to having only `['4-block', '2-block']` selected.
+*   **Premium Custom Theme Colors**: Avoid using standard Tailwind `violet` or `purple` class names for brand items (as they do not match the brand color palette). Instead, use the custom `orange` color classes (`text-orange`, `bg-orange`, `border-orange`, `hover:bg-orange-dark`, etc.) to match the app's custom brand yellow/orange "lemon button" color system.

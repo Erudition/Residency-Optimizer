@@ -1,13 +1,37 @@
 import { describe, test, expect } from 'vitest';
-import { healSchedule } from '../services/healer';
-import { AssignmentType, ScheduleGrid } from '../types';
-import { TOTAL_WEEKS } from '../constants';
+import { healer } from '../services/healerSolver';
+import { ScheduleGrid, Resident } from '../types';
+import { getMockProgramData } from './fixtures/scheduleFixture';
 
-describe.skip('Healer Service', () => {
-    test('Healer respects locked cells and does not introduce staffing violations', () => {
-        // This is a minimal test case.
-        // A full convergence test requires generating a schedule with known violations 
-        // and verifying the healer reduces them.
-        expect(true).toBe(true); 
+describe('Healer Solver Strategies', () => {
+    test('runs healer with each strategy successfully', async () => {
+        const programData = getMockProgramData();
+        const residents: Resident[] = [
+            { id: 'res1', name: 'Dr. A', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52, avoidResidentIds: [] },
+            { id: 'res2', name: 'Dr. B', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52, avoidResidentIds: [] },
+        ];
+
+        const schedule: ScheduleGrid = {
+            'res1': Array(52).fill(null).map(() => ({ assignment: 'ELEC', locked: false })),
+            'res2': Array(52).fill(null).map(() => ({ assignment: 'ELEC', locked: false })),
+        };
+
+        const strategies = ['4-block', '3-way', '2-way', 'default'];
+
+        for (const strategy of strategies) {
+            const solved = await healer.solve(
+                residents,
+                schedule,
+                programData,
+                2026,
+                {},
+                { 'res1': 0, 'res2': 1 },
+                undefined,
+                strategy
+            );
+            expect(solved).toBeDefined();
+            expect(Object.keys(solved).length).toBe(2);
+            expect(solved['res1'].length).toBe(52);
+        }
     });
 });
