@@ -169,4 +169,10 @@ Future-year schedules require placeholder ("synthetic") residents for years with
 *   **Planning Horizon Scaled Graduation Minimums**: To prevent phantom graduation deficits for future cohorts who do not yet have their entire 3-year residency completed within a given planning horizon (such as a 3-year unified grid spanning weeks 1–156), the required graduation minimums evaluated by the `RequirementsEngine` and displayed in the spreadsheet tooltip/grid must scale dynamically based on the resident's active years inside the grid planning horizon (yielding scaled targets of `pgy1Ideal` for PGY-1, `pgy1Ideal + pgy2Ideal` for PGY-2, and full `minimum` only for PGY-3 or above).
 *   **Graduated and Unmatriculated Residents Exclusion**: To prevent phantom deficits, residents who have already graduated before the active schedule grid starts (i.e. their calculated PGY level in the grid start year is > 3), or who have not yet matriculated by the end of the grid horizon (i.e. their calculated PGY level in the grid end year is < 1), must be excluded from requirements, audit, and weekly constraint evaluations, resulting in 0 violations.
 
+## Grid Block Selection and Swap Mode
+*   **Two-Step Block Swap Flow**: The grid-swapping mechanism must support a single, unified "Block Swap" operation. 
+*   **Selection & Rendering Constraints**: Clicking "Initialize Block Swap" freezes the first block selection (highlighted in emerald green `#10b981` with crawling green marching ants). The user then clicks and drags a second target block (highlighted in standard blue with crawling blue marching ants).
+*   **Auto-Execution on Size Match**: As soon as the second block selection is completed, if the total number of blocks in both selections is identical, the engine must immediately and automatically swap all assignments element-by-element (flattened in standard reading order, i.e., row-by-row then week-by-week) and clear both selections. If the block counts differ, a clear size-mismatch message must be shown in the sidebar, and the user must be prompted to adjust their selection until it matches.
+
+
 

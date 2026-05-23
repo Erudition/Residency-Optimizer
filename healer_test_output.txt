@@ -1,0 +1,127 @@
+
+ RUN  v3.2.4 /home/adroit/Projects/residency-optimizer
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+Starting Out-of-Band Healer Test...
+
+Fetching program data from the backend...
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+cycleConfig is defined: { cohortCount: 5, Y: 1, Z: 5, X: 4, assignments: {} }
+
+Selected Generator: EducationFirst
+Generating initial schedule...
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+Initial UI Evaluation: Total = 499 (Reqs: 242, Staffing/PTO/Clinic: 132, Audit: 125)
+
+Initial Healer Manual Evaluation: Reqs: 242, Audit: 125
+
+Starting Healer Solver...
+[Healer Start] Initial global penalty: 1,329,175,000 (Staffing: 1,320,000,000, Requirements: 9,175,000)
+[Healer Step 0] Current Penalty: 499
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 0] Penalty: 1,329,175,000 | Staffing: 132 | Jeopardy: 0 | Req: 367 | Temp: 1.0000
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 10000] Current Penalty: 282
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 20000] Current Penalty: 238
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 30000] Current Penalty: 259
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 40000] Current Penalty: 225
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 50000] Current Penalty: 197
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 50000] Penalty: 4,925,000 | Staffing: 0 | Jeopardy: 0 | Req: 197 | Temp: 0.4850
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 60000] Current Penalty: 162
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 70000] Current Penalty: 145
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 80000] Current Penalty: 133
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 90000] Current Penalty: 105
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 100000] Current Penalty: 70
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 100000] Penalty: 1,750,000 | Staffing: 0 | Jeopardy: 0 | Req: 70 | Temp: 0.2346
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 110000] Current Penalty: 58
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 120000] Current Penalty: 49
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 130000] Current Penalty: 37
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 140000] Current Penalty: 31
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 150000] Current Penalty: 27
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 150000] Penalty: 675,000 | Staffing: 0 | Jeopardy: 0 | Req: 27 | Temp: 0.1144
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 160000] Current Penalty: 21
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 170000] Current Penalty: 17
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 180000] Current Penalty: 15
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer Step 190000] Current Penalty: 13
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer End] final penalty: 300000 (annealed: 300000), weekly penalty: 0, req penalty: 300000
+[Healer Stats] 2-Way: attempted=60037, accepted=5674 | 3-Way: attempted=19871, accepted=1038 | Single: attempted=120092, accepted=18912
+
+stdout | tests/healerTelemetryBackend.test.ts > Healer Telemetry Parity Check (Real Data)
+[Healer End] Final Healer Penalty: 13
+
+Final UI Evaluation: Total = 12 (Reqs: 7, Staffing/PTO/Clinic: 0, Audit: 5)
+
+--- Remaining Requirement Violations ---
+Resident Mukherjee, Lipilekha (PGY-1): Audit Deficit of 1 weeks
+Resident King, Matthew (PGY-1): Audit Deficit of 1 weeks
+Resident Gurram, Neha (PGY-1): Audit Deficit of 1 weeks
+Resident DeVolder, Mitchell (PGY-1): Audit Deficit of 1 weeks
+Resident Alhaddadein, Yara (PGY-1): Audit Deficit of 1 weeks
+Resident Sanderson, Jacob Nakolo (PGY-2): Deficit of 2 weeks of Neurology (Required: 4, Actual: 2)
+Resident Orden, Martin Basobas (PGY-2): Deficit of 1 weeks of Neurology (Required: 4, Actual: 3)
+Resident Nazeer, Usman Imran (PGY-2): Deficit of 1 weeks of Neurology (Required: 4, Actual: 3)
+Resident Jentz, Austin Lee (PGY-2): Deficit of 1 weeks of Neurology (Required: 4, Actual: 3)
+Resident Hill, Brittany Marie (PGY-2): Deficit of 1 weeks of ICU (Required: 12, Actual: 11)
+Resident Delano, Victoria Remilekun (PGY-2): Deficit of 1 weeks of Neurology (Required: 4, Actual: 3)
+---------------------------------------
+
+✅ Healer successfully improved the schedule, UI penalty confirms.
+
+All conditions passed successfully.
+
+ ✓ tests/healerTelemetryBackend.test.ts (1 test) 24371ms
+   ✓ Healer Telemetry Parity Check (Real Data)  24370ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  04:49:36
+   Duration  24.97s (transform 211ms, setup 0ms, collect 288ms, tests 24.37s, environment 0ms, prepare 94ms)
+

@@ -15,6 +15,7 @@ interface Props {
 
   selection: SelectionRange | null;
   onSelectionChange: (sel: SelectionRange | null) => void;
+  swapSourceSelection?: SelectionRange | null;
 
   onCellClick: (residentId: string, week: number, rect?: DOMRect) => void;
   onLockWeek: (weekIdx: number) => void;
@@ -57,6 +58,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
 
   selection,
   onSelectionChange,
+  swapSourceSelection = null,
 
   onCellClick,
   onLockWeek,
@@ -237,6 +239,21 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       maxCol: Math.max(activeSelection.startWeekIdx, activeSelection.endWeekIdx),
     };
   }, [activeSelection, residents]);
+
+  const swapSourceSelectionBounds = useMemo(() => {
+    if (!swapSourceSelection) return null;
+    
+    const startRowIdx = residents.findIndex(r => r.id === swapSourceSelection.startResidentId);
+    const endRowIdx = residents.findIndex(r => r.id === swapSourceSelection.endResidentId);
+    if (startRowIdx === -1 || endRowIdx === -1) return null;
+
+    return {
+      minRow: Math.min(startRowIdx, endRowIdx),
+      maxRow: Math.max(startRowIdx, endRowIdx),
+      minCol: Math.min(swapSourceSelection.startWeekIdx, swapSourceSelection.endWeekIdx),
+      maxCol: Math.max(swapSourceSelection.startWeekIdx, swapSourceSelection.endWeekIdx),
+    };
+  }, [swapSourceSelection, residents]);
 
   const handleCellClick = (residentId: string, weekIdx: number, isLocked: boolean, isPast: boolean, rect?: DOMRect) => {
     const key = `${residentId}-${weekIdx}`;
@@ -493,6 +510,17 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     const isLeftBorder = isCellSelected && idx === selectionBounds!.minCol;
                     const isRightBorder = isCellSelected && idx === selectionBounds!.maxCol;
 
+                    const isCellSwapSource = swapSourceSelectionBounds &&
+                      rowIdx >= swapSourceSelectionBounds.minRow &&
+                      rowIdx <= swapSourceSelectionBounds.maxRow &&
+                      idx >= swapSourceSelectionBounds.minCol &&
+                      idx <= swapSourceSelectionBounds.maxCol;
+
+                    const isSwapTopBorder = isCellSwapSource && rowIdx === swapSourceSelectionBounds!.minRow;
+                    const isSwapBottomBorder = isCellSwapSource && rowIdx === swapSourceSelectionBounds!.maxRow;
+                    const isSwapLeftBorder = isCellSwapSource && idx === swapSourceSelectionBounds!.minCol;
+                    const isSwapRightBorder = isCellSwapSource && idx === swapSourceSelectionBounds!.maxCol;
+
                     return (
                       <td
                         key={`${resident.id}-${w}`}
@@ -505,6 +533,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                             {isBottomBorder && <div className="absolute bottom-0 left-0 right-0 h-[2px] marching-ants-x" style={{ animationDirection: 'reverse' }} />}
                             {isLeftBorder && <div className="absolute top-0 bottom-0 left-0 w-[2px] marching-ants-y" />}
                             {isRightBorder && <div className="absolute top-0 bottom-0 right-0 w-[2px] marching-ants-y" style={{ animationDirection: 'reverse' }} />}
+                          </div>
+                        )}
+                        {isCellSwapSource && (
+                          <div className="absolute inset-0 pointer-events-none z-20">
+                            {isSwapTopBorder && <div className="absolute top-0 left-0 right-0 h-[2px] marching-ants-green-x" />}
+                            {isSwapBottomBorder && <div className="absolute bottom-0 left-0 right-0 h-[2px] marching-ants-green-x" style={{ animationDirection: 'reverse' }} />}
+                            {isSwapLeftBorder && <div className="absolute top-0 bottom-0 left-0 w-[2px] marching-ants-green-y" />}
+                            {isSwapRightBorder && <div className="absolute top-0 bottom-0 right-0 w-[2px] marching-ants-green-y" style={{ animationDirection: 'reverse' }} />}
                           </div>
                         )}
                         <button
@@ -527,6 +563,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           disabled={isOutOfBounds}
                         >
                           {isCellSelected && <div className="absolute inset-0 bg-blue/15 pointer-events-none rounded-[4px] z-10" />}
+                          {isCellSwapSource && <div className="absolute inset-0 bg-emerald-500/15 pointer-events-none rounded-[4px] z-10" />}
                           {assign && !isOutOfBounds ? (
                             <span className="truncate w-full block">
                               {programData.placeholderCodenames.has(assign) ? `${assign}?` : assign}

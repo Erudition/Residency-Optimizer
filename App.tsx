@@ -95,7 +95,8 @@ import {
   Square,
   CloudUpload,
   ArrowUpDown,
-  ArrowLeftRight
+  ArrowLeftRight,
+  AlertTriangle
 } from 'lucide-react';
 
 
@@ -536,6 +537,7 @@ const AppContent: React.FC = () => {
   const [bestHealGrid, setBestHealGrid] = useState<ScheduleGrid | null>(null);
   const healWorkerRef = useRef<Worker | null>(null);
   const [selection, setSelection] = useState<SelectionRange | null>(null);
+  const [swapSourceSelection, setSwapSourceSelection] = useState<SelectionRange | null>(null);
   
   const [isHealerPanelOpen, setIsHealerPanelOpen] = useState(false);
   const [isHealerRunning, setIsHealerRunning] = useState(false);
@@ -1760,6 +1762,21 @@ const AppContent: React.FC = () => {
     };
   }, [selection, viewMode, displayResidents, activeResidents]);
 
+  const swapSourceSelectionBounds = useMemo(() => {
+    if (!swapSourceSelection) return null;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const startRowIdx = currentResidents.findIndex(r => r.id === swapSourceSelection.startResidentId);
+    const endRowIdx = currentResidents.findIndex(r => r.id === swapSourceSelection.endResidentId);
+    if (startRowIdx === -1 || endRowIdx === -1) return null;
+
+    return {
+      minRow: Math.min(startRowIdx, endRowIdx),
+      maxRow: Math.max(startRowIdx, endRowIdx),
+      minCol: Math.min(swapSourceSelection.startWeekIdx, swapSourceSelection.endWeekIdx),
+      maxCol: Math.max(swapSourceSelection.startWeekIdx, swapSourceSelection.endWeekIdx),
+    };
+  }, [swapSourceSelection, viewMode, displayResidents, activeResidents]);
+
   const handleVerticalSwap = () => {
     if (!activeScheduleId || !selection || !selectionBounds) return;
     const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
@@ -1844,6 +1861,108 @@ const AppContent: React.FC = () => {
     }));
     toast.success("Swapped assignments horizontally!");
   };
+
+  const handleDoubleSelectionSwap = () => {
+    if (!activeScheduleId || !swapSourceSelection || !selection || !swapSourceSelectionBounds || !selectionBounds) return;
+
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+
+    const getSelectionCells = (bounds: typeof selectionBounds) => {
+      const cells: { residentId: string; weekIdx: number; }[] = [];
+      for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+        const resident = currentResidents[r];
+        if (!resident) continue;
+        for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+          cells.push({ residentId: resident.id, weekIdx: c });
+        }
+      }
+      return cells;
+    };
+
+    const cellsA = getSelectionCells(swapSourceSelectionBounds);
+    const cellsB = getSelectionCells(selectionBounds);
+
+    if (cellsA.length !== cellsB.length) {
+      toast.error("Selections must contain the same number of blocks to swap.");
+      return;
+    }
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const yearGrid = s.data?.[activeYear] || {};
+      const yearCopy = { ...yearGrid };
+
+      const valuesA = cellsA.map(cell => {
+        const row = yearCopy[cell.residentId] || [];
+        return row[cell.weekIdx] ? { ...row[cell.weekIdx] } : { assignment: null, locked: false };
+      });
+
+      const valuesB = cellsB.map(cell => {
+        const row = yearCopy[cell.residentId] || [];
+        return row[cell.weekIdx] ? { ...row[cell.weekIdx] } : { assignment: null, locked: false };
+      });
+
+      cellsA.forEach((cell, i) => {
+        if (!yearCopy[cell.residentId]) yearCopy[cell.residentId] = [];
+        const updatedRow = [...yearCopy[cell.residentId]];
+        const val = { ...valuesB[i], locked: true };
+        updatedRow[cell.weekIdx] = val;
+        yearCopy[cell.residentId] = updatedRow;
+
+        if (s.backendId && val.assignment) {
+          syncService.upsertCell(
+            s.backendId,
+            parseInt(cell.residentId, 10),
+            cell.weekIdx + 1,
+            val.assignment,
+            true
+          );
+        }
+      });
+
+      cellsB.forEach((cell, i) => {
+        if (!yearCopy[cell.residentId]) yearCopy[cell.residentId] = [];
+        const updatedRow = [...yearCopy[cell.residentId]];
+        const val = { ...valuesA[i], locked: true };
+        updatedRow[cell.weekIdx] = val;
+        yearCopy[cell.residentId] = updatedRow;
+
+        if (s.backendId && val.assignment) {
+          syncService.upsertCell(
+            s.backendId,
+            parseInt(cell.residentId, 10),
+            cell.weekIdx + 1,
+            val.assignment,
+            true
+          );
+        }
+      });
+
+      return {
+        ...s,
+        data: { ...s.data, [activeYear]: yearCopy }
+      };
+    }));
+
+    setSwapSourceSelection(null);
+    setSelection(null);
+    toast.success("Successfully swapped assignments!");
+  };
+
+  const handleSwapInit = () => {
+    setSwapSourceSelection(selection);
+    setSelection(null);
+  };
+
+  useEffect(() => {
+    if (swapSourceSelection && selection && swapSourceSelectionBounds && selectionBounds) {
+      const countA = (swapSourceSelectionBounds.maxRow - swapSourceSelectionBounds.minRow + 1) * (swapSourceSelectionBounds.maxCol - swapSourceSelectionBounds.minCol + 1);
+      const countB = (selectionBounds.maxRow - selectionBounds.minRow + 1) * (selectionBounds.maxCol - selectionBounds.minCol + 1);
+      if (countA === countB) {
+        handleDoubleSelectionSwap();
+      }
+    }
+  }, [selection, swapSourceSelection, selectionBounds, swapSourceSelectionBounds]);
 
   const handleBatchSetRotation = (newRotation: AssignmentType | null) => {
     if (!activeScheduleId || !selection || !selectionBounds) return;
@@ -2616,6 +2735,7 @@ const AppContent: React.FC = () => {
                         isReadOnly={activeSchedule?.isHistory || isHealing}
                         selection={selection}
                         onSelectionChange={setSelection}
+                        swapSourceSelection={swapSourceSelection}
 
                         onCellClick={handleCellClick}
                         onLockWeek={handleLockWeek}
@@ -2624,89 +2744,160 @@ const AppContent: React.FC = () => {
                       />
                     </div>
 
-                    {selection && selectionBounds && (
-                      <div className="w-80 border-l border-light-5 bg-white/95 backdrop-blur-md flex flex-col shrink-0 animate-slide-in shadow-2xl relative z-30">
-                        <div className="p-4 border-b border-light-5 flex items-center justify-between">
-                          <div className="flex flex-col">
-                            <h3 className="text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2">
-                              <Sparkles size={16} className="text-blue" />
-                              Batch Actions
-                            </h3>
-                            <span className="text-[10px] font-bold text-muted mt-0.5">
-                              Selected: {selectionBounds.maxRow - selectionBounds.minRow + 1} residents × {selectionBounds.maxCol - selectionBounds.minCol + 1} weeks ({ (selectionBounds.maxRow - selectionBounds.minRow + 1) * (selectionBounds.maxCol - selectionBounds.minCol + 1) } blocks)
-                            </span>
-                          </div>
-                          <button onClick={() => setSelection(null)} className="text-muted hover:text-black font-bold p-1">✕</button>
-                        </div>
+                    {(selection || swapSourceSelection) && (() => {
+                      const countA = swapSourceSelectionBounds
+                        ? (swapSourceSelectionBounds.maxRow - swapSourceSelectionBounds.minRow + 1) * (swapSourceSelectionBounds.maxCol - swapSourceSelectionBounds.minCol + 1)
+                        : 0;
+                      const countB = selectionBounds
+                        ? (selectionBounds.maxRow - selectionBounds.minRow + 1) * (selectionBounds.maxCol - selectionBounds.minCol + 1)
+                        : 0;
+                      const isSwapMode = !!swapSourceSelection;
+                      const activeBounds = selectionBounds || swapSourceSelectionBounds;
 
-                        <div className="p-4 border-b border-light-5">
-                          <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-2">Swaps</h4>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="secondary"
-                              className="flex-1 flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-muted hover:text-primary transition-all border border-light-5 rounded-lg bg-light-1"
-                              onClick={handleVerticalSwap}
-                            >
-                              <ArrowUpDown size={13} />
-                              Swap Vertically
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              className="flex-1 flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-muted hover:text-primary transition-all border border-light-5 rounded-lg bg-light-1"
-                              onClick={handleHorizontalSwap}
-                            >
-                              <ArrowLeftRight size={13} />
-                              Swap Horizontally
-                            </Button>
-                          </div>
-                          <p className="text-[10px] text-muted font-medium mt-2 leading-relaxed">
-                            <strong>Vertically:</strong> Swaps assignments among selected residents for each week.<br />
-                            <strong>Horizontally:</strong> Swaps assignments across selected weeks for each resident.
-                          </p>
-                        </div>
+                      if (!activeBounds) return null;
 
-                        <div className="flex-1 overflow-y-auto p-4 flex flex-col min-h-0">
-                          <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-3">Set Rotation</h4>
-                          <div className="grid grid-cols-2 gap-2 mb-3 shrink-0">
+                      return (
+                        <div className="w-80 border-l border-light-5 bg-white/95 backdrop-blur-md flex flex-col shrink-0 animate-slide-in shadow-2xl relative z-30">
+                          <div className="p-4 border-b border-light-5 flex items-center justify-between">
+                            <div className="flex flex-col">
+                              <h3 className="text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2">
+                                <Sparkles size={16} className={isSwapMode ? "text-emerald-500 animate-pulse" : "text-blue"} />
+                                {isSwapMode ? "Block Swap Mode" : "Batch Actions"}
+                              </h3>
+                              <span className="text-[10px] font-bold text-muted mt-0.5">
+                                {isSwapMode ? (
+                                  <span>Step 2: Select destination block</span>
+                                ) : (
+                                  `Selected: ${activeBounds.maxRow - activeBounds.minRow + 1} residents × ${activeBounds.maxCol - activeBounds.minCol + 1} weeks (${countB} blocks)`
+                                )}
+                              </span>
+                            </div>
                             <button
-                              onClick={() => handleBatchSetRotation(null)}
-                              className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-light-4 hover:border-red-400 hover:bg-rose-50 text-left transition-all text-xs font-bold"
+                              onClick={() => {
+                                setSelection(null);
+                                setSwapSourceSelection(null);
+                              }}
+                              className="text-muted hover:text-black font-bold p-1"
                             >
-                              <div className="w-4 h-4 rounded bg-light-3 border border-light-4 flex items-center justify-center text-[9px] font-black text-muted">∅</div>
-                              <span className="truncate text-muted hover:text-red-600">Clear Block</span>
+                              ✕
                             </button>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-1">
-                            {Array.from(programData.rotations.entries()).map(([key, config]) => {
-                              const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
-                              return (
-                                <button
-                                  key={key}
-                                  onClick={() => handleBatchSetRotation(key as AssignmentType)}
-                                  className="flex items-center gap-2 p-2 rounded-lg border border-light-4 hover:border-blue/50 hover:bg-light-1 text-left transition-all text-xs font-bold"
+
+                          <div className="p-4 border-b border-light-5 bg-light-1/30">
+                            {isSwapMode ? (
+                              <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex items-center justify-between text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg">
+                                    <span>1st Selection:</span>
+                                    <span className="bg-emerald-500 text-white px-2 py-0.5 rounded font-black">{countA} blocks</span>
+                                  </div>
+
+                                  {selectionBounds ? (
+                                    <div className={`flex items-center justify-between text-xs font-bold p-2.5 rounded-lg border ${countA === countB ? 'text-blue bg-blue/5 border-blue/10' : 'text-orange-800 bg-orange-50 border-orange-100'}`}>
+                                      <span>2nd Selection:</span>
+                                      <span className={`px-2 py-0.5 rounded font-black ${countA === countB ? 'bg-blue text-white' : 'bg-orange-500 text-white animate-pulse'}`}>{countB} blocks</span>
+                                    </div>
+                                  ) : (
+                                    <div className="text-[11px] text-muted font-bold border border-dashed border-light-4 p-3 rounded-lg text-center animate-pulse">
+                                      Click & drag another grid area to swap...
+                                    </div>
+                                  )}
+                                </div>
+
+                                {selectionBounds && countA !== countB && (
+                                  <div className="text-[10px] text-orange-700 bg-orange-50/50 p-2 rounded border border-orange-100 font-bold leading-relaxed flex items-start gap-1.5">
+                                    <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                                    <span>Size mismatch! Selections must contain the same number of blocks to swap.</span>
+                                  </div>
+                                )}
+
+                                <Button
+                                  variant="secondary"
+                                  className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-rose-50 transition-all border border-rose-100 rounded-lg bg-white mt-1"
+                                  onClick={() => {
+                                    setSwapSourceSelection(null);
+                                    setSelection(null);
+                                  }}
                                 >
-                                  <div
-                                    className="w-4 h-4 rounded shrink-0 border border-black/10"
-                                    style={{ backgroundColor: bgHex }}
-                                  />
-                                  <span className="truncate" title={config.label}>{key}</span>
-                                </button>
-                              );
-                            })}
+                                  Cancel Swap Mode
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-2">
+                                <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-1">Grid Swap</h4>
+                                <Button
+                                  variant="secondary"
+                                  className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-white hover:opacity-95 transition-all border border-blue bg-blue rounded-lg shadow-sm"
+                                  onClick={handleSwapInit}
+                                >
+                                  <ArrowLeftRight size={13} />
+                                  Initialize Block Swap
+                                </Button>
+                                <p className="text-[10px] text-muted font-medium mt-1 leading-relaxed">
+                                  Click <strong>Initialize Block Swap</strong>, then select a second block of the <strong>same size</strong> (e.g. swap a vertical column with a horizontal row) to exchange their assignments.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 overflow-y-auto p-4 flex flex-col min-h-0">
+                            {isSwapMode ? (
+                              <div className="flex flex-col items-center justify-center text-center p-6 bg-light-1/20 border border-dashed border-light-4 rounded-xl flex-1">
+                                <ArrowLeftRight className="text-emerald-500 animate-pulse mb-3" size={32} />
+                                <h4 className="text-xs font-black text-primary uppercase tracking-wider mb-1">Ready for Destination</h4>
+                                <p className="text-[11px] text-muted leading-relaxed font-medium">
+                                  Select any area on the grid with exactly <strong>{countA} blocks</strong> to execute the swap automatically.
+                                </p>
+                              </div>
+                            ) : (
+                              <>
+                                <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-3">Set Rotation</h4>
+                                <div className="grid grid-cols-2 gap-2 mb-3 shrink-0">
+                                  <button
+                                    onClick={() => handleBatchSetRotation(null)}
+                                    className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-light-4 hover:border-red-400 hover:bg-rose-50 text-left transition-all text-xs font-bold"
+                                  >
+                                    <div className="w-4 h-4 rounded bg-light-3 border border-light-4 flex items-center justify-center text-[9px] font-black text-muted">∅</div>
+                                    <span className="truncate text-muted hover:text-red-600">Clear Block</span>
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-1">
+                                  {Array.from(programData.rotations.entries()).map(([key, config]) => {
+                                    const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
+                                    return (
+                                      <button
+                                        key={key}
+                                        onClick={() => handleBatchSetRotation(key as AssignmentType)}
+                                        className="flex items-center gap-2 p-2 rounded-lg border border-light-4 hover:border-blue/50 hover:bg-light-1 text-left transition-all text-xs font-bold"
+                                      >
+                                        <div
+                                          className="w-4 h-4 rounded shrink-0 border border-black/10"
+                                          style={{ backgroundColor: bgHex }}
+                                        />
+                                        <span className="truncate" title={config.label}>{key}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="p-4 border-t border-light-5 shrink-0">
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                setSelection(null);
+                                setSwapSourceSelection(null);
+                              }}
+                              className="w-full py-2 text-xs font-bold text-muted hover:text-primary transition-all border border-light-5 rounded-lg bg-light-1 text-center"
+                            >
+                              Clear Selection
+                            </Button>
                           </div>
                         </div>
-
-                        <div className="p-4 border-t border-light-5 shrink-0">
-                          <Button
-                            variant="secondary"
-                            onClick={() => setSelection(null)}
-                            className="w-full py-2 text-xs font-bold text-muted hover:text-primary transition-all border border-light-5 rounded-lg bg-light-1 text-center"
-                          >
-                            Clear Selection
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               )}
