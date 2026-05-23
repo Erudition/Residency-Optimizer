@@ -109,33 +109,14 @@ async function runHeal(
   programData?: any,
   strategy?: string
 ) {
-  let currentBest = JSON.parse(JSON.stringify(grid));
-  currentBest = await healSchedule(
-    currentBest, 
-    residents, 
-    programData,
-    startYear,
-    undefined,
-    historicalSchedules,
-    undefined,
-    (step, max, v) => {
-      postMessage({ 
-        type: 'heal-ping', 
-        healerProgress: Math.round((step / max) * 100),
-        violations: v
-      });
-    },
-    strategy
-  );
-    
-    // Calculate violations for reporting
+  const getTrueViolations = (grid: any) => {
     let total = 0;
     const fullHistory = { ...historicalSchedules };
     if (totalYears === 3) {
-      const sliced = sliceIntoYears(currentBest, startYear, 3);
+      const sliced = sliceIntoYears(grid, startYear, 3);
       Object.assign(fullHistory, sliced);
       
-      const reqsDeficit = getRequirementsViolationsCount(residents, currentBest, fullHistory, startYear, true, programData);
+      const reqsDeficit = getRequirementsViolationsCount(residents, grid, fullHistory, startYear, true, programData);
       
       let constraints = 0;
       let audit = 0;
@@ -152,13 +133,37 @@ async function runHeal(
       }
       total = reqsDeficit + constraints + audit;
     } else {
-      fullHistory[startYear] = currentBest;
-      const reqsDeficit = getRequirementsViolationsCount(residents, currentBest, fullHistory, startYear, false, programData);
-      const constraintsList = getWeeklyViolations(residents, currentBest, programData, startYear);
+      fullHistory[startYear] = grid;
+      const reqsDeficit = getRequirementsViolationsCount(residents, grid, fullHistory, startYear, false, programData);
+      const constraintsList = getWeeklyViolations(residents, grid, programData, startYear);
       const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
       const audit = getAuditViolations(residents, fullHistory, programData, startYear);
       total = reqsDeficit + constraints + audit;
     }
+    return total;
+  };
+
+  let currentBest = JSON.parse(JSON.stringify(grid));
+  currentBest = await healSchedule(
+    currentBest, 
+    residents, 
+    programData,
+    startYear,
+    undefined,
+    historicalSchedules,
+    undefined,
+    (step, max, v) => {
+      postMessage({ 
+        type: 'heal-ping', 
+        healerProgress: Math.round((step / max) * 100),
+        violations: getTrueViolations(currentBest)
+      });
+    },
+    strategy
+  );
+    
+    // Calculate final violations for reporting
+    let total = getTrueViolations(currentBest);
 
     postMessage({ 
       type: 'heal-update', 
