@@ -2,10 +2,13 @@ import React, { useMemo, useState, useRef } from 'react';
 import { Resident, ScheduleGrid } from '../types';
 import { Network, LayoutGrid, Users } from 'lucide-react';
 import { calculateDiversityStats } from '../services/scheduler';
+import { useProgramData } from '../contexts/ProgramDataContext';
 
 interface Props {
   residents: Resident[];
   schedule: ScheduleGrid;
+  activeYear?: number;
+  startYear?: number;
 }
 
 type StatRow = {
@@ -19,7 +22,7 @@ type StatRow = {
   maxOverlapName: string;
 };
 
-export const RelationshipStats: React.FC<Props> = React.memo(({ residents, schedule }) => {
+export const RelationshipStats: React.FC<Props> = React.memo(({ residents, schedule, activeYear, startYear }) => {
   const [colWidth, setColWidth] = useState(240);
   const isResizing = useRef(false);
   const startX = useRef(0);
@@ -74,6 +77,16 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
     return Object.values(schedule).some(row => (row as any)?.length > 52);
   }, [schedule]);
 
+  const programData = useProgramData();
+
+  const getCohortSortValue = (cohort: number, year: number) => {
+    const { Y, Z } = programData.cycleConfig;
+    const startYr = startYear ?? 2025;
+    const startWeek = (year - startYr) * 52;
+    const startingCohort = Math.floor((startWeek % Z) / Y);
+    return (cohort - startingCohort + Z) % Z;
+  };
+
   const sortedResidents = useMemo(() => {
     if (isUnified) {
       return [...residents].sort((a, b) => {
@@ -84,11 +97,12 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
         return a.name.localeCompare(b.name);
       });
     }
+    const currentYr = activeYear ?? 2025;
     return [...residents].sort((a, b) => {
       if (groupBy === 'cycle') {
-        const cycleA = a.cohort ?? 0;
-        const cycleB = b.cohort ?? 0;
-        if (cycleA !== cycleB) return cycleA - cycleB;
+        const cohortSortA = getCohortSortValue(a.cohort ?? 0, currentYr);
+        const cohortSortB = getCohortSortValue(b.cohort ?? 0, currentYr);
+        if (cohortSortA !== cohortSortB) return cohortSortA - cohortSortB;
         if (a.level !== b.level) return a.level - b.level;
         return a.name.localeCompare(b.name);
       } else {
@@ -96,7 +110,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
         return a.name.localeCompare(b.name);
       }
     });
-  }, [residents, groupBy, isUnified]);
+  }, [residents, groupBy, isUnified, activeYear, startYear, programData]);
 
   const getDiversityBadgeStyle = (pct: number) => {
     const minDiv = 50;

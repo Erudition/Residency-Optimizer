@@ -764,6 +764,14 @@ const AppContent: React.FC = () => {
     return yearCohorts;
   }, [activeSchedule, activeYear, historicalCohortsByYear, residents]);
 
+  const getCohortSortValue = (cohort: number, year: number) => {
+    const { Y, Z } = programData.cycleConfig;
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+    const startWeek = (year - startYear) * 52;
+    const startingCohort = Math.floor((startWeek % Z) / Y);
+    return (cohort - startingCohort + Z) % Z;
+  };
+
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
     let yearCohorts = year === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year]);
@@ -803,7 +811,9 @@ const AppContent: React.FC = () => {
     }).sort((a, b) => {
 
       if (residentSortOrder === 'cycle') {
-        if (a.cohort !== b.cohort) return a.cohort - b.cohort;
+        const sortA = getCohortSortValue(a.cohort ?? 0, year);
+        const sortB = getCohortSortValue(b.cohort ?? 0, year);
+        if (sortA !== sortB) return sortA - sortB;
         if (a.level !== b.level) return a.level - b.level;
         return a.name.localeCompare(b.name);
       } else {
@@ -3263,6 +3273,8 @@ const AppContent: React.FC = () => {
                   <ResidentAssignmentsStats
                     residents={viewMode === 'unified' ? displayResidents : activeResidents}
                     schedule={viewMode === 'unified' ? displayGrid : currentGrid}
+                    activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
+                    startYear={activeSchedule?.startYear || ACTIVE_START_YEAR}
                   />
                 </div>
               )}
@@ -3273,6 +3285,7 @@ const AppContent: React.FC = () => {
                     schedule={viewMode === 'unified' ? displayGrid : currentGrid}
                     history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
                     activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
+                    startYear={activeSchedule?.startYear || ACTIVE_START_YEAR}
                   />
                 </div>
               )}
@@ -3286,7 +3299,7 @@ const AppContent: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'coworking' && <div className="flex-1 overflow-hidden"><RelationshipStats residents={activeResidents} schedule={currentGrid} /></div>}
+              {activeTab === 'coworking' && <div className="flex-1 overflow-hidden"><RelationshipStats residents={activeResidents} schedule={currentGrid} activeYear={activeYear} startYear={activeSchedule?.startYear || ACTIVE_START_YEAR} /></div>}
               {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={fairness} /></div>}
               {activeTab === 'export' && (
                 <div className="flex-1 overflow-y-auto p-8 bg-light-1">

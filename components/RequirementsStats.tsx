@@ -10,9 +10,10 @@ interface Props {
   schedule: ScheduleGrid;
   history?: ScheduleHistory;
   activeYear?: number;
+  startYear?: number;
 }
 
-export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear }) => {
+export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear, startYear }) => {
   const programData = useProgramData();
   const hist = history || {};
 
@@ -85,6 +86,14 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     });
   }, [programData.requirements, sourceFilter]);
 
+  const getCohortSortValue = (cohort: number, year: number) => {
+    const { Y, Z } = programData.cycleConfig;
+    const startYr = startYear ?? 2025;
+    const startWeek = (year - startYr) * 52;
+    const startingCohort = Math.floor((startWeek % Z) / Y);
+    return (cohort - startingCohort + Z) % Z;
+  };
+
   // Sort and group residents dynamically (they represent the columns now)
   const sortedResidents = useMemo(() => {
     if (isUnified) {
@@ -99,26 +108,27 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     }
 
     // 1-Year view: sorted dynamically based on user toggle
+    const currentYr = activeYear ?? 2025;
     return [...residents].sort((a, b) => {
       if (residentSortOrder === 'pgy') {
-        const pgyA = activeYear! - a.startYear + 1;
-        const pgyB = activeYear! - b.startYear + 1;
+        const pgyA = currentYr - a.startYear + 1;
+        const pgyB = currentYr - b.startYear + 1;
         if (pgyA !== pgyB) return pgyA - pgyB;
-        const cohortA = a.cohort ?? 0;
-        const cohortB = b.cohort ?? 0;
-        if (cohortA !== cohortB) return cohortA - cohortB;
+        const cohortSortA = getCohortSortValue(a.cohort ?? 0, currentYr);
+        const cohortSortB = getCohortSortValue(b.cohort ?? 0, currentYr);
+        if (cohortSortA !== cohortSortB) return cohortSortA - cohortSortB;
         return a.name.localeCompare(b.name);
       } else {
-        const cohortA = a.cohort ?? 0;
-        const cohortB = b.cohort ?? 0;
-        if (cohortA !== cohortB) return cohortA - cohortB;
-        const pgyA = activeYear! - a.startYear + 1;
-        const pgyB = activeYear! - b.startYear + 1;
+        const cohortSortA = getCohortSortValue(a.cohort ?? 0, currentYr);
+        const cohortSortB = getCohortSortValue(b.cohort ?? 0, currentYr);
+        if (cohortSortA !== cohortSortB) return cohortSortA - cohortSortB;
+        const pgyA = currentYr - a.startYear + 1;
+        const pgyB = currentYr - b.startYear + 1;
         if (pgyA !== pgyB) return pgyA - pgyB;
         return a.name.localeCompare(b.name);
       }
     });
-  }, [residents, isUnified, residentSortOrder, activeYear]);
+  }, [residents, isUnified, residentSortOrder, activeYear, startYear, programData]);
 
   // Pre-calculate cells and values for each resident/requirement
   const cellCalculations = useMemo(() => {
