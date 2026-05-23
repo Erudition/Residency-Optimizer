@@ -78,7 +78,7 @@ export class RequirementsEngine {
     residents.forEach(r => {
       if (isUnified) {
         // Unified 3-year logic: evaluates total graduation minimum (req.minimum)
-        (programData.gradRequirements || []).forEach(req => {
+        (programData.requirements || []).forEach(req => {
           const minWeeks = req.minimum || 0;
           const actual = this.getActualWeeks(
             r,
@@ -112,8 +112,8 @@ export class RequirementsEngine {
           
           if (pgy < 1 || pgy > 3) continue;
 
-          (programData.gradRequirements || []).forEach(req => {
-            const isCumulative = (req.minimum || 0) > 0;
+          (programData.requirements || []).forEach(req => {
+            const isCumulative = req.isCumulative;
             
             let minWeeks = 0;
             let actual = 0;

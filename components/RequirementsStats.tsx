@@ -73,7 +73,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
   // Filter and sort the rows of requirements
   const columns = useMemo(() => {
-    const reqs = programData.gradRequirements || [];
+    const reqs = programData.requirements || [];
     let filtered = reqs;
     if (sourceFilter !== 'all') {
       filtered = reqs.filter(r => r.source === sourceFilter);
@@ -83,7 +83,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       if (a.source !== b.source) return a.source.localeCompare(b.source);
       return a.tag.title.localeCompare(b.tag.title);
     });
-  }, [programData.gradRequirements, sourceFilter]);
+  }, [programData.requirements, sourceFilter]);
 
   // Sort and group residents dynamically (they represent the columns now)
   const sortedResidents = useMemo(() => {
@@ -129,7 +129,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       const level = activeYear! - res.startYear + 1;
 
       columns.forEach(req => {
-        const isCumulative = (req.minimum || 0) > 0;
+        const isCumulative = req.isCumulative;
         let minWeeks = 0;
         let actual = 0;
 

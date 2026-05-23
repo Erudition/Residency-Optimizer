@@ -146,6 +146,31 @@ export const GRAD_REQUIREMENTS_QUERY = /* GraphQL */ `
   }
 `
 
+export const ANNUAL_REQUIREMENTS_QUERY = /* GraphQL */ `
+  query AnnualRequirements($where: AnnualRequirement_where) {
+    AnnualRequirements(where: $where, limit: 200) {
+      docs {
+        id
+        tag {
+          id
+          title
+        }
+        source
+        minimum
+        maximum
+        ideal
+        pgy1Ideal
+        pgy2Ideal
+        pgy3Ideal
+        academicYear {
+          id
+          startingYear
+        }
+      }
+    }
+  }
+`
+
 export const AVOIDANCE_RULES_QUERY = /* GraphQL */ `
   query AvoidanceRules($where: AvoidanceRule_where) {
     AvoidanceRules(where: $where, limit: 200) {

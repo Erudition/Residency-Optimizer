@@ -15,6 +15,7 @@ import {
   ACADEMIC_YEAR_QUERY,
   ALL_ACADEMIC_YEARS_QUERY,
   GRAD_REQUIREMENTS_QUERY,
+  ANNUAL_REQUIREMENTS_QUERY,
   AVOIDANCE_RULES_QUERY,
   TAGS_QUERY,
   SCHEDULE_ASSIGNMENTS_QUERY,
@@ -96,11 +97,38 @@ interface GqlClinicCycle {
   residents: Array<{ id: number; displayName: string }>
 }
 
+export interface UnifiedRequirement {
+  id: number
+  tag: GqlTag
+  source: string
+  minimum?: number | null
+  maximum?: number | null
+  ideal?: number | null
+  pgy1Ideal?: number | null
+  pgy2Ideal?: number | null
+  pgy3Ideal?: number | null
+  academicYear: GqlAcademicYear
+  isCumulative: boolean
+}
+
 interface GqlGradRequirement {
   id: number
   tag: GqlTag
   source: string
   minimum: number
+  maximum?: number | null
+  ideal?: number | null
+  pgy1Ideal?: number | null
+  pgy2Ideal?: number | null
+  pgy3Ideal?: number | null
+  academicYear: GqlAcademicYear
+}
+
+interface GqlAnnualRequirement {
+  id: number
+  tag: GqlTag
+  source: string
+  minimum?: number | null
   maximum?: number | null
   ideal?: number | null
   pgy1Ideal?: number | null
@@ -150,7 +178,7 @@ export interface ProgramData {
   rotations: Map<string, RotationConfig>
   residents: Resident[]
   cycleConfig: CycleConfig
-  gradRequirements: GqlGradRequirement[]
+  requirements: UnifiedRequirement[]
   avoidanceRules: GqlAvoidanceRule[]
   tags: GqlTag[]
   /** Tag titles per rotation codename (for requirement fulfillment) */
@@ -198,6 +226,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     cyclesRes,
     ayRes,
     gradReqsRes,
+    annualReqsRes,
     avoidanceRes,
     tagsRes,
     assignmentsRes,
@@ -209,6 +238,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
       where: { startingYear: { equals: academicYear } },
     }),
     client.request<{ GradRequirements: { docs: GqlGradRequirement[] } }>(GRAD_REQUIREMENTS_QUERY),
+    client.request<{ AnnualRequirements: { docs: GqlAnnualRequirement[] } }>(ANNUAL_REQUIREMENTS_QUERY),
     client.request<{ AvoidanceRules: { docs: GqlAvoidanceRule[] } }>(AVOIDANCE_RULES_QUERY),
     client.request<{ Tags: { docs: GqlTag[] } }>(TAGS_QUERY),
     client.request<{ ScheduleAssignments: { docs: GqlScheduleAssignment[] } }>(SCHEDULE_ASSIGNMENTS_QUERY),
@@ -220,6 +250,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   let gqlCycles = [...allGqlCycles]
   const ay = ayRes.AcademicYears.docs[0]
   let gqlGradReqs = gradReqsRes.GradRequirements.docs
+  let gqlAnnualReqs = annualReqsRes.AnnualRequirements.docs
   const gqlAvoidance = avoidanceRes.AvoidanceRules.docs
   const tags = tagsRes.Tags.docs
   const gqlAssignments = assignmentsRes.ScheduleAssignments.docs
@@ -264,6 +295,25 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
       gqlGradReqs = gqlGradReqs.filter(g => g.academicYear?.startingYear === closestYear);
     }
   }
+
+  // Load annual requirements for the active year, or fall back to the closest year if none exist for the active year
+  const activeYearAnnualReqs = gqlAnnualReqs.filter(g => g.academicYear?.startingYear === academicYear);
+  if (activeYearAnnualReqs.length > 0) {
+    gqlAnnualReqs = activeYearAnnualReqs;
+  } else {
+    const yearsWithReqs = Array.from(new Set(gqlAnnualReqs.map(g => g.academicYear?.startingYear).filter(Boolean))) as number[];
+    if (yearsWithReqs.length > 0) {
+      const closestYear = yearsWithReqs.reduce((prev, curr) => 
+        Math.abs(curr - academicYear) < Math.abs(prev - academicYear) ? curr : prev
+      );
+      gqlAnnualReqs = gqlAnnualReqs.filter(g => g.academicYear?.startingYear === closestYear);
+    }
+  }
+
+  const unifiedReqs: UnifiedRequirement[] = [
+    ...gqlGradReqs.map(gr => ({ ...gr, isCumulative: true })),
+    ...gqlAnnualReqs.map(ar => ({ ...ar, isCumulative: false })),
+  ];
 
   // ── Transform Rotations ──
   const rotations = new Map<string, RotationConfig>()
@@ -429,7 +479,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     rotations,
     residents,
     cycleConfig,
-    gradRequirements: gqlGradReqs,
+    requirements: unifiedReqs,
     avoidanceRules: gqlAvoidance,
     tags,
     rotationTags,

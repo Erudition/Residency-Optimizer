@@ -107,8 +107,8 @@ export const healer: HealerSolver = {
                 if (level < 1 || level > 3) continue;
                 const minReqs = buildLevelRequirements(programData, level) || [];
                 minReqs.forEach(req => {
-                    const rawReq = programData.gradRequirements.find(gr => gr.tag.title === req.label);
-                    const isCumulative = (rawReq?.minimum || 0) > 0;
+                    const rawReq = programData.requirements.find(gr => gr.tag.title === req.label);
+                    const isCumulative = rawReq?.isCumulative || false;
                     const actual = RequirementsEngine.getActualWeeks(
                         r,
                         req.type,

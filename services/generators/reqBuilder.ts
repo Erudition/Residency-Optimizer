@@ -3,8 +3,8 @@ import { ProgramData } from '../../services/api/client';
 export function buildLevelRequirements(programData: ProgramData, level: number): { type: string, label: string, minWeeks: number, source: string }[] {
     const reqs: { type: string, label: string, minWeeks: number, source: string }[] = [];
     
-    // Convert gradRequirements into the shape generators expect
-    programData.gradRequirements.forEach(r => {
+    // Convert requirements into the shape generators expect
+    programData.requirements.forEach(r => {
         let ideal = 0;
         if (level === 1) ideal = r.pgy1Ideal || 0;
         else if (level === 2) ideal = r.pgy2Ideal || 0;

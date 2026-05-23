@@ -69,7 +69,7 @@ export const getMockProgramData = (): ProgramData => {
     rotations: mockRotations as any,
     cycleConfig: { cohortCount: 5, X: 4, Y: 1, Z: 5, assignments: {} },
     residents: [],
-    gradRequirements: [],
+    requirements: [],
     avoidanceRules: [],
     tags: [],
     rotationTags: new Map(),
