@@ -1484,11 +1484,12 @@ const AppContent: React.FC = () => {
       if (activeSched.kind === 'published' && isAuthenticated()) {
         try {
           toast.info('Saving healed schedule to server...');
+          const augmentedResidents = getAugmentedResidents(residents, activeSched.startYear + 4, activeSched.startYear);
           const { scheduleIds, errors: saveErrors } = await syncService.saveCandidateGrids(
             activeSched.candidateId,
             activeSched.name,
             newData,
-            residents,
+            augmentedResidents,
           );
           if (saveErrors && saveErrors.length > 0) {
             console.error('Failed to save healed schedule to server:', saveErrors);
@@ -1627,11 +1628,12 @@ const AppContent: React.FC = () => {
     setPublishState('saving');
     try {
       const { candidateId } = await syncService.createCandidate(sched.startYear, candidateName.trim());
+      const augmentedResidents = getAugmentedResidents(residents, sched.startYear + 4, sched.startYear);
       const { scheduleIds, errors: saveErrors, residentIdMap } = await syncService.saveCandidateGrids(
         candidateId,
         candidateName.trim(),
         sched.data,
-        residents,
+        augmentedResidents,
       );
 
       // Remap synthetic frontend keys → backend numeric IDs in the grid data
