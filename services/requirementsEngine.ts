@@ -213,7 +213,9 @@ export class RequirementsEngine {
   ): WeeklyViolation[] {
     const violations: WeeklyViolation[] = [];
     const safeGrid = schedule || {};
-    const currentYear = activeYear || deriveActiveStartYear();
+    const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
+    const fallbackYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveActiveStartYear();
+    const currentYear = activeYear || fallbackYear;
     const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
     const { cohortCount, Y, Z, X, cohortCount: totalCohorts } = programData.cycleConfig;
     
