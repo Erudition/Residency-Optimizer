@@ -427,8 +427,11 @@ export class ScheduleSyncService {
       for (const [residentId, cells] of Object.entries(grid)) {
         const isSynthetic = isNaN(parseInt(residentId, 10))
 
-        // Collect synthetic resident metadata for this year (deduplicate across years)
-        if (isSynthetic && !residentIdMap[residentId]) {
+        // Collect synthetic resident metadata for this year.
+        // We deduplicate within the current year's request array, but do NOT deduplicate
+        // across years (via residentIdMap) because the backend's /api/sync/bulk endpoint
+        // is stateless and expects all scheduled synthetic residents to be defined in each request.
+        if (isSynthetic && !syntheticResidents.some(sr => sr.frontendKey === residentId)) {
           const resident = residentLookup.get(residentId)
           if (resident) {
             // Parse name like "New 2027 Resident 1" → firstName: "New 2027 Resident", lastName: "1"
@@ -444,6 +447,25 @@ export class ScheduleSyncService {
                 lastName,
                 startYearId,
               })
+            }
+          } else {
+            // Predictive fallback mapping: If a string ID like "c2027-1" is not in residentLookup,
+            // parse the cohort year and index directly from the ID string to reconstruct the metadata.
+            const match = residentId.match(/^c(\d+)-(\d+)$/)
+            if (match) {
+              const startYear = parseInt(match[1], 10)
+              const index = parseInt(match[2], 10)
+              const firstName = `New ${startYear} Resident`
+              const lastName = `${index}`
+              const startYearId = this.ayIdCache?.get(startYear)
+              if (startYearId) {
+                syntheticResidents.push({
+                  frontendKey: residentId,
+                  firstName,
+                  lastName,
+                  startYearId,
+                })
+              }
             }
           }
         }
