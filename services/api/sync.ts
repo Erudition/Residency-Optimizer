@@ -244,6 +244,10 @@ export class ScheduleSyncService {
     rotationCodename: string,
     locked: boolean,
   ): void {
+    // Synthetic residents (non-numeric IDs) can't be synced until the schedule
+    // is published and their grid keys are remapped to backend numeric IDs.
+    if (isNaN(residentId)) return
+
     const key = `${scheduleId}:${residentId}:${week}`
 
     // Cancel any pending write for this cell
@@ -374,19 +378,28 @@ export class ScheduleSyncService {
   /**
    * Save all 3 year grids for a candidate via the bulk endpoint.
    * Creates a Schedule for each year and saves all assignments.
-   * Returns the per-year schedule IDs.
+   *
+   * Synthetic residents (non-numeric IDs like "c2027-1") are automatically
+   * upserted in the backend with isSynthetic: true. The returned
+   * residentIdMap maps frontend synthetic keys → backend numeric IDs so
+   * the caller can remap in-memory grid keys for subsequent cell edits.
    */
   async saveCandidateGrids(
     candidateId: number,
     title: string,
     data: Record<number, ScheduleGrid>,
-  ): Promise<{ scheduleIds: Record<number, number>; errors: string[] }> {
+    residents: Array<{ id: string; name: string; startYear: number }>,
+  ): Promise<{ scheduleIds: Record<number, number>; errors: string[]; residentIdMap: Record<string, number> }> {
     if (!isAuthenticated()) throw new SyncError('Not authenticated', 'AUTH_REQUIRED')
     this.refreshAuthHeaders()
     const scheduleIds: Record<number, number> = {}
     const errors: string[] = []
+    const residentIdMap: Record<string, number> = {}
 
     await this.ensureCaches()
+
+    // Build a lookup from resident ID → metadata (for synthetic resident creation)
+    const residentLookup = new Map(residents.map(r => [r.id, r]))
 
     for (const [yearStr, grid] of Object.entries(data)) {
       const year = parseInt(yearStr, 10)
@@ -398,14 +411,45 @@ export class ScheduleSyncService {
         continue
       }
 
+      // Identify synthetic residents in this year's grid
+      const syntheticResidents: Array<{
+        frontendKey: string
+        firstName: string
+        lastName: string
+        startYearId: number
+      }> = []
+
       const assignments: Array<{
-        residentId: number
+        residentId: number | string
         week: number
         rotationId: number
         locked: boolean
       }> = []
 
       for (const [residentId, cells] of Object.entries(grid)) {
+        const isSynthetic = isNaN(parseInt(residentId, 10))
+
+        // Collect synthetic resident metadata for this year (deduplicate across years)
+        if (isSynthetic && !residentIdMap[residentId]) {
+          const resident = residentLookup.get(residentId)
+          if (resident) {
+            // Parse name like "New 2027 Resident 1" → firstName: "New 2027 Resident", lastName: "1"
+            const lastSpace = resident.name.lastIndexOf(' ')
+            const firstName = lastSpace > 0 ? resident.name.substring(0, lastSpace) : resident.name
+            const lastName = lastSpace > 0 ? resident.name.substring(lastSpace + 1) : '1'
+
+            const startYearId = this.ayIdCache?.get(resident.startYear)
+            if (startYearId) {
+              syntheticResidents.push({
+                frontendKey: residentId,
+                firstName,
+                lastName,
+                startYearId,
+              })
+            }
+          }
+        }
+
         for (let w = 0; w < cells.length; w++) {
           const cell = cells[w]
           if (!cell?.assignment) continue
@@ -414,7 +458,8 @@ export class ScheduleSyncService {
           if (!rotId) continue
 
           assignments.push({
-            residentId: parseInt(residentId, 10),
+            // Send string key for synthetic residents — backend will remap
+            residentId: isSynthetic ? residentId : parseInt(residentId, 10),
             week: w + 1,
             rotationId: rotId,
             locked: cell.locked,
@@ -434,12 +479,17 @@ export class ScheduleSyncService {
             title: `${title} — AY ${year}`,
             academicYearId: ayId,
             assignments,
+            ...(syntheticResidents.length > 0 ? { syntheticResidents } : {}),
           }),
         })
 
         if (response.ok) {
           const result = await response.json()
           scheduleIds[year] = result.scheduleId
+          // Merge per-year residentIdMap into the cumulative one
+          if (result.residentIdMap) {
+            Object.assign(residentIdMap, result.residentIdMap)
+          }
           console.log(`[Sync] Saved year ${year} → schedule ${result.scheduleId} (${assignments.length} assignments)`)
         } else {
           const err = await response.json().catch(() => ({ error: 'unknown' }))
@@ -458,7 +508,7 @@ export class ScheduleSyncService {
       )
     }
 
-    return { scheduleIds, errors }
+    return { scheduleIds, errors, residentIdMap }
   }
 
   // ── Data Loading ──

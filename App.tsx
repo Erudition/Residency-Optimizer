@@ -1469,11 +1469,29 @@ const AppContent: React.FC = () => {
     setPublishState('saving');
     try {
       const { candidateId } = await syncService.createCandidate(sched.startYear, candidateName.trim());
-      const { scheduleIds, errors: saveErrors } = await syncService.saveCandidateGrids(
+      const { scheduleIds, errors: saveErrors, residentIdMap } = await syncService.saveCandidateGrids(
         candidateId,
         candidateName.trim(),
         sched.data,
+        residents,
       );
+
+      // Remap synthetic frontend keys → backend numeric IDs in the grid data
+      // so subsequent cell edits sync correctly via real-time upserts.
+      let publishData = sched.data;
+      if (Object.keys(residentIdMap).length > 0) {
+        publishData = { ...sched.data };
+        for (const [yearStr, grid] of Object.entries(publishData)) {
+          const remappedGrid = { ...grid };
+          for (const [synthKey, backendId] of Object.entries(residentIdMap)) {
+            if (remappedGrid[synthKey]) {
+              remappedGrid[backendId.toString()] = remappedGrid[synthKey];
+              delete remappedGrid[synthKey];
+            }
+          }
+          publishData[parseInt(yearStr, 10)] = remappedGrid;
+        }
+      }
 
       // Replace the draft with a published candidate
       const published: PublishedCandidate = {
@@ -1482,7 +1500,7 @@ const AppContent: React.FC = () => {
         candidateId,
         scheduleIds,
         name: candidateName.trim(),
-        data: sched.data,
+        data: publishData,
         unifiedData: sched.unifiedData,
         createdAt: sched.createdAt,
         metrics: sched.metrics,
