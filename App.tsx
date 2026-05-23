@@ -1949,7 +1949,7 @@ const AppContent: React.FC = () => {
           updatedUnified[cell.residentId] = uWeeks;
         }
 
-        if (!updatedData[targetYear]) updatedData[targetYear] = {};
+        updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
         if (!updatedData[targetYear][cell.residentId]) updatedData[targetYear][cell.residentId] = [];
         const weeks = [...updatedData[targetYear][cell.residentId]];
         const val = { ...valuesB[i], locked: true };
@@ -1982,7 +1982,7 @@ const AppContent: React.FC = () => {
           updatedUnified[cell.residentId] = uWeeks;
         }
 
-        if (!updatedData[targetYear]) updatedData[targetYear] = {};
+        updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
         if (!updatedData[targetYear][cell.residentId]) updatedData[targetYear][cell.residentId] = [];
         const weeks = [...updatedData[targetYear][cell.residentId]];
         const val = { ...valuesA[i], locked: true };
@@ -2087,7 +2087,7 @@ const AppContent: React.FC = () => {
             updatedUnified[rid] = uWeeks;
           }
 
-          if (!updatedData[targetYear]) updatedData[targetYear] = {};
+          updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
           if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
           const weeks = [...updatedData[targetYear][rid]];
           weeks[weekIdxInYear] = { assignment: newRotation as any, locked: true };
@@ -2154,7 +2154,7 @@ const AppContent: React.FC = () => {
             updatedUnified[rid] = uWeeks;
           }
 
-          if (!updatedData[targetYear]) updatedData[targetYear] = {};
+          updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
           if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
           const weeks = [...updatedData[targetYear][rid]];
           const cell = weeks[weekIdxInYear] || { assignment: null };
@@ -2222,7 +2222,7 @@ const AppContent: React.FC = () => {
             updatedUnified[rid] = uWeeks;
           }
 
-          if (!updatedData[targetYear]) updatedData[targetYear] = {};
+          updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
           if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
           const weeks = [...updatedData[targetYear][rid]];
           const cell = weeks[weekIdxInYear] || { assignment: null };
