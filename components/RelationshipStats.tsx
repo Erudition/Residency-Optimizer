@@ -70,7 +70,20 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
 
   const [groupBy, setGroupBy] = useState<'pgy' | 'cycle'>('cycle');
 
+  const isUnified = useMemo(() => {
+    return Object.values(schedule).some(row => (row as any)?.length > 52);
+  }, [schedule]);
+
   const sortedResidents = useMemo(() => {
+    if (isUnified) {
+      return [...residents].sort((a, b) => {
+        if (a.startYear !== b.startYear) return a.startYear - b.startYear;
+        const cycleA = a.cohort ?? 0;
+        const cycleB = b.cohort ?? 0;
+        if (cycleA !== cycleB) return cycleA - cycleB;
+        return a.name.localeCompare(b.name);
+      });
+    }
     return [...residents].sort((a, b) => {
       if (groupBy === 'cycle') {
         const cycleA = a.cohort ?? 0;
@@ -83,7 +96,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
         return a.name.localeCompare(b.name);
       }
     });
-  }, [residents, groupBy]);
+  }, [residents, groupBy, isUnified]);
 
   const getDiversityBadgeStyle = (pct: number) => {
     const minDiv = 50;
@@ -310,25 +323,27 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
         {/* Controls and Legend Group */}
         <div className="flex items-center gap-6 flex-wrap">
           {/* Group By Toggle */}
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
-            <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
-              <button
-                onClick={() => setGroupBy('cycle')}
-                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all ${groupBy === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-              >
-                <Users size={14} />
-                Cycle
-              </button>
-              <button
-                onClick={() => setGroupBy('pgy')}
-                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all ${groupBy === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-              >
-                <LayoutGrid size={14} />
-                PGY
-              </button>
+          {!isUnified && (
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
+              <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
+                <button
+                  onClick={() => setGroupBy('cycle')}
+                  className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all ${groupBy === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                >
+                  <Users size={14} />
+                  Cycle
+                </button>
+                <button
+                  onClick={() => setGroupBy('pgy')}
+                  className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all ${groupBy === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                >
+                  <LayoutGrid size={14} />
+                  PGY
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Color Legend (Continuous Gradient) */}
           <div className="flex items-center gap-3 sm:border-l sm:pl-6 sm:border-light-5">
