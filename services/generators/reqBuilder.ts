@@ -10,11 +10,6 @@ export function buildLevelRequirements(programData: ProgramData, level: number):
         else if (level === 2) ideal = r.pgy2Ideal || 0;
         else if (level === 3) ideal = r.pgy3Ideal || 0;
         
-        // If ideal is specified per PGY level, use that. If not, if the source is MHS, use minimum for the year.
-        if (ideal === 0 && r.source === 'MHS' && r.minimum > 0) {
-           // MHS requirements without specific ideals apply annually, so we assign the minimum.
-           ideal = r.minimum;
-        }
 
         if (ideal > 0) {
             // Find a rotation codename that matches this tag so the generator has a concrete type to assign
