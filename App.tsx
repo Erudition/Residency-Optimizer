@@ -536,6 +536,7 @@ const AppContent: React.FC = () => {
   const [isHealerRunning, setIsHealerRunning] = useState(false);
   const [originalHealCount, setOriginalHealCount] = useState<number | null>(null);
   const [originalHealGrid, setOriginalHealGrid] = useState<ScheduleGrid | null>(null);
+  const [isHealerUnified, setIsHealerUnified] = useState(false);
 
 
 
@@ -1352,13 +1353,14 @@ const AppContent: React.FC = () => {
     const activeSched = schedules.find(s => s.id === activeScheduleId);
     if (!activeSched) return;
 
-    const useUnified = !!activeSched.unifiedData;
+    const useUnified = viewMode === 'unified' && !!activeSched.unifiedData;
     const gridToHeal = useUnified ? activeSched.unifiedData! : activeSched.data[activeYear];
     if (!gridToHeal) return;
 
     const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
     const totalYears = useUnified ? 3 : 1;
 
+    setIsHealerUnified(useUnified);
     setIsHealerPanelOpen(true);
     setIsHealing(true);
     setBestHealGrid(gridToHeal);
@@ -1374,7 +1376,7 @@ const AppContent: React.FC = () => {
     const activeSched = schedules.find(s => s.id === activeScheduleId);
     if (!activeSched) return;
 
-    const useUnified = !!activeSched.unifiedData;
+    const useUnified = isHealerUnified;
     const gridToHeal = bestHealGrid || (useUnified ? activeSched.unifiedData! : activeSched.data[activeYear]);
     if (!gridToHeal) return;
 
@@ -1438,7 +1440,7 @@ const AppContent: React.FC = () => {
 
     if (bestHealGrid && activeScheduleId) {
       const activeSched = schedules.find(s => s.id === activeScheduleId);
-      const useUnified = activeSched?.unifiedData;
+      const useUnified = isHealerUnified;
       const startYear = useUnified ? (activeSched?.startYear || ACTIVE_START_YEAR) : activeYear;
 
       setSchedules(prev => prev.map(s => {

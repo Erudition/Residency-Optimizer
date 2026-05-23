@@ -107,7 +107,7 @@ export const healer: HealerSolver = {
                 if (level < 1 || level > 3) continue;
                 const minReqs = buildLevelRequirements(programData, level) || [];
                 minReqs.forEach(req => {
-                    const isACGME = req.source === 'ACGME';
+                    const isACGME = req.source?.toLowerCase() === 'acgme';
                     const actual = RequirementsEngine.getActualWeeks(
                         r,
                         req.type,
