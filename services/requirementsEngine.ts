@@ -525,12 +525,6 @@ export class RequirementsEngine {
       weeks.forEach(c => {
         if (!c || !c.assignment) return;
 
-        // Clinic is always outpatient clinical setting
-        if (c.assignment === 'CLINIC' || isClinicRotation(programData, c.assignment as string)) {
-          outpatient++;
-          return;
-        }
-
         const meta = programData.rotations.get(c.assignment as any);
         if (!meta) return;
 
