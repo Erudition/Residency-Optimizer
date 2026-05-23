@@ -109,7 +109,8 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
   }, [data, rotations, totalWeeks]);
 
   const checkConstraints = (type: string, assignees: Resident[], weekIdx: number) => {
-    const baseYear = deriveActiveStartYear();
+    const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
+    const baseYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveActiveStartYear();
     return RequirementsEngine.getStaffingViolation(type, assignees, weekIdx, baseYear, programData);
   };
 
