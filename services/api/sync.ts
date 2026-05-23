@@ -324,6 +324,7 @@ export class ScheduleSyncService {
     data: Record<number, ScheduleGrid>,
   ): Promise<Record<number, number>> {
     if (!isAuthenticated()) return {}
+    this.refreshAuthHeaders()
     const scheduleIds: Record<number, number> = {}
 
     try {
