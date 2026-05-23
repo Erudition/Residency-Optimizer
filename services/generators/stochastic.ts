@@ -149,15 +149,17 @@ export const StochasticGenerator: ScheduleGenerator = {
         }
 
         // 3. Staffing Sweep (Graduation-Aware)
+        // Dynamically determine which rotations have staffing floors from programData
         const criticalTypes = getAllCodenames(programData).filter(t => {
+            if (isClinicRotation(programData, t)) return false;
             const m = programData.rotations.get(t);
-            return m && (m.minInterns > 0 || m.minSeniors > 0);
+            return m && ((m.minInterns && m.minInterns > 0) || (m.minSeniors && m.minSeniors > 0));
         });
 
         criticalTypes.forEach(type => {
             const meta = programData.rotations.get(type);
             if (!meta) return;
-            const dur = meta.duration || 4;
+            const dur = meta.duration || programData.cycleConfig.X;
 
             for (let w = 0; w < totalWeeks; w++) {
                 const yIdx = Math.floor(w / 52);

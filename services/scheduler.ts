@@ -714,12 +714,12 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
       const assignmentsInBlock = blockWeeks.map(w => safeGrid[r.id]?.[w]?.assignment);
 
       const hasVacation = assignmentsInBlock.includes('VAC');
-      const hasCore = assignmentsInBlock.some(a => a && [
-        'W-RED',
-        'W-BLUE',
-        'METRO',
-        'ICU'
-      ].includes(a));
+      // Use intensity-based check: rotations with intensity >= 3 are core
+      const hasCore = assignmentsInBlock.some(a => {
+        if (!a) return false;
+        const rotMeta = programData.rotations.get(a);
+        return rotMeta && rotMeta.intensity >= 4;
+      });
 
       if (hasCore) {
         staffingDenominator += 1;
@@ -793,19 +793,15 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
     const weight = pgy === 1 ? 3 : pgy === 2 ? 2 : 1;
 
     const partners = new Set<string>();
-    const clinicalTypes = [
-      'W-RED',
-      'W-BLUE',
-      'ICU',
-      'NF',
-      'EM',
-      'METRO',
-      'Jr Hosp'
-    ];
+    // Use all rotations with intensity >= 3 as clinical/team types for diversity scoring
+    const clinicalCodenames = new Set<string>();
+    for (const [cn, rotMeta] of programData.rotations.entries()) {
+      if (rotMeta.intensity >= 3) clinicalCodenames.add(cn);
+    }
 
     for (let w = 0; w < totalWeeks; w++) {
       const myAssign = safeGrid[r.id]?.[w]?.assignment;
-      if (myAssign && clinicalTypes.includes(myAssign)) {
+      if (myAssign && clinicalCodenames.has(myAssign)) {
         residents?.forEach(peer => {
           if (peer.id !== r.id && safeGrid[peer.id]?.[w]?.assignment === myAssign) {
             partners.add(peer.id);
