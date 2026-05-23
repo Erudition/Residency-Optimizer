@@ -340,3 +340,14 @@ export const UPDATE_SCHEDULE_ASSIGNMENT_MUTATION = /* GraphQL */ `
     }
   }
 `
+
+/** Used as a super-admin fallback when /api/users/me returns no tenant assignments. */
+export const FIRST_TENANT_QUERY = /* GraphQL */ `
+  query FirstTenant {
+    Tenants(limit: 1) {
+      docs {
+        id
+      }
+    }
+  }
+`

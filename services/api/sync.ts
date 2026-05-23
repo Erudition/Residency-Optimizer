@@ -30,6 +30,7 @@ import {
   CREATE_SCHEDULE_ASSIGNMENT_MUTATION,
   ROTATIONS_QUERY,
   ACADEMIC_YEAR_QUERY,
+  FIRST_TENANT_QUERY,
 } from './queries'
 
 // ── Types ──
@@ -750,6 +751,19 @@ export class ScheduleSyncService {
         }
       } catch {
         this.tenantIdCache = null
+      }
+
+      // Super-admin fallback: if the user has no tenant assignments, query
+      // the API for the first available tenant (super-admins manage all).
+      if (this.tenantIdCache == null) {
+        try {
+          const tenantRes = await this.client.request<{
+            Tenants: { docs: Array<{ id: number }> }
+          }>(FIRST_TENANT_QUERY)
+          this.tenantIdCache = tenantRes.Tenants.docs[0]?.id ?? null
+        } catch {
+          // Leave as null — creation will rely on the backend hook
+        }
       }
     }
   }
