@@ -113,20 +113,20 @@ export class RequirementsEngine {
           if (pgy < 1 || pgy > 3) continue;
 
           (programData.gradRequirements || []).forEach(req => {
-            const isACGME = req.source === 'acgme';
+            const isCumulative = (req.minimum || 0) > 0;
             
             let minWeeks = 0;
             let actual = 0;
 
-            if (isACGME) {
-              // ACGME cumulative logic
+            if (isCumulative) {
+              // Cumulative graduation minimum logic
               minWeeks = (pgy >= 1 ? (req.pgy1Ideal || 0) : 0) + 
                          (pgy >= 2 ? (req.pgy2Ideal || 0) : 0) + 
                          (pgy >= 3 ? (req.pgy3Ideal || 0) : 0);
               
               actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, true, programData);
             } else {
-              // MHS annual logic
+              // Operational annual logic
               minWeeks = pgy === 1 ? (req.pgy1Ideal || 0) : 
                         (pgy === 2 ? (req.pgy2Ideal || 0) : 
                                      (req.pgy3Ideal || 0));

@@ -129,7 +129,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       const level = activeYear! - res.startYear + 1;
 
       columns.forEach(req => {
-        const isACGME = req.source === 'acgme';
+        const isCumulative = (req.minimum || 0) > 0;
         let minWeeks = 0;
         let actual = 0;
 
@@ -146,7 +146,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             programData
           );
         } else {
-          if (isACGME) {
+          if (isCumulative) {
             minWeeks = (req.pgy1Ideal || 0) + (level >= 2 ? (req.pgy2Ideal || 0) : 0) + (level >= 3 ? (req.pgy3Ideal || 0) : 0);
             actual = RequirementsEngine.getActualWeeks(
               res,

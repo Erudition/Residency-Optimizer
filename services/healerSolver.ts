@@ -107,7 +107,8 @@ export const healer: HealerSolver = {
                 if (level < 1 || level > 3) continue;
                 const minReqs = buildLevelRequirements(programData, level) || [];
                 minReqs.forEach(req => {
-                    const isACGME = req.source?.toLowerCase() === 'acgme';
+                    const rawReq = programData.gradRequirements.find(gr => gr.tag.title === req.label);
+                    const isCumulative = (rawReq?.minimum || 0) > 0;
                     const actual = RequirementsEngine.getActualWeeks(
                         r,
                         req.type,
@@ -115,7 +116,7 @@ export const healer: HealerSolver = {
                         historicalSchedules || {},
                         gridStartYear,
                         y,
-                        isACGME,
+                        isCumulative,
                         programData
                     );
                     if (actual < req.minWeeks) {
