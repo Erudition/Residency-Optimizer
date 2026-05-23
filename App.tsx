@@ -1435,22 +1435,125 @@ const AppContent: React.FC = () => {
     setIsHealerRunning(false);
   };
 
-  const handleApplyHealedSchedule = () => {
+  const handleApplyHealedSchedule = async () => {
     handleStopHealerStrategy();
 
     if (bestHealGrid && activeScheduleId) {
       const activeSched = schedules.find(s => s.id === activeScheduleId);
+      if (!activeSched) return;
       const useUnified = isHealerUnified;
-      const startYear = useUnified ? (activeSched?.startYear || ACTIVE_START_YEAR) : activeYear;
+      const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+
+      let newData = activeSched.data;
+      let newUnifiedData = activeSched.unifiedData;
+
+      if (useUnified) {
+        newData = sliceIntoYears(bestHealGrid, startYear, 3);
+        newUnifiedData = bestHealGrid;
+      } else {
+        newData = { ...activeSched.data, [activeYear]: bestHealGrid };
+        if (activeSched.unifiedData) {
+          const newUnified = { ...activeSched.unifiedData };
+          const offset = (activeYear - startYear) * TOTAL_WEEKS;
+          Object.entries(bestHealGrid).forEach(([rId, row]) => {
+            if (!newUnified[rId]) {
+              newUnified[rId] = new Array(TOTAL_WEEKS * 3).fill(null);
+            }
+            const fullRow = [...newUnified[rId]];
+            for (let i = 0; i < TOTAL_WEEKS; i++) {
+              fullRow[offset + i] = row[i];
+            }
+            newUnified[rId] = fullRow;
+          });
+          newUnifiedData = newUnified;
+        }
+      }
+
+      // If it is a published schedule, save it to the backend!
+      if (activeSched.kind === 'published' && isAuthenticated()) {
+        try {
+          toast.info('Saving healed schedule to server...');
+          await syncService.saveCandidateGrids(
+            activeSched.candidateId,
+            activeSched.name,
+            newData,
+            residents,
+          );
+          toast.success('Healed schedule saved to server!');
+        } catch (e) {
+          console.error('Failed to save healed schedule to server:', e);
+          toast.error(`Failed to save healed schedule to server: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
 
       setSchedules(prev => prev.map(s => {
         if (s.id !== activeScheduleId) return s;
-        if (useUnified) {
-          const newSliced = sliceIntoYears(bestHealGrid, startYear, 3);
-          return { ...s, data: newSliced, unifiedData: bestHealGrid };
-        }
-        return { ...s, data: { ...s.data, [activeYear]: bestHealGrid } };
+        return { ...s, data: newData, unifiedData: newUnifiedData };
       }));
+      toast.success('Healed schedule applied successfully!');
+    }
+
+    setIsHealing(false);
+    setIsHealerPanelOpen(false);
+    setIsHealerRunning(false);
+    setBestHealGrid(null);
+    setOriginalHealGrid(null);
+    setOriginalHealCount(null);
+    setBestHealCount(null);
+    setHealerProgress(undefined);
+  };
+
+  const handleApplyCopyHealedSchedule = () => {
+    handleStopHealerStrategy();
+
+    if (bestHealGrid && activeScheduleId) {
+      const activeSched = schedules.find(s => s.id === activeScheduleId);
+      if (!activeSched) return;
+      const useUnified = isHealerUnified;
+      const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+
+      let newData = activeSched.data;
+      let newUnifiedData = activeSched.unifiedData;
+
+      if (useUnified) {
+        newData = sliceIntoYears(bestHealGrid, startYear, 3);
+        newUnifiedData = bestHealGrid;
+      } else {
+        newData = { ...activeSched.data, [activeYear]: bestHealGrid };
+        if (activeSched.unifiedData) {
+          const newUnified = { ...activeSched.unifiedData };
+          const offset = (activeYear - startYear) * TOTAL_WEEKS;
+          Object.entries(bestHealGrid).forEach(([rId, row]) => {
+            if (!newUnified[rId]) {
+              newUnified[rId] = new Array(TOTAL_WEEKS * 3).fill(null);
+            }
+            const fullRow = [...newUnified[rId]];
+            for (let i = 0; i < TOTAL_WEEKS; i++) {
+              fullRow[offset + i] = row[i];
+            }
+            newUnified[rId] = fullRow;
+          });
+          newUnifiedData = newUnified;
+        }
+      }
+
+      const newId = Math.random().toString(36).substring(2, 9);
+      // Duplicates always start as drafts — user must Publish explicitly
+      const duplicated: DraftCandidate = {
+        kind: 'draft',
+        id: newId,
+        name: `${activeSched.name} (Healed)`,
+        data: JSON.parse(JSON.stringify(newData)),
+        unifiedData: newUnifiedData ? JSON.parse(JSON.stringify(newUnifiedData)) : undefined,
+        createdAt: new Date(),
+        cohortAssignments: activeSched.cohortAssignments ? JSON.parse(JSON.stringify(activeSched.cohortAssignments)) : undefined,
+        startYear: activeSched.startYear,
+        metrics: activeSched.metrics,
+      };
+
+      setSchedules(prev => [...prev, duplicated]);
+      setActiveScheduleId(newId);
+      toast.success(`Created healed copy: "${duplicated.name}"`);
     }
 
     setIsHealing(false);
@@ -1587,6 +1690,7 @@ const AppContent: React.FC = () => {
   };
 
   const handleCellClick = (resId: string, week: number, rect?: DOMRect) => {
+    if (isHealing) return; // Prevent manual editing in healer preview mode
     setSelectedCell({ resId, week });
     if (rect) setAnchorRect(rect);
     setModalOpen(true);
@@ -2338,12 +2442,21 @@ const AppContent: React.FC = () => {
                       )}
                     </div>
                   </div>
-                          <ScheduleTable
+                  {isHealing && bestHealGrid && (
+                    <div className="bg-violet/10 border border-violet/20 px-4 py-3 rounded-xl flex items-center justify-between gap-3 text-violet font-bold text-xs mb-4 shadow-sm animate-fade-in mx-1 mt-1">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="animate-pulse text-violet shrink-0" size={14} />
+                        <span>Healer Preview Mode — showing solved schedule. These changes are temporary until applied.</span>
+                      </div>
+                      <span className="text-[10px] uppercase bg-violet text-white px-2 py-0.5 rounded font-black tracking-wider shrink-0">Unsaved Preview</span>
+                    </div>
+                  )}
+                  <ScheduleTable
                     residents={displayResidents}
                     schedule={displayGrid}
                     startYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
                     cohortAssignments={activeYearCohorts}
-                    isReadOnly={activeSchedule?.isHistory}
+                    isReadOnly={activeSchedule?.isHistory || isHealing}
 
                     onCellClick={handleCellClick}
                     onLockWeek={handleLockWeek}
@@ -2486,6 +2599,7 @@ const AppContent: React.FC = () => {
         onStart={handleStartHealerStrategy}
         onStop={handleStopHealerStrategy}
         onApply={handleApplyHealedSchedule}
+        onApplyCopy={handleApplyCopyHealedSchedule}
         onCancel={handleCancelHealedSchedule}
       />
 

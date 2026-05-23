@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Play, Square, Check, RotateCcw, Zap, Grid, LayoutGrid, Calendar, Users, GitMerge } from 'lucide-react';
+import { X, Play, Square, Check, RotateCcw, Zap, Grid, LayoutGrid, Calendar, Users, GitMerge, Copy } from 'lucide-react';
 import { Button } from './ui/Button';
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
   onStart: (strategy: string) => void;
   onStop: () => void;
   onApply: () => void;
+  onApplyCopy: () => void;
   onCancel: () => void;
 }
 
@@ -78,6 +79,7 @@ export const HealerPanel: React.FC<Props> = ({
   onStart,
   onStop,
   onApply,
+  onApplyCopy,
   onCancel
 }) => {
   const [selectedStrategy, setSelectedStrategy] = useState<string>('complete');
@@ -226,23 +228,34 @@ export const HealerPanel: React.FC<Props> = ({
             )}
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              disabled={isRunning || progress === 0}
-              onClick={onCancel}
-              className="flex-1 border-light-5 hover:bg-light-1 text-slate-700 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
-            >
-              <RotateCcw size={14} />
-              Cancel & Revert
-            </Button>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={isRunning || progress === 0}
+                onClick={onCancel}
+                className="flex-1 border-light-5 hover:bg-light-1 text-slate-700 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+              >
+                <RotateCcw size={14} />
+                Cancel & Revert
+              </Button>
+              <Button
+                variant="outline"
+                disabled={isRunning || progress === 0}
+                onClick={onApplyCopy}
+                className="flex-1 border-violet hover:bg-violet/5 text-violet py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+              >
+                <Copy size={14} />
+                Apply to Copy
+              </Button>
+            </div>
             <Button
               disabled={isRunning || progress === 0}
               onClick={onApply}
-              className="flex-1 bg-slate-900 hover:bg-black text-white py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+              className="w-full bg-slate-900 hover:bg-black text-white py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
               <Check size={14} />
-              Apply & Save
+              Apply to Current
             </Button>
           </div>
         </div>
