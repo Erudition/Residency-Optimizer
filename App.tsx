@@ -2918,12 +2918,12 @@ const AppContent: React.FC = () => {
                         >
                           {isHealerRunning ? (
                             <>
-                              <Loader2 size={14} className="animate-spin text-violet" />
+                              <Loader2 size={14} className="animate-spin text-orange" />
                               Healing {bestHealCount ?? activeViolationsCount} {healerProgress !== undefined && healerProgress > 0 ? `(${healerProgress}%)` : ''}
                             </>
                           ) : isHealing ? (
                             <>
-                              <Sparkles size={14} className="text-violet animate-pulse" />
+                              <Sparkles size={14} className="text-orange animate-pulse" />
                               Healer Mode ({bestHealCount ?? activeViolationsCount})
                             </>
                           ) : (
@@ -2966,12 +2966,12 @@ const AppContent: React.FC = () => {
                     </div>
                   </div>
                   {isHealing && bestHealGrid && (
-                    <div className="bg-violet/10 border border-violet/20 px-4 py-3 rounded-xl flex items-center justify-between gap-3 text-violet font-bold text-xs mb-4 shadow-sm animate-fade-in mx-1 mt-1">
+                    <div className="bg-orange/10 border border-orange/20 px-4 py-3 rounded-xl flex items-center justify-between gap-3 text-orange font-bold text-xs mb-4 shadow-sm animate-fade-in mx-1 mt-1">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="animate-pulse text-violet shrink-0" size={14} />
+                        <Sparkles className="animate-pulse text-orange shrink-0" size={14} />
                         <span>Healer Preview Mode — showing solved schedule. These changes are temporary until applied.</span>
                       </div>
-                      <span className="text-[10px] uppercase bg-violet text-white px-2 py-0.5 rounded font-black tracking-wider shrink-0">Unsaved Preview</span>
+                      <span className="text-[10px] uppercase bg-orange text-black px-2 py-0.5 rounded font-black tracking-wider shrink-0">Unsaved Preview</span>
                     </div>
                   )}
                   <div className="flex-1 flex overflow-hidden relative">

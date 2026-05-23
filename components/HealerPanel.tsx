@@ -26,20 +26,6 @@ interface HealerStrategy {
 
 const STRATEGIES: HealerStrategy[] = [
   {
-    id: '3-way',
-    name: '3-Resident Swaps (3-Way Cycle)',
-    description: 'Staffing-neutral cyclic exchanges among three active residents of the same PGY level. Extremely powerful for solving tight constraint deadlocks.',
-    icon: GitMerge,
-    color: 'text-pink bg-pink/10 border-pink/20'
-  },
-  {
-    id: '2-way',
-    name: '2-Resident Swaps (2-Way)',
-    description: 'Staffing-neutral exchanges between two active residents of the same PGY level. Guarantees staffing remains unchanged.',
-    icon: Users,
-    color: 'text-orange bg-orange/10 border-orange/20'
-  },
-  {
     id: '4-block',
     name: '4-Block Swaps',
     description: 'Restricts simulated annealing to 4-week block swaps to maintain rotation chunks.',
@@ -54,6 +40,20 @@ const STRATEGIES: HealerStrategy[] = [
     color: 'text-teal bg-teal/10 border-teal/20'
   },
   {
+    id: '2-way',
+    name: '2-Resident Swaps (2-Way)',
+    description: 'Staffing-neutral exchanges between two active residents of the same PGY level. Guarantees staffing remains unchanged.',
+    icon: Users,
+    color: 'text-orange bg-orange/10 border-orange/20'
+  },
+  {
+    id: '3-way',
+    name: '3-Resident Swaps (3-Way Cycle)',
+    description: 'Staffing-neutral cyclic exchanges among three active residents of the same PGY level. Extremely powerful for solving tight constraint deadlocks.',
+    icon: GitMerge,
+    color: 'text-pink bg-pink/10 border-pink/20'
+  },
+  {
     id: '1-block',
     name: '1-Week Swaps',
     description: 'Restricts simulated annealing to individual 1-week swaps for micro-adjustments.',
@@ -65,7 +65,7 @@ const STRATEGIES: HealerStrategy[] = [
     name: 'Complete Scan (Annealing)',
     description: 'Dynamic mix of block sizes using Simulated Annealing. Best for global compliance healing.',
     icon: Zap,
-    color: 'text-violet bg-violet/10 border-violet/20'
+    color: 'text-purple bg-purple/10 border-purple/20'
   }
 ];
 
@@ -83,7 +83,7 @@ export const HealerPanel: React.FC<Props> = ({
   onCancel
 }) => {
   const [selectedStrategies, setSelectedStrategies] = useState<Set<string>>(
-    new Set(['3-way', '2-way', '4-block', '2-block'])
+    new Set(['4-block', '2-block'])
   );
 
   if (!isOpen) return null;
@@ -117,7 +117,7 @@ export const HealerPanel: React.FC<Props> = ({
         <div className="px-6 py-5 border-b border-light-5 flex items-center justify-between bg-white shrink-0">
           <div>
             <h2 className="text-lg font-black tracking-tight text-primary uppercase flex items-center gap-2">
-              <Zap className="text-violet fill-violet/20" size={20} />
+              <Zap className="text-orange fill-orange/20" size={20} />
               Manual Healer Control
             </h2>
             <p className="text-xs font-medium text-muted mt-1">Optimize and fix schedule violations with targeted heuristics.</p>
@@ -136,25 +136,25 @@ export const HealerPanel: React.FC<Props> = ({
                 <span className="text-xs font-black uppercase tracking-wider text-muted">
                   {isRunning ? 'Healing in Progress...' : 'Heal Cycle Stopped'}
                 </span>
-                <span className="text-sm font-black text-violet">{progress}%</span>
+                <span className="text-sm font-black text-orange">{progress}%</span>
               </div>
               <div className="w-full bg-light-1 h-3 rounded-full overflow-hidden border border-light-5">
                 <div 
-                  className="bg-violet h-full transition-all duration-300 rounded-full"
+                  className="bg-orange h-full transition-all duration-300 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
               </div>
               {isRunning && (
-                <div className="flex flex-col gap-1 text-xs font-semibold text-violet">
+                <div className="flex flex-col gap-1 text-xs font-semibold text-orange">
                   <div className="flex items-center gap-2 animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-violet" />
+                    <span className="w-2 h-2 rounded-full bg-orange" />
                     <span>Running active strategies:</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {Array.from(selectedStrategies).map(id => {
                       const info = STRATEGIES.find(s => s.id === id);
                       return (
-                        <span key={id} className="px-2 py-0.5 rounded-full text-[10px] font-black bg-violet/10 text-violet border border-violet/20">
+                        <span key={id} className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange/10 text-orange border border-orange/20">
                           {info?.name}
                         </span>
                       );
@@ -211,14 +211,14 @@ export const HealerPanel: React.FC<Props> = ({
                     onClick={() => handleToggleStrategy(strategy.id)}
                     className={`flex items-start gap-4 p-4 rounded-xl border text-left transition-all ${
                       isSelected 
-                        ? 'bg-white border-violet shadow-md scale-[1.01]' 
+                        ? 'bg-white border-orange shadow-md scale-[1.01]' 
                         : 'bg-white border-light-5 hover:border-slate-300 hover:shadow-sm'
                     } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {/* Custom Premium Checkbox */}
                     <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-2.5 transition-all ${
                       isSelected 
-                        ? 'border-violet bg-violet text-white animate-scale-in' 
+                        ? 'border-orange bg-orange text-black animate-scale-in' 
                         : 'border-slate-300 bg-white hover:border-slate-400'
                     }`}>
                       {isSelected && <Check size={12} strokeWidth={4} />}
@@ -228,7 +228,7 @@ export const HealerPanel: React.FC<Props> = ({
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="space-y-1">
-                      <h4 className={`text-sm font-black transition-colors ${isSelected ? 'text-violet' : 'text-primary'}`}>
+                      <h4 className={`text-sm font-black transition-colors ${isSelected ? 'text-orange' : 'text-primary'}`}>
                         {strategy.name}
                       </h4>
                       <p className="text-xs font-medium text-muted leading-relaxed">
@@ -248,7 +248,7 @@ export const HealerPanel: React.FC<Props> = ({
             {!isRunning ? (
               <Button 
                 onClick={() => onStart(Array.from(selectedStrategies).join(','))}
-                className="flex-1 bg-violet hover:bg-violet-hover text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-violet/20 hover:shadow-violet/30 transition-all"
+                className="flex-1 bg-orange hover:bg-orange-dark text-black py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-orange/20 hover:shadow-orange/30 transition-all"
               >
                 <Play size={16} fill="currentColor" />
                 Run Strategies
@@ -279,7 +279,7 @@ export const HealerPanel: React.FC<Props> = ({
                 variant="outline"
                 disabled={isRunning || !hasImprovement}
                 onClick={onApplyCopy}
-                className="flex-1 border-violet hover:bg-violet/5 text-violet py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+                className="flex-1 border-orange hover:bg-orange/5 text-orange py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
               >
                 <Copy size={14} />
                 Apply to Copy

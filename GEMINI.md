@@ -176,3 +176,14 @@ Future-year schedules require placeholder ("synthetic") residents for years with
 
 
 
+
+## Healer Panel Customization & Strategy Layout
+*   **Strategy Order**: The heuristic strategies listed in the Healer Panel must be ordered as follows (from top to bottom):
+    1.  `4-block` (4-Block Swaps)
+    2.  `2-block` (2-Block Swaps)
+    3.  `2-way` (2-Resident Swaps)
+    4.  `3-way` (3-Resident Swaps)
+    5.  `1-block` (1-Week Swaps)
+    6.  `complete` (Complete Scan)
+*   **Default Selected Healer Strategies**: The Healer Panel must default to having only `['4-block', '2-block']` selected.
+*   **Premium Custom Theme Colors**: Avoid using standard Tailwind `violet` or `purple` class names for brand items (as they do not match the brand color palette). Instead, use the custom `orange` color classes (`text-orange`, `bg-orange`, `border-orange`, `hover:bg-orange-dark`, etc.) to match the app's custom brand yellow/orange "lemon button" color system.
