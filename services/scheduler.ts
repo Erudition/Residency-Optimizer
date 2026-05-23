@@ -353,6 +353,74 @@ export const getAuditViolations = (residents: Resident[], history: ScheduleHisto
   return RequirementsEngine.getAuditViolations(residents, history, programData, activeYear);
 };
 
+export const getRequirementsViolationsCount = (
+  residents: Resident[],
+  schedule: ScheduleGrid,
+  historicalSchedules: ScheduleHistory,
+  startYear: number,
+  isUnified: boolean,
+  programData: ProgramData
+): number => {
+  let totalDeficit = 0;
+  const reqs = programData.gradRequirements || [];
+  
+  residents.forEach(res => {
+    const level = startYear - res.startYear + 1;
+    
+    reqs.forEach(req => {
+      const isACGME = req.source === 'acgme';
+      let minWeeks = 0;
+      let actual = 0;
+
+      if (isUnified) {
+        minWeeks = req.minimum || 0;
+        actual = RequirementsEngine.getActualWeeks(
+          res,
+          req.tag.title,
+          schedule,
+          historicalSchedules,
+          startYear,
+          res.startYear + 2,
+          true,
+          programData
+        );
+      } else {
+        if (isACGME) {
+          minWeeks = (req.pgy1Ideal || 0) + (level >= 2 ? (req.pgy2Ideal || 0) : 0) + (level >= 3 ? (req.pgy3Ideal || 0) : 0);
+          actual = RequirementsEngine.getActualWeeks(
+            res,
+            req.tag.title,
+            schedule,
+            historicalSchedules,
+            startYear,
+            startYear,
+            true,
+            programData
+          );
+        } else {
+          minWeeks = (level === 1 ? req.pgy1Ideal : (level === 2 ? req.pgy2Ideal : req.pgy3Ideal)) || 0;
+          actual = RequirementsEngine.getActualWeeks(
+            res,
+            req.tag.title,
+            schedule,
+            historicalSchedules,
+            startYear,
+            startYear,
+            false,
+            programData
+          );
+        }
+      }
+
+      if (minWeeks > 0 && actual < minWeeks) {
+        totalDeficit += (minWeeks - actual);
+      }
+    });
+  });
+  
+  return totalDeficit;
+};
+
 
 
 const calculateSD = (values: number[], mean: number): number => {
