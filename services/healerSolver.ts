@@ -245,6 +245,7 @@ export const healer: HealerSolver = {
             }
         });
 
+        const activeMoves = strategy ? strategy.split(',').map(s => s.trim()).filter(Boolean) : ['3-way', '2-way', 'complete'];
         let bestPenalty = currentPenalty;
         console.log(`[Healer Start] Initial global penalty: ${currentPenalty.toLocaleString()} (Staffing: ${weekPenaltyCache.reduce((a, b) => a + b, 0).toLocaleString()}, Requirements: ${Object.values(resReqPenaltyCache).reduce((a, b) => a + b, 0).toLocaleString()})`);
 
@@ -270,12 +271,14 @@ export const healer: HealerSolver = {
                 console.log(`[Healer Step ${step}] Penalty: ${currentPenalty.toLocaleString()} | Staffing: ${staffV} | Jeopardy: ${jeopardyV} | Req: ${reqV} | Temp: ${temp.toFixed(4)}`);
             }
 
-            let currentMove = strategy;
-            if (!currentMove) {
-                const rand = rng.next();
-                if (rand < 0.3) {
+            let currentMove = 'single';
+            let activeStrategy = 'complete';
+
+            if (activeMoves.length > 0) {
+                activeStrategy = activeMoves[Math.floor(rng.next() * activeMoves.length)];
+                if (activeStrategy === '2-way') {
                     currentMove = '2-way';
-                } else if (rand < 0.4) {
+                } else if (activeStrategy === '3-way') {
                     currentMove = '3-way';
                 } else {
                     currentMove = 'single';
@@ -494,11 +497,11 @@ export const healer: HealerSolver = {
                 if (weeks.length === 0) continue;
 
                 let blockSize = 1;
-                if (strategy === '4-block') {
+                if (activeStrategy === '4-block') {
                     blockSize = 4;
-                } else if (strategy === '2-block') {
+                } else if (activeStrategy === '2-block') {
                     blockSize = 2;
-                } else if (strategy === '1-block') {
+                } else if (activeStrategy === '1-block') {
                     blockSize = 1;
                 } else {
                     const phase = step / maxSteps;
