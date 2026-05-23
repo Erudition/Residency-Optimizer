@@ -487,6 +487,7 @@ export class ScheduleSyncService {
         }
       }
 
+
       try {
         const response = await fetch(`${API_URL}/api/sync/bulk`, {
           method: 'POST',

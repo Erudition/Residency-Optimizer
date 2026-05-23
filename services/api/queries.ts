@@ -278,7 +278,7 @@ export const CANDIDATES_QUERY = /* GraphQL */ `
  *
  * Uses Payload's join field GraphQL args to set appropriate limits:
  * - schedules: limit 10 (max 3 per candidate, generous buffer)
- * - scheduleAssignments: limit 3000 (covers ~15 residents × 52 weeks)
+ * - scheduleAssignments: limit 5000 (covers ~65 residents × 52 weeks with headroom)
  */
 export const CANDIDATES_WITH_SCHEDULES_QUERY = /* GraphQL */ `
   query CandidatesWithSchedules($where: Candidate_where) {
@@ -299,7 +299,7 @@ export const CANDIDATES_WITH_SCHEDULES_QUERY = /* GraphQL */ `
               id
               startingYear
             }
-            scheduleAssignments(limit: 3000) {
+            scheduleAssignments(limit: 5000) {
               docs {
                 resident {
                   id

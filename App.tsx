@@ -37,7 +37,7 @@ import {
 } from './services/scheduler';
 import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
 import { getScheduleSyncService, SyncError, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
-import { extractTokenFromURL, isAuthenticated } from './services/api/auth';
+import { extractTokenFromURL, isAuthenticated, verifyToken } from './services/api/auth';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
 import { healSchedule } from './services/healer';
@@ -1637,6 +1637,16 @@ const AppContent: React.FC = () => {
 
     setPublishState('saving');
     try {
+      // Pre-flight: verify the token is still valid before making server calls.
+      // A stale token in localStorage causes a cryptic 403 on createCandidate.
+      const user = await verifyToken();
+      if (!user) {
+        toast.error('Your session has expired. Please re-authenticate from the admin panel.');
+        setSyncStatus('local-only');
+        setPublishState('idle');
+        return;
+      }
+
       const { candidateId } = await syncService.createCandidate(sched.startYear, candidateName.trim());
       const augmentedResidents = getAugmentedResidents(residents, sched.startYear + 4, sched.startYear);
       const { scheduleIds, errors: saveErrors, residentIdMap } = await syncService.saveCandidateGrids(
@@ -1649,6 +1659,7 @@ const AppContent: React.FC = () => {
       // Remap synthetic frontend keys → backend numeric IDs in the grid data
       // so subsequent cell edits sync correctly via real-time upserts.
       let publishData = sched.data;
+      let publishCohortAssignments = sched.cohortAssignments;
       if (Object.keys(residentIdMap).length > 0) {
         publishData = { ...sched.data };
         for (const [yearStr, grid] of Object.entries(publishData)) {
@@ -1661,7 +1672,27 @@ const AppContent: React.FC = () => {
           }
           publishData[parseInt(yearStr, 10)] = remappedGrid;
         }
+
+        // Remap cohortAssignments: { year → { residentId → cohortIndex } }
+        if (publishCohortAssignments) {
+          publishCohortAssignments = { ...publishCohortAssignments };
+          for (const [yearStr, yearMap] of Object.entries(publishCohortAssignments)) {
+            const remapped = { ...yearMap };
+            for (const [synthKey, backendId] of Object.entries(residentIdMap)) {
+              if (remapped[synthKey] !== undefined) {
+                remapped[backendId.toString()] = remapped[synthKey];
+                delete remapped[synthKey];
+              }
+            }
+            publishCohortAssignments[parseInt(yearStr, 10)] = remapped;
+          }
+        }
       }
+
+      // Rebuild unifiedData from the (possibly remapped) publishData
+      const publishUnifiedData = sched.startYear
+        ? mergeYearsIntoUnified(publishData, sched.startYear, 3)
+        : sched.unifiedData;
 
       // Replace the draft with a published candidate
       const published: PublishedCandidate = {
@@ -1671,16 +1702,45 @@ const AppContent: React.FC = () => {
         scheduleIds,
         name: candidateName.trim(),
         data: publishData,
-        unifiedData: sched.unifiedData,
+        unifiedData: publishUnifiedData,
         createdAt: sched.createdAt,
         metrics: sched.metrics,
-        cohortAssignments: sched.cohortAssignments,
+        cohortAssignments: publishCohortAssignments,
         startYear: sched.startYear,
         lastSyncedAt: new Date(),
       };
 
       setSchedules(prev => prev.map(s => s.id === sched.id ? published : s));
       setActiveScheduleId(published.id);
+
+      // Update residents state: replace in-memory synthetic IDs (e.g. "c2027-1")
+      // with backend-assigned numeric IDs (e.g. "399") so getAugmentedResidents
+      // recognizes them on subsequent renders and grid lookups match.
+      if (Object.keys(residentIdMap).length > 0) {
+        setResidents(prev => {
+          const updated = prev.map(r => {
+            const backendId = residentIdMap[r.id];
+            if (backendId != null) {
+              return { ...r, id: backendId.toString() };
+            }
+            return r;
+          });
+          // Also add any synthetic residents from augmentedResidents that weren't
+          // already in the state (they were only in-memory during generation)
+          const existingIds = new Set(updated.map(r => r.id));
+          const newSynthetics: typeof prev = [];
+          for (const [synthKey, backendId] of Object.entries(residentIdMap)) {
+            const backendIdStr = backendId.toString();
+            if (!existingIds.has(backendIdStr)) {
+              const augmented = augmentedResidents.find(r => r.id === synthKey);
+              if (augmented) {
+                newSynthetics.push({ ...augmented, id: backendIdStr, isSynthetic: true });
+              }
+            }
+          }
+          return [...updated, ...newSynthetics];
+        });
+      }
 
       if (saveErrors.length > 0) {
         toast.warning(

@@ -81,9 +81,14 @@ export const getAugmentedResidents = (baseResidents: Resident[], maxYear: number
       
       const takenIndices = new Set<number>();
       existingSynthetic.forEach(r => {
-        const match = r.name.match(/(\d+)$/);
-        if (match) {
-          takenIndices.add(parseInt(match[1], 10));
+        // Server-side synthetic names are formatted as "{index}, New {year} Resident"
+        // (displayName = "{lastName}, {firstName}" where lastName is the index).
+        // In-memory synthetic names are "New {year} Resident {index}".
+        const startMatch = r.name.match(/^(\d+)/);
+        const endMatch = r.name.match(/(\d+)$/);
+        const idx = startMatch ? parseInt(startMatch[1], 10) : endMatch ? parseInt(endMatch[1], 10) : null;
+        if (idx !== null) {
+          takenIndices.add(idx);
         }
       });
 
