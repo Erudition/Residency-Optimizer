@@ -133,13 +133,23 @@ Candidate schedules are synchronized between multiple frontend clients and the P
 
 *   **Architecture** — Writes go through GraphQL mutations (individual cell upserts or bulk saves). The backend broadcasts SSE events to all connected clients via `afterChange` hooks on `Schedules` and `ScheduleAssignments` collections.
 *   **SSE Endpoint** — `GET /api/sync/stream/:candidateId` maintains persistent `text/event-stream` connections per candidate ID. Each client generates a unique `clientId` to deduplicate its own echoed events.
-*   **Bulk Endpoint** — `POST /api/sync/bulk` creates a Schedule with all assignments in one request, bypassing individual `afterChange` hooks and broadcasting a single `bulk-sync` event.
+*   **Bulk Endpoint** — `POST /api/sync/bulk` creates a Schedule with all assignments in one request, bypassing individual `afterChange` hooks and broadcasting a single `bulk-sync` event. Also accepts an optional `syntheticResidents` array to upsert placeholder residents (see below).
 *   **Frontend Service** — `services/api/sync.ts` exports `ScheduleSyncService` (singleton via `getScheduleSyncService()`). It manages EventSource connections, debounced cell upserts (300ms), transparent candidate auto-creation, and exponential-backoff reconnection.
 *   **Offline-first** — The app works fully without a backend. localStorage remains as a fallback cache. Backend sync is opportunistic.
 *   **Identity Mapping** — Schedules have a frontend `id` (string, e.g. `sched-...`) and an optional `backendId` (Payload Schedule doc ID). Unauthenticated users can generate and interact with schedules locally without ever touching the backend.
 *   **Candidate Transparency** — `Candidates` are internal backend groupings (3-year planning horizons). Users never see or manage them directly — the sync service auto-creates them on first save via `ensureCandidate()`.
 *   **Conflict Resolution** — Last-write-wins for simultaneous cell edits. No conflict UI.
 *   **Sync Status UI** — A status indicator in the header shows: 🟣 Live (SSE streaming), 🟢 Connected (authenticated), ⚪ Local Only (no auth).
+*   **GraphQL Loading** — `loadAllCandidates()` uses a single nested query (`CANDIDATES_WITH_SCHEDULES_QUERY`) that fetches candidates → schedules → assignments in one round trip via Payload's join field GraphQL args. Join limits: `schedules(limit: 10)`, `scheduleAssignments(limit: 3000)`.
+
+## Synthetic Resident Persistence
+Future-year schedules require placeholder ("synthetic") residents for years with no enrolled residents. These are handled differently in offline vs authenticated modes:
+
+*   **Offline mode** — `getAugmentedResidents()` creates in-memory placeholders with non-numeric IDs (e.g. `c2027-1`). These exist only in the frontend.
+*   **Publish mode** — At publish time, `saveCandidateGrids` identifies non-numeric resident IDs, extracts name/startYear from the resident list, and sends them as `syntheticResidents` in the bulk request. The backend upserts them with `isSynthetic: true` and returns a `residentIdMap` (frontendKey → backendId). The frontend then remaps in-memory grid keys from `c2027-1` → `55` so subsequent cell edits sync normally.
+*   **Idempotent upsert** — The backend finds synthetic residents by `firstName + lastName + startYear + isSynthetic` before creating, preventing duplicates on re-publish.
+*   **Auto-cleanup** — A `beforeChange` hook on Residents auto-deletes synthetic residents for a given startYear when a real (non-synthetic) resident is created for that year.
+*   **Cell edit guard** — `upsertCell()` silently skips `NaN` resident IDs; synthetic resident edits are local-only until the schedule is published and keys are remapped.
 
 ## Clinic Block Scheduling Guardrail
 *   **Clinic Assignment Exclusivity**: Clinic assignments (`CLINIC` or specific clinic codenames) must never be scheduled, generated, or mutated on non-clinic (flexible) weeks.
