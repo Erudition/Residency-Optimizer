@@ -42,7 +42,7 @@ jobs:
       - name: Build
         run: npm run build -- --base=/Residency-Optimizer/
         env:
-          VITE_API_URL: https://dency.erudition.dev
+          VITE_API_URL: https://dency.omnipassion.cloud
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
