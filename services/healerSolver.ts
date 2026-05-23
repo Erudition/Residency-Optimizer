@@ -111,7 +111,7 @@ export const healer: HealerSolver = {
                     const isCumulative = rawReq?.isCumulative || false;
                     const actual = RequirementsEngine.getActualWeeks(
                         r,
-                        req.type,
+                        req.label,
                         currentSchedule,
                         historicalSchedules || {},
                         gridStartYear,

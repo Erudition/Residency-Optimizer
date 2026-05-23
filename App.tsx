@@ -855,18 +855,24 @@ const AppContent: React.FC = () => {
     }
 
     // For requirement violations, we need full history (historical + active session data)
-    const fullHistory = { ...historySchedules, ...(activeSchedule.data || {}) };
+    const activeScheduleData = (isHealing && bestHealGrid)
+      ? (viewMode === 'unified' 
+          ? sliceIntoYears(bestHealGrid, activeSchedule.startYear || ACTIVE_START_YEAR, 3)
+          : { ...activeSchedule.data, [activeYear]: bestHealGrid })
+      : (activeSchedule.data || {});
+
+    const fullHistory = { ...historySchedules, ...activeScheduleData };
 
     return {
       stats: calculateStats(activeResidents, currentGrid),
       violations: {
         reqs: getRequirementViolations(activeResidents, currentGrid, programData, fullHistory, activeYear),
-        constraints: getWeeklyViolations(activeResidents, currentGrid, programData),
+        constraints: getWeeklyViolations(activeResidents, currentGrid, programData, activeYear),
         audit: getAuditViolations(activeResidents, fullHistory, programData, activeYear)
       },
       fairness: calculateFairnessMetrics(activeResidents, currentGrid, programData)
     };
-  }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId, programData]);
+  }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId, programData, isHealing, bestHealGrid, viewMode]);
 
   const currentCoverageViolationsCount = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
@@ -875,10 +881,13 @@ const AppContent: React.FC = () => {
 
     if (useUnified) {
       let total = 0;
+      const activeScheduleData = (isHealing && bestHealGrid)
+        ? sliceIntoYears(bestHealGrid, startYear, 3)
+        : (activeSchedule.data || {});
       for (let offset = 0; offset < 3; offset++) {
         const y = startYear + offset;
         const yrResidents = getResidentsForYear(y);
-        const yrGrid = activeSchedule.data[y] || {};
+        const yrGrid = activeScheduleData[y] || {};
         const constraintsList = getWeeklyViolations(yrResidents, yrGrid, programData, y);
         total += constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
       }
@@ -886,13 +895,20 @@ const AppContent: React.FC = () => {
     } else {
       return violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
     }
-  }, [activeSchedule, activeScheduleId, viewMode, activeYear, violations.constraints, residents, programData, getResidentsForYear]);
+  }, [activeSchedule, activeScheduleId, viewMode, activeYear, violations.constraints, residents, programData, getResidentsForYear, isHealing, bestHealGrid]);
 
   const currentRequirementsViolationsCount = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
     const useUnified = viewMode === 'unified' && !!activeSchedule.unifiedData;
     const startYear = useUnified ? (activeSchedule.startYear || ACTIVE_START_YEAR) : activeYear;
-    const fullHistory = { ...historySchedules, ...(activeSchedule.data || {}) };
+    
+    const activeScheduleData = (isHealing && bestHealGrid)
+      ? (useUnified 
+          ? sliceIntoYears(bestHealGrid, startYear, 3)
+          : { ...activeSchedule.data, [activeYear]: bestHealGrid })
+      : (activeSchedule.data || {});
+
+    const fullHistory = { ...historySchedules, ...activeScheduleData };
 
     const reqsDeficit = getRequirementsViolationsCount(
       useUnified ? displayResidents : activeResidents,
@@ -915,7 +931,7 @@ const AppContent: React.FC = () => {
     }
 
     return reqsDeficit + audit;
-  }, [activeSchedule, activeScheduleId, viewMode, activeYear, historySchedules, displayResidents, activeResidents, displayGrid, currentGrid, residents, programData, getResidentsForYear]);
+  }, [activeSchedule, activeScheduleId, viewMode, activeYear, historySchedules, displayResidents, activeResidents, displayGrid, currentGrid, residents, programData, getResidentsForYear, isHealing, bestHealGrid]);
 
   const activeViolationsCount = useMemo(() => {
     return currentCoverageViolationsCount + currentRequirementsViolationsCount;
