@@ -70,39 +70,26 @@ export class RequirementsEngine {
     schedule: ScheduleGrid,
     historicalSchedules: ScheduleHistory = {},
     activeYear: number,
-    programData: ProgramData
+    programData: ProgramData,
+    isUnified: boolean = false
   ): RequirementViolation[] {
     const violations: RequirementViolation[] = [];
-    const totalWeeks = Object.values(schedule)[0]?.length || 52;
-    const numYears = Math.ceil(totalWeeks / 52);
 
     residents.forEach(r => {
-      for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
-        const currentYear = activeYear + yearIdx;
-        const pgy = currentYear - r.startYear + 1;
-        
-        if (pgy < 1 || pgy > 3) continue;
-
+      if (isUnified) {
+        // Unified 3-year logic: evaluates total graduation minimum (req.minimum)
         (programData.gradRequirements || []).forEach(req => {
-          const isACGME = req.source === 'acgme';
-          
-          let minWeeks = 0;
-          let actual = 0;
-
-          if (isACGME) {
-            // ACGME cumulative logic
-            minWeeks = (pgy >= 1 ? (req.pgy1Ideal || 0) : 0) + 
-                       (pgy >= 2 ? (req.pgy2Ideal || 0) : 0) + 
-                       (pgy >= 3 ? (req.pgy3Ideal || 0) : 0);
-            
-            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, true, programData);
-          } else {
-            // MHS annual logic
-            minWeeks = pgy === 1 ? (req.pgy1Ideal || 0) : 
-                      (pgy === 2 ? (req.pgy2Ideal || 0) : 
-                                   (req.pgy3Ideal || 0));
-            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, false, programData);
-          }
+          const minWeeks = req.minimum || 0;
+          const actual = this.getActualWeeks(
+            r,
+            req.tag.title,
+            schedule,
+            historicalSchedules,
+            activeYear,
+            r.startYear + 2,
+            true,
+            programData
+          );
 
           if (minWeeks > 0 && actual < minWeeks) {
             violations.push({
@@ -110,10 +97,53 @@ export class RequirementsEngine {
               type: req.tag.title,
               minWeeks,
               actual,
-              year: currentYear
+              year: activeYear
             });
           }
         });
+      } else {
+        // Annual/cumulative 1-year logic
+        const totalWeeks = Object.values(schedule)[0]?.length || 52;
+        const numYears = Math.ceil(totalWeeks / 52);
+
+        for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
+          const currentYear = activeYear + yearIdx;
+          const pgy = currentYear - r.startYear + 1;
+          
+          if (pgy < 1 || pgy > 3) continue;
+
+          (programData.gradRequirements || []).forEach(req => {
+            const isACGME = req.source === 'acgme';
+            
+            let minWeeks = 0;
+            let actual = 0;
+
+            if (isACGME) {
+              // ACGME cumulative logic
+              minWeeks = (pgy >= 1 ? (req.pgy1Ideal || 0) : 0) + 
+                         (pgy >= 2 ? (req.pgy2Ideal || 0) : 0) + 
+                         (pgy >= 3 ? (req.pgy3Ideal || 0) : 0);
+              
+              actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, true, programData);
+            } else {
+              // MHS annual logic
+              minWeeks = pgy === 1 ? (req.pgy1Ideal || 0) : 
+                        (pgy === 2 ? (req.pgy2Ideal || 0) : 
+                                     (req.pgy3Ideal || 0));
+              actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, false, programData);
+            }
+
+            if (minWeeks > 0 && actual < minWeeks) {
+              violations.push({
+                residentId: r.id,
+                type: req.tag.title,
+                minWeeks,
+                actual,
+                year: currentYear
+              });
+            }
+          });
+        }
       }
     });
 
