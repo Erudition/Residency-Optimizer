@@ -102,50 +102,19 @@ export const healer: HealerSolver = {
             let totalPen = 0;
             const isUnified = Math.floor(totalWeeks / 52) === 3;
             
-            if (isUnified) {
-                (programData.requirements || []).forEach(req => {
-                    const lastActiveYear = Math.min(r.startYear + 2, gridStartYear + 2);
-                    const lastLevel = lastActiveYear - r.startYear + 1;
-                    const minWeeks = lastLevel >= 3 
-                        ? (req.minimum || 0) 
-                        : (req.pgy1Ideal || 0) + (lastLevel >= 2 ? (req.pgy2Ideal || 0) : 0);
+            const violations = RequirementsEngine.getResidentViolations(
+                r,
+                currentSchedule,
+                historicalSchedules || {},
+                gridStartYear,
+                programData,
+                isUnified
+            );
 
-                    const actual = RequirementsEngine.getActualWeeks(r, req.tag.title, currentSchedule, historicalSchedules || {}, gridStartYear, lastActiveYear, true, programData);
+            violations.forEach(v => {
+                totalPen += (v.minWeeks - v.actual) * W_REQUIREMENT;
+            });
 
-                    if (minWeeks > 0 && actual < minWeeks) {
-                        totalPen += (minWeeks - actual) * W_REQUIREMENT;
-                    }
-                });
-            } else {
-                const yearsCount = Math.floor(totalWeeks / 52) || 1;
-                for (let offset = 0; offset < yearsCount; offset++) {
-                    const y = gridStartYear + offset;
-                    const pgy = y - r.startYear + 1;
-                    if (pgy < 1 || pgy > 3) continue;
-
-                    (programData.requirements || []).forEach(req => {
-                        const isCumulative = req.isCumulative;
-                        let minWeeks = 0;
-                        let actual = 0;
-
-                        if (isCumulative) {
-                            minWeeks = (pgy >= 1 ? (req.pgy1Ideal || 0) : 0) + 
-                                       (pgy >= 2 ? (req.pgy2Ideal || 0) : 0) + 
-                                       (pgy >= 3 ? (req.pgy3Ideal || 0) : 0);
-                            actual = RequirementsEngine.getActualWeeks(r, req.tag.title, currentSchedule, historicalSchedules || {}, gridStartYear, y, true, programData);
-                        } else {
-                            minWeeks = pgy === 1 ? (req.pgy1Ideal || 0) : 
-                                      (pgy === 2 ? (req.pgy2Ideal || 0) : 
-                                                   (req.pgy3Ideal || 0));
-                            actual = RequirementsEngine.getActualWeeks(r, req.tag.title, currentSchedule, historicalSchedules || {}, gridStartYear, y, false, programData);
-                        }
-
-                        if (minWeeks > 0 && actual < minWeeks) {
-                            totalPen += (minWeeks - actual) * W_REQUIREMENT;
-                        }
-                    });
-                }
-            }
             return totalPen;
         };
 

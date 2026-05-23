@@ -62,6 +62,94 @@ export class RequirementsEngine {
     return total;
   }
 
+  static getResidentViolations(
+    r: Resident,
+    schedule: ScheduleGrid,
+    historicalSchedules: ScheduleHistory = {},
+    activeYear: number,
+    programData: ProgramData,
+    isUnified: boolean = false
+  ): RequirementViolation[] {
+    const violations: RequirementViolation[] = [];
+
+    if (isUnified) {
+      // Unified 3-year logic: evaluates total graduation minimum (req.minimum) scaled by PGY ideals for future resident classes
+      (programData.requirements || []).forEach(req => {
+        const lastActiveYear = Math.min(r.startYear + 2, activeYear + 2);
+        const lastLevel = lastActiveYear - r.startYear + 1;
+        const minWeeks = lastLevel >= 3 
+          ? (req.minimum || 0) 
+          : (req.pgy1Ideal || 0) + (lastLevel >= 2 ? (req.pgy2Ideal || 0) : 0);
+
+        const actual = this.getActualWeeks(
+          r,
+          req.tag.title,
+          schedule,
+          historicalSchedules,
+          activeYear,
+          lastActiveYear,
+          true,
+          programData
+        );
+
+        if (minWeeks > 0 && actual < minWeeks) {
+          violations.push({
+            residentId: r.id,
+            type: req.tag.title,
+            minWeeks,
+            actual,
+            year: activeYear
+          });
+        }
+      });
+    } else {
+      // Annual/cumulative 1-year logic
+      const totalWeeks = Object.values(schedule)[0]?.length || 52;
+      const numYears = Math.ceil(totalWeeks / 52);
+
+      for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
+        const currentYear = activeYear + yearIdx;
+        const pgy = currentYear - r.startYear + 1;
+        
+        if (pgy < 1 || pgy > 3) continue;
+
+        (programData.requirements || []).forEach(req => {
+          const isCumulative = req.isCumulative;
+          
+          let minWeeks = 0;
+          let actual = 0;
+
+          if (isCumulative) {
+            // Cumulative graduation minimum logic
+            minWeeks = (pgy >= 1 ? (req.pgy1Ideal || 0) : 0) + 
+                       (pgy >= 2 ? (req.pgy2Ideal || 0) : 0) + 
+                       (pgy >= 3 ? (req.pgy3Ideal || 0) : 0);
+            
+            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, true, programData);
+          } else {
+            // Operational annual logic
+            minWeeks = pgy === 1 ? (req.pgy1Ideal || 0) : 
+                      (pgy === 2 ? (req.pgy2Ideal || 0) : 
+                                   (req.pgy3Ideal || 0));
+            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, false, programData);
+          }
+
+          if (minWeeks > 0 && actual < minWeeks) {
+            violations.push({
+              residentId: r.id,
+              type: req.tag.title,
+              minWeeks,
+              actual,
+              year: currentYear
+            });
+          }
+        });
+      }
+    }
+
+    return violations;
+  }
+
   /**
    * Returns all requirement violations for a set of residents across all years in the schedule.
    */
@@ -74,84 +162,9 @@ export class RequirementsEngine {
     isUnified: boolean = false
   ): RequirementViolation[] {
     const violations: RequirementViolation[] = [];
-
     residents.forEach(r => {
-      if (isUnified) {
-        // Unified 3-year logic: evaluates total graduation minimum (req.minimum) scaled by PGY ideals for future resident classes
-        (programData.requirements || []).forEach(req => {
-          const lastActiveYear = Math.min(r.startYear + 2, activeYear + 2);
-          const lastLevel = lastActiveYear - r.startYear + 1;
-          const minWeeks = lastLevel >= 3 
-            ? (req.minimum || 0) 
-            : (req.pgy1Ideal || 0) + (lastLevel >= 2 ? (req.pgy2Ideal || 0) : 0);
-
-          const actual = this.getActualWeeks(
-            r,
-            req.tag.title,
-            schedule,
-            historicalSchedules,
-            activeYear,
-            lastActiveYear,
-            true,
-            programData
-          );
-
-          if (minWeeks > 0 && actual < minWeeks) {
-            violations.push({
-              residentId: r.id,
-              type: req.tag.title,
-              minWeeks,
-              actual,
-              year: activeYear
-            });
-          }
-        });
-      } else {
-        // Annual/cumulative 1-year logic
-        const totalWeeks = Object.values(schedule)[0]?.length || 52;
-        const numYears = Math.ceil(totalWeeks / 52);
-
-        for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
-          const currentYear = activeYear + yearIdx;
-          const pgy = currentYear - r.startYear + 1;
-          
-          if (pgy < 1 || pgy > 3) continue;
-
-          (programData.requirements || []).forEach(req => {
-            const isCumulative = req.isCumulative;
-            
-            let minWeeks = 0;
-            let actual = 0;
-
-            if (isCumulative) {
-              // Cumulative graduation minimum logic
-              minWeeks = (pgy >= 1 ? (req.pgy1Ideal || 0) : 0) + 
-                         (pgy >= 2 ? (req.pgy2Ideal || 0) : 0) + 
-                         (pgy >= 3 ? (req.pgy3Ideal || 0) : 0);
-              
-              actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, true, programData);
-            } else {
-              // Operational annual logic
-              minWeeks = pgy === 1 ? (req.pgy1Ideal || 0) : 
-                        (pgy === 2 ? (req.pgy2Ideal || 0) : 
-                                     (req.pgy3Ideal || 0));
-              actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, false, programData);
-            }
-
-            if (minWeeks > 0 && actual < minWeeks) {
-              violations.push({
-                residentId: r.id,
-                type: req.tag.title,
-                minWeeks,
-                actual,
-                year: currentYear
-              });
-            }
-          });
-        }
-      }
+      violations.push(...this.getResidentViolations(r, schedule, historicalSchedules, activeYear, programData, isUnified));
     });
-
     return violations;
   }
 
