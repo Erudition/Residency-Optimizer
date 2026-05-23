@@ -71,6 +71,19 @@ export class RequirementsEngine {
     programData: ProgramData,
     isUnified: boolean = false
   ): RequirementViolation[] {
+    const numYears = Object.values(schedule)[0]?.length 
+      ? Math.ceil(Object.values(schedule)[0].length / 52) 
+      : (Object.keys(historicalSchedules || {}).length || (isUnified ? 3 : 1));
+    let isActive = false;
+    for (let offset = 0; offset < numYears; offset++) {
+      const pgy = (activeYear + offset) - r.startYear + 1;
+      if (pgy >= 1 && pgy <= 3) {
+        isActive = true;
+        break;
+      }
+    }
+    if (!isActive) return [];
+
     const violations: RequirementViolation[] = [];
 
     if (isUnified) {
@@ -483,6 +496,19 @@ export class RequirementsEngine {
     programData: ProgramData,
     isMultiYearGrid: boolean = false
   ): number {
+    const numYears = Object.values(currentGrid)[0]?.length 
+      ? Math.ceil(Object.values(currentGrid)[0].length / 52) 
+      : (Object.keys(historicalGrids || {}).length || (isMultiYearGrid ? 3 : 1));
+    let isActive = false;
+    for (let offset = 0; offset < numYears; offset++) {
+      const pgy = (gridStartYear + offset) - r.startYear + 1;
+      if (pgy >= 1 && pgy <= 3) {
+        isActive = true;
+        break;
+      }
+    }
+    if (!isActive) return 0;
+
     let outpatient = 0;
     let inpatient = 0;
     let totalCriticalCare = 0;
@@ -490,11 +516,21 @@ export class RequirementsEngine {
     let nightFloat = 0;
     let violationCount = 0;
 
+    let maxPgy = 0;
     const evaluateWeeks = (weeks: ScheduleCell[], year: number) => {
       const pgy = year - r.startYear + 1;
       if (pgy < 1 || pgy > 3) return;
-      weeks?.forEach(c => {
+      if (!weeks || weeks.length === 0) return;
+      maxPgy = Math.max(maxPgy, pgy);
+      weeks.forEach(c => {
         if (!c || !c.assignment) return;
+
+        // Clinic is always outpatient clinical setting
+        if (c.assignment === 'CLINIC' || isClinicRotation(programData, c.assignment as string)) {
+          outpatient++;
+          return;
+        }
+
         const meta = programData.rotations.get(c.assignment as any);
         if (!meta) return;
 
@@ -528,10 +564,26 @@ export class RequirementsEngine {
       evaluateWeeks(currentGrid[r.id] || [], gridStartYear);
     }
 
-    if (outpatient < 44) violationCount += (44 - outpatient);
-    if (inpatient + totalCriticalCare < 48) violationCount += (48 - (inpatient + totalCriticalCare));
+    if (maxPgy === 0) return 0;
+
+    let targetOutpatient = 44;
+    let targetInpatient = 48;
+    let targetNightFloat = 6;
+
+    if (maxPgy === 1) {
+      targetOutpatient = 14;
+      targetInpatient = 16;
+      targetNightFloat = 2;
+    } else if (maxPgy === 2) {
+      targetOutpatient = 29;
+      targetInpatient = 32;
+      targetNightFloat = 4;
+    }
+
+    if (outpatient < targetOutpatient) violationCount += (targetOutpatient - outpatient);
+    if (inpatient + totalCriticalCare < targetInpatient) violationCount += (targetInpatient - (inpatient + totalCriticalCare));
     if (criticalCareCore > 24) violationCount += (criticalCareCore - 24);
-    if (nightFloat < 6) violationCount += (6 - nightFloat);
+    if (nightFloat < targetNightFloat) violationCount += (targetNightFloat - nightFloat);
 
     return violationCount;
   }

@@ -31,6 +31,36 @@ export const sliceIntoYears = (unifiedGrid: ScheduleGrid, sYear: number, numYear
   return years;
 };
 
+// Helper to merge yearly grids into a unified grid
+export const mergeYearsIntoUnified = (yearsGrid: Record<number, ScheduleGrid>, sYear: number, numYears: number): ScheduleGrid => {
+  const unifiedGrid: ScheduleGrid = {};
+  const years = Array.from({ length: numYears }, (_, i) => sYear + i);
+  const allResidentIds = new Set<string>();
+  years.forEach(y => {
+    const grid = yearsGrid[y];
+    if (grid) {
+      Object.keys(grid).forEach(rId => allResidentIds.add(rId));
+    }
+  });
+
+  allResidentIds.forEach(rId => {
+    const row: ScheduleCell[] = [];
+    for (let y = 0; y < numYears; y++) {
+      const year = sYear + y;
+      const yearGrid = yearsGrid[year];
+      const yearRow = yearGrid?.[rId];
+      if (yearRow && yearRow.length === WEEKS_PER_YEAR) {
+        row.push(...yearRow);
+      } else {
+        row.push(...Array(WEEKS_PER_YEAR).fill(null).map(() => ({ assignment: null, locked: false })));
+      }
+    }
+    unifiedGrid[rId] = row;
+  });
+
+  return unifiedGrid;
+};
+
 
 
 export const getAugmentedResidents = (baseResidents: Resident[], maxYear: number, startYear?: number): Resident[] => {

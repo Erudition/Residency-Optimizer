@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { healer } from '../services/healerSolver';
 import { sliceIntoYears, getRequirementsViolationsCount } from '../services/scheduler';
 import { WeekByWeekGenerator } from '../services/generators/weekByWeek';
+import { getStandardCohortMap } from '../services/generators/utils';
 import { RequirementsEngine } from '../services/requirementsEngine';
 import { getMockProgramData } from './fixtures/scheduleFixture';
 import { Resident, ScheduleGrid, ScheduleHistory } from '../types';
@@ -61,13 +62,14 @@ describe('Healer Telemetry Synchronization', () => {
     let finalHealerPenalty = -1;
 
     // Run the healer and capture the heuristic state via telemetry callback
+    const cohortMap = getStandardCohortMap(residents, programData);
     const finalGrid = await healer.solve(
       residents,
       initialGrid,
       programData,
       0, // attemptIndex
       {}, // historicalSchedules
-      {}, // cohortAssignments
+      cohortMap, // cohortAssignments
       (step, maxSteps, penalty) => {
         if (initialHealerPenalty === -1) {
           initialHealerPenalty = penalty;

@@ -30,6 +30,7 @@ import {
   getAuditViolations,
   getRequirementsViolationsCount,
   sliceIntoYears,
+  mergeYearsIntoUnified,
   getUnifiedResidents,
   getAugmentedResidents
 } from './services/scheduler';
@@ -621,6 +622,7 @@ const AppContent: React.FC = () => {
               scheduleIds: c.scheduleIds,
               name: c.title,
               data,
+              unifiedData: mergeYearsIntoUnified(data, c.startYear, 3),
               createdAt: new Date(),
               startYear: c.startYear,
               lastSyncedAt: new Date(),
@@ -1468,16 +1470,23 @@ const AppContent: React.FC = () => {
       }
 
       // If it is a published schedule, save it to the backend!
+      let updatedScheduleIds = activeSched.kind === 'published' ? activeSched.scheduleIds : undefined;
       if (activeSched.kind === 'published' && isAuthenticated()) {
         try {
           toast.info('Saving healed schedule to server...');
-          await syncService.saveCandidateGrids(
+          const { scheduleIds, errors: saveErrors } = await syncService.saveCandidateGrids(
             activeSched.candidateId,
             activeSched.name,
             newData,
             residents,
           );
-          toast.success('Healed schedule saved to server!');
+          if (saveErrors && saveErrors.length > 0) {
+            console.error('Failed to save healed schedule to server:', saveErrors);
+            toast.error(`Failed to save healed schedule to server: ${saveErrors.join(', ')}`);
+          } else {
+            updatedScheduleIds = scheduleIds;
+            toast.success('Healed schedule saved to server!');
+          }
         } catch (e) {
           console.error('Failed to save healed schedule to server:', e);
           toast.error(`Failed to save healed schedule to server: ${e instanceof Error ? e.message : String(e)}`);
@@ -1486,7 +1495,12 @@ const AppContent: React.FC = () => {
 
       setSchedules(prev => prev.map(s => {
         if (s.id !== activeScheduleId) return s;
-        return { ...s, data: newData, unifiedData: newUnifiedData };
+        return { 
+          ...s, 
+          data: newData, 
+          unifiedData: newUnifiedData,
+          ...(s.kind === 'published' && updatedScheduleIds ? { scheduleIds: updatedScheduleIds } : {})
+        };
       }));
       toast.success('Healed schedule applied successfully!');
     }

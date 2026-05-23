@@ -35,11 +35,10 @@ export const healer: HealerSolver = {
         const existingRows = Object.values(existingSchedule);
         const totalWeeks = existingRows.length > 0 ? existingRows[0].length : 52;
         const rng = new SeededRNG(42 + attemptIndex);
-        const validCohortAssignments: Record<string, number> = { ...cohortAssignments };
-        if (Object.keys(validCohortAssignments).length === 0) {
-            const sorted = [...residents].sort((a, b) => (a.level !== b.level) ? a.level - b.level : a.name.localeCompare(b.name));
-            sorted.forEach((r, idx) => { validCohortAssignments[r.id] = idx % programData.cycleConfig.cohortCount; });
+        if (!cohortAssignments || Object.keys(cohortAssignments).length === 0) {
+            throw new Error("Healer requires a valid cohort map to correctly evaluate X+Y scheduling logic. Do not fall back to heuristics.");
         }
+        const validCohortAssignments: Record<string, number> = { ...cohortAssignments };
 
         const relevantReqTypesSet = new Set<AssignmentType>();
         [1, 2, 3].forEach(l => (buildLevelRequirements(programData, l) || []).forEach(r => relevantReqTypesSet.add(r.type)));
@@ -253,6 +252,10 @@ export const healer: HealerSolver = {
         let temp = 1.0;
         const coolRate = 0.99998;
 
+        let attempted2Way = 0, accepted2Way = 0;
+        let attempted3Way = 0, accepted3Way = 0;
+        let attemptedSingle = 0, acceptedSingle = 0;
+
         for (let step = 0; step < maxSteps; step++) {
             if (step % 2000 === 0) {
                 if (typeof (globalThis as any).checkInterrupt !== 'undefined' && (globalThis as any).checkInterrupt()) break;
@@ -267,8 +270,21 @@ export const healer: HealerSolver = {
                 console.log(`[Healer Step ${step}] Penalty: ${currentPenalty.toLocaleString()} | Staffing: ${staffV} | Jeopardy: ${jeopardyV} | Req: ${reqV} | Temp: ${temp.toFixed(4)}`);
             }
 
-            if (strategy === '2-way') {
+            let currentMove = strategy;
+            if (!currentMove) {
+                const rand = rng.next();
+                if (rand < 0.3) {
+                    currentMove = '2-way';
+                } else if (rand < 0.4) {
+                    currentMove = '3-way';
+                } else {
+                    currentMove = 'single';
+                }
+            }
+
+            if (currentMove === '2-way') {
                 // 2-Resident Swap Strategy (Staffing Neutral)
+                attempted2Way++;
                 const w = Math.floor(rng.next() * totalWeeks);
                 const candidates = residents.filter(res => isFlexible[res.id][w]);
                 if (candidates.length < 2) continue;
@@ -328,6 +344,7 @@ export const healer: HealerSolver = {
                               (oldRP1 + oldRP2 + oldCPs1.reduce((a, b) => a + b, 0) + oldCPs2.reduce((a, b) => a + b, 0));
 
                 if (delta <= 0 || Math.exp(-delta / (temp * 25000)) > rng.next()) {
+                    accepted2Way++;
                     currentPenalty += delta;
                     resReqPenaltyCache[r1.id] = newRP1;
                     resReqPenaltyCache[r2.id] = newRP2;
@@ -356,8 +373,9 @@ export const healer: HealerSolver = {
                         currentSchedule[r2.id][wk].assignment = a2;
                     });
                 }
-            } else if (strategy === '3-way') {
+            } else if (currentMove === '3-way') {
                 // 3-Resident Cyclic Swap Strategy (Staffing Neutral)
+                attempted3Way++;
                 const w = Math.floor(rng.next() * totalWeeks);
                 const candidates = residents.filter(res => isFlexible[res.id][w]);
                 if (candidates.length < 3) continue;
@@ -432,6 +450,7 @@ export const healer: HealerSolver = {
                               (oldRP1 + oldRP2 + oldRP3 + oldCPs1.reduce((a, b) => a + b, 0) + oldCPs2.reduce((a, b) => a + b, 0) + oldCPs3.reduce((a, b) => a + b, 0));
 
                 if (delta <= 0 || Math.exp(-delta / (temp * 25000)) > rng.next()) {
+                    accepted3Way++;
                     currentPenalty += delta;
                     resReqPenaltyCache[r1.id] = newRP1;
                     resReqPenaltyCache[r2.id] = newRP2;
@@ -469,6 +488,7 @@ export const healer: HealerSolver = {
                 }
             } else {
                 // Single resident block swap
+                attemptedSingle++;
                 const r = residents[Math.floor(rng.next() * residents.length)];
                 const weeks = flexibleWeeks[r.id];
                 if (weeks.length === 0) continue;
@@ -539,6 +559,7 @@ export const healer: HealerSolver = {
                     (oldWPs.reduce((a, b) => a + b, 0) + oldRP + oldCPs.reduce((a, b) => a + b, 0));
 
                 if (delta <= 0 || Math.exp(-delta / (temp * 25000)) > rng.next()) {
+                    acceptedSingle++;
                     currentPenalty += delta;
                     blockWeeks.forEach((w, i) => weekPenaltyCache[w] = newWPs[i]);
                     resReqPenaltyCache[r.id] = newRP;
@@ -572,6 +593,7 @@ export const healer: HealerSolver = {
         }
 
         console.log(`[Healer End] final penalty: ${bestPenalty} (annealed: ${currentPenalty}), weekly penalty: ${weekPenaltyCache.reduce((sum, p) => sum + p, 0)}, req penalty: ${Object.values(resReqPenaltyCache).reduce((sum, p) => sum + p, 0)}`);
+        console.log(`[Healer Stats] 2-Way: attempted=${attempted2Way}, accepted=${accepted2Way} | 3-Way: attempted=${attempted3Way}, accepted=${accepted3Way} | Single: attempted=${attemptedSingle}, accepted=${acceptedSingle}`);
         return bestSchedule;
     }
 }

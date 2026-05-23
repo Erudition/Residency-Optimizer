@@ -6,6 +6,7 @@ import {
   getRequirementsViolationsCount
 } from './scheduler';
 import { healSchedule } from './healer';
+import { getStandardCohortMap } from './generators/utils';
 import { deserializeProgramData } from './api/client';
 
 let cancelledAlgorithmIds = new Set<string>();
@@ -138,6 +139,7 @@ async function runHeal(
     return total;
   };
 
+  const cohortMap = getStandardCohortMap(residents, programData);
   let currentBest = JSON.parse(JSON.stringify(grid));
   currentBest = await healSchedule(
     currentBest, 
@@ -146,7 +148,7 @@ async function runHeal(
     startYear,
     undefined,
     historicalSchedules,
-    undefined,
+    cohortMap,
     (step, max, v, currentGrid) => {
       postMessage({ 
         type: 'heal-ping', 

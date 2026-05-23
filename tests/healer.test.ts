@@ -23,9 +23,9 @@ describe('Healer Solver Strategies', () => {
                 residents,
                 schedule,
                 programData,
-                0,
+                2026,
                 {},
-                {},
+                { 'res1': 0, 'res2': 1 },
                 undefined,
                 strategy
             );
