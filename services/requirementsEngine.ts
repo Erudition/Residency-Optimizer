@@ -419,7 +419,9 @@ export class RequirementsEngine {
           
           const hasCore = blockWeeks.some(w => {
             const a = safeGrid[r.id]?.[w]?.assignment;
-            return a && ['W-RED', 'W-BLUE', 'METRO', 'ICU'].includes(a);
+            if (!a) return false;
+            const rotMeta = programData.rotations.get(a);
+            return rotMeta && rotMeta.intensity >= 4;
           });
           
           if (hasCore) {

@@ -4,7 +4,7 @@ import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../..
 import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
 
-import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek } from './utils';
+import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
 import { isClinicRotation } from '../programDataUtils';
 
 
@@ -39,14 +39,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
         let validCohortAssignments: any = cohortAssignments || programData?.cycleConfig?.assignments || {};
         if (!validCohortAssignments || Object.keys(validCohortAssignments).length === 0) {
-            validCohortAssignments = {};
-            const sorted = [...residents].sort((a, b) => {
-                if (a.level !== b.level) return a.level - b.level;
-                return a.name.localeCompare(b.name);
-            });
-            sorted.forEach((r, idx) => {
-                validCohortAssignments[r.id] = idx % programData.cycleConfig.cohortCount;
-            });
+            validCohortAssignments = getStandardCohortMap(residents, programData);
         }
 
         // 1. PRE-CALCULATE HISTORICAL COUNTS & INITIALIZE TRACKERS
@@ -122,7 +115,6 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 if (isClinic) {
                     if (row[w].locked) continue;
                     if (!row[w].assignment) {
-                        const pgy = getPgyAtWeek(r, w);
                         const weeklyClinicType = 'CLINIC';
                         newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                         updateCounts(r.id, r.level, w, weeklyClinicType, 1);
@@ -132,22 +124,22 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
         });
 
         // 2. Sequential Temporal Placement
-        const criticalStaffingTypes = [
-            'ICU',
-            'W-RED',
-            'W-BLUE',
-            'NF',
-            'EM',
-            'METRO',
-            'Jr Hosp'
-        ];
+        // Dynamically determine which rotations have staffing floors from programData
+        // instead of using hardcoded codename lists.
+        const criticalStaffingTypes: string[] = [];
+        for (const [codename, config] of programData.rotations.entries()) {
+            if (isClinicRotation(programData, codename)) continue;
+            if ((config.minInterns && config.minInterns > 0) || (config.minSeniors && config.minSeniors > 0)) {
+                criticalStaffingTypes.push(codename);
+            }
+        }
 
         for (let w = 0; w < totalWeeks; w++) {
             // First: Fill mandatory floors for this specific week
             seededShuffle(criticalStaffingTypes).forEach(type => {
                 const meta = programData.rotations.get(type);
                 if (!meta) return;
-                const dur = meta.duration || 4;
+                const dur = meta.duration || programData.cycleConfig.X;
 
                 // Interns
                 while ((weekTypeCounts[w].interns[type] || 0) < meta.minInterns) {
@@ -199,7 +191,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                         const cI = weekTypeCounts[w].interns[req.type] || 0;
                         const cS = weekTypeCounts[w].seniors[req.type] || 0;
                         
-                        if ((currentPgy === 1 && cI < meta.maxInterns) || (currentPgy > 1 && cS < meta.maxSeniors)) {
+                        if ((currentPgy === 1 && cI < (meta?.maxInterns ?? 99)) || (currentPgy > 1 && cS < (meta?.maxSeniors ?? 99))) {
                             placeBlock(newSchedule, r.id, w, dur, req.type);
                             updateCounts(r.id, r.level, w, req.type, dur);
                             break;

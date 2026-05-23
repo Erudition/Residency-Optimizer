@@ -85,7 +85,6 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 const isClinic = Math.floor((w % Z) / Y) === cohort;
                 if (isClinic) {
                     if (row[w].locked) continue;
-                    const level = getPgy(r, w);
                     const clinicType = 'CLINIC';
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
 
@@ -95,25 +94,30 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
 
         // 2. Staffing Sweep FIRST (Foundation) - Mandatory Minima
-        const criticalTypes = [
-            'ICU',
-            'W-RED',
-            'W-BLUE',
-            'NF',
-            'EM',
-            'METRO',
-            'JH',
-            'CARDS',
-            'NEPH',
-            'ID'
-        ];
+        // Dynamically determine which rotations have staffing floors from programData
+        // instead of using hardcoded codename lists.
+        const staffingTypes: string[] = [];
+        for (const [codename, config] of programData.rotations.entries()) {
+            if (isClinicRotation(programData, codename)) continue;
+            if ((config.minInterns && config.minInterns > 0) || (config.minSeniors && config.minSeniors > 0)) {
+                staffingTypes.push(codename);
+            }
+        }
+        // Sort by total minimum staffing descending (hardest to fill first)
+        staffingTypes.sort((a, b) => {
+            const metaA = programData.rotations.get(a)!;
+            const metaB = programData.rotations.get(b)!;
+            const totalA = (metaA.minInterns || 0) + (metaA.minSeniors || 0);
+            const totalB = (metaB.minInterns || 0) + (metaB.minSeniors || 0);
+            return totalB - totalA;
+        });
 
         const historicalCounts = priorRequirementCounts || {};
 
-        criticalTypes.forEach(type => {
+        staffingTypes.forEach(type => {
             const meta = programData.rotations.get(type);
             if (!meta) return;
-            const dur = meta.duration || 4;
+            const dur = meta.duration || programData.cycleConfig.X;
 
             for (let w = 0; w < totalWeeks; w++) {
                 // Interns
