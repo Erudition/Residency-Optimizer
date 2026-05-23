@@ -1782,6 +1782,13 @@ const AppContent: React.FC = () => {
       );
       if (!confirmed) return;
       try {
+        // Pre-flight: verify the token is still valid before server calls
+        const user = await verifyToken();
+        if (!user) {
+          toast.error('Your session has expired. Please re-authenticate from the admin panel.');
+          setSyncStatus('local-only');
+          return;
+        }
         await syncService.deleteCandidate(sched.candidateId);
       } catch (err) {
         console.error('[Delete] Failed:', err);
