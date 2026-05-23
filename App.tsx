@@ -565,6 +565,69 @@ const AppContent: React.FC = () => {
     isAuthenticated() ? 'connected' : 'local-only'
   );
 
+  // ── Load Published Candidates on Mount ──
+  // Fetches existing backend candidates when authenticated so published
+  // schedules survive page refreshes (they are not saved to localStorage).
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const loaded = await syncService.loadAllCandidates();
+        if (cancelled || loaded.length === 0) return;
+
+        setSchedules(prev => {
+          // Build set of candidateIds already in state (avoid duplicates)
+          const existingIds = new Set(
+            prev
+              .filter(isPublished)
+              .map(s => (s as PublishedCandidate).candidateId)
+          );
+
+          const toAdd: PublishedCandidate[] = [];
+
+          for (const c of loaded) {
+            if (existingIds.has(c.candidateId)) continue;
+
+            // Convert flat assignment list → ScheduleGrid per year
+            type RawAssignment = { residentId: number; week: number; rotation: string; locked: boolean };
+            const data: ScheduleHistory = {};
+            for (const [yearStr, assignments] of Object.entries(c.yearData) as [string, RawAssignment[]][]) {
+              const year = parseInt(yearStr, 10);
+              const grid: ScheduleGrid = {};
+              for (const a of assignments) {
+                const key = a.residentId.toString();
+                if (!grid[key]) grid[key] = Array(TOTAL_WEEKS).fill(null) as ScheduleCell[];
+                grid[key][a.week - 1] = { assignment: a.rotation, locked: a.locked };
+              }
+              data[year] = grid;
+            }
+
+            toAdd.push({
+              kind: 'published',
+              id: `pub-${c.candidateId}`,
+              candidateId: c.candidateId,
+              scheduleIds: c.scheduleIds,
+              name: c.title,
+              data,
+              createdAt: new Date(),
+              startYear: c.startYear,
+              lastSyncedAt: new Date(),
+            });
+          }
+
+          if (toAdd.length === 0) return prev;
+          console.log(`[App] Loaded ${toAdd.length} published candidate(s) from backend`);
+          return [...prev, ...toAdd];
+        });
+      } catch (err) {
+        console.error('[App] Failed to load candidates from backend:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
