@@ -2,7 +2,8 @@ import { generateSchedule, sliceIntoYears } from './scheduler';
 import { 
   getRequirementViolations, 
   getWeeklyViolations, 
-  getAuditViolations 
+  getAuditViolations,
+  getRequirementsViolationsCount
 } from './scheduler';
 import { healSchedule } from './healer';
 import { deserializeProgramData } from './api/client';
@@ -134,6 +135,10 @@ async function runHeal(
       const sliced = sliceIntoYears(currentBest, startYear, 3);
       Object.assign(fullHistory, sliced);
       
+      const reqsDeficit = getRequirementsViolationsCount(residents, currentBest, fullHistory, startYear, true, programData);
+      
+      let constraints = 0;
+      let audit = 0;
       for (let offset = 0; offset < 3; offset++) {
         const y = startYear + offset;
         const yrResidents = residents.filter((r: any) => {
@@ -141,16 +146,18 @@ async function runHeal(
           return level >= 1 && level <= 3;
         });
         const yrGrid = sliced[y] || {};
-        const reqs = getRequirementViolations(yrResidents, yrGrid, programData, fullHistory, y).length;
-        const constraints = getWeeklyViolations(yrResidents, yrGrid, programData, y).length;
-        const audit = getAuditViolations(yrResidents, fullHistory, programData, y);
-        total += reqs + constraints + audit;
+        const constraintsList = getWeeklyViolations(yrResidents, yrGrid, programData, y);
+        constraints += constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
+        audit += getAuditViolations(yrResidents, fullHistory, programData, y);
       }
+      total = reqsDeficit + constraints + audit;
     } else {
-      const reqs = getRequirementViolations(residents, currentBest, programData, fullHistory, startYear).length;
-      const constraints = getWeeklyViolations(residents, currentBest, programData, startYear).length;
+      fullHistory[startYear] = currentBest;
+      const reqsDeficit = getRequirementsViolationsCount(residents, currentBest, fullHistory, startYear, false, programData);
+      const constraintsList = getWeeklyViolations(residents, currentBest, programData, startYear);
+      const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
       const audit = getAuditViolations(residents, fullHistory, programData, startYear);
-      total = reqs + constraints + audit;
+      total = reqsDeficit + constraints + audit;
     }
 
     postMessage({ 
