@@ -157,16 +157,27 @@ export const healer: HealerSolver = {
             constrainedTypes.forEach(type => {
                 p += getTypeStaffingPenalty(type, counts.interns[type] || 0, counts.seniors[type] || 0);
             });
-            let onJeopardy = 0;
+            let jeopardyPgy2 = 0;
+            let jeopardyPgy3 = 0;
+            let hasPgy2 = false;
+            let hasPgy3 = false;
             residents.forEach(r => {
                 const start = r.activeWeekStart ?? 0;
                 const end = r.activeWeekEnd ?? totalWeeks;
                 if (week >= start && week < end) {
+                    const lvl = getPgyAtWeek(r, week);
+                    if (lvl === 2) hasPgy2 = true;
+                    if (lvl === 3) hasPgy3 = true;
+                    
                     const a = sched[r.id]?.[week]?.assignment;
-                    if (a === 'JEOP') onJeopardy++;
+                    if (a && RequirementsEngine.isJeopardyBlock(a, programData)) {
+                        if (lvl === 2) jeopardyPgy2++;
+                        if (lvl === 3) jeopardyPgy3++;
+                    }
                 }
             });
-            if (onJeopardy < 1) p += W_JEOPARDY;
+            if (jeopardyPgy2 < 1 && hasPgy2) p += W_JEOPARDY;
+            if (jeopardyPgy3 < 1 && hasPgy3) p += W_JEOPARDY;
             return p;
         };
 
