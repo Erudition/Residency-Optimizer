@@ -19,7 +19,7 @@ import {
 import {
   TOTAL_WEEKS
 } from './constants';
-import { deriveActiveStartYear } from './services/programDataUtils';
+import { deriveActiveStartYear, isClinicRotation, hasTag } from './services/programDataUtils';
 const ACTIVE_START_YEAR = deriveActiveStartYear();
 import { 
   generateSchedule, 
@@ -96,7 +96,9 @@ import {
   CloudUpload,
   ArrowUpDown,
   ArrowLeftRight,
-  AlertTriangle
+  AlertTriangle,
+  Lock,
+  Unlock
 } from 'lucide-react';
 
 
@@ -538,6 +540,8 @@ const AppContent: React.FC = () => {
   const healWorkerRef = useRef<Worker | null>(null);
   const [selection, setSelection] = useState<SelectionRange | null>(null);
   const [swapSourceSelection, setSwapSourceSelection] = useState<SelectionRange | null>(null);
+  const [includeClinicInBatch, setIncludeClinicInBatch] = useState(false);
+  const [includeAbsencesInBatch, setIncludeAbsencesInBatch] = useState(false);
   
   const [isHealerPanelOpen, setIsHealerPanelOpen] = useState(false);
   const [isHealerRunning, setIsHealerRunning] = useState(false);
@@ -1862,10 +1866,27 @@ const AppContent: React.FC = () => {
     toast.success("Swapped assignments horizontally!");
   };
 
+  const isCellClinic = (assignment: string | null) => {
+    if (!assignment) return false;
+    return isClinicRotation(programData, assignment);
+  };
+
+  const isCellAbsence = (assignment: string | null) => {
+    if (!assignment) return false;
+    return assignment === 'VAC' || hasTag(programData, assignment, 'Vacation') || hasTag(programData, assignment, 'Absence');
+  };
+
+  const shouldIgnoreCell = (assignment: string | null) => {
+    if (isCellClinic(assignment) && !includeClinicInBatch) return true;
+    if (isCellAbsence(assignment) && !includeAbsencesInBatch) return true;
+    return false;
+  };
+
   const handleDoubleSelectionSwap = () => {
     if (!activeScheduleId || !swapSourceSelection || !selection || !swapSourceSelectionBounds || !selectionBounds) return;
 
     const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
 
     const getSelectionCells = (bounds: typeof selectionBounds) => {
       const cells: { residentId: string; weekIdx: number; }[] = [];
@@ -1873,6 +1894,10 @@ const AppContent: React.FC = () => {
         const resident = currentResidents[r];
         if (!resident) continue;
         for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+          const displayCell = displayGrid[resident.id]?.[c];
+          if (displayCell && shouldIgnoreCell(displayCell.assignment)) {
+            continue;
+          }
           cells.push({ residentId: resident.id, weekIdx: c });
         }
       }
@@ -1889,31 +1914,53 @@ const AppContent: React.FC = () => {
 
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
-      const yearGrid = s.data?.[activeYear] || {};
-      const yearCopy = { ...yearGrid };
+      
+      const updatedData = { ...(s.data || {}) };
+      const updatedUnified = s.unifiedData ? { ...s.unifiedData } : undefined;
 
-      const valuesA = cellsA.map(cell => {
-        const row = yearCopy[cell.residentId] || [];
-        return row[cell.weekIdx] ? { ...row[cell.weekIdx] } : { assignment: null, locked: false };
-      });
+      const getValueForCell = (cell: { residentId: string; weekIdx: number; }) => {
+        let targetYear = activeYear;
+        let weekIdxInYear = cell.weekIdx;
 
-      const valuesB = cellsB.map(cell => {
-        const row = yearCopy[cell.residentId] || [];
-        return row[cell.weekIdx] ? { ...row[cell.weekIdx] } : { assignment: null, locked: false };
-      });
+        if (viewMode === 'unified' && s.unifiedData) {
+          targetYear = startYear + Math.floor(cell.weekIdx / TOTAL_WEEKS);
+          weekIdxInYear = cell.weekIdx % TOTAL_WEEKS;
+        }
+
+        const row = s.data?.[targetYear]?.[cell.residentId] || [];
+        return row[weekIdxInYear] ? { ...row[weekIdxInYear] } : { assignment: null, locked: false };
+      };
+
+      const valuesA = cellsA.map(getValueForCell);
+      const valuesB = cellsB.map(getValueForCell);
 
       cellsA.forEach((cell, i) => {
-        if (!yearCopy[cell.residentId]) yearCopy[cell.residentId] = [];
-        const updatedRow = [...yearCopy[cell.residentId]];
+        let targetYear = activeYear;
+        let weekIdxInYear = cell.weekIdx;
+
+        if (viewMode === 'unified' && s.unifiedData) {
+          targetYear = startYear + Math.floor(cell.weekIdx / TOTAL_WEEKS);
+          weekIdxInYear = cell.weekIdx % TOTAL_WEEKS;
+        }
+
+        if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+          const uWeeks = [...(updatedUnified[cell.residentId] || [])];
+          uWeeks[cell.weekIdx] = { ...valuesB[i], locked: true };
+          updatedUnified[cell.residentId] = uWeeks;
+        }
+
+        if (!updatedData[targetYear]) updatedData[targetYear] = {};
+        if (!updatedData[targetYear][cell.residentId]) updatedData[targetYear][cell.residentId] = [];
+        const weeks = [...updatedData[targetYear][cell.residentId]];
         const val = { ...valuesB[i], locked: true };
-        updatedRow[cell.weekIdx] = val;
-        yearCopy[cell.residentId] = updatedRow;
+        weeks[weekIdxInYear] = val;
+        updatedData[targetYear][cell.residentId] = weeks;
 
         if (s.backendId && val.assignment) {
           syncService.upsertCell(
             s.backendId,
             parseInt(cell.residentId, 10),
-            cell.weekIdx + 1,
+            weekIdxInYear + 1,
             val.assignment,
             true
           );
@@ -1921,17 +1968,32 @@ const AppContent: React.FC = () => {
       });
 
       cellsB.forEach((cell, i) => {
-        if (!yearCopy[cell.residentId]) yearCopy[cell.residentId] = [];
-        const updatedRow = [...yearCopy[cell.residentId]];
+        let targetYear = activeYear;
+        let weekIdxInYear = cell.weekIdx;
+
+        if (viewMode === 'unified' && s.unifiedData) {
+          targetYear = startYear + Math.floor(cell.weekIdx / TOTAL_WEEKS);
+          weekIdxInYear = cell.weekIdx % TOTAL_WEEKS;
+        }
+
+        if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+          const uWeeks = [...(updatedUnified[cell.residentId] || [])];
+          uWeeks[cell.weekIdx] = { ...valuesA[i], locked: true };
+          updatedUnified[cell.residentId] = uWeeks;
+        }
+
+        if (!updatedData[targetYear]) updatedData[targetYear] = {};
+        if (!updatedData[targetYear][cell.residentId]) updatedData[targetYear][cell.residentId] = [];
+        const weeks = [...updatedData[targetYear][cell.residentId]];
         const val = { ...valuesA[i], locked: true };
-        updatedRow[cell.weekIdx] = val;
-        yearCopy[cell.residentId] = updatedRow;
+        weeks[weekIdxInYear] = val;
+        updatedData[targetYear][cell.residentId] = weeks;
 
         if (s.backendId && val.assignment) {
           syncService.upsertCell(
             s.backendId,
             parseInt(cell.residentId, 10),
-            cell.weekIdx + 1,
+            weekIdxInYear + 1,
             val.assignment,
             true
           );
@@ -1940,7 +2002,8 @@ const AppContent: React.FC = () => {
 
       return {
         ...s,
-        data: { ...s.data, [activeYear]: yearCopy }
+        data: updatedData,
+        unifiedData: updatedUnified
       };
     }));
 
@@ -1956,9 +2019,35 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (swapSourceSelection && selection && swapSourceSelectionBounds && selectionBounds) {
-      const countA = (swapSourceSelectionBounds.maxRow - swapSourceSelectionBounds.minRow + 1) * (swapSourceSelectionBounds.maxCol - swapSourceSelectionBounds.minCol + 1);
-      const countB = (selectionBounds.maxRow - selectionBounds.minRow + 1) * (selectionBounds.maxCol - selectionBounds.minCol + 1);
-      if (countA === countB) {
+      const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+      
+      let countA = 0;
+      for (let r = swapSourceSelectionBounds.minRow; r <= swapSourceSelectionBounds.maxRow; r++) {
+        const resident = currentResidents[r];
+        if (resident) {
+          for (let c = swapSourceSelectionBounds.minCol; c <= swapSourceSelectionBounds.maxCol; c++) {
+            const displayCell = displayGrid[resident.id]?.[c];
+            if (!displayCell || !shouldIgnoreCell(displayCell.assignment)) {
+              countA++;
+            }
+          }
+        }
+      }
+
+      let countB = 0;
+      for (let r = selectionBounds.minRow; r <= selectionBounds.maxRow; r++) {
+        const resident = currentResidents[r];
+        if (resident) {
+          for (let c = selectionBounds.minCol; c <= selectionBounds.maxCol; c++) {
+            const displayCell = displayGrid[resident.id]?.[c];
+            if (!displayCell || !shouldIgnoreCell(displayCell.assignment)) {
+              countB++;
+            }
+          }
+        }
+      }
+
+      if (countA === countB && countA > 0) {
         handleDoubleSelectionSwap();
       }
     }
@@ -1969,38 +2058,196 @@ const AppContent: React.FC = () => {
     const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
     const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
     const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
 
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
-      const yearGrid = s.data?.[activeYear] || {};
-      const yearCopy = { ...yearGrid };
+      
+      const updatedData = { ...(s.data || {}) };
+      const updatedUnified = s.unifiedData ? { ...s.unifiedData } : undefined;
 
       selectedResidentIds.forEach(rid => {
-        if (!yearCopy[rid]) yearCopy[rid] = [];
-        const currentRow = [...yearCopy[rid]];
-
         selectedWeeks.forEach(w => {
-          currentRow[w] = { assignment: newRotation as any, locked: true };
+          let targetYear = activeYear;
+          let weekIdxInYear = w;
+
+          if (viewMode === 'unified' && s.unifiedData) {
+            targetYear = startYear + Math.floor(w / TOTAL_WEEKS);
+            weekIdxInYear = w % TOTAL_WEEKS;
+          }
+
+          const displayCell = displayGrid[rid]?.[w];
+          if (displayCell && shouldIgnoreCell(displayCell.assignment)) {
+            return;
+          }
+
+          if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+            const uWeeks = [...(updatedUnified[rid] || [])];
+            uWeeks[w] = { assignment: newRotation as any, locked: true };
+            updatedUnified[rid] = uWeeks;
+          }
+
+          if (!updatedData[targetYear]) updatedData[targetYear] = {};
+          if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
+          const weeks = [...updatedData[targetYear][rid]];
+          weeks[weekIdxInYear] = { assignment: newRotation as any, locked: true };
+          updatedData[targetYear][rid] = weeks;
 
           if (s.backendId && newRotation) {
             syncService.upsertCell(
               s.backendId,
               parseInt(rid, 10),
-              w + 1,
+              weekIdxInYear + 1,
               newRotation,
               true
             );
           }
         });
-        yearCopy[rid] = currentRow;
       });
 
       return {
         ...s,
-        data: { ...s.data, [activeYear]: yearCopy }
+        data: updatedData,
+        unifiedData: updatedUnified
       };
     }));
     toast.success(`Set selection to ${newRotation || 'Unassigned'}`);
+  };
+
+  const handleBatchLockSelection = () => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      
+      const updatedData = { ...(s.data || {}) };
+      const updatedUnified = s.unifiedData ? { ...s.unifiedData } : undefined;
+
+      selectedResidentIds.forEach(rid => {
+        selectedWeeks.forEach(w => {
+          let targetYear = activeYear;
+          let weekIdxInYear = w;
+
+          if (viewMode === 'unified' && s.unifiedData) {
+            targetYear = startYear + Math.floor(w / TOTAL_WEEKS);
+            weekIdxInYear = w % TOTAL_WEEKS;
+          }
+
+          const existingGrid = s.data?.[targetYear] || {};
+          const currentCell = existingGrid[rid]?.[weekIdxInYear] || { assignment: null };
+
+          if (shouldIgnoreCell(currentCell.assignment)) {
+            return;
+          }
+
+          if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+            const uWeeks = [...(updatedUnified[rid] || [])];
+            if (uWeeks[w]) {
+              uWeeks[w] = { ...uWeeks[w], locked: true };
+            } else {
+              uWeeks[w] = { assignment: null, locked: true };
+            }
+            updatedUnified[rid] = uWeeks;
+          }
+
+          if (!updatedData[targetYear]) updatedData[targetYear] = {};
+          if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
+          const weeks = [...updatedData[targetYear][rid]];
+          const cell = weeks[weekIdxInYear] || { assignment: null };
+          weeks[weekIdxInYear] = { ...cell, locked: true };
+          updatedData[targetYear][rid] = weeks;
+
+          if (s.backendId && cell.assignment) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              weekIdxInYear + 1,
+              cell.assignment,
+              true
+            );
+          }
+        });
+      });
+
+      return {
+        ...s,
+        data: updatedData,
+        unifiedData: updatedUnified
+      };
+    }));
+    toast.success("Locked selection!");
+  };
+
+  const handleBatchUnlockSelection = () => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      
+      const updatedData = { ...(s.data || {}) };
+      const updatedUnified = s.unifiedData ? { ...s.unifiedData } : undefined;
+
+      selectedResidentIds.forEach(rid => {
+        selectedWeeks.forEach(w => {
+          let targetYear = activeYear;
+          let weekIdxInYear = w;
+
+          if (viewMode === 'unified' && s.unifiedData) {
+            targetYear = startYear + Math.floor(w / TOTAL_WEEKS);
+            weekIdxInYear = w % TOTAL_WEEKS;
+          }
+
+          const existingGrid = s.data?.[targetYear] || {};
+          const currentCell = existingGrid[rid]?.[weekIdxInYear] || { assignment: null };
+
+          if (shouldIgnoreCell(currentCell.assignment)) {
+            return;
+          }
+
+          if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
+            const uWeeks = [...(updatedUnified[rid] || [])];
+            if (uWeeks[w]) {
+              uWeeks[w] = { ...uWeeks[w], locked: false };
+            } else {
+              uWeeks[w] = { assignment: null, locked: false };
+            }
+            updatedUnified[rid] = uWeeks;
+          }
+
+          if (!updatedData[targetYear]) updatedData[targetYear] = {};
+          if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
+          const weeks = [...updatedData[targetYear][rid]];
+          const cell = weeks[weekIdxInYear] || { assignment: null };
+          weeks[weekIdxInYear] = { ...cell, locked: false };
+          updatedData[targetYear][rid] = weeks;
+
+          if (s.backendId && cell.assignment) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              weekIdxInYear + 1,
+              cell.assignment,
+              false
+            );
+          }
+        });
+      });
+
+      return {
+        ...s,
+        data: updatedData,
+        unifiedData: updatedUnified
+      };
+    }));
+    toast.success("Unlocked selection!");
   };
 
   const handleAssignCycle = (residentId: string, cycleIndex: number) => {
@@ -2745,30 +2992,66 @@ const AppContent: React.FC = () => {
                     </div>
 
                     {(selection || swapSourceSelection) && (() => {
-                      const countA = swapSourceSelectionBounds
-                        ? (swapSourceSelectionBounds.maxRow - swapSourceSelectionBounds.minRow + 1) * (swapSourceSelectionBounds.maxCol - swapSourceSelectionBounds.minCol + 1)
-                        : 0;
-                      const countB = selectionBounds
-                        ? (selectionBounds.maxRow - selectionBounds.minRow + 1) * (selectionBounds.maxCol - selectionBounds.minCol + 1)
-                        : 0;
+                      const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+
+                      const getNonIgnoredCount = (bounds: typeof selectionBounds) => {
+                        if (!bounds) return 0;
+                        let count = 0;
+                        for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+                          const resident = currentResidents[r];
+                          if (resident) {
+                            for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+                              const cell = displayGrid[resident.id]?.[c];
+                              if (!cell || !shouldIgnoreCell(cell.assignment)) {
+                                count++;
+                              }
+                            }
+                          }
+                        }
+                        return count;
+                      };
+
+                      const countA = getNonIgnoredCount(swapSourceSelectionBounds);
+                      const countB = getNonIgnoredCount(selectionBounds);
                       const isSwapMode = !!swapSourceSelection;
                       const activeBounds = selectionBounds || swapSourceSelectionBounds;
 
                       if (!activeBounds) return null;
+
+                      let hasLockedBlocks = false;
+                      if (activeBounds) {
+                        for (let r = activeBounds.minRow; r <= activeBounds.maxRow; r++) {
+                          const resident = currentResidents[r];
+                          if (resident) {
+                            for (let c = activeBounds.minCol; c <= activeBounds.maxCol; c++) {
+                              const cell = displayGrid[resident.id]?.[c];
+                              if (cell?.locked && !shouldIgnoreCell(cell.assignment)) {
+                                hasLockedBlocks = true;
+                                break;
+                              }
+                            }
+                          }
+                          if (hasLockedBlocks) break;
+                        }
+                      }
 
                       return (
                         <div className="w-80 border-l border-light-5 bg-white/95 backdrop-blur-md flex flex-col shrink-0 animate-slide-in shadow-2xl relative z-30">
                           <div className="p-4 border-b border-light-5 flex items-center justify-between">
                             <div className="flex flex-col">
                               <h3 className="text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2">
-                                <Sparkles size={16} className={isSwapMode ? "text-emerald-500 animate-pulse" : "text-blue"} />
-                                {isSwapMode ? "Block Swap Mode" : "Batch Actions"}
+                                <Sparkles size={16} className={isSwapMode && !hasLockedBlocks ? "text-emerald-500 animate-pulse" : "text-blue"} />
+                                {hasLockedBlocks ? "Locked Selection" : (isSwapMode ? "Block Swap Mode" : "Batch Actions")}
                               </h3>
                               <span className="text-[10px] font-bold text-muted mt-0.5">
-                                {isSwapMode ? (
-                                  <span>Step 2: Select destination block</span>
+                                {hasLockedBlocks ? (
+                                  "Selection contains locked blocks"
                                 ) : (
-                                  `Selected: ${activeBounds.maxRow - activeBounds.minRow + 1} residents × ${activeBounds.maxCol - activeBounds.minCol + 1} weeks (${countB} blocks)`
+                                  isSwapMode ? (
+                                    <span>Step 2: Select destination block</span>
+                                  ) : (
+                                    `Selected: ${activeBounds.maxRow - activeBounds.minRow + 1} residents × ${activeBounds.maxCol - activeBounds.minCol + 1} weeks (${countB} blocks)`
+                                  )
                                 )}
                               </span>
                             </div>
@@ -2783,105 +3066,168 @@ const AppContent: React.FC = () => {
                             </button>
                           </div>
 
-                          <div className="p-4 border-b border-light-5 bg-light-1/30">
-                            {isSwapMode ? (
-                              <div className="flex flex-col gap-3">
-                                <div className="flex flex-col gap-2">
-                                  <div className="flex items-center justify-between text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg">
-                                    <span>1st Selection:</span>
-                                    <span className="bg-emerald-500 text-white px-2 py-0.5 rounded font-black">{countA} blocks</span>
+                          {/* Batch Filters */}
+                          <div className="p-4 border-b border-light-5 bg-slate-50/50 flex flex-col gap-2 shrink-0">
+                            <h4 className="text-[10px] font-black text-muted uppercase tracking-wider mb-1">Batch Filters</h4>
+                            <div className="flex flex-col gap-2">
+                              <label className="flex items-center gap-2.5 cursor-pointer select-none text-[11px] font-bold text-slate-700 hover:text-slate-900 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={includeAbsencesInBatch}
+                                  onChange={(e) => setIncludeAbsencesInBatch(e.target.checked)}
+                                  className="w-3.5 h-3.5 rounded border-slate-300 text-blue focus:ring-blue/30 transition-all cursor-pointer accent-blue"
+                                />
+                                <span>Include absences (VAC)</span>
+                              </label>
+                              <label className="flex items-center gap-2.5 cursor-pointer select-none text-[11px] font-bold text-slate-700 hover:text-slate-900 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={includeClinicInBatch}
+                                  onChange={(e) => setIncludeClinicInBatch(e.target.checked)}
+                                  className="w-3.5 h-3.5 rounded border-slate-300 text-blue focus:ring-blue/30 transition-all cursor-pointer accent-blue"
+                                />
+                                <span>Include clinic blocks</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Lock / Unlock Selection Controls */}
+                          <div className="p-4 border-b border-light-5 bg-light-1/10 flex flex-col gap-2 shrink-0">
+                            {hasLockedBlocks ? (
+                              <Button
+                                variant="secondary"
+                                className="w-full flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/50 rounded-lg shadow-sm"
+                                onClick={handleBatchUnlockSelection}
+                              >
+                                <Unlock size={13} className="text-emerald-600" />
+                                Unlock Selection
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="secondary"
+                                className="w-full flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold text-slate-700 hover:text-slate-800 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg shadow-sm"
+                                onClick={handleBatchLockSelection}
+                              >
+                                <Lock size={13} className="text-slate-600" />
+                                Lock Selection
+                              </Button>
+                            )}
+                          </div>
+
+                          {hasLockedBlocks ? (
+                            /* Locked warning overlay prevents other actions */
+                            <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center text-center">
+                              <div className="p-6 bg-rose-50/20 border border-dashed border-rose-100 rounded-xl m-2 flex flex-col items-center">
+                                <Lock className="text-rose-500 mb-3 animate-pulse" size={32} />
+                                <h4 className="text-xs font-black text-primary uppercase tracking-wider mb-1">Editing Blocked</h4>
+                                <p className="text-[11px] text-muted leading-relaxed font-medium">
+                                  This selection contains locked assignments. Click the <strong>Unlock Selection</strong> button above to enable grid swaps, clear block, or rotation changes.
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="p-4 border-b border-light-5 bg-light-1/30">
+                                {isSwapMode ? (
+                                  <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex items-center justify-between text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg">
+                                        <span>1st Selection:</span>
+                                        <span className="bg-emerald-500 text-white px-2 py-0.5 rounded font-black">{countA} blocks</span>
+                                      </div>
+
+                                      {selectionBounds ? (
+                                        <div className={`flex items-center justify-between text-xs font-bold p-2.5 rounded-lg border ${countA === countB ? 'text-blue bg-blue/5 border-blue/10' : 'text-orange-800 bg-orange-50 border-orange-100'}`}>
+                                          <span>2nd Selection:</span>
+                                          <span className={`px-2 py-0.5 rounded font-black ${countA === countB ? 'bg-blue text-white' : 'bg-orange-500 text-white animate-pulse'}`}>{countB} blocks</span>
+                                        </div>
+                                      ) : (
+                                        <div className="text-[11px] text-muted font-bold border border-dashed border-light-4 p-3 rounded-lg text-center animate-pulse">
+                                          Click & drag another grid area to swap...
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {selectionBounds && countA !== countB && (
+                                      <div className="text-[10px] text-orange-700 bg-orange-50/50 p-2 rounded border border-orange-100 font-bold leading-relaxed flex items-start gap-1.5">
+                                        <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                                        <span>Size mismatch! Selections must contain the same number of blocks to swap.</span>
+                                      </div>
+                                    )}
+
+                                    <Button
+                                      variant="secondary"
+                                      className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-rose-50 transition-all border border-rose-100 rounded-lg bg-white mt-1"
+                                      onClick={() => {
+                                        setSwapSourceSelection(null);
+                                        setSelection(null);
+                                      }}
+                                    >
+                                      Cancel Swap Mode
+                                    </Button>
                                   </div>
-
-                                  {selectionBounds ? (
-                                    <div className={`flex items-center justify-between text-xs font-bold p-2.5 rounded-lg border ${countA === countB ? 'text-blue bg-blue/5 border-blue/10' : 'text-orange-800 bg-orange-50 border-orange-100'}`}>
-                                      <span>2nd Selection:</span>
-                                      <span className={`px-2 py-0.5 rounded font-black ${countA === countB ? 'bg-blue text-white' : 'bg-orange-500 text-white animate-pulse'}`}>{countB} blocks</span>
-                                    </div>
-                                  ) : (
-                                    <div className="text-[11px] text-muted font-bold border border-dashed border-light-4 p-3 rounded-lg text-center animate-pulse">
-                                      Click & drag another grid area to swap...
-                                    </div>
-                                  )}
-                                </div>
-
-                                {selectionBounds && countA !== countB && (
-                                  <div className="text-[10px] text-orange-700 bg-orange-50/50 p-2 rounded border border-orange-100 font-bold leading-relaxed flex items-start gap-1.5">
-                                    <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-                                    <span>Size mismatch! Selections must contain the same number of blocks to swap.</span>
+                                ) : (
+                                  <div className="flex flex-col gap-2">
+                                    <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-1">Grid Swap</h4>
+                                    <Button
+                                      variant="secondary"
+                                      className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-white hover:opacity-95 transition-all border border-blue bg-blue rounded-lg shadow-sm"
+                                      onClick={handleSwapInit}
+                                    >
+                                      <ArrowLeftRight size={13} />
+                                      Initialize Block Swap
+                                    </Button>
+                                    <p className="text-[10px] text-muted font-medium mt-1 leading-relaxed">
+                                      Click <strong>Initialize Block Swap</strong>, then select a second block of the <strong>same size</strong> (e.g. swap a vertical column with a horizontal row) to exchange their assignments.
+                                    </p>
                                   </div>
                                 )}
+                              </div>
 
-                                <Button
-                                  variant="secondary"
-                                  className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-rose-50 transition-all border border-rose-100 rounded-lg bg-white mt-1"
-                                  onClick={() => {
-                                    setSwapSourceSelection(null);
-                                    setSelection(null);
-                                  }}
-                                >
-                                  Cancel Swap Mode
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-2">
-                                <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-1">Grid Swap</h4>
-                                <Button
-                                  variant="secondary"
-                                  className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-white hover:opacity-95 transition-all border border-blue bg-blue rounded-lg shadow-sm"
-                                  onClick={handleSwapInit}
-                                >
-                                  <ArrowLeftRight size={13} />
-                                  Initialize Block Swap
-                                </Button>
-                                <p className="text-[10px] text-muted font-medium mt-1 leading-relaxed">
-                                  Click <strong>Initialize Block Swap</strong>, then select a second block of the <strong>same size</strong> (e.g. swap a vertical column with a horizontal row) to exchange their assignments.
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex-1 overflow-y-auto p-4 flex flex-col min-h-0">
-                            {isSwapMode ? (
-                              <div className="flex flex-col items-center justify-center text-center p-6 bg-light-1/20 border border-dashed border-light-4 rounded-xl flex-1">
-                                <ArrowLeftRight className="text-emerald-500 animate-pulse mb-3" size={32} />
-                                <h4 className="text-xs font-black text-primary uppercase tracking-wider mb-1">Ready for Destination</h4>
-                                <p className="text-[11px] text-muted leading-relaxed font-medium">
-                                  Select any area on the grid with exactly <strong>{countA} blocks</strong> to execute the swap automatically.
-                                </p>
-                              </div>
-                            ) : (
-                              <>
-                                <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-3">Set Rotation</h4>
-                                <div className="grid grid-cols-2 gap-2 mb-3 shrink-0">
-                                  <button
-                                    onClick={() => handleBatchSetRotation(null)}
-                                    className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-light-4 hover:border-red-400 hover:bg-rose-50 text-left transition-all text-xs font-bold"
-                                  >
-                                    <div className="w-4 h-4 rounded bg-light-3 border border-light-4 flex items-center justify-center text-[9px] font-black text-muted">∅</div>
-                                    <span className="truncate text-muted hover:text-red-600">Clear Block</span>
-                                  </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-1">
-                                  {Array.from(programData.rotations.entries()).map(([key, config]) => {
-                                    const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
-                                    return (
+                              <div className="flex-1 overflow-y-auto p-4 flex flex-col min-h-0">
+                                {isSwapMode ? (
+                                  <div className="flex flex-col items-center justify-center text-center p-6 bg-light-1/20 border border-dashed border-light-4 rounded-xl flex-1">
+                                    <ArrowLeftRight className="text-emerald-500 animate-pulse mb-3" size={32} />
+                                    <h4 className="text-xs font-black text-primary uppercase tracking-wider mb-1">Ready for Destination</h4>
+                                    <p className="text-[11px] text-muted leading-relaxed font-medium">
+                                      Select any area on the grid with exactly <strong>{countA} blocks</strong> to execute the swap automatically.
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-3">Set Rotation</h4>
+                                    <div className="grid grid-cols-2 gap-2 mb-3 shrink-0">
                                       <button
-                                        key={key}
-                                        onClick={() => handleBatchSetRotation(key as AssignmentType)}
-                                        className="flex items-center gap-2 p-2 rounded-lg border border-light-4 hover:border-blue/50 hover:bg-light-1 text-left transition-all text-xs font-bold"
+                                        onClick={() => handleBatchSetRotation(null)}
+                                        className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-light-4 hover:border-red-400 hover:bg-rose-50 text-left transition-all text-xs font-bold"
                                       >
-                                        <div
-                                          className="w-4 h-4 rounded shrink-0 border border-black/10"
-                                          style={{ backgroundColor: bgHex }}
-                                        />
-                                        <span className="truncate" title={config.label}>{key}</span>
+                                        <div className="w-4 h-4 rounded bg-light-3 border border-light-4 flex items-center justify-center text-[9px] font-black text-muted">∅</div>
+                                        <span className="truncate text-muted hover:text-red-600">Clear Block</span>
                                       </button>
-                                    );
-                                  })}
-                                </div>
-                              </>
-                            )}
-                          </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-1">
+                                      {Array.from(programData.rotations.entries()).map(([key, config]) => {
+                                        const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
+                                        return (
+                                          <button
+                                            key={key}
+                                            onClick={() => handleBatchSetRotation(key as AssignmentType)}
+                                            className="flex items-center gap-2 p-2 rounded-lg border border-light-4 hover:border-blue/50 hover:bg-light-1 text-left transition-all text-xs font-bold"
+                                          >
+                                            <div
+                                              className="w-4 h-4 rounded shrink-0 border border-black/10"
+                                              style={{ backgroundColor: bgHex }}
+                                            />
+                                            <span className="truncate" title={config.label}>{key}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </>
+                          )}
 
                           <div className="p-4 border-t border-light-5 shrink-0">
                             <Button
