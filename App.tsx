@@ -13,7 +13,8 @@ import {
   DraftCandidate,
   PublishedCandidate,
   isDraft,
-  isPublished
+  isPublished,
+  SelectionRange
 } from './types';
 import {
   TOTAL_WEEKS
@@ -92,7 +93,9 @@ import {
   Crown,
   CheckSquare,
   Square,
-  CloudUpload
+  CloudUpload,
+  ArrowUpDown,
+  ArrowLeftRight
 } from 'lucide-react';
 
 
@@ -466,7 +469,7 @@ const AppContent: React.FC = () => {
 
   const [activeYear, setActiveYear] = useState<number>(ACTIVE_START_YEAR);
   const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>(() =>
-    loadState('rsp_sort_order', 'pgy')
+    loadState('rsp_sort_order', 'cycle')
   );
   // Dynamic history detection
   const historicalYears = useMemo(() => 
@@ -532,6 +535,7 @@ const AppContent: React.FC = () => {
   const [bestHealCount, setBestHealCount] = useState<number | null>(null);
   const [bestHealGrid, setBestHealGrid] = useState<ScheduleGrid | null>(null);
   const healWorkerRef = useRef<Worker | null>(null);
+  const [selection, setSelection] = useState<SelectionRange | null>(null);
   
   const [isHealerPanelOpen, setIsHealerPanelOpen] = useState(false);
   const [isHealerRunning, setIsHealerRunning] = useState(false);
@@ -1741,6 +1745,145 @@ const AppContent: React.FC = () => {
     setModalOpen(false);
   };
 
+  const selectionBounds = useMemo(() => {
+    if (!selection) return null;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const startRowIdx = currentResidents.findIndex(r => r.id === selection.startResidentId);
+    const endRowIdx = currentResidents.findIndex(r => r.id === selection.endResidentId);
+    if (startRowIdx === -1 || endRowIdx === -1) return null;
+
+    return {
+      minRow: Math.min(startRowIdx, endRowIdx),
+      maxRow: Math.max(startRowIdx, endRowIdx),
+      minCol: Math.min(selection.startWeekIdx, selection.endWeekIdx),
+      maxCol: Math.max(selection.startWeekIdx, selection.endWeekIdx),
+    };
+  }, [selection, viewMode, displayResidents, activeResidents]);
+
+  const handleVerticalSwap = () => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const yearGrid = s.data?.[activeYear] || {};
+      const yearCopy = { ...yearGrid };
+
+      selectedWeeks.forEach(w => {
+        const currentAssignments = selectedResidentIds.map(rid => yearCopy[rid]?.[w]);
+        const reversedAssignments = [...currentAssignments].reverse();
+
+        selectedResidentIds.forEach((rid, index) => {
+          if (!yearCopy[rid]) yearCopy[rid] = [];
+          const updatedRow = [...yearCopy[rid]];
+          const newAssign = reversedAssignments[index];
+          updatedRow[w] = newAssign ? { ...newAssign, locked: true } : { assignment: null, locked: true };
+          yearCopy[rid] = updatedRow;
+
+          if (s.backendId && newAssign?.assignment) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              w + 1,
+              newAssign.assignment,
+              true
+            );
+          }
+        });
+      });
+
+      return {
+        ...s,
+        data: { ...s.data, [activeYear]: yearCopy }
+      };
+    }));
+    toast.success("Swapped assignments vertically!");
+  };
+
+  const handleHorizontalSwap = () => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const yearGrid = s.data?.[activeYear] || {};
+      const yearCopy = { ...yearGrid };
+
+      selectedResidentIds.forEach(rid => {
+        if (!yearCopy[rid]) yearCopy[rid] = [];
+        const currentRow = [...yearCopy[rid]];
+        
+        const selectedVals = selectedWeeks.map(w => currentRow[w]);
+        const reversedVals = [...selectedVals].reverse();
+
+        selectedWeeks.forEach((w, index) => {
+          const newVal = reversedVals[index];
+          currentRow[w] = newVal ? { ...newVal, locked: true } : { assignment: null, locked: true };
+          
+          if (s.backendId && newVal?.assignment) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              w + 1,
+              newVal.assignment,
+              true
+            );
+          }
+        });
+        yearCopy[rid] = currentRow;
+      });
+
+      return {
+        ...s,
+        data: { ...s.data, [activeYear]: yearCopy }
+      };
+    }));
+    toast.success("Swapped assignments horizontally!");
+  };
+
+  const handleBatchSetRotation = (newRotation: AssignmentType | null) => {
+    if (!activeScheduleId || !selection || !selectionBounds) return;
+    const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+    const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
+    const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
+
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const yearGrid = s.data?.[activeYear] || {};
+      const yearCopy = { ...yearGrid };
+
+      selectedResidentIds.forEach(rid => {
+        if (!yearCopy[rid]) yearCopy[rid] = [];
+        const currentRow = [...yearCopy[rid]];
+
+        selectedWeeks.forEach(w => {
+          currentRow[w] = { assignment: newRotation as any, locked: true };
+
+          if (s.backendId && newRotation) {
+            syncService.upsertCell(
+              s.backendId,
+              parseInt(rid, 10),
+              w + 1,
+              newRotation,
+              true
+            );
+          }
+        });
+        yearCopy[rid] = currentRow;
+      });
+
+      return {
+        ...s,
+        data: { ...s.data, [activeYear]: yearCopy }
+      };
+    }));
+    toast.success(`Set selection to ${newRotation || 'Unassigned'}`);
+  };
+
   const handleAssignCycle = (residentId: string, cycleIndex: number) => {
     if (!activeScheduleId) return;
     setSchedules(prev => prev.map(s => {
@@ -2377,19 +2520,19 @@ const AppContent: React.FC = () => {
                           <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
                             <Button
                               variant="ghost"
+                              onClick={() => setResidentSortOrder('cycle')}
+                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
+                            >
+                              <Users size={14} />
+                              Cycle
+                            </Button>
+                            <Button
+                              variant="ghost"
                               onClick={() => setResidentSortOrder('pgy')}
                               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
                             >
                               <LayoutGrid size={14} />
-                              PGY Level
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              onClick={() => setResidentSortOrder('cohort')}
-                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cohort' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                            >
-                              <Users size={14} />
-                              Cohort
+                              PGY
                             </Button>
                           </div>
                         </div>
@@ -2463,18 +2606,108 @@ const AppContent: React.FC = () => {
                       <span className="text-[10px] uppercase bg-violet text-white px-2 py-0.5 rounded font-black tracking-wider shrink-0">Unsaved Preview</span>
                     </div>
                   )}
-                  <ScheduleTable
-                    residents={displayResidents}
-                    schedule={displayGrid}
-                    startYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
-                    cohortAssignments={activeYearCohorts}
-                    isReadOnly={activeSchedule?.isHistory || isHealing}
+                  <div className="flex-1 flex overflow-hidden relative">
+                    <div className="flex-1 overflow-auto">
+                      <ScheduleTable
+                        residents={displayResidents}
+                        schedule={displayGrid}
+                        startYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
+                        cohortAssignments={activeYearCohorts}
+                        isReadOnly={activeSchedule?.isHistory || isHealing}
+                        selection={selection}
+                        onSelectionChange={setSelection}
 
-                    onCellClick={handleCellClick}
-                    onLockWeek={handleLockWeek}
-                    onLockResident={handleLockResident}
-                    onToggleLock={handleToggleLock}
-                  />
+                        onCellClick={handleCellClick}
+                        onLockWeek={handleLockWeek}
+                        onLockResident={handleLockResident}
+                        onToggleLock={handleToggleLock}
+                      />
+                    </div>
+
+                    {selection && selectionBounds && (
+                      <div className="w-80 border-l border-light-5 bg-white/95 backdrop-blur-md flex flex-col shrink-0 animate-slide-in shadow-2xl relative z-30">
+                        <div className="p-4 border-b border-light-5 flex items-center justify-between">
+                          <div className="flex flex-col">
+                            <h3 className="text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2">
+                              <Sparkles size={16} className="text-blue" />
+                              Batch Actions
+                            </h3>
+                            <span className="text-[10px] font-bold text-muted mt-0.5">
+                              Selected: {selectionBounds.maxRow - selectionBounds.minRow + 1} residents × {selectionBounds.maxCol - selectionBounds.minCol + 1} weeks ({ (selectionBounds.maxRow - selectionBounds.minRow + 1) * (selectionBounds.maxCol - selectionBounds.minCol + 1) } blocks)
+                            </span>
+                          </div>
+                          <button onClick={() => setSelection(null)} className="text-muted hover:text-black font-bold p-1">✕</button>
+                        </div>
+
+                        <div className="p-4 border-b border-light-5">
+                          <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-2">Swaps</h4>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="secondary"
+                              className="flex-1 flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-muted hover:text-primary transition-all border border-light-5 rounded-lg bg-light-1"
+                              onClick={handleVerticalSwap}
+                            >
+                              <ArrowUpDown size={13} />
+                              Swap Vertically
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              className="flex-1 flex items-center justify-center gap-2 py-2 text-[11px] font-bold text-muted hover:text-primary transition-all border border-light-5 rounded-lg bg-light-1"
+                              onClick={handleHorizontalSwap}
+                            >
+                              <ArrowLeftRight size={13} />
+                              Swap Horizontally
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted font-medium mt-2 leading-relaxed">
+                            <strong>Vertically:</strong> Swaps assignments among selected residents for each week.<br />
+                            <strong>Horizontally:</strong> Swaps assignments across selected weeks for each resident.
+                          </p>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 flex flex-col min-h-0">
+                          <h4 className="text-xs font-black text-muted uppercase tracking-wider mb-3">Set Rotation</h4>
+                          <div className="grid grid-cols-2 gap-2 mb-3 shrink-0">
+                            <button
+                              onClick={() => handleBatchSetRotation(null)}
+                              className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-light-4 hover:border-red-400 hover:bg-rose-50 text-left transition-all text-xs font-bold"
+                            >
+                              <div className="w-4 h-4 rounded bg-light-3 border border-light-4 flex items-center justify-center text-[9px] font-black text-muted">∅</div>
+                              <span className="truncate text-muted hover:text-red-600">Clear Block</span>
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-1">
+                            {Array.from(programData.rotations.entries()).map(([key, config]) => {
+                              const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => handleBatchSetRotation(key as AssignmentType)}
+                                  className="flex items-center gap-2 p-2 rounded-lg border border-light-4 hover:border-blue/50 hover:bg-light-1 text-left transition-all text-xs font-bold"
+                                >
+                                  <div
+                                    className="w-4 h-4 rounded shrink-0 border border-black/10"
+                                    style={{ backgroundColor: bgHex }}
+                                  />
+                                  <span className="truncate" title={config.label}>{key}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="p-4 border-t border-light-5 shrink-0">
+                          <Button
+                            variant="secondary"
+                            onClick={() => setSelection(null)}
+                            className="w-full py-2 text-xs font-bold text-muted hover:text-primary transition-all border border-light-5 rounded-lg bg-light-1 text-center"
+                          >
+                            Clear Selection
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               {activeTab === 'workload' && <div className="flex-1 overflow-y-auto"><Dashboard residents={activeResidents} stats={stats} /></div>}
