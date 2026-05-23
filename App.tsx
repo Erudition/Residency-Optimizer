@@ -842,8 +842,8 @@ const AppContent: React.FC = () => {
   }, [currentGrid, isHealing, bestHealGrid, viewMode, activeSchedule]);
 
   const displayResidents = useMemo(() => {
-    if (viewMode === 'unified' && activeSchedule?.unifiedData) {
-       const startYear = activeSchedule.startYear || ACTIVE_START_YEAR;
+    if (viewMode === 'unified') {
+       const startYear = activeSchedule?.startYear || activeYear || ACTIVE_START_YEAR;
        return getUnifiedResidents(residents, startYear, 3).map(r => ({
            ...r,
            clinicType: r.startYear === 2025 ? 'NIMA' : 'CCIM',
@@ -855,7 +855,7 @@ const AppContent: React.FC = () => {
        });
     }
     return activeResidents;
-  }, [viewMode, activeSchedule, residents, activeResidents, historicalCohortsByYear]);
+  }, [viewMode, activeSchedule, residents, activeResidents, historicalCohortsByYear, activeYear]);
 
   const { stats, violations, fairness } = useMemo(() => {
     if ((!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') && !isHistoricalYear) {
