@@ -9,7 +9,16 @@
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
-let _token: string | null = null
+const AUTH_TOKEN_KEY = 'rsp_auth_token'
+
+// Eagerly load token from localStorage so auth persists across page refreshes.
+let _token: string | null = (() => {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY)
+  } catch {
+    return null
+  }
+})()
 
 /**
  * On app load, check for a `?token=` URL parameter (set by the
@@ -21,6 +30,11 @@ export function extractTokenFromURL(): void {
   const urlToken = params.get('token')
   if (urlToken) {
     _token = urlToken
+    try {
+      localStorage.setItem(AUTH_TOKEN_KEY, urlToken)
+    } catch {
+      // localStorage unavailable (private browsing, etc.) — in-memory only
+    }
     // Strip the token from the URL without triggering a navigation
     params.delete('token')
     const cleanURL = params.toString()
@@ -36,6 +50,15 @@ export function extractTokenFromURL(): void {
  */
 export function setToken(token: string | null): void {
   _token = token
+  try {
+    if (token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, token)
+    } else {
+      localStorage.removeItem(AUTH_TOKEN_KEY)
+    }
+  } catch {
+    // localStorage unavailable — in-memory only
+  }
 }
 
 /**
@@ -77,17 +100,17 @@ export async function verifyToken(): Promise<{
       headers: { Authorization: `JWT ${_token}` },
     })
     if (!res.ok) {
-      _token = null
+      setToken(null)
       return null
     }
     const data = await res.json()
     if (!data.user) {
-      _token = null
+      setToken(null)
       return null
     }
     return data.user
   } catch {
-    _token = null
+    setToken(null)
     return null
   }
 }
