@@ -28,6 +28,7 @@ import {
   getRequirementViolations, 
   getWeeklyViolations, 
   getAuditViolations,
+  getRequirementsViolationsCount,
   sliceIntoYears,
   getUnifiedResidents,
   getAugmentedResidents
@@ -866,28 +867,58 @@ const AppContent: React.FC = () => {
     };
   }, [activeSchedule, activeResidents, activeYear, currentGrid, historySchedules, activeScheduleId, programData]);
 
-  const activeViolationsCount = useMemo(() => {
+  const currentCoverageViolationsCount = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
-
-    const fullHistory = { ...historySchedules, ...(activeSchedule.data || {}) };
     const useUnified = viewMode === 'unified' && !!activeSchedule.unifiedData;
     const startYear = useUnified ? (activeSchedule.startYear || ACTIVE_START_YEAR) : activeYear;
-    const totalYears = useUnified ? 3 : 1;
 
-    let total = 0;
-    for (let offset = 0; offset < totalYears; offset++) {
-      const y = startYear + offset;
-      const yrResidents = getResidentsForYear(y);
-      const yrGrid = useUnified ? (activeSchedule.data[y] || {}) : currentGrid;
-      const reqsList = getRequirementViolations(yrResidents, yrGrid, programData, fullHistory, y);
-      const reqs = reqsList.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0);
-      const constraintsList = getWeeklyViolations(yrResidents, yrGrid, programData, y);
-      const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
-      const audit = getAuditViolations(yrResidents, fullHistory, programData, y);
-      total += reqs + constraints + audit;
+    if (useUnified) {
+      let total = 0;
+      for (let offset = 0; offset < 3; offset++) {
+        const y = startYear + offset;
+        const yrResidents = getResidentsForYear(y);
+        const yrGrid = activeSchedule.data[y] || {};
+        const constraintsList = getWeeklyViolations(yrResidents, yrGrid, programData, y);
+        total += constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
+      }
+      return total;
+    } else {
+      return violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
     }
-    return total;
-  }, [activeSchedule, historySchedules, activeScheduleId, activeYear, viewMode, currentGrid, residents, programData]);
+  }, [activeSchedule, activeScheduleId, viewMode, activeYear, violations.constraints, residents, programData, getResidentsForYear]);
+
+  const currentRequirementsViolationsCount = useMemo(() => {
+    if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
+    const useUnified = viewMode === 'unified' && !!activeSchedule.unifiedData;
+    const startYear = useUnified ? (activeSchedule.startYear || ACTIVE_START_YEAR) : activeYear;
+    const fullHistory = { ...historySchedules, ...(activeSchedule.data || {}) };
+
+    const reqsDeficit = getRequirementsViolationsCount(
+      useUnified ? displayResidents : activeResidents,
+      useUnified ? displayGrid : currentGrid,
+      fullHistory,
+      startYear,
+      useUnified,
+      programData
+    );
+
+    let audit = 0;
+    if (useUnified) {
+      for (let offset = 0; offset < 3; offset++) {
+        const y = startYear + offset;
+        const yrResidents = getResidentsForYear(y);
+        audit += getAuditViolations(yrResidents, fullHistory, programData, y);
+      }
+    } else {
+      audit = getAuditViolations(activeResidents, fullHistory, programData, activeYear);
+    }
+
+    return reqsDeficit + audit;
+  }, [activeSchedule, activeScheduleId, viewMode, activeYear, historySchedules, displayResidents, activeResidents, displayGrid, currentGrid, residents, programData, getResidentsForYear]);
+
+  const activeViolationsCount = useMemo(() => {
+    return currentCoverageViolationsCount + currentRequirementsViolationsCount;
+  }, [currentCoverageViolationsCount, currentRequirementsViolationsCount]);
 
   const hasViolations = activeViolationsCount > 0;
 
@@ -2100,13 +2131,13 @@ const AppContent: React.FC = () => {
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label={viewMode === 'unified' ? "Schedule 3yr" : "Schedule"} icon={LayoutGrid} />
           {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
-          <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0)} />
+          <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={currentCoverageViolationsCount} />
           <NavButton id="totals" label={viewMode === 'unified' ? "Totals 3yr" : "Totals"} icon={Users} />
           <NavButton 
             id="requirements" 
             label={viewMode === 'unified' ? "Requirements 3yr" : "Requirements"} 
             icon={ClipboardList} 
-            badgeCount={violations.reqs.reduce((sum, v) => sum + Math.max(0, v.minWeeks - v.actual), 0)} 
+            badgeCount={currentRequirementsViolationsCount} 
           />
           {viewMode !== 'unified' && (
             <>
