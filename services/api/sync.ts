@@ -108,6 +108,8 @@ export class ScheduleSyncService {
   private rotationIdCache: Map<string, number> | null = null
   // Cache: academic year starting year → backend AY ID
   private ayIdCache: Map<number, number> | null = null
+  // Cache: current user's first tenant ID (undefined = not yet fetched)
+  private tenantIdCache: number | null | undefined = undefined
 
   constructor() {
     this.client = new GraphQLClient(GRAPHQL_ENDPOINT, {
@@ -294,6 +296,7 @@ export class ScheduleSyncService {
           title,
           startingYear: ayId,
           status: 'active',
+          ...(this.tenantIdCache != null ? { tenant: this.tenantIdCache } : {}),
         },
       })
 
@@ -729,6 +732,25 @@ export class ScheduleSyncService {
         AcademicYears: { docs: Array<{ id: number; startingYear: number }> }
       }>(ACADEMIC_YEAR_QUERY, { where: {} })
       this.ayIdCache = new Map(res.AcademicYears.docs.map((ay) => [ay.startingYear, ay.id]))
+    }
+
+    if (this.tenantIdCache === undefined) {
+      try {
+        const res = await fetch(`${API_URL}/api/users/me`, {
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          const firstTenant = data.user?.tenants?.[0]?.tenant
+          this.tenantIdCache = firstTenant != null
+            ? (typeof firstTenant === 'object' ? (firstTenant.id ?? null) : firstTenant)
+            : null
+        } else {
+          this.tenantIdCache = null
+        }
+      } catch {
+        this.tenantIdCache = null
+      }
     }
   }
 }
