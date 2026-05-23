@@ -87,6 +87,7 @@ interface GqlResident {
   joinDate?: string | null
   leaveDate?: string | null
   leaveReason?: string | null
+  isSynthetic?: boolean | null
 }
 
 interface GqlClinicCycle {
@@ -396,6 +397,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
       startYear: r.startYear.startingYear,
       avoidResidentIds: [], // Will be populated after all residents are created
       transferOutYear,
+      isSynthetic: r.isSynthetic ?? undefined,
     }
   })
 

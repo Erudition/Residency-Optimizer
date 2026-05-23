@@ -22,6 +22,7 @@ export interface Resident {
   transferInYear?: number; // First academic year they joined (if not PGY-1)
   transferOutYear?: number; // Last academic year they completed (if they left early)
   cohort?: number; // 4+1 cycle assignment (0-4)
+  isSynthetic?: boolean;
 }
 
 export const CODENAMES = {

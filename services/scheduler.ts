@@ -65,21 +65,44 @@ export const mergeYearsIntoUnified = (yearsGrid: Record<number, ScheduleGrid>, s
 
 export const getAugmentedResidents = (baseResidents: Resident[], maxYear: number, startYear?: number): Resident[] => {
   const derivedStartYear = startYear ?? deriveActiveStartYear();
-  const minYear = Math.min(...baseResidents.map(r => r.startYear), derivedStartYear);
-  const allResidents = [...baseResidents];
+  const realResidents = baseResidents.filter(r => !r.isSynthetic);
+  const minYear = realResidents.length > 0 ? Math.min(...realResidents.map(r => r.startYear), derivedStartYear) : derivedStartYear;
+  
+  const lastKnownYear = realResidents.length > 0 ? Math.max(...realResidents.map(r => r.startYear)) : derivedStartYear;
+  const size = realResidents.length > 0 ? realResidents.filter(r => r.startYear === lastKnownYear).length : 12;
+
+  const allResidents = [...realResidents];
+
   for (let currentY = minYear; currentY <= maxYear; currentY++) {
-    if (!allResidents.some(r => r.startYear === currentY)) {
-      const lastKnownYear = Math.max(...baseResidents.map(r => r.startYear));
-      const size = baseResidents.filter(r => r.startYear === lastKnownYear).length;
-      for (let i = 0; i < size; i++) {
-        allResidents.push({
-          id: `c${currentY}-${i+1}`,
-          name: `New ${currentY} Resident ${i+1}`,
-          startYear: currentY,
-          level: 1,
-          avoidResidentIds: [],
-        });
+    const hasReal = realResidents.some(r => r.startYear === currentY);
+    if (!hasReal) {
+      const existingSynthetic = baseResidents.filter(r => r.startYear === currentY && r.isSynthetic);
+      const cohort: Resident[] = [...existingSynthetic];
+      
+      const takenIndices = new Set<number>();
+      existingSynthetic.forEach(r => {
+        const match = r.name.match(/(\d+)$/);
+        if (match) {
+          takenIndices.add(parseInt(match[1], 10));
+        }
+      });
+
+      let nextIdx = 1;
+      while (cohort.length < size) {
+        if (!takenIndices.has(nextIdx)) {
+          cohort.push({
+            id: `c${currentY}-${nextIdx}`,
+            name: `New ${currentY} Resident ${nextIdx}`,
+            startYear: currentY,
+            level: 1,
+            avoidResidentIds: [],
+            isSynthetic: true,
+          });
+          takenIndices.add(nextIdx);
+        }
+        nextIdx++;
       }
+      allResidents.push(...cohort);
     }
   }
   return allResidents;

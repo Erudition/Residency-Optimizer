@@ -67,6 +67,7 @@ export const RESIDENTS_QUERY = /* GraphQL */ `
         joinDate
         leaveDate
         leaveReason
+        isSynthetic
       }
     }
   }
