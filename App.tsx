@@ -1469,7 +1469,7 @@ const AppContent: React.FC = () => {
     setPublishState('saving');
     try {
       const { candidateId } = await syncService.createCandidate(sched.startYear, candidateName.trim());
-      const scheduleIds = await syncService.saveCandidateGrids(
+      const { scheduleIds, errors: saveErrors } = await syncService.saveCandidateGrids(
         candidateId,
         candidateName.trim(),
         sched.data,
@@ -1493,7 +1493,14 @@ const AppContent: React.FC = () => {
 
       setSchedules(prev => prev.map(s => s.id === sched.id ? published : s));
       setActiveScheduleId(published.id);
-      toast.success(`Published "${candidateName}" to server`);
+
+      if (saveErrors.length > 0) {
+        toast.warning(
+          `Published "${candidateName}" but ${saveErrors.length} year(s) failed to save: ${saveErrors.join('; ')}`,
+        );
+      } else {
+        toast.success(`Published "${candidateName}" to server`);
+      }
     } catch (err) {
       console.error('[Publish] Failed:', err);
       toast.error(

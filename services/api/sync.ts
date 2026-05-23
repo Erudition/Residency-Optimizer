@@ -380,7 +380,7 @@ export class ScheduleSyncService {
     candidateId: number,
     title: string,
     data: Record<number, ScheduleGrid>,
-  ): Promise<Record<number, number>> {
+  ): Promise<{ scheduleIds: Record<number, number>; errors: string[] }> {
     if (!isAuthenticated()) throw new SyncError('Not authenticated', 'AUTH_REQUIRED')
     this.refreshAuthHeaders()
     const scheduleIds: Record<number, number> = {}
@@ -443,10 +443,10 @@ export class ScheduleSyncService {
           console.log(`[Sync] Saved year ${year} → schedule ${result.scheduleId} (${assignments.length} assignments)`)
         } else {
           const err = await response.json().catch(() => ({ error: 'unknown' }))
-          errors.push(`Year ${year}: ${err.error || response.statusText}`)
+          errors.push(`AY ${year}: ${err.error || response.statusText}`)
         }
       } catch (err) {
-        errors.push(`Year ${year}: ${err instanceof Error ? err.message : 'network error'}`)
+        errors.push(`AY ${year}: ${err instanceof Error ? err.message : 'network error'}`)
       }
     }
 
@@ -458,12 +458,7 @@ export class ScheduleSyncService {
       )
     }
 
-    // If some years failed, log but return partial success
-    if (errors.length > 0) {
-      console.warn(`[Sync] Partial save — ${errors.length} year(s) failed: ${errors.join('; ')}`)
-    }
-
-    return scheduleIds
+    return { scheduleIds, errors }
   }
 
   // ── Data Loading ──
