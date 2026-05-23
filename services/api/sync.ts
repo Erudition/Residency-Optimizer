@@ -18,10 +18,8 @@ import { GraphQLClient } from 'graphql-request'
 import type { ScheduleGrid } from '../../types'
 import { getAuthHeaders, getToken, isAuthenticated } from './auth'
 import {
-  CANDIDATES_QUERY,
+  CANDIDATES_WITH_SCHEDULES_QUERY,
   CREATE_CANDIDATE_MUTATION,
-  CANDIDATE_SCHEDULES_QUERY,
-  SCHEDULE_ASSIGNMENTS_QUERY,
   UPDATE_SCHEDULE_MUTATION,
   DELETE_SCHEDULE_MUTATION,
   DELETE_CANDIDATE_MUTATION,
@@ -514,8 +512,8 @@ export class ScheduleSyncService {
   // ── Data Loading ──
 
   /**
-   * Load all active candidates from the backend.
-   * Returns data needed to reconstruct CandidateSchedule objects.
+   * Load all active candidates from the backend using a single nested GraphQL
+   * query. Fetches candidates → schedules → assignments in one round trip.
    */
   async loadAllCandidates(): Promise<
     Array<{
@@ -545,77 +543,64 @@ export class ScheduleSyncService {
             title: string
             status: string
             startingYear: { id: number; startingYear: number }
+            schedules: {
+              docs: Array<{
+                id: number
+                title: string
+                academicYear: { id: number; startingYear: number }
+                scheduleAssignments: {
+                  docs: Array<{
+                    resident: { id: number }
+                    week: number
+                    rotation: { codename: string }
+                    locked: boolean
+                  }>
+                }
+              }>
+            }
           }>
         }
-      }>(CANDIDATES_QUERY, {
+      }>(CANDIDATES_WITH_SCHEDULES_QUERY, {
         where: { status: { equals: 'active' } },
       })
 
       const candidates = res.Candidates.docs
       if (candidates.length === 0) return []
 
-      const results = await Promise.all(
-        candidates.map(async (candidate) => {
-          const schedRes = await this.client.request<{
-            Schedules: {
-              docs: Array<{
-                id: number
-                title: string
-                academicYear: { id: number; startingYear: number }
-              }>
-            }
-          }>(CANDIDATE_SCHEDULES_QUERY, {
-            where: { candidate: { equals: candidate.id } },
-          })
+      const results = candidates.map((candidate) => {
+        const scheduleIds: Record<number, number> = {}
+        const yearData: Record<
+          number,
+          Array<{
+            residentId: number
+            week: number
+            rotation: string
+            locked: boolean
+          }>
+        > = {}
 
-          const scheduleIds: Record<number, number> = {}
-          const yearData: Record<
-            number,
-            Array<{
-              residentId: number
-              week: number
-              rotation: string
-              locked: boolean
-            }>
-          > = {}
+        for (const sched of candidate.schedules.docs) {
+          const year = sched.academicYear.startingYear
+          scheduleIds[year] = sched.id
 
-          for (const sched of schedRes.Schedules.docs) {
-            const year = sched.academicYear.startingYear
-            scheduleIds[year] = sched.id
+          yearData[year] = sched.scheduleAssignments.docs.map((a) => ({
+            residentId: a.resident.id,
+            week: a.week,
+            rotation: a.rotation.codename,
+            locked: a.locked,
+          }))
+        }
 
-            const assignRes = await this.client.request<{
-              ScheduleAssignments: {
-                docs: Array<{
-                  id: number
-                  resident: { id: number }
-                  week: number
-                  rotation: { codename: string }
-                  locked: boolean
-                }>
-              }
-            }>(SCHEDULE_ASSIGNMENTS_QUERY, {
-              where: { schedule: { equals: sched.id } },
-            })
+        return {
+          candidateId: candidate.id,
+          title: candidate.title,
+          startYear: candidate.startingYear.startingYear,
+          scheduleIds,
+          yearData,
+        }
+      })
 
-            yearData[year] = assignRes.ScheduleAssignments.docs.map((a) => ({
-              residentId: a.resident.id,
-              week: a.week,
-              rotation: a.rotation.codename,
-              locked: a.locked,
-            }))
-          }
-
-          return {
-            candidateId: candidate.id,
-            title: candidate.title,
-            startYear: candidate.startingYear.startingYear,
-            scheduleIds,
-            yearData,
-          }
-        }),
-      )
-
-      console.log(`[Sync] Loaded ${results.length} candidates from backend`)
+      console.log(`[Sync] Loaded ${results.length} candidates from backend (1 query)`)
       return results
     } catch (err) {
       throw new SyncError(
@@ -626,76 +611,6 @@ export class ScheduleSyncService {
     }
   }
 
-  /**
-   * Load all schedules and their assignments for a single candidate.
-   */
-  async loadCandidateSchedules(candidateId: number): Promise<
-    Array<{
-      backendId: number
-      title: string
-      academicYear: number
-      assignments: Array<{
-        residentId: number
-        week: number
-        rotation: string
-        locked: boolean
-      }>
-    }>
-  > {
-    try {
-      this.refreshAuthHeaders()
-      const schedRes = await this.client.request<{
-        Schedules: {
-          docs: Array<{
-            id: number
-            title: string
-            academicYear: { id: number; startingYear: number }
-            candidate: { id: number }
-          }>
-        }
-      }>(CANDIDATE_SCHEDULES_QUERY, {
-        where: { candidate: { equals: candidateId } },
-      })
-
-      const results = await Promise.all(
-        schedRes.Schedules.docs.map(async (sched) => {
-          const assignRes = await this.client.request<{
-            ScheduleAssignments: {
-              docs: Array<{
-                id: number
-                resident: { id: number }
-                week: number
-                rotation: { codename: string }
-                locked: boolean
-              }>
-            }
-          }>(SCHEDULE_ASSIGNMENTS_QUERY, {
-            where: { schedule: { equals: sched.id } },
-          })
-
-          return {
-            backendId: sched.id,
-            title: sched.title,
-            academicYear: sched.academicYear.startingYear,
-            assignments: assignRes.ScheduleAssignments.docs.map((a) => ({
-              residentId: a.resident.id,
-              week: a.week,
-              rotation: a.rotation.codename,
-              locked: a.locked,
-            })),
-          }
-        }),
-      )
-
-      return results
-    } catch (err) {
-      throw new SyncError(
-        `Failed to load schedules for candidate ${candidateId}: ${err instanceof Error ? err.message : 'unknown error'}`,
-        'LOAD_FAILED',
-        err,
-      )
-    }
-  }
 
   // ── Private helpers ──
 

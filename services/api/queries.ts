@@ -173,6 +173,7 @@ export const TAGS_QUERY = /* GraphQL */ `
   }
 `
 
+/** @deprecated Use CANDIDATES_WITH_SCHEDULES_QUERY for loading candidates. Kept for FIND_ASSIGNMENT_QUERY usage. */
 export const SCHEDULE_ASSIGNMENTS_QUERY = /* GraphQL */ `
   query ScheduleAssignments($where: ScheduleAssignment_where) {
     ScheduleAssignments(where: $where, limit: 10000) {
@@ -227,6 +228,7 @@ export const UPDATE_ACADEMIC_YEAR_MUTATION = /* GraphQL */ `
 
 // ── Sync-related queries and mutations ──
 
+/** @deprecated Use CANDIDATES_WITH_SCHEDULES_QUERY instead. Kept for backward compat. */
 export const CANDIDATES_QUERY = /* GraphQL */ `
   query Candidates($where: Candidate_where) {
     Candidates(where: $where, limit: 20) {
@@ -243,6 +245,53 @@ export const CANDIDATES_QUERY = /* GraphQL */ `
   }
 `
 
+/**
+ * Single nested query that fetches candidates with all their schedules and
+ * assignments in one round trip. Replaces the N+1 pattern of
+ * CANDIDATES_QUERY → CANDIDATE_SCHEDULES_QUERY → SCHEDULE_ASSIGNMENTS_QUERY.
+ *
+ * Uses Payload's join field GraphQL args to set appropriate limits:
+ * - schedules: limit 10 (max 3 per candidate, generous buffer)
+ * - scheduleAssignments: limit 3000 (covers ~15 residents × 52 weeks)
+ */
+export const CANDIDATES_WITH_SCHEDULES_QUERY = /* GraphQL */ `
+  query CandidatesWithSchedules($where: Candidate_where) {
+    Candidates(where: $where, limit: 20) {
+      docs {
+        id
+        title
+        status
+        startingYear {
+          id
+          startingYear
+        }
+        schedules(limit: 10) {
+          docs {
+            id
+            title
+            academicYear {
+              id
+              startingYear
+            }
+            scheduleAssignments(limit: 3000) {
+              docs {
+                resident {
+                  id
+                }
+                week
+                rotation {
+                  codename
+                }
+                locked
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`
+
 export const CREATE_CANDIDATE_MUTATION = /* GraphQL */ `
   mutation CreateCandidate($data: mutationCandidateInput!) {
     createCandidate(data: $data) {
@@ -252,6 +301,7 @@ export const CREATE_CANDIDATE_MUTATION = /* GraphQL */ `
   }
 `
 
+/** @deprecated Use CANDIDATES_WITH_SCHEDULES_QUERY instead. */
 export const CANDIDATE_SCHEDULES_QUERY = /* GraphQL */ `
   query CandidateSchedules($where: Schedule_where) {
     Schedules(where: $where, limit: 20) {
