@@ -3,7 +3,7 @@ import { RequirementsEngine } from './requirementsEngine';
 import { ProgramData } from './api/client';
 import { ACTIVE_START_YEAR } from '../constants';
 import { getAllCodenames, isClinicRotation } from './programDataUtils';
-import { getCohortAtWeek } from './generators/utils';
+import { getCohortAtWeek, getStandardCohortMap } from './generators/utils';
 import { buildLevelRequirements } from './generators/reqBuilder';
 
 class SeededRNG {
@@ -24,14 +24,14 @@ export interface HealerSolver {
         attemptIndex?: number,
         historicalSchedules?: ScheduleHistory,
         cohortAssignments?: Record<string, number>,
-        onProgress?: (step: number, maxSteps: number, currentPenalty: number) => void,
+        onProgress?: (step: number, maxSteps: number, currentPenalty: number, currentSchedule?: ScheduleGrid) => void,
         strategy?: string
     ) => Promise<ScheduleGrid>;
 }
 
 export const healer: HealerSolver = {
     name: "Annealing Healer Solver",
-    solve: async (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>, onProgress?: (step: number, maxSteps: number, currentPenalty: number) => void, strategy?: string): Promise<ScheduleGrid> => {
+    solve: async (residents: Resident[], existingSchedule: ScheduleGrid, programData: ProgramData, attemptIndex: number = 0, historicalSchedules?: ScheduleHistory, cohortAssignments?: Record<string, number>, onProgress?: (step: number, maxSteps: number, currentPenalty: number, currentSchedule?: ScheduleGrid) => void, strategy?: string): Promise<ScheduleGrid> => {
         const existingRows = Object.values(existingSchedule);
         const totalWeeks = existingRows.length > 0 ? existingRows[0].length : 52;
         const rng = new SeededRNG(42 + attemptIndex);
@@ -86,20 +86,18 @@ export const healer: HealerSolver = {
         };
 
         const getTypeStaffingPenalty = (type: AssignmentType, interns: number, seniors: number): number => {
-            const m = programData.rotations.get(type); if (!m) return 0; let c = 0;
-            if (interns < m.minInterns) c += (m.minInterns - interns) * W_STAFFING;
-            if (interns > m.maxInterns) c += (interns - m.maxInterns) * W_STAFFING;
-            if (seniors < m.minSeniors) c += (m.minSeniors - seniors) * W_STAFFING;
-            if (seniors > m.maxSeniors) c += (seniors - m.maxSeniors) * W_STAFFING;
-            return c;
+            const defs = RequirementsEngine.getStaffingDeficits(type, interns, seniors, programData);
+            if (!defs) return 0;
+            return (defs.internMin + defs.internMax + defs.seniorMin + defs.seniorMax) * W_STAFFING;
         };
 
         let currentSchedule: ScheduleGrid = JSON.parse(JSON.stringify(existingSchedule));
         let bestSchedule = JSON.parse(JSON.stringify(existingSchedule));
 
-        const getResPenalty = (resId: string, counts: Record<number, Record<string, number>>): number => {
-            const r = residentMap.get(resId); if (!r) return 0;
+        const getResPenalty = (resId: string, counts: Record<number, Record<string, number>>): { p: number, raw: number } => {
+            const r = residentMap.get(resId); if (!r) return { p: 0, raw: 0 };
             let totalPen = 0;
+            let raw = 0;
             const isUnified = Math.floor(totalWeeks / 52) === 3;
             
             const violations = RequirementsEngine.getResidentViolations(
@@ -112,10 +110,24 @@ export const healer: HealerSolver = {
             );
 
             violations.forEach(v => {
-                totalPen += (v.minWeeks - v.actual) * W_REQUIREMENT;
+                const diff = Math.max(0, v.minWeeks - v.actual);
+                totalPen += diff * W_REQUIREMENT;
+                raw += diff;
             });
 
-            return totalPen;
+            const auditViolations = RequirementsEngine.getResidentAuditViolations(
+                r,
+                currentSchedule,
+                historicalSchedules || {},
+                gridStartYear,
+                programData,
+                isUnified
+            );
+            
+            totalPen += auditViolations * W_REQUIREMENT;
+            raw += auditViolations;
+
+            return { p: totalPen, raw };
         };
 
         const getCycleCont = (resId: string, sched: ScheduleGrid, cycleIdx: number): number => {
@@ -144,33 +156,35 @@ export const healer: HealerSolver = {
             return penalty;
         };
 
-        const getWeekPenalty = (week: number, counts: { interns: Record<string, number>; seniors: Record<string, number> }, sched: ScheduleGrid): number => {
+        const getWeekPenalty = (week: number, counts: { interns: Record<string, number>; seniors: Record<string, number> }, sched: ScheduleGrid): { p: number, raw: number } => {
             let p = 0;
-            constrainedTypes.forEach(type => {
-                p += getTypeStaffingPenalty(type, counts.interns[type] || 0, counts.seniors[type] || 0);
-            });
-            let jeopardyPgy2 = 0;
-            let jeopardyPgy3 = 0;
-            let hasPgy2 = false;
-            let hasPgy3 = false;
-            residents.forEach(r => {
+            let raw = 0;
+
+            const activeResidentsAtWeek = residents.filter(r => {
                 const start = r.activeWeekStart ?? 0;
                 const end = r.activeWeekEnd ?? totalWeeks;
-                if (week >= start && week < end) {
-                    const lvl = getPgyAtWeek(r, week);
-                    if (lvl === 2) hasPgy2 = true;
-                    if (lvl === 3) hasPgy3 = true;
-                    
-                    const a = sched[r.id]?.[week]?.assignment;
-                    if (a && RequirementsEngine.isJeopardyBlock(a, programData)) {
-                        if (lvl === 2) jeopardyPgy2++;
-                        if (lvl === 3) jeopardyPgy3++;
-                    }
+                return week >= start && week < end;
+            });
+
+            const globalWeek = week;
+
+            const weeklyViolations = RequirementsEngine.getViolationsForWeek(
+                week, globalWeek, totalWeeks, sched, residents, activeResidentsAtWeek, programData, gridStartYear, gridStartYear, validCohortAssignments as any, counts
+            );
+
+            weeklyViolations.forEach(v => {
+                raw += v.instances || 1;
+                if (v.issue.includes("Jeopardy Gap")) {
+                    p += W_JEOPARDY * (v.instances || 1);
+                } else if (v.type === 'CCIM' && v.issue.includes('clinic')) {
+                    // Empty clinic weeks are logged under staffing
+                    p += W_STAFFING * (v.instances || 1);
+                } else {
+                    p += W_STAFFING * (v.instances || 1);
                 }
             });
-            if (jeopardyPgy2 < 1 && hasPgy2) p += W_JEOPARDY;
-            if (jeopardyPgy3 < 1 && hasPgy3) p += W_JEOPARDY;
-            return p;
+
+            return { p, raw };
         };
 
         // Cache setup
@@ -208,14 +222,21 @@ export const healer: HealerSolver = {
 
         let currentPenalty = 0;
 
+        const getRawTotals = (): number => {
+            let r = 0;
+            for (let w = 0; w < totalWeeks; w++) r += getWeekPenalty(w, weekCounts[w], currentSchedule).raw;
+            residents.forEach(res => r += getResPenalty(res.id, resCounts[res.id]).raw);
+            return r;
+        };
+
         for (let w = 0; w < totalWeeks; w++) {
-            const p = getWeekPenalty(w, weekCounts[w], currentSchedule);
+            const { p } = getWeekPenalty(w, weekCounts[w], currentSchedule);
             weekPenaltyCache[w] = p;
             currentPenalty += p;
         }
 
         residents.forEach(r => {
-            const reqP = getResPenalty(r.id, resCounts[r.id]);
+            const { p: reqP } = getResPenalty(r.id, resCounts[r.id]);
             resReqPenaltyCache[r.id] = reqP;
             currentPenalty += reqP;
             for (let c = 0; c < TOTAL_CYCLES; c++) {
@@ -235,9 +256,7 @@ export const healer: HealerSolver = {
         for (let step = 0; step < maxSteps; step++) {
             if (step % 2000 === 0) {
                 if (typeof (globalThis as any).checkInterrupt !== 'undefined' && (globalThis as any).checkInterrupt()) break;
-                const reqV = Object.values(resReqPenaltyCache).reduce((sum, p) => sum + Math.floor(p / W_REQUIREMENT), 0);
-                const staffV = weekPenaltyCache.reduce((sum, p) => sum + Math.floor(p / W_STAFFING), 0);
-                if (onProgress) onProgress(step, maxSteps, reqV + staffV);
+                if (onProgress) onProgress(step, maxSteps, getRawTotals(), currentSchedule);
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
 
@@ -300,8 +319,8 @@ export const healer: HealerSolver = {
                     currentSchedule[r2.id][wk].assignment = a1;
                 });
 
-                const newRP1 = getResPenalty(r1.id, resCounts[r1.id]);
-                const newRP2 = getResPenalty(r2.id, resCounts[r2.id]);
+                const newRP1 = getResPenalty(r1.id, resCounts[r1.id]).p;
+                const newRP2 = getResPenalty(r2.id, resCounts[r2.id]).p;
                 const newCPs1 = affectedCycles.map(c => getCycleCont(r1.id, currentSchedule, c));
                 const newCPs2 = affectedCycles.map(c => getCycleCont(r2.id, currentSchedule, c));
 
@@ -402,9 +421,9 @@ export const healer: HealerSolver = {
                     currentSchedule[r3.id][wk].assignment = a1;
                 });
 
-                const newRP1 = getResPenalty(r1.id, resCounts[r1.id]);
-                const newRP2 = getResPenalty(r2.id, resCounts[r2.id]);
-                const newRP3 = getResPenalty(r3.id, resCounts[r3.id]);
+                const newRP1 = getResPenalty(r1.id, resCounts[r1.id]).p;
+                const newRP2 = getResPenalty(r2.id, resCounts[r2.id]).p;
+                const newRP3 = getResPenalty(r3.id, resCounts[r3.id]).p;
                 const newCPs1 = affectedCycles.map(c => getCycleCont(r1.id, currentSchedule, c));
                 const newCPs2 = affectedCycles.map(c => getCycleCont(r2.id, currentSchedule, c));
                 const newCPs3 = affectedCycles.map(c => getCycleCont(r3.id, currentSchedule, c));
@@ -512,8 +531,8 @@ export const healer: HealerSolver = {
                     currentSchedule[r.id][w].assignment = a2;
                 });
 
-                const newWPs = blockWeeks.map(w => getWeekPenalty(w, weekCounts[w], currentSchedule));
-                const newRP = getResPenalty(r.id, resCounts[r.id]);
+                const newWPs = blockWeeks.map(w => getWeekPenalty(w, weekCounts[w], currentSchedule).p);
+                const { p: newRP } = getResPenalty(r.id, resCounts[r.id]);
                 const newCPs = affectedCycles.map(c => getCycleCont(r.id, currentSchedule, c));
 
                 const delta = (newWPs.reduce((a, b) => a + b, 0) + newRP + newCPs.reduce((a, b) => a + b, 0)) -

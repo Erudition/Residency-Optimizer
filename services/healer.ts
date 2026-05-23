@@ -19,7 +19,7 @@ export const healSchedule = async (
     maxIterations?: number,
     historicalSchedules: any = {},
     cohortAssignmentsParam: any = {},
-    onProgress?: (step: number, maxSteps: number, violations?: number) => void,
+    onProgress?: (step: number, maxSteps: number, violations?: number, currentSchedule?: ScheduleGrid) => void,
     strategy?: string
 ): Promise<ScheduleGrid> => {
 

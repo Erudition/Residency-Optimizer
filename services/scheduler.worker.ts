@@ -117,20 +117,11 @@ async function runHeal(
       Object.assign(fullHistory, sliced);
       
       const reqsDeficit = getRequirementsViolationsCount(residents, grid, fullHistory, startYear, true, programData);
+      const audit = getAuditViolations(residents, fullHistory, programData, startYear);
       
-      let constraints = 0;
-      let audit = 0;
-      for (let offset = 0; offset < 3; offset++) {
-        const y = startYear + offset;
-        const yrResidents = residents.filter((r: any) => {
-          const level = y - r.startYear + 1;
-          return level >= 1 && level <= 3;
-        });
-        const yrGrid = sliced[y] || {};
-        const constraintsList = getWeeklyViolations(yrResidents, yrGrid, programData, y);
-        constraints += constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
-        audit += getAuditViolations(yrResidents, fullHistory, programData, y);
-      }
+      const constraintsList = getWeeklyViolations(residents, grid, programData, startYear);
+      const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
+      
       total = reqsDeficit + constraints + audit;
     } else {
       fullHistory[startYear] = grid;
@@ -139,6 +130,10 @@ async function runHeal(
       const constraints = constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
       const audit = getAuditViolations(residents, fullHistory, programData, startYear);
       total = reqsDeficit + constraints + audit;
+      if ((globalThis as any)._lastLoggedTotal !== total) {
+        console.log(`[Healer Telemetry] Total: ${total} | Reqs: ${reqsDeficit} | Staff/PTO/Jeop: ${constraints} | Audits: ${audit}`);
+        (globalThis as any)._lastLoggedTotal = total;
+      }
     }
     return total;
   };
@@ -152,11 +147,11 @@ async function runHeal(
     undefined,
     historicalSchedules,
     undefined,
-    (step, max, v) => {
+    (step, max, v, currentGrid) => {
       postMessage({ 
         type: 'heal-ping', 
         healerProgress: Math.round((step / max) * 100),
-        violations: getTrueViolations(currentBest)
+        violations: getTrueViolations(currentGrid || currentBest)
       });
     },
     strategy

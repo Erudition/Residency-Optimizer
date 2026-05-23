@@ -880,18 +880,9 @@ const AppContent: React.FC = () => {
     const startYear = useUnified ? (activeSchedule.startYear || ACTIVE_START_YEAR) : activeYear;
 
     if (useUnified) {
-      let total = 0;
-      const activeScheduleData = (isHealing && bestHealGrid)
-        ? sliceIntoYears(bestHealGrid, startYear, 3)
-        : (activeSchedule.data || {});
-      for (let offset = 0; offset < 3; offset++) {
-        const y = startYear + offset;
-        const yrResidents = getResidentsForYear(y);
-        const yrGrid = activeScheduleData[y] || {};
-        const constraintsList = getWeeklyViolations(yrResidents, yrGrid, programData, y);
-        total += constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
-      }
-      return total;
+      const unifiedGrid = (isHealing && bestHealGrid) ? bestHealGrid : (activeSchedule.unifiedData || {});
+      const constraintsList = getWeeklyViolations(displayResidents, unifiedGrid, programData, startYear);
+      return constraintsList.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
     } else {
       return violations.constraints.reduce((sum, v) => sum + (v.instances !== undefined ? v.instances : 1), 0);
     }
@@ -919,16 +910,7 @@ const AppContent: React.FC = () => {
       programData
     );
 
-    let audit = 0;
-    if (useUnified) {
-      for (let offset = 0; offset < 3; offset++) {
-        const y = startYear + offset;
-        const yrResidents = getResidentsForYear(y);
-        audit += getAuditViolations(yrResidents, fullHistory, programData, y);
-      }
-    } else {
-      audit = getAuditViolations(activeResidents, fullHistory, programData, activeYear);
-    }
+    const audit = getAuditViolations(useUnified ? displayResidents : activeResidents, fullHistory, programData, startYear);
 
     return reqsDeficit + audit;
   }, [activeSchedule, activeScheduleId, viewMode, activeYear, historySchedules, displayResidents, activeResidents, displayGrid, currentGrid, residents, programData, getResidentsForYear, isHealing, bestHealGrid]);
