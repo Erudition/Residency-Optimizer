@@ -7,13 +7,13 @@ describe('Healer Solver Strategies', () => {
     test('runs healer with each strategy successfully', async () => {
         const programData = getMockProgramData();
         const residents: Resident[] = [
-            { id: 'res1', name: 'Dr. A', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52 },
-            { id: 'res2', name: 'Dr. B', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52 },
+            { id: 'res1', name: 'Dr. A', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52, avoidResidentIds: [] },
+            { id: 'res2', name: 'Dr. B', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52, avoidResidentIds: [] },
         ];
 
         const schedule: ScheduleGrid = {
-            'res1': Array(52).fill(null).map(() => ({ assignment: 'ELEC' })),
-            'res2': Array(52).fill(null).map(() => ({ assignment: 'ELEC' })),
+            'res1': Array(52).fill(null).map(() => ({ assignment: 'ELEC', locked: false })),
+            'res2': Array(52).fill(null).map(() => ({ assignment: 'ELEC', locked: false })),
         };
 
         const strategies = ['4-block', '3-way', '2-way', 'default'];
