@@ -77,16 +77,21 @@ export class RequirementsEngine {
 
     residents.forEach(r => {
       if (isUnified) {
-        // Unified 3-year logic: evaluates total graduation minimum (req.minimum)
+        // Unified 3-year logic: evaluates total graduation minimum (req.minimum) scaled by PGY ideals for future resident classes
         (programData.requirements || []).forEach(req => {
-          const minWeeks = req.minimum || 0;
+          const lastActiveYear = Math.min(r.startYear + 2, activeYear + 2);
+          const lastLevel = lastActiveYear - r.startYear + 1;
+          const minWeeks = lastLevel >= 3 
+            ? (req.minimum || 0) 
+            : (req.pgy1Ideal || 0) + (lastLevel >= 2 ? (req.pgy2Ideal || 0) : 0);
+
           const actual = this.getActualWeeks(
             r,
             req.tag.title,
             schedule,
             historicalSchedules,
             activeYear,
-            r.startYear + 2,
+            lastActiveYear,
             true,
             programData
           );

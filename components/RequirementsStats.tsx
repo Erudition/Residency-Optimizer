@@ -134,14 +134,19 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
         let actual = 0;
 
         if (isUnified) {
-          minWeeks = req.minimum || 0;
+          const lastActiveYear = Math.min(res.startYear + 2, activeYear! + 2);
+          const lastLevel = lastActiveYear - res.startYear + 1;
+          minWeeks = lastLevel >= 3 
+            ? (req.minimum || 0)
+            : (req.pgy1Ideal || 0) + (lastLevel >= 2 ? (req.pgy2Ideal || 0) : 0);
+
           actual = RequirementsEngine.getActualWeeks(
             res,
             req.tag.title,
             schedule,
             hist,
             activeYear!,
-            res.startYear + 2,
+            lastActiveYear,
             true,
             programData
           );
@@ -180,7 +185,8 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
         for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
           const year = activeYear! + yearIdx;
-          if ((isUnified && year <= res.startYear + 2) || (!isUnified && year === activeYear)) {
+          const lastActiveYear = isUnified ? Math.min(res.startYear + 2, activeYear! + 2) : activeYear!;
+          if ((isUnified && year <= lastActiveYear) || (!isUnified && year === activeYear)) {
             const yearStart = yearIdx * 52;
             const yearCells = resGrid.slice(yearStart, yearStart + 52);
             yearCells.forEach((c, idx) => {
