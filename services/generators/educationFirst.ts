@@ -76,106 +76,134 @@ export const EducationFirstGenerator: ScheduleGenerator = {
         });
 
 
-        // 2. Education First Placement (Aggregation Aware)
-        for (let yIdx = 0; yIdx < numYears; yIdx++) {
-            const yearStart = yIdx * 52;
-            const yearEnd = (yIdx + 1) * 52;
+        // 2. Education First Placement (Multi-Pass with Deficit-Priority)
+        // Pass 1: Place hardest requirements first, sorted by difficulty
+        // Pass 2: Re-attempt any remaining deficits with randomized order
+        for (let pass = 0; pass < 2; pass++) {
+            for (let yIdx = 0; yIdx < numYears; yIdx++) {
+                const yearStart = yIdx * 52;
+                const yearEnd = (yIdx + 1) * 52;
 
-            const allLevels = [1, 2, 3];
-            allLevels.forEach(level => {
-                const reqs = seededShuffle(buildLevelRequirements(programData, level as 1|2|3) || []).filter(r => !isClinicRotation(programData, r.type));
+                const allLevels = [1, 2, 3];
+                allLevels.forEach(level => {
+                    let reqs = (buildLevelRequirements(programData, level as 1|2|3) || []).filter(r => !isClinicRotation(programData, r.type));
 
-                // Sort requirements by difficulty: higher min staffing and longer durations first,
-                // then by capacity (tighter maxima first). This is data-driven from programData.
-                reqs.sort((a, b) => {
-                    const metaA = programData.rotations.get(a.type);
-                    const metaB = programData.rotations.get(b.type);
-                    
-                    // More weeks required → harder to place → do first
-                    if (a.minWeeks !== b.minWeeks) return b.minWeeks - a.minWeeks;
+                    if (pass === 0) {
+                        // Sort requirements by difficulty: higher min staffing and longer durations first,
+                        // then by capacity (tighter maxima first). This is data-driven from programData.
+                        reqs.sort((a, b) => {
+                            const metaA = programData.rotations.get(a.type);
+                            const metaB = programData.rotations.get(b.type);
+                            
+                            // More weeks required → harder to place → do first
+                            if (a.minWeeks !== b.minWeeks) return b.minWeeks - a.minWeeks;
 
-                    // Higher total staffing minimum → more constrained → do first
-                    const staffA = (metaA?.minInterns || 0) + (metaA?.minSeniors || 0);
-                    const staffB = (metaB?.minInterns || 0) + (metaB?.minSeniors || 0);
-                    if (staffA !== staffB) return staffB - staffA;
+                            // Higher total staffing minimum → more constrained → do first
+                            const staffA = (metaA?.minInterns || 0) + (metaA?.minSeniors || 0);
+                            const staffB = (metaB?.minInterns || 0) + (metaB?.minSeniors || 0);
+                            if (staffA !== staffB) return staffB - staffA;
 
-                    // Longer duration → harder to fit → do first
-                    const durA = metaA?.duration || 4;
-                    const durB = metaB?.duration || 4;
-                    if (durA !== durB) return durB - durA;
-                    
-                    // Tighter capacity → harder to fit → do first
-                    const maxA = (level === 1 ? metaA?.maxInterns : metaA?.maxSeniors) || 99;
-                    const maxB = (level === 1 ? metaB?.maxInterns : metaB?.maxSeniors) || 99;
-                    return maxA - maxB;
-                });
+                            // Longer duration → harder to fit → do first
+                            const durA = metaA?.duration || 4;
+                            const durB = metaB?.duration || 4;
+                            if (durA !== durB) return durB - durA;
+                            
+                            // Tighter capacity → harder to fit → do first
+                            const maxA = (level === 1 ? metaA?.maxInterns : metaA?.maxSeniors) || 99;
+                            const maxB = (level === 1 ? metaB?.maxInterns : metaB?.maxSeniors) || 99;
+                            return maxA - maxB;
+                        });
+                    } else {
+                        reqs = seededShuffle(reqs);
+                    }
 
-                reqs.forEach(req => {
-                    const compatibleTypes = getAllCodenames(programData).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
-                    
-                    seededShuffle(residents.filter(r => {
-                        const currentLevel = getPgy(r, yearStart);
-                        const start = r.activeWeekStart ?? 0;
-                        const end = r.activeWeekEnd ?? totalWeeks;
-                        return currentLevel === level && start < yearEnd && end > yearStart;
-                    })).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd, programData) + getPriorRequirementCount(priorRequirementCounts?.[a.id] || {}, req.type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd, programData) + getPriorRequirementCount(priorRequirementCounts?.[b.id] || {}, req.type);
-                        return countA - countB;
-                    }).forEach(res => {
-                        const start = res.activeWeekStart ?? 0;
-                        const end = res.activeWeekEnd ?? totalWeeks;
-                        const rYearStart = Math.max(yearStart, start);
-                        const rYearEnd = Math.min(yearEnd, end);
+                    reqs.forEach(req => {
+                        const compatibleTypes = getAllCodenames(programData).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
+                        
+                        // Sort eligible residents by deficit (largest deficit first) instead of
+                        // cumulative count (least first). This ensures residents furthest from
+                        // meeting their requirements get priority.
+                        seededShuffle(residents.filter(r => {
+                            const currentLevel = getPgy(r, yearStart);
+                            const start = r.activeWeekStart ?? 0;
+                            const end = r.activeWeekEnd ?? totalWeeks;
+                            return currentLevel === level && start < yearEnd && end > yearStart;
+                        })).sort((a, b) => {
+                            const countA = getYearRequirementCount(newSchedule[a.id], req.type, yearStart, yearEnd, programData) + getPriorRequirementCount(priorRequirementCounts?.[a.id] || {}, req.type);
+                            const countB = getYearRequirementCount(newSchedule[b.id], req.type, yearStart, yearEnd, programData) + getPriorRequirementCount(priorRequirementCounts?.[b.id] || {}, req.type);
+                            const deficitA = req.minWeeks - countA;
+                            const deficitB = req.minWeeks - countB;
+                            return deficitB - deficitA; // Largest deficit first
+                        }).forEach(res => {
+                            const start = res.activeWeekStart ?? 0;
+                            const end = res.activeWeekEnd ?? totalWeeks;
+                            const rYearStart = Math.max(yearStart, start);
+                            const rYearEnd = Math.min(yearEnd, end);
 
-                        let safety = 0;
-                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd, programData) < req.minWeeks && safety < 100) {
-                            safety++;
-                            let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
-                            const dur = (programData.rotations.get(req.type)?.duration || programData.cycleConfig.X);
-                            const possibleWeeks = seededShuffle(Array.from({length: Math.max(0, rYearEnd - rYearStart - dur + 1)}, (_, i) => rYearStart + i));
-
-
-                            for (const w of possibleWeeks) {
-                                const cohort = getCohortAtWeek(res, w, validCohortAssignments);
-                                if (!isAligned(w, cohort, dur, programData)) continue;
-                                if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
-
-                                // Try all compatible types for this week
-                                for (const type of compatibleTypes) {
-                                    const meta = programData.rotations.get(type);
-                                    let score = 0;
-                                    let possible = true;
-
-                                    for (let i = 0; i < dur; i++) {
-                                        const currentLevel = getPgy(res, w + i);
-                                        const cI = getAssignedCount(newSchedule, residents, w + i, type, 1);
-                                        const cS = getAssignedCount(newSchedule, residents, w + i, type, 2);
-
-                                        const maxI = meta?.maxInterns || 99;
-                                        const maxS = meta?.maxSeniors || 99;
-
-                                        if (currentLevel === 1 && cI >= maxI) { possible = false; break; }
-                                        if (currentLevel > 1 && cS >= maxS) { possible = false; break; }
-                                        
-                                        // Spreading score: prefer weeks with less staff (with random tiebreaker)
-                                        score += (cI + cS) + rng.next() * 0.1;
-                                    }
-
-                                    if (possible && score < bestScore) {
-                                        bestScore = score;
-                                        bestW = w;
-                                        bestType = type;
+                            let safety = 0;
+                            while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd, programData) < req.minWeeks && safety < 100) {
+                                safety++;
+                                let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
+                                const dur = (programData.rotations.get(req.type)?.duration || programData.cycleConfig.X);
+                                
+                                // Prefer block-aligned positions first for better packing
+                                const blockAlignedWeeks: number[] = [];
+                                const otherWeeks: number[] = [];
+                                for (let i = 0; i <= Math.max(0, rYearEnd - rYearStart - dur); i++) {
+                                    const w = rYearStart + i;
+                                    const cohort = getCohortAtWeek(res, w, validCohortAssignments);
+                                    if (isAligned(w, cohort, dur, programData)) {
+                                        blockAlignedWeeks.push(w);
+                                    } else {
+                                        otherWeeks.push(w);
                                     }
                                 }
-                            }
+                                const possibleWeeks = [...seededShuffle(blockAlignedWeeks), ...seededShuffle(otherWeeks)];
 
-                            if (bestW === -1) break; // Cannot fit anymore
-                            placeBlock(newSchedule, res.id, bestW, dur, bestType);
-                        }
+
+                                for (const w of possibleWeeks) {
+                                    const cohort = getCohortAtWeek(res, w, validCohortAssignments);
+                                    if (!isAligned(w, cohort, dur, programData)) continue;
+                                    if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
+
+                                    // Try all compatible types for this week
+                                    for (const type of compatibleTypes) {
+                                        const meta = programData.rotations.get(type);
+                                        let score = 0;
+                                        let possible = true;
+
+                                        for (let i = 0; i < dur; i++) {
+                                            const currentLevel = getPgy(res, w + i);
+                                            const cI = getAssignedCount(newSchedule, residents, w + i, type, 1);
+                                            const cS = getAssignedCount(newSchedule, residents, w + i, type, 2);
+
+                                            const maxI = meta?.maxInterns || 99;
+                                            const maxS = meta?.maxSeniors || 99;
+
+                                            if (currentLevel === 1 && cI >= maxI) { possible = false; break; }
+                                            if (currentLevel > 1 && cS >= maxS) { possible = false; break; }
+                                            
+                                            // Spreading score: prefer weeks with less staff (with random tiebreaker)
+                                            score += (cI + cS) + rng.next() * 0.1;
+                                        }
+
+                                        if (possible && score < bestScore) {
+                                            bestScore = score;
+                                            bestW = w;
+                                            bestType = type;
+                                        }
+                                    }
+                                    // Early exit if we found a zero-conflict slot
+                                    if (bestScore < 0.2) break;
+                                }
+
+                                if (bestW === -1) break; // Cannot fit anymore
+                                placeBlock(newSchedule, res.id, bestW, dur, bestType);
+                            }
+                        });
                     });
                 });
-            });
+            }
         }
 
         // 3. Staffing Sweep (Foundation) - Mandatory Minima

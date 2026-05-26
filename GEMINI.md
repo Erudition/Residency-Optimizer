@@ -152,6 +152,15 @@ Future-year schedules require placeholder ("synthetic") residents for years with
 *   **Auto-cleanup** — A `beforeChange` hook on Residents auto-deletes synthetic residents for a given startYear when a real (non-synthetic) resident is created for that year.
 *   **Cell edit guard** — `upsertCell()` silently skips `NaN` resident IDs; synthetic resident edits are local-only until the schedule is published and keys are remapped.
 
+## Stale Resident ID Remapping
+When JSON backups are restored from a different database era (e.g. after Residents collection reseeding), the schedule grid keys may reference old resident IDs that no longer exist. Two safety nets handle this:
+
+*   **Import flow** (`handleImportJSON`) — Detects stale IDs by checking overlap between grid keys and `programData.residents` (<50% match = stale). Remaps grid keys from old → current IDs by matching resident display names (exact first, then normalized fallback). Shows a `confirm()` dialog listing remap stats and warnings (count differences, unmatched names). Uses `programData.residents` instead of the backup's stale resident list (backend is authoritative).
+*   **Publish flow** (`handlePublishSave`) — Pre-flight check catches any remaining stale grid IDs before calling `saveCandidateGrids`. Auto-remaps by name using the same `remapScheduleResidentIds` utility, with toast notifications.
+*   **Load flow** (`loadAllCandidates`) — Published schedules fetched from the backend whose grid keys have <50% overlap with current residents are silently skipped (no tab appears). A toast warning explains the skip.
+*   **Core utility** — `utils/remapResidentIds.ts` provides `detectStaleResidentIds()`, `remapScheduleResidentIds()`, and `compareResidentLists()`.
+
+
 ## Clinic Block Scheduling Guardrail
 *   **Clinic Assignment Exclusivity**: Clinic assignments (`CLINIC` or specific clinic codenames) must never be scheduled, generated, or mutated on non-clinic (flexible) weeks.
 *   **Continuity Clinic Tag Integration**: The scheduling helper `isClinicRotation` must check for both `'Clinic'` and `'Continuity Clinic'` tags to align with the seeded tag titles in the database.

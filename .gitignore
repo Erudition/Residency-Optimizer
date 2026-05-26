@@ -33,3 +33,4 @@ scratch/*
 
 # Generated GraphQL types (regenerated from backend schema)
 services/api/generated.ts
+residency-optimizer.code-workspace

@@ -9,7 +9,7 @@ It also acts as the "Phase 2" post-generation optimization step to improve the s
 ## 1. Pre-Processing: Deficit Recovery
 Before starting simulated annealing, the healer runs a targeted **Deficit Recovery** step specifically designed for split blocks that are prone to fragmentation:
 *   **Target Rotations:** `NEURO`, `GI`, and `PULM`.
-*   **Mechanic:** For any resident identified by the [RequirementsEngine](file:///home/adroit/Projects/residency-optimizer/services/requirementsEngine.ts) as having a deficit in these target rotations, the healer replaces unlocked `ELECTIVE` weeks with the missing rotation until the deficit is recovered or no more flexible weeks exist.
+*   **Mechanic:** For any resident identified by the RequirementsEngine as having a deficit in these target rotations, the healer replaces unlocked `ELECTIVE` weeks with the missing rotation until the deficit is recovered or no more flexible weeks exist.
 *   **Goal:** Provides a valid baseline of required assignments so that subsequent annealing phases can swap them around to resolve staffing violations rather than struggling to find where to add them.
 
 ---

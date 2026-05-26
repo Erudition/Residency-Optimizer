@@ -40,6 +40,7 @@ import { getScheduleSyncService, SyncError, type SyncStatus, type ScheduleSyncEv
 import { extractTokenFromURL, isAuthenticated, verifyToken } from './services/api/auth';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
+import { detectStaleResidentIds, remapScheduleResidentIds, compareResidentLists } from './utils/remapResidentIds';
 import { healSchedule } from './services/healer';
 import { ScheduleTable } from './components/ScheduleTable';
 import { Dashboard } from './components/Dashboard';
@@ -598,51 +599,92 @@ const AppContent: React.FC = () => {
         const loaded = await syncService.loadAllCandidates();
         if (cancelled || loaded.length === 0) return;
 
-        setSchedules(prev => {
-          // Build set of candidateIds already in state (avoid duplicates)
-          const existingIds = new Set(
-            prev
-              .filter(isPublished)
-              .map(s => (s as PublishedCandidate).candidateId)
-          );
+        // Known resident IDs from the current backend data
+        const knownResidentIds = new Set(programData.residents.map(r => r.id));
+        const validCandidates: PublishedCandidate[] = [];
+        const skippedCandidates: Array<{ id: number; title: string }> = [];
 
-          const toAdd: PublishedCandidate[] = [];
-
-          for (const c of loaded) {
-            if (existingIds.has(c.candidateId)) continue;
-
-            // Convert flat assignment list → ScheduleGrid per year
-            type RawAssignment = { residentId: number; week: number; rotation: string; locked: boolean };
-            const data: ScheduleHistory = {};
-            for (const [yearStr, assignments] of Object.entries(c.yearData) as [string, RawAssignment[]][]) {
-              const year = parseInt(yearStr, 10);
-              const grid: ScheduleGrid = {};
-              for (const a of assignments) {
-                const key = a.residentId.toString();
-                if (!grid[key]) grid[key] = Array(TOTAL_WEEKS).fill(null) as ScheduleCell[];
-                grid[key][a.week - 1] = { assignment: a.rotation, locked: a.locked };
-              }
-              data[year] = grid;
+        for (const c of loaded) {
+          // Convert flat assignment list → ScheduleGrid per year
+          type RawAssignment = { residentId: number; week: number; rotation: string; locked: boolean };
+          const data: ScheduleHistory = {};
+          for (const [yearStr, assignments] of Object.entries(c.yearData) as [string, RawAssignment[]][]) {
+            const year = parseInt(yearStr, 10);
+            const grid: ScheduleGrid = {};
+            for (const a of assignments) {
+              const key = a.residentId.toString();
+              if (!grid[key]) grid[key] = Array(TOTAL_WEEKS).fill(null) as ScheduleCell[];
+              grid[key][a.week - 1] = { assignment: a.rotation, locked: a.locked };
             }
-
-            toAdd.push({
-              kind: 'published',
-              id: `pub-${c.candidateId}`,
-              candidateId: c.candidateId,
-              scheduleIds: c.scheduleIds,
-              name: c.title,
-              data,
-              unifiedData: mergeYearsIntoUnified(data, c.startYear, 3),
-              createdAt: new Date(),
-              startYear: c.startYear,
-              lastSyncedAt: new Date(),
-            });
+            data[year] = grid;
           }
 
-          if (toAdd.length === 0) return prev;
-          console.log(`[App] Loaded ${toAdd.length} published candidate(s) from backend`);
-          return [...prev, ...toAdd];
-        });
+          // Validate: check if grid resident IDs match known residents.
+          // If fewer than 50% match, the Residents collection was likely
+          // reseeded since this schedule was published — skip it entirely.
+          const gridResidentIds = new Set(
+            Object.values(data).flatMap(grid => Object.keys(grid))
+          );
+          const matchCount = [...gridResidentIds].filter(id => knownResidentIds.has(id)).length;
+          const matchRatio = gridResidentIds.size > 0 ? matchCount / gridResidentIds.size : 0;
+
+          if (matchRatio < 0.5) {
+            console.warn(
+              `[App] Skipping stale candidate "${c.title}" (id=${c.candidateId}): ` +
+              `only ${matchCount}/${gridResidentIds.size} resident IDs matched current data (${(matchRatio * 100).toFixed(0)}%)`
+            );
+            skippedCandidates.push({ id: c.candidateId, title: c.title });
+            continue;
+          }
+
+          validCandidates.push({
+            kind: 'published',
+            id: `pub-${c.candidateId}`,
+            candidateId: c.candidateId,
+            scheduleIds: c.scheduleIds,
+            name: c.title,
+            data,
+            unifiedData: mergeYearsIntoUnified(data, c.startYear, 3),
+            createdAt: new Date(),
+            startYear: c.startYear,
+            lastSyncedAt: new Date(),
+          });
+        }
+
+        if (cancelled) return;
+
+        // Toast for each skipped schedule
+        for (const { title } of skippedCandidates) {
+          toast.warning(
+            `Published schedule "${title}" could not be loaded: resident data has changed since it was saved.`,
+            { duration: 8000 },
+          );
+        }
+
+        // If the active schedule pointed to a skipped candidate, reset it
+        if (skippedCandidates.length > 0) {
+          const skippedScheduleIds = new Set(
+            skippedCandidates.map(c => `pub-${c.id}`)
+          );
+          setActiveScheduleId(prev =>
+            prev && skippedScheduleIds.has(prev) ? 'all' : prev
+          );
+        }
+
+        // Add valid candidates to state (dedup against any already present)
+        if (validCandidates.length > 0) {
+          setSchedules(prev => {
+            const existingIds = new Set(
+              prev
+                .filter(isPublished)
+                .map(s => (s as PublishedCandidate).candidateId)
+            );
+            const toAdd = validCandidates.filter(c => !existingIds.has(c.candidateId));
+            if (toAdd.length === 0) return prev;
+            console.log(`[App] Loaded ${toAdd.length} published candidate(s) from backend`);
+            return [...prev, ...toAdd];
+          });
+        }
       } catch (err) {
         console.error('[App] Failed to load candidates from backend:', err);
         if (!cancelled) {
@@ -757,7 +799,7 @@ const AppContent: React.FC = () => {
       });
       const defaultCohorts: Record<string, number> = {};
       activeResidentsForDefault?.forEach((r, idx) => {
-        defaultCohorts[r.id] = idx % 5;
+        defaultCohorts[r.id] = idx % programData.cycleConfig.cohortCount;
       });
       yearCohorts = defaultCohorts;
     }
@@ -792,7 +834,7 @@ const AppContent: React.FC = () => {
       });
       const defaultCohorts: Record<string, number> = {};
       activeResidents?.forEach((r, idx) => {
-        defaultCohorts[r.id] = idx % 5;
+        defaultCohorts[r.id] = idx % programData.cycleConfig.cohortCount;
       });
       yearCohorts = defaultCohorts;
     }
@@ -1257,7 +1299,7 @@ const AppContent: React.FC = () => {
           });
           const defaultCohorts: Record<string, number> = {};
           activeResidents?.forEach((r, idx) => {
-            defaultCohorts[r.id] = idx % 5;
+            defaultCohorts[r.id] = idx % programData.cycleConfig.cohortCount;
           });
           yearCohorts = defaultCohorts;
         }
@@ -1649,10 +1691,33 @@ const AppContent: React.FC = () => {
 
       const { candidateId } = await syncService.createCandidate(sched.startYear, candidateName.trim());
       const augmentedResidents = getAugmentedResidents(residents, sched.startYear + 4, sched.startYear);
+
+      // Pre-publish safety net: if the grid's resident IDs are stale (e.g. from
+      // a restored backup), remap them to current backend IDs by name before
+      // sending to the bulk endpoint. This prevents creating orphaned assignments.
+      let publishGridData = sched.data;
+      if (detectStaleResidentIds(sched.data, programData.residents)) {
+        const backupResidents = augmentedResidents.map(r => ({ id: r.id, name: r.name }));
+        const result = remapScheduleResidentIds(sched.data, backupResidents, programData.residents);
+        if (result.stats.needed) {
+          publishGridData = result.data;
+          toast.info(
+            `Remapped ${result.stats.remapped} resident ID(s) to match the current database before publishing.`,
+            { duration: 6000 },
+          );
+          if (result.stats.unmatched > 0) {
+            toast.warning(
+              `${result.stats.unmatched} resident(s) could not be matched and will be skipped: ${result.stats.unmatchedNames.join(', ')}`,
+              { duration: 8000 },
+            );
+          }
+        }
+      }
+
       const { scheduleIds, errors: saveErrors, residentIdMap } = await syncService.saveCandidateGrids(
         candidateId,
         candidateName.trim(),
-        sched.data,
+        publishGridData,
         augmentedResidents,
       );
 
@@ -2398,12 +2463,86 @@ const AppContent: React.FC = () => {
           throw new Error("Invalid backup format");
         }
 
-        const residentsToUse = Array.isArray(json.residents) ? json.residents : residents;
-        const patchedSchedules = json.schedules.map((s: any) => normalizeAndSanitizeSchedule(s, residentsToUse));
+        const backupResidents: Array<{ id: string | number; name: string }> = Array.isArray(json.residents)
+          ? json.residents.map((r: any) => ({ id: String(r.id), name: r.name }))
+          : [];
 
-        if (Array.isArray(json.residents)) {
-          setResidents(json.residents);
+        // Detect if the backup's resident IDs are stale relative to the current backend
+        const anyScheduleStale = json.schedules.some((s: any) => {
+          const data = s.data || s.schedule || {};
+          return detectStaleResidentIds(data, programData.residents);
+        });
+
+        let residentsToUse: Resident[] = programData.residents;
+        let schedulesToImport = json.schedules;
+
+        if (anyScheduleStale && backupResidents.length > 0) {
+          // Build a summary of what will be remapped
+          const sampleData = (json.schedules[0]?.data || json.schedules[0]?.schedule || {}) as ScheduleHistory;
+          const sampleResult = remapScheduleResidentIds(sampleData, backupResidents, programData.residents);
+          const { stats } = sampleResult;
+
+          // Check for name/count differences between backup and current residents
+          const diff = compareResidentLists(backupResidents, programData.residents);
+          const warnings: string[] = [];
+          if (diff.countDiffers) {
+            warnings.push(`Resident count differs: backup has ${backupResidents.length}, current database has ${programData.residents.length}.`);
+          }
+          if (diff.backupOnly.length > 0) {
+            warnings.push(`In backup but not in database: ${diff.backupOnly.join(', ')}.`);
+          }
+          if (diff.currentOnly.length > 0) {
+            warnings.push(`In database but not in backup: ${diff.currentOnly.join(', ')}.`);
+          }
+          if (stats.unmatched > 0) {
+            warnings.push(`${stats.unmatched} resident(s) could not be matched: ${stats.unmatchedNames.join(', ')}.`);
+          }
+
+          const warningText = warnings.length > 0
+            ? `\n\nWarnings:\n• ${warnings.join('\n• ')}`
+            : '';
+
+          const proceed = confirm(
+            `This backup's resident IDs don't match the current database.\n\n` +
+            `${stats.remapped} of ${stats.totalGridIds} resident(s) will be remapped by name.` +
+            warningText +
+            `\n\nProceed with remapped IDs?`
+          );
+          if (!proceed) return;
+
+          // Remap each schedule's grid data
+          schedulesToImport = json.schedules.map((s: any) => {
+            const data = s.data || s.schedule || {};
+            const result = remapScheduleResidentIds(
+              data,
+              backupResidents,
+              programData.residents,
+              s.cohortAssignments,
+            );
+            return {
+              ...s,
+              data: result.data,
+              cohortAssignments: result.cohortAssignments ?? s.cohortAssignments,
+            };
+          });
+
+          // Use current backend residents instead of stale backup residents
+          residentsToUse = programData.residents;
+
+          if (warnings.length > 0) {
+            toast.warning(
+              `Backup imported with warnings: ${warnings[0]}`,
+              { duration: 8000 },
+            );
+          }
+        } else if (Array.isArray(json.residents)) {
+          // IDs match — use the backup's residents as before
+          residentsToUse = json.residents;
         }
+
+        const patchedSchedules = schedulesToImport.map((s: any) => normalizeAndSanitizeSchedule(s, residentsToUse));
+
+        setResidents(residentsToUse);
         setSchedules(patchedSchedules);
         setActiveScheduleId('all');
         toast.success(`Imported ${patchedSchedules.length} schedule(s) from backup`);

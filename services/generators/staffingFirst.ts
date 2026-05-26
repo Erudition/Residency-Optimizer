@@ -114,12 +114,19 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         const historicalCounts = priorRequirementCounts || {};
 
+        // Staffing sweep: iterate by block-aligned start positions to avoid
+        // redundant checks on weeks mid-block.
         staffingTypes.forEach(type => {
             const meta = programData.rotations.get(type);
             if (!meta) return;
             const dur = meta.duration || programData.cycleConfig.X;
 
-            for (let w = 0; w < totalWeeks; w++) {
+            // Iterate by block-aligned positions instead of every single week.
+            // For 4-week rotations, check at weeks 0, 4, 8, ... etc.
+            // But also check every week for short-duration rotations (dur=1 or 2).
+            const step = dur >= 4 ? dur : 1;
+
+            for (let w = 0; w < totalWeeks; w += step) {
                 // Interns
                 let safetyI = 0;
                 while (getAssignedCount(newSchedule, residents, w, type, 1) < (meta.minInterns || 0) && safetyI < 10) {
@@ -133,9 +140,10 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                                isAligned(w, cohort, dur, programData) &&
                                getAssignedCount(newSchedule, residents, w, type, 1) < (meta.maxInterns || 99);
                     })).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
-                        return countA - countB;
+                        // Prefer residents who need this rotation for education too
+                        const needA = getYearRequirementCount(newSchedule[a.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
+                        const needB = getYearRequirementCount(newSchedule[b.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
+                        return needA - needB;
                     });
                     
                     if (pool.length === 0) break;
@@ -155,9 +163,9 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                                isAligned(w, cohort, dur, programData) &&
                                getAssignedCount(newSchedule, residents, w, type, 2) < (meta.maxSeniors || 99);
                     })).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], type, 0, w, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
-                        return countA - countB;
+                        const needA = getYearRequirementCount(newSchedule[a.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
+                        const needB = getYearRequirementCount(newSchedule[b.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
+                        return needA - needB;
                     });
                     
                     if (pool.length === 0) break;
@@ -168,77 +176,116 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
 
         // 3. Education Placement SECOND (Segmented by Year)
+        // Two-pass approach: first pass places highest-priority (hardest-to-fill) requirements,
+        // second pass fills remaining gaps with a more relaxed search.
         const yearCount = Math.ceil(totalWeeks / 52);
-        for (let yearIdx = 0; yearIdx < yearCount; yearIdx++) {
-            const yearStart = yearIdx * 52;
-            const yearEnd = Math.min(yearStart + 52, totalWeeks);
+        
+        for (let pass = 0; pass < 2; pass++) {
+            for (let yearIdx = 0; yearIdx < yearCount; yearIdx++) {
+                const yearStart = yearIdx * 52;
+                const yearEnd = Math.min(yearStart + 52, totalWeeks);
 
-            const pgyLevels: (1|2|3)[] = [1, 2, 3];
-            pgyLevels.forEach(level => {
-                const reqs = seededShuffle(buildLevelRequirements(programData, level) || []).filter(r => !isClinicRotation(programData, r.type));
-                reqs.forEach(req => {
-                    const compatibleTypes = getAllCodenames(programData).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
+                const pgyLevels: (1|2|3)[] = [1, 2, 3];
+                pgyLevels.forEach(level => {
+                    let reqs = (buildLevelRequirements(programData, level) || []).filter(r => !isClinicRotation(programData, r.type));
                     
-                    const eligibleResidents = seededShuffle(residents.filter(r => {
-                        return isActive(r, yearStart) && getPgy(r, yearStart) === level;
-                    })).sort((a, b) => {
-                        const countA = getYearRequirementCount(newSchedule[a.id], req.type, 0, yearEnd, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type);
-                        const countB = getYearRequirementCount(newSchedule[b.id], req.type, 0, yearEnd, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, req.type);
-                        return countA - countB;
-                    });
+                    // On first pass, sort by difficulty (hardest first).
+                    // On second pass, shuffle to explore different orderings.
+                    if (pass === 0) {
+                        reqs.sort((a, b) => {
+                            // More weeks required → harder → do first
+                            if (a.minWeeks !== b.minWeeks) return b.minWeeks - a.minWeeks;
+                            // Higher staffing minimums → harder → do first
+                            const metaA = programData.rotations.get(a.type);
+                            const metaB = programData.rotations.get(b.type);
+                            const staffA = (metaA?.minInterns || 0) + (metaA?.minSeniors || 0);
+                            const staffB = (metaB?.minInterns || 0) + (metaB?.minSeniors || 0);
+                            if (staffA !== staffB) return staffB - staffA;
+                            // Tighter capacity → harder → do first
+                            const maxA = (level === 1 ? metaA?.maxInterns : metaA?.maxSeniors) || 99;
+                            const maxB = (level === 1 ? metaB?.maxInterns : metaB?.maxSeniors) || 99;
+                            return maxA - maxB;
+                        });
+                    } else {
+                        reqs = seededShuffle(reqs);
+                    }
+
+                    reqs.forEach(req => {
+                        const compatibleTypes = getAllCodenames(programData).filter(t => RequirementsEngine.fulfills(t, req.type, programData));
+                        
+                        const eligibleResidents = seededShuffle(residents.filter(r => {
+                            return isActive(r, yearStart) && getPgy(r, yearStart) === level;
+                        })).sort((a, b) => {
+                            // Prioritize residents with the largest remaining deficit for this requirement
+                            const deficitA = req.minWeeks - (getYearRequirementCount(newSchedule[a.id], req.type, yearStart, yearEnd, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, req.type));
+                            const deficitB = req.minWeeks - (getYearRequirementCount(newSchedule[b.id], req.type, yearStart, yearEnd, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, req.type));
+                            return deficitB - deficitA; // Largest deficit first
+                        });
 
 
-                    eligibleResidents.forEach(res => {
+                        eligibleResidents.forEach(res => {
 
-                        const dur = (programData.rotations.get(req.type)?.duration || programData.cycleConfig.X);
+                            const dur = (programData.rotations.get(req.type)?.duration || programData.cycleConfig.X);
 
-                        let safety = 0;
-                        while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd, programData) < req.minWeeks && safety < 100) {
-                            safety++;
-                            let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
+                            let safety = 0;
+                            while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd, programData) < req.minWeeks && safety < 100) {
+                                safety++;
+                                let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
 
-                            const possibleWeeks = seededShuffle(Array.from(
-                                { length: yearEnd - yearStart - dur + 1 }, 
-                                (_, i) => yearStart + i
-                            ));
-
-                            for (const w of possibleWeeks) {
-                                const cohort = getCohortAtWeek(res, w, validCohortAssignments);
-                                if (!isAligned(w, cohort, dur, programData)) continue;
-                                if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
-                                if (!isActive(res, w, dur)) continue;
-
-                                for (const type of compatibleTypes) {
-                                    const meta = programData.rotations.get(type);
-                                    let score = 0;
-                                    let possible = true;
-
-                                    for (let i = 0; i < dur; i++) {
-                                        const currentLevel = getPgy(res, w + i);
-                                        const cI = getAssignedCount(newSchedule, residents, w + i, type, 1);
-                                        const cS = getAssignedCount(newSchedule, residents, w + i, type, 2);
-                                        const maxI = meta?.maxInterns || 99;
-                                        const maxS = meta?.maxSeniors || 99;
-
-                                        if (currentLevel === 1 && cI >= maxI) { possible = false; break; }
-                                        if (currentLevel >= 2 && cS >= maxS) { possible = false; break; }
-                                        score += (cI + cS) + rng.next() * 0.1;
-                                    }
-
-                                    if (possible && score < bestScore) {
-                                        bestScore = score;
-                                        bestW = w;
-                                        bestType = type;
+                                // Generate candidate weeks, preferring block-aligned positions first
+                                const blockAlignedWeeks: number[] = [];
+                                const otherWeeks: number[] = [];
+                                for (let i = 0; i <= yearEnd - yearStart - dur; i++) {
+                                    const w = yearStart + i;
+                                    const cohort = getCohortAtWeek(res, w, validCohortAssignments);
+                                    if (isAligned(w, cohort, dur, programData)) {
+                                        blockAlignedWeeks.push(w);
+                                    } else {
+                                        otherWeeks.push(w);
                                     }
                                 }
-                            }
+                                const possibleWeeks = [...seededShuffle(blockAlignedWeeks), ...seededShuffle(otherWeeks)];
 
-                            if (bestW === -1) break;
-                            placeBlock(newSchedule, res.id, bestW, dur, bestType);
-                        }
+                                for (const w of possibleWeeks) {
+                                    const cohort = getCohortAtWeek(res, w, validCohortAssignments);
+                                    if (!isAligned(w, cohort, dur, programData)) continue;
+                                    if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
+                                    if (!isActive(res, w, dur)) continue;
+
+                                    for (const type of compatibleTypes) {
+                                        const meta = programData.rotations.get(type);
+                                        let score = 0;
+                                        let possible = true;
+
+                                        for (let i = 0; i < dur; i++) {
+                                            const currentLevel = getPgy(res, w + i);
+                                            const cI = getAssignedCount(newSchedule, residents, w + i, type, 1);
+                                            const cS = getAssignedCount(newSchedule, residents, w + i, type, 2);
+                                            const maxI = meta?.maxInterns || 99;
+                                            const maxS = meta?.maxSeniors || 99;
+
+                                            if (currentLevel === 1 && cI >= maxI) { possible = false; break; }
+                                            if (currentLevel >= 2 && cS >= maxS) { possible = false; break; }
+                                            score += (cI + cS) + rng.next() * 0.1;
+                                        }
+
+                                        if (possible && score < bestScore) {
+                                            bestScore = score;
+                                            bestW = w;
+                                            bestType = type;
+                                        }
+                                    }
+                                    // Early exit if we found a zero-conflict slot
+                                    if (bestScore < 0.2) break;
+                                }
+
+                                if (bestW === -1) break;
+                                placeBlock(newSchedule, res.id, bestW, dur, bestType);
+                            }
+                        });
                     });
                 });
-            });
+            }
         }
 
         // 4. Final Elective Fill
