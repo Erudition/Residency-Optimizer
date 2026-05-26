@@ -69,6 +69,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
     rowResident: Resident;
     colResident: Resident;
     weeksShared: number;
+    sharedDetails: { week: number; assignment: string }[];
   } | null>(null);
 
   const [groupBy, setGroupBy] = useState<'pgy' | 'cycle'>('cycle');
@@ -166,14 +167,21 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
     };
   };
 
-  const { rows, matrix, averageSharedWeeks, maxRowWeeksMap, maxColWeeksMap } = useMemo(() => {
+  const { rows, matrix, averageSharedWeeks, maxRowWeeksMap, maxColWeeksMap, sharedDetails } = useMemo(() => {
     const diversityScores = calculateDiversityStats(residents, schedule);
     const matrix: Record<string, Record<string, number>> = {};
-    residents.forEach(r => matrix[r.id] = {});
+    const sharedDetails: Record<string, Record<string, { week: number; assignment: string }[]>> = {};
+    
+    residents.forEach(r => {
+      matrix[r.id] = {};
+      sharedDetails[r.id] = {};
+    });
 
     const nonCoWorkingTypes = ['VAC', 'ELEC', 'RSCH'];
 
-    for (let w = 0; w < 52; w++) {
+    const totalWeeksInSchedule = Math.max(...Object.values(schedule).map(r => (r as any) ? (r as any).length : 0), 52);
+
+    for (let w = 0; w < totalWeeksInSchedule; w++) {
       const byAssignment: Record<string, string[]> = {};
       residents.forEach(r => {
         const type = schedule[r.id]?.[w]?.assignment;
@@ -183,7 +191,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
         }
       });
 
-      Object.values(byAssignment).forEach(group => {
+      Object.entries(byAssignment).forEach(([type, group]) => {
         if (group.length < 2) return;
         for (let i = 0; i < group.length; i++) {
           for (let j = i + 1; j < group.length; j++) {
@@ -191,6 +199,12 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
             const r2 = group[j];
             matrix[r1][r2] = (matrix[r1][r2] || 0) + 1;
             matrix[r2][r1] = (matrix[r2][r1] || 0) + 1;
+            
+            if (!sharedDetails[r1][r2]) sharedDetails[r1][r2] = [];
+            sharedDetails[r1][r2].push({ week: w, assignment: type });
+            
+            if (!sharedDetails[r2][r1]) sharedDetails[r2][r1] = [];
+            sharedDetails[r2][r1].push({ week: w, assignment: type });
           }
         }
       });
@@ -256,7 +270,7 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
       maxColWeeksMap[r.id] = maxW;
     });
 
-    return { rows, matrix, averageSharedWeeks, maxRowWeeksMap, maxColWeeksMap };
+    return { rows, matrix, averageSharedWeeks, maxRowWeeksMap, maxColWeeksMap, sharedDetails };
   }, [residents, schedule]);
 
   // Tooltip event handlers
@@ -306,7 +320,8 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
       y: e.clientY,
       rowResident: rowRes,
       colResident: colRes,
-      weeksShared: weeks
+      weeksShared: weeks,
+      sharedDetails: sharedDetails[rowRes.id]?.[colRes.id] || []
     });
   };
 
@@ -590,7 +605,29 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
             </div>
           )}
           
-          <div className="text-[10px] text-slate-500 border-t border-slate-800 pt-1.5 flex justify-between">
+          {hoveredCellInfo.rowResident.id !== hoveredCellInfo.colResident.id && hoveredCellInfo.sharedDetails?.length > 0 && (
+            <div className="mt-1 pt-3 border-t border-slate-800">
+              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Shared Assignments</div>
+              <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                {Object.entries(
+                  hoveredCellInfo.sharedDetails.reduce((acc, curr) => {
+                    if (!acc[curr.assignment]) acc[curr.assignment] = [];
+                    acc[curr.assignment].push(curr.week + 1); // 1-indexed for display
+                    return acc;
+                  }, {} as Record<string, number[]>)
+                ).map(([assignment, weeks]) => (
+                  <div key={assignment} className="flex justify-between items-start gap-3">
+                    <span className="font-bold text-slate-200">{assignment}</span>
+                    <span className="text-[10px] text-slate-400 text-right leading-tight mt-0.5">
+                      Wk {(weeks as number[]).join(', ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="text-[10px] text-slate-500 border-t border-slate-800 pt-2 mt-1 flex justify-between">
             <span>Average Overlap: {averageSharedWeeks.toFixed(1)} weeks</span>
             {hoveredCellInfo.rowResident.id !== hoveredCellInfo.colResident.id && (
               <span className="font-semibold">
