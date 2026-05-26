@@ -598,51 +598,92 @@ const AppContent: React.FC = () => {
         const loaded = await syncService.loadAllCandidates();
         if (cancelled || loaded.length === 0) return;
 
-        setSchedules(prev => {
-          // Build set of candidateIds already in state (avoid duplicates)
-          const existingIds = new Set(
-            prev
-              .filter(isPublished)
-              .map(s => (s as PublishedCandidate).candidateId)
-          );
+        // Known resident IDs from the current backend data
+        const knownResidentIds = new Set(programData.residents.map(r => r.id));
+        const validCandidates: PublishedCandidate[] = [];
+        const skippedCandidates: Array<{ id: number; title: string }> = [];
 
-          const toAdd: PublishedCandidate[] = [];
-
-          for (const c of loaded) {
-            if (existingIds.has(c.candidateId)) continue;
-
-            // Convert flat assignment list → ScheduleGrid per year
-            type RawAssignment = { residentId: number; week: number; rotation: string; locked: boolean };
-            const data: ScheduleHistory = {};
-            for (const [yearStr, assignments] of Object.entries(c.yearData) as [string, RawAssignment[]][]) {
-              const year = parseInt(yearStr, 10);
-              const grid: ScheduleGrid = {};
-              for (const a of assignments) {
-                const key = a.residentId.toString();
-                if (!grid[key]) grid[key] = Array(TOTAL_WEEKS).fill(null) as ScheduleCell[];
-                grid[key][a.week - 1] = { assignment: a.rotation, locked: a.locked };
-              }
-              data[year] = grid;
+        for (const c of loaded) {
+          // Convert flat assignment list → ScheduleGrid per year
+          type RawAssignment = { residentId: number; week: number; rotation: string; locked: boolean };
+          const data: ScheduleHistory = {};
+          for (const [yearStr, assignments] of Object.entries(c.yearData) as [string, RawAssignment[]][]) {
+            const year = parseInt(yearStr, 10);
+            const grid: ScheduleGrid = {};
+            for (const a of assignments) {
+              const key = a.residentId.toString();
+              if (!grid[key]) grid[key] = Array(TOTAL_WEEKS).fill(null) as ScheduleCell[];
+              grid[key][a.week - 1] = { assignment: a.rotation, locked: a.locked };
             }
-
-            toAdd.push({
-              kind: 'published',
-              id: `pub-${c.candidateId}`,
-              candidateId: c.candidateId,
-              scheduleIds: c.scheduleIds,
-              name: c.title,
-              data,
-              unifiedData: mergeYearsIntoUnified(data, c.startYear, 3),
-              createdAt: new Date(),
-              startYear: c.startYear,
-              lastSyncedAt: new Date(),
-            });
+            data[year] = grid;
           }
 
-          if (toAdd.length === 0) return prev;
-          console.log(`[App] Loaded ${toAdd.length} published candidate(s) from backend`);
-          return [...prev, ...toAdd];
-        });
+          // Validate: check if grid resident IDs match known residents.
+          // If fewer than 50% match, the Residents collection was likely
+          // reseeded since this schedule was published — skip it entirely.
+          const gridResidentIds = new Set(
+            Object.values(data).flatMap(grid => Object.keys(grid))
+          );
+          const matchCount = [...gridResidentIds].filter(id => knownResidentIds.has(id)).length;
+          const matchRatio = gridResidentIds.size > 0 ? matchCount / gridResidentIds.size : 0;
+
+          if (matchRatio < 0.5) {
+            console.warn(
+              `[App] Skipping stale candidate "${c.title}" (id=${c.candidateId}): ` +
+              `only ${matchCount}/${gridResidentIds.size} resident IDs matched current data (${(matchRatio * 100).toFixed(0)}%)`
+            );
+            skippedCandidates.push({ id: c.candidateId, title: c.title });
+            continue;
+          }
+
+          validCandidates.push({
+            kind: 'published',
+            id: `pub-${c.candidateId}`,
+            candidateId: c.candidateId,
+            scheduleIds: c.scheduleIds,
+            name: c.title,
+            data,
+            unifiedData: mergeYearsIntoUnified(data, c.startYear, 3),
+            createdAt: new Date(),
+            startYear: c.startYear,
+            lastSyncedAt: new Date(),
+          });
+        }
+
+        if (cancelled) return;
+
+        // Toast for each skipped schedule
+        for (const { title } of skippedCandidates) {
+          toast.warning(
+            `Published schedule "${title}" could not be loaded: resident data has changed since it was saved.`,
+            { duration: 8000 },
+          );
+        }
+
+        // If the active schedule pointed to a skipped candidate, reset it
+        if (skippedCandidates.length > 0) {
+          const skippedScheduleIds = new Set(
+            skippedCandidates.map(c => `pub-${c.id}`)
+          );
+          setActiveScheduleId(prev =>
+            prev && skippedScheduleIds.has(prev) ? 'all' : prev
+          );
+        }
+
+        // Add valid candidates to state (dedup against any already present)
+        if (validCandidates.length > 0) {
+          setSchedules(prev => {
+            const existingIds = new Set(
+              prev
+                .filter(isPublished)
+                .map(s => (s as PublishedCandidate).candidateId)
+            );
+            const toAdd = validCandidates.filter(c => !existingIds.has(c.candidateId));
+            if (toAdd.length === 0) return prev;
+            console.log(`[App] Loaded ${toAdd.length} published candidate(s) from backend`);
+            return [...prev, ...toAdd];
+          });
+        }
       } catch (err) {
         console.error('[App] Failed to load candidates from backend:', err);
         if (!cancelled) {
@@ -757,7 +798,7 @@ const AppContent: React.FC = () => {
       });
       const defaultCohorts: Record<string, number> = {};
       activeResidentsForDefault?.forEach((r, idx) => {
-        defaultCohorts[r.id] = idx % 5;
+        defaultCohorts[r.id] = idx % programData.cycleConfig.cohortCount;
       });
       yearCohorts = defaultCohorts;
     }
@@ -792,7 +833,7 @@ const AppContent: React.FC = () => {
       });
       const defaultCohorts: Record<string, number> = {};
       activeResidents?.forEach((r, idx) => {
-        defaultCohorts[r.id] = idx % 5;
+        defaultCohorts[r.id] = idx % programData.cycleConfig.cohortCount;
       });
       yearCohorts = defaultCohorts;
     }
@@ -1257,7 +1298,7 @@ const AppContent: React.FC = () => {
           });
           const defaultCohorts: Record<string, number> = {};
           activeResidents?.forEach((r, idx) => {
-            defaultCohorts[r.id] = idx % 5;
+            defaultCohorts[r.id] = idx % programData.cycleConfig.cohortCount;
           });
           yearCohorts = defaultCohorts;
         }
