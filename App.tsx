@@ -40,6 +40,7 @@ import { getScheduleSyncService, SyncError, type SyncStatus, type ScheduleSyncEv
 import { extractTokenFromURL, isAuthenticated, verifyToken } from './services/api/auth';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
+import { detectStaleResidentIds, remapScheduleResidentIds, compareResidentLists } from './utils/remapResidentIds';
 import { healSchedule } from './services/healer';
 import { ScheduleTable } from './components/ScheduleTable';
 import { Dashboard } from './components/Dashboard';
@@ -1690,10 +1691,33 @@ const AppContent: React.FC = () => {
 
       const { candidateId } = await syncService.createCandidate(sched.startYear, candidateName.trim());
       const augmentedResidents = getAugmentedResidents(residents, sched.startYear + 4, sched.startYear);
+
+      // Pre-publish safety net: if the grid's resident IDs are stale (e.g. from
+      // a restored backup), remap them to current backend IDs by name before
+      // sending to the bulk endpoint. This prevents creating orphaned assignments.
+      let publishGridData = sched.data;
+      if (detectStaleResidentIds(sched.data, programData.residents)) {
+        const backupResidents = augmentedResidents.map(r => ({ id: r.id, name: r.name }));
+        const result = remapScheduleResidentIds(sched.data, backupResidents, programData.residents);
+        if (result.stats.needed) {
+          publishGridData = result.data;
+          toast.info(
+            `Remapped ${result.stats.remapped} resident ID(s) to match the current database before publishing.`,
+            { duration: 6000 },
+          );
+          if (result.stats.unmatched > 0) {
+            toast.warning(
+              `${result.stats.unmatched} resident(s) could not be matched and will be skipped: ${result.stats.unmatchedNames.join(', ')}`,
+              { duration: 8000 },
+            );
+          }
+        }
+      }
+
       const { scheduleIds, errors: saveErrors, residentIdMap } = await syncService.saveCandidateGrids(
         candidateId,
         candidateName.trim(),
-        sched.data,
+        publishGridData,
         augmentedResidents,
       );
 
@@ -2439,12 +2463,86 @@ const AppContent: React.FC = () => {
           throw new Error("Invalid backup format");
         }
 
-        const residentsToUse = Array.isArray(json.residents) ? json.residents : residents;
-        const patchedSchedules = json.schedules.map((s: any) => normalizeAndSanitizeSchedule(s, residentsToUse));
+        const backupResidents: Array<{ id: string | number; name: string }> = Array.isArray(json.residents)
+          ? json.residents.map((r: any) => ({ id: String(r.id), name: r.name }))
+          : [];
 
-        if (Array.isArray(json.residents)) {
-          setResidents(json.residents);
+        // Detect if the backup's resident IDs are stale relative to the current backend
+        const anyScheduleStale = json.schedules.some((s: any) => {
+          const data = s.data || s.schedule || {};
+          return detectStaleResidentIds(data, programData.residents);
+        });
+
+        let residentsToUse: Resident[] = programData.residents;
+        let schedulesToImport = json.schedules;
+
+        if (anyScheduleStale && backupResidents.length > 0) {
+          // Build a summary of what will be remapped
+          const sampleData = (json.schedules[0]?.data || json.schedules[0]?.schedule || {}) as ScheduleHistory;
+          const sampleResult = remapScheduleResidentIds(sampleData, backupResidents, programData.residents);
+          const { stats } = sampleResult;
+
+          // Check for name/count differences between backup and current residents
+          const diff = compareResidentLists(backupResidents, programData.residents);
+          const warnings: string[] = [];
+          if (diff.countDiffers) {
+            warnings.push(`Resident count differs: backup has ${backupResidents.length}, current database has ${programData.residents.length}.`);
+          }
+          if (diff.backupOnly.length > 0) {
+            warnings.push(`In backup but not in database: ${diff.backupOnly.join(', ')}.`);
+          }
+          if (diff.currentOnly.length > 0) {
+            warnings.push(`In database but not in backup: ${diff.currentOnly.join(', ')}.`);
+          }
+          if (stats.unmatched > 0) {
+            warnings.push(`${stats.unmatched} resident(s) could not be matched: ${stats.unmatchedNames.join(', ')}.`);
+          }
+
+          const warningText = warnings.length > 0
+            ? `\n\nWarnings:\n• ${warnings.join('\n• ')}`
+            : '';
+
+          const proceed = confirm(
+            `This backup's resident IDs don't match the current database.\n\n` +
+            `${stats.remapped} of ${stats.totalGridIds} resident(s) will be remapped by name.` +
+            warningText +
+            `\n\nProceed with remapped IDs?`
+          );
+          if (!proceed) return;
+
+          // Remap each schedule's grid data
+          schedulesToImport = json.schedules.map((s: any) => {
+            const data = s.data || s.schedule || {};
+            const result = remapScheduleResidentIds(
+              data,
+              backupResidents,
+              programData.residents,
+              s.cohortAssignments,
+            );
+            return {
+              ...s,
+              data: result.data,
+              cohortAssignments: result.cohortAssignments ?? s.cohortAssignments,
+            };
+          });
+
+          // Use current backend residents instead of stale backup residents
+          residentsToUse = programData.residents;
+
+          if (warnings.length > 0) {
+            toast.warning(
+              `Backup imported with warnings: ${warnings[0]}`,
+              { duration: 8000 },
+            );
+          }
+        } else if (Array.isArray(json.residents)) {
+          // IDs match — use the backup's residents as before
+          residentsToUse = json.residents;
         }
+
+        const patchedSchedules = schedulesToImport.map((s: any) => normalizeAndSanitizeSchedule(s, residentsToUse));
+
+        setResidents(residentsToUse);
         setSchedules(patchedSchedules);
         setActiveScheduleId('all');
         toast.success(`Imported ${patchedSchedules.length} schedule(s) from backup`);
