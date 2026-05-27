@@ -2598,11 +2598,17 @@ const AppContent: React.FC = () => {
           residentsToUse = json.residents;
         }
 
-        const patchedSchedules = schedulesToImport.map((s: any) => normalizeAndSanitizeSchedule(s, residentsToUse));
+        const patchedSchedules = schedulesToImport.map((s: any) => {
+          const patched = normalizeAndSanitizeSchedule(s, residentsToUse) as any;
+          patched.kind = 'draft';
+          patched.id = `sched-imported-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+          delete patched.candidateId;
+          return patched;
+        });
 
         setResidents(residentsToUse);
-        setSchedules(patchedSchedules);
-        setActiveScheduleId('all');
+        setSchedules(prev => [...prev, ...patchedSchedules]);
+        setActiveScheduleId(patchedSchedules[0]?.id || 'all');
         toast.success(`Imported ${patchedSchedules.length} schedule(s) from backup`);
       } catch (err) {
         console.error("Import failed", err);
