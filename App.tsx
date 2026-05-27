@@ -1366,6 +1366,8 @@ const AppContent: React.FC = () => {
 
     try {
       const totalYears = compParams.multiYear || 1;
+      // Always generate from the program's base year, regardless of which year tab is selected
+      const genStartYear = ACTIVE_START_YEAR;
       
       startTransition(() => {
         setConvergenceData([]);
@@ -1374,8 +1376,8 @@ const AppContent: React.FC = () => {
       });
 
       const fullCohortAssignments: Record<number, Record<string, number>> = {};
-      for (let y = activeYear; y < activeYear + totalYears; y++) {
-        let yearCohorts = y === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[y] || historicalCohortsByYear[y]);
+      for (let y = genStartYear; y < genStartYear + totalYears; y++) {
+        let yearCohorts = y === genStartYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[y] || historicalCohortsByYear[y]);
         if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
           const augmented = getAugmentedResidents(residents, y + 1);
           const activeResidents = augmented.filter(r => {
@@ -1400,7 +1402,7 @@ const AppContent: React.FC = () => {
       }
 
       const { results, unifiedResidents } = await runGenerationTask(
-        activeYear,
+        genStartYear,
         totalYears,
         residents,
         {},
@@ -1419,7 +1421,7 @@ const AppContent: React.FC = () => {
             if (attempts) setAlgoAttempts(attempts);
             if (exhPoints) setExhaustionPoints(exhPoints);
             setHealerProgress(hProgress);
-            setGenStatus(`Optimizing Years ${activeYear}-${activeYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
+            setGenStatus(`Optimizing Years ${genStartYear}-${genStartYear + totalYears - 1} (${Math.round(overallProgress * 100)}%)`);
             if (scores && (activeScheduleId === 'all' || activeScheduleId === 'draft')) {
               setConvergenceData([...convergenceBufferRef.current]);
             }
@@ -1459,7 +1461,7 @@ const AppContent: React.FC = () => {
             unifiedData: res.unifiedSchedule,
             metrics: res.metrics,
             cohortAssignments: fullCohortAssignments,
-            startYear: activeYear,
+            startYear: genStartYear,
             createdAt: new Date(),
             isGenerating: false,
           }));
