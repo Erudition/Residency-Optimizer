@@ -18,12 +18,17 @@ The `codename` field on Rotations is the universal identifier used across both r
 Rotations with `isPlaceholder` set (a relationship to a `Tag`) are scheduled by the engine as proxies for their tag category. Examples: `ELEC` → Elective tag, `CLINIC` → Clinic tag. Their display title is `"Unspecified {Tag}"` (e.g., "Unspecified Elective"). The schedule grid appends `?` to their codename (e.g., `ELEC?`). The admin or resident resolves them to a specific rotation afterward. Placeholder cells remain unlocked even in historical/past views. See `specification/engine.md` for the scheduling constraint.
 
 ### X+Y Clinic Cycle Model
-Clinic scheduling uses an X+Y model stored in `ClinicCycles` (cohort documents) and `AcademicYears.clinicWeeksPerCycle` (Y):
-*   **Z** (total cycle length) = number of ClinicCycle docs × Y
+Clinic scheduling uses an X+Y model embedded in each `Schedule` document's `cycleConfig` field:
+*   **`cycleConfig.clinicWeeksPerCycle`** (Y) — number of consecutive clinic weeks per cycle.
+*   **`cycleConfig.cohorts`** — an array of cohort rows, each containing `residents` (relationship). The number of rows = cohort count.
+*   **Z** (total cycle length) = cohortCount × Y
 *   **X** (inpatient block length) = Z - Y
 *   Clinic week formula: `Math.floor((week % Z) / Y) === cohortIndex`
-*   Standard 4+1: 5 cycle docs, Y=1. Programs using 4+2: 3 cycle docs, Y=2.
-*   Residents are assigned directly to ClinicCycle documents for a given AY.
+*   Standard 4+1: 5 cohort rows, Y=1. Programs using 4+2: 3 cohort rows, Y=2.
+*   **Per-schedule autonomy**: Each candidate schedule owns its own cycle config. Changing cohort assignments or X+Y parameters on one schedule does not affect others.
+*   **Historical schedules**: Canonical schedules (`AcademicYear.canonicalSchedule`) carry their own embedded `cycleConfig`, which serves as the source of truth for historical clinic assignments and as the default for new schedules.
+*   **Retired**: The standalone `ClinicCycles` collection and `AcademicYears.clinicWeeksPerCycle` field have been removed. All cycle data now lives on Schedule documents.
+*   **Frontend mapping**: The backend's embedded `cycleConfig.cohorts` (array of `{ residents: Resident[] }`) is converted to `cohortAssignments: Record<number, Record<string, number>>` (year → residentId → 0-based cohortIndex) in the frontend for use by generators, the healer, and the CycleKanban UI.
 *   **Cohort Indexing & Clinic Week Constraints**:
     *   To prevent off-by-one errors and scheduling mismatches, all cohort indices (active, historical, fallback) must be represented as **0-based** (range `0` to `cohortCount - 1`) in memory.
     *   Clinic week checking and pre-population across all generators, healer solvers, continuity scoring, and requirements engines must generically resolve clinic weeks using the cycle-length (`Z`) and weeks-per-cycle (`Y`) values: `Math.floor((week % Z) / Y) === cohortIndex`. Hardcoding `% 5` or `% cohortCount` for clinic checks is strictly prohibited.
