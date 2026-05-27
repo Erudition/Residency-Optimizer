@@ -74,6 +74,7 @@ export const getMockProgramData = (): ProgramData => {
     tags: [],
     rotationTags: new Map(),
     placeholderCodenames: new Set(),
+    placeholderTagMap: new Map(),
     flexibleCodenames: new Set(),
     historicalSchedules: {},
     historicalCohorts: {}

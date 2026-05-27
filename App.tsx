@@ -180,12 +180,12 @@ const AssignmentModal = ({
   const programData = useProgramData();
   
   const isPlaceholder = current && programData.placeholderCodenames.has(current);
-  const placeholderTags = isPlaceholder ? (programData.rotationTags.get(current) || []) : [];
+  const placeholderTargetTag = isPlaceholder ? programData.placeholderTagMap.get(current) : null;
 
   const availableRotations = Array.from(programData.rotations.entries()).filter(([key, config]) => {
     if (!isPlaceholder) return true;
     const configTags = programData.rotationTags.get(key) || [];
-    const hasMatchingTag = placeholderTags.some(tag => configTags.includes(tag));
+    const hasMatchingTag = placeholderTargetTag ? configTags.includes(placeholderTargetTag) : false;
     const isAbsence = key === 'VAC' || configTags.includes('Vacation') || configTags.includes('Absence');
     return hasMatchingTag || isAbsence || key === current;
   });

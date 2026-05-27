@@ -187,6 +187,8 @@ export interface ProgramData {
   rotationTags: Map<string, string[]>
   /** Set of codenames that are placeholder rotations */
   placeholderCodenames: Set<string>
+  /** The tag title that a placeholder rotation represents */
+  placeholderTagMap: Map<string, string>
   /** Set of codenames that are flexible (jeopardy-eligible) */
   flexibleCodenames: Set<string>
   historicalSchedules: ScheduleHistory
@@ -199,6 +201,7 @@ export function serializeProgramData(data: ProgramData): any {
     rotations: Array.from(data.rotations.entries()),
     rotationTags: Array.from(data.rotationTags.entries()),
     placeholderCodenames: Array.from(data.placeholderCodenames),
+    placeholderTagMap: Array.from(data.placeholderTagMap.entries()),
     flexibleCodenames: Array.from(data.flexibleCodenames)
   };
 }
@@ -210,6 +213,7 @@ export function deserializeProgramData(data: any): ProgramData {
     rotations: new Map(data.rotations),
     rotationTags: new Map(data.rotationTags),
     placeholderCodenames: new Set(data.placeholderCodenames),
+    placeholderTagMap: new Map(data.placeholderTagMap),
     flexibleCodenames: new Set(data.flexibleCodenames)
   };
 }
@@ -324,6 +328,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   const rotations = new Map<string, RotationConfig>()
   const rotationTags = new Map<string, string[]>()
   const placeholderCodenames = new Set<string>()
+  const placeholderTagMap = new Map<string, string>()
   const flexibleCodenames = new Set<string>()
 
   for (const r of gqlRotations) {
@@ -356,7 +361,12 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
 
     rotationTags.set(r.codename, r.tags.map(t => t.title))
 
-    if (r.isPlaceholder) placeholderCodenames.add(r.codename)
+    if (r.isPlaceholder) {
+      placeholderCodenames.add(r.codename)
+      if (r.isPlaceholder.title) {
+        placeholderTagMap.set(r.codename, r.isPlaceholder.title)
+      }
+    }
     if (r.isFlexible) flexibleCodenames.add(r.codename)
   }
 
@@ -514,6 +524,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     tags,
     rotationTags,
     placeholderCodenames,
+    placeholderTagMap,
     flexibleCodenames,
     historicalSchedules,
     historicalCohorts,
