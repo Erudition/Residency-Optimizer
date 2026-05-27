@@ -776,6 +776,8 @@ const AppContent: React.FC = () => {
   }, [schedules, activeScheduleId, historySchedules, activeYear, isHistoricalYear, programData.placeholderCodenames]);
   
   const [viewMode, setViewMode] = useState<'singleYear' | 'unified'>('singleYear');
+  const [cellPadding, setCellPadding] = useState<'comfortable' | 'minimal' | 'none'>('comfortable');
+  const [rowHeight, setRowHeight] = useState<'1' | '2' | '3'>('1');
 
   const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
     setViewMode(mode);
@@ -3075,6 +3077,34 @@ const AppContent: React.FC = () => {
             </>
           )}
           <NavButton id="export" label={viewMode === 'unified' ? "Export 3yr" : "Export"} icon={FileSpreadsheet} />
+          {activeTab === 'schedule' && (
+            <div className="flex-1 flex justify-end items-center gap-4 px-2">
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] font-bold text-muted uppercase tracking-wider">Spacing</label>
+                <select 
+                  className="text-xs bg-light-3 border border-light-4 rounded px-2 py-1 outline-none text-black font-medium"
+                  value={cellPadding}
+                  onChange={(e) => setCellPadding(e.target.value as any)}
+                >
+                  <option value="comfortable">Comfortable</option>
+                  <option value="minimal">Minimal</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] font-bold text-muted uppercase tracking-wider">Row Height</label>
+                <select 
+                  className="text-xs bg-light-3 border border-light-4 rounded px-2 py-1 outline-none text-black font-medium"
+                  value={rowHeight}
+                  onChange={(e) => setRowHeight(e.target.value as any)}
+                >
+                  <option value="1">1 (1rem)</option>
+                  <option value="2">2 (2rem)</option>
+                  <option value="3">3 (3rem)</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
 
@@ -3289,6 +3319,8 @@ const AppContent: React.FC = () => {
                         onLockWeek={handleLockWeek}
                         onLockResident={handleLockResident}
                         onToggleLock={handleToggleLock}
+                        cellPadding={cellPadding}
+                        rowHeight={rowHeight}
                       />
                     </div>
 

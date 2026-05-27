@@ -21,6 +21,9 @@ interface Props {
   onLockWeek: (weekIdx: number) => void;
   onLockResident: (residentId: string) => void;
   onToggleLock: (residentId: string, weekIdx: number) => void;
+  
+  cellPadding?: 'comfortable' | 'minimal' | 'none';
+  rowHeight?: '1' | '2' | '3';
 }
 
 // WEEKS will be derived from the schedule length
@@ -63,7 +66,9 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   onCellClick,
   onLockWeek,
   onLockResident,
-  onToggleLock
+  onToggleLock,
+  cellPadding = 'comfortable',
+  rowHeight = '1'
 }) => {
   const programData = useProgramData();
   const totalWeeks = useMemo(() => {
@@ -521,10 +526,13 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     const isSwapLeftBorder = isCellSwapSource && idx === swapSourceSelectionBounds!.minCol;
                     const isSwapRightBorder = isCellSwapSource && idx === swapSourceSelectionBounds!.maxCol;
 
+                    const paddingClass = cellPadding === 'none' ? 'p-0' : cellPadding === 'minimal' ? 'p-[1px]' : 'p-1';
+                    const heightClass = rowHeight === '3' ? 'h-12' : rowHeight === '2' ? 'h-8' : 'h-[1px]';
+
                     return (
                       <td
                         key={`${resident.id}-${w}`}
-                        className="p-1 text-center select-none relative h-[1px]"
+                        className={`${paddingClass} text-center select-none relative ${heightClass}`}
                         style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                       >
                         {isCellSelected && (
