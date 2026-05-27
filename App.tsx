@@ -195,9 +195,8 @@ const AssignmentModal = ({
   let r = 0;
   let c = 0;
 
-  // +1 offset because the "Clear Block" button will be the first item
   if (current && keys.includes(current)) {
-    const i = keys.indexOf(current) + 1;
+    const i = keys.indexOf(current);
     r = Math.floor(i / 4);
     c = i % 4;
   }
@@ -250,17 +249,6 @@ const AssignmentModal = ({
           <button onClick={onClose} className="text-muted hover:text-black text-sm select-none px-1">✕</button>
         </div>
         <div className="grid grid-cols-4 gap-1.5 select-none">
-          <button
-            onClick={() => onSave(null)}
-            className="h-10 rounded font-bold text-[10px] text-muted bg-white transition-all flex items-center justify-center text-center leading-tight hover:brightness-95 hover:text-red-600 active:translate-y-[1px] select-none p-1"
-            style={{
-              width: `${btnWidth}px`,
-              border: `1.5px dashed #e2e8f0`,
-              boxShadow: `0 2px 0 #f1f5f9`,
-            }}
-          >
-            Clear Block
-          </button>
           {availableRotations.map(([key, config]) => {
             const label = config.label;
             const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
@@ -282,6 +270,17 @@ const AssignmentModal = ({
               </button>
             );
           })}
+          <button
+            onClick={() => onSave(null)}
+            className="h-10 rounded font-bold text-[10px] text-muted bg-white transition-all flex items-center justify-center text-center leading-tight hover:brightness-95 hover:text-red-600 active:translate-y-[1px] select-none p-1"
+            style={{
+              width: `${btnWidth}px`,
+              border: `1.5px dashed #e2e8f0`,
+              boxShadow: `0 2px 0 #f1f5f9`,
+            }}
+          >
+            Clear Block
+          </button>
         </div>
         <div className="pt-2">
           <Button
@@ -1997,15 +1996,12 @@ const AppContent: React.FC = () => {
 
   const handleShowMore = () => {
     if (selectedCell) {
-      const resIndex = displayResidents.findIndex(r => r.id === selectedCell.resId);
-      if (resIndex !== -1) {
-        setSelection({
-          startRow: resIndex,
-          startCol: selectedCell.week,
-          endRow: resIndex,
-          endCol: selectedCell.week
-        });
-      }
+      setSelection({
+        startResidentId: selectedCell.resId,
+        startWeekIdx: selectedCell.week,
+        endResidentId: selectedCell.resId,
+        endWeekIdx: selectedCell.week
+      });
     }
   };
 
