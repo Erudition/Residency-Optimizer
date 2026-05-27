@@ -267,7 +267,26 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
             rect
           );
         } else {
-          onSelectionChange(localSelection);
+          // Check if the resulting selection bounds are identical to the existing selection
+          let isIdentical = false;
+          if (selection && !isDraggingRef.current) {
+            const oldStartRowIdx = residents.findIndex(r => r.id === selection.startResidentId);
+            const oldEndRowIdx = residents.findIndex(r => r.id === selection.endResidentId);
+            const oldMinRow = Math.min(oldStartRowIdx, oldEndRowIdx);
+            const oldMaxRow = Math.max(oldStartRowIdx, oldEndRowIdx);
+            const oldMinCol = Math.min(selection.startWeekIdx, selection.endWeekIdx);
+            const oldMaxCol = Math.max(selection.startWeekIdx, selection.endWeekIdx);
+
+            if (minRow === oldMinRow && maxRow === oldMaxRow && minCol === oldMinCol && maxCol === oldMaxCol) {
+              isIdentical = true;
+            }
+          }
+
+          if (isIdentical) {
+            onSelectionChange(null);
+          } else {
+            onSelectionChange(localSelection);
+          }
         }
       }
       dragStartRef.current = null;
@@ -279,7 +298,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     return () => {
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [isSelecting, localSelection, residents, schedule, isReadOnly, startYear, programData]);
+  }, [isSelecting, localSelection, residents, schedule, isReadOnly, startYear, programData, selection]);
 
   // Only show the active drag selection outline on mouse up (when done selecting)
   // to avoid crawling border during the drag operation itself.
