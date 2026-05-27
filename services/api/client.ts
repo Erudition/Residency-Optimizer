@@ -11,7 +11,6 @@ import { GraphQLClient } from 'graphql-request'
 import {
   ROTATIONS_QUERY,
   RESIDENTS_QUERY,
-  CLINIC_CYCLES_QUERY,
   ACADEMIC_YEAR_QUERY,
   ALL_ACADEMIC_YEARS_QUERY,
   GRAD_REQUIREMENTS_QUERY,
@@ -43,7 +42,6 @@ const client = new GraphQLClient(GRAPHQL_ENDPOINT, {
 interface GqlAcademicYear {
   id: number
   startingYear: number
-  clinicWeeksPerCycle?: number
   canonicalSchedule?: { id: number } | null
 }
 
@@ -91,13 +89,15 @@ interface GqlResident {
   isSynthetic?: boolean | null
 }
 
-interface GqlClinicCycle {
+/** Shape of canonical schedule with embedded cycleConfig, from ALL_ACADEMIC_YEARS_QUERY */
+interface GqlCanonicalSchedule {
   id: number
-  number: number
-  label: string
-  academicYear: GqlAcademicYear
-  residents: Array<{ id: number; displayName: string }>
+  cycleConfig?: {
+    clinicWeeksPerCycle?: number | null
+    cohorts?: Array<{ residents: Array<{ id: number }> }> | null
+  } | null
 }
+
 
 export interface UnifiedRequirement {
   id: number
@@ -162,7 +162,7 @@ interface GqlScheduleAssignment {
 // ── Cycle Config ──
 
 export interface CycleConfig {
-  /** Number of cohorts (= number of ClinicCycle documents) */
+  /** Number of cohorts (= number of cohort rows in the schedule's cycleConfig) */
   cohortCount: number
   /** Y: consecutive clinic weeks per cycle */
   Y: number
@@ -170,7 +170,7 @@ export interface CycleConfig {
   Z: number
   /** X = Z - Y: inpatient block length */
   X: number
-  /** Map of residentId → cohort number (1-based) */
+  /** Map of residentId → cohort index (0-based) */
   assignments: Record<string, number>
 }
 
@@ -225,7 +225,6 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   const [
     rotationsRes,
     residentsRes,
-    cyclesRes,
     ayRes,
     gradReqsRes,
     annualReqsRes,
@@ -235,7 +234,6 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   ] = await Promise.all([
     client.request<{ Rotations: { docs: GqlRotation[] } }>(ROTATIONS_QUERY),
     client.request<{ Residents: { docs: GqlResident[] } }>(RESIDENTS_QUERY),
-    client.request<{ ClinicCycles: { docs: GqlClinicCycle[] } }>(CLINIC_CYCLES_QUERY),
     client.request<{ AcademicYears: { docs: GqlAcademicYear[] } }>(ACADEMIC_YEAR_QUERY, {
       where: { startingYear: { equals: academicYear } },
     }),
@@ -248,8 +246,6 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
 
   let gqlRotations = rotationsRes.Rotations.docs
   let gqlResidents = residentsRes.Residents.docs
-  const allGqlCycles = cyclesRes.ClinicCycles.docs
-  let gqlCycles = [...allGqlCycles]
   const ay = ayRes.AcademicYears.docs[0]
   let gqlGradReqs = gradReqsRes.GradRequirements.docs
   let gqlAnnualReqs = annualReqsRes.AnnualRequirements.docs
@@ -264,9 +260,9 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   // ── Resolve canonical schedule IDs for historical filtering ──
   // Fetch ALL academic years to build the set of canonical schedule IDs.
   // This ensures historical schedules are loaded only from the official record.
-  const allAYsRes = await client.request<{ AcademicYears: { docs: GqlAcademicYear[] } }>(
-    ALL_ACADEMIC_YEARS_QUERY,
-  )
+  const allAYsRes = await client.request<{ AcademicYears: { docs: Array<GqlAcademicYear & {
+    canonicalSchedule?: GqlCanonicalSchedule | null
+  }> } }>(ALL_ACADEMIC_YEARS_QUERY)
   const canonicalScheduleIds = new Set(
     allAYsRes.AcademicYears.docs
       .filter(ayDoc => ayDoc.canonicalSchedule)
@@ -282,7 +278,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   // Keep all residents in the master list so the frontend can dynamically filter by the active year
   // (to support multi-year generation and viewing historical/future schedules).
 
-  gqlCycles = gqlCycles.filter(c => c.academicYear?.startingYear === academicYear)
+
   
   // Load graduation requirements for the active year, or fall back to the closest year if none exist for the active year
   const activeYearReqs = gqlGradReqs.filter(g => g.academicYear?.startingYear === academicYear);
@@ -413,16 +409,21 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     }
   }
 
-  // ── Build Cycle Config ──
-  const Y = ay.clinicWeeksPerCycle ?? 1
-  const cohortCount = gqlCycles.length
+  // ── Build Cycle Config from canonical schedule ──
+  // Find the canonical schedule for the active year from the allAYs response
+  const activeAYDoc = allAYsRes.AcademicYears.docs.find(a => a.startingYear === academicYear)
+  const canonicalCycleConfig = activeAYDoc?.canonicalSchedule?.cycleConfig
+  const Y = canonicalCycleConfig?.clinicWeeksPerCycle ?? 1
+  const cohortCount = canonicalCycleConfig?.cohorts?.length ?? 5
   const Z = cohortCount * Y
   const X = Z - Y
 
   const cycleAssignments: Record<string, number> = {}
-  for (const cycle of gqlCycles) {
-    for (const resident of cycle.residents) {
-      cycleAssignments[`${resident.id}`] = cycle.number - 1
+  if (canonicalCycleConfig?.cohorts) {
+    for (let i = 0; i < canonicalCycleConfig.cohorts.length; i++) {
+      for (const resident of canonicalCycleConfig.cohorts[i].residents) {
+        cycleAssignments[`${resident.id}`] = i
+      }
     }
   }
 
@@ -451,14 +452,17 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     }
   }
 
-  // ── Construct Historical Cohorts ──
+  // ── Construct Historical Cohorts from canonical schedules' embedded cycleConfig ──
   const historicalCohorts: Record<number, Record<string, number>> = {}
-  for (const cycle of allGqlCycles) {
-    const year = cycle.academicYear?.startingYear
-    if (year && year <= academicYear) {
-      if (!historicalCohorts[year]) historicalCohorts[year] = {}
-      for (const resident of cycle.residents) {
-        historicalCohorts[year][resident.id.toString()] = cycle.number - 1
+  for (const ayDoc of allAYsRes.AcademicYears.docs) {
+    const year = ayDoc.startingYear
+    if (year > academicYear) continue
+    const cc = ayDoc.canonicalSchedule?.cycleConfig
+    if (!cc?.cohorts) continue
+    historicalCohorts[year] = {}
+    for (let i = 0; i < cc.cohorts.length; i++) {
+      for (const resident of cc.cohorts[i].residents) {
+        historicalCohorts[year][resident.id.toString()] = i
       }
     }
   }

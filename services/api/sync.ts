@@ -387,6 +387,7 @@ export class ScheduleSyncService {
     title: string,
     data: Record<number, ScheduleGrid>,
     residents: Array<{ id: string; name: string; startYear: number }>,
+    cycleConfigs?: Record<number, { clinicWeeksPerCycle: number; cohorts: Array<{ residentIds: number[] }> }>,
   ): Promise<{ scheduleIds: Record<number, number>; errors: string[]; residentIdMap: Record<string, number> }> {
     if (!isAuthenticated()) throw new SyncError('Not authenticated', 'AUTH_REQUIRED')
     this.refreshAuthHeaders()
@@ -501,6 +502,7 @@ export class ScheduleSyncService {
             academicYearId: ayId,
             assignments,
             ...(syntheticResidents.length > 0 ? { syntheticResidents } : {}),
+            ...(cycleConfigs?.[year] ? { cycleConfig: cycleConfigs[year] } : {}),
           }),
         })
 
@@ -553,6 +555,13 @@ export class ScheduleSyncService {
           locked: boolean
         }>
       >
+      cycleConfigs: Record<
+        number,
+        {
+          clinicWeeksPerCycle: number
+          cohorts: Array<{ residentIds: number[] }>
+        }
+      >
     }>
   > {
     if (!isAuthenticated()) return []
@@ -579,6 +588,10 @@ export class ScheduleSyncService {
                     locked: boolean
                   }>
                 }
+                cycleConfig?: {
+                  clinicWeeksPerCycle?: number | null
+                  cohorts?: Array<{ residents: Array<{ id: number }> }> | null
+                } | null
               }>
             }
           }>
@@ -601,6 +614,13 @@ export class ScheduleSyncService {
             locked: boolean
           }>
         > = {}
+        const cycleConfigs: Record<
+          number,
+          {
+            clinicWeeksPerCycle: number
+            cohorts: Array<{ residentIds: number[] }>
+          }
+        > = {}
 
         for (const sched of candidate.schedules.docs) {
           const year = sched.academicYear.startingYear
@@ -612,6 +632,16 @@ export class ScheduleSyncService {
             rotation: a.rotation.codename,
             locked: a.locked,
           }))
+
+          // Parse embedded cycleConfig if present
+          if (sched.cycleConfig?.cohorts) {
+            cycleConfigs[year] = {
+              clinicWeeksPerCycle: sched.cycleConfig.clinicWeeksPerCycle ?? 1,
+              cohorts: sched.cycleConfig.cohorts.map(c => ({
+                residentIds: c.residents.map(r => r.id),
+              })),
+            }
+          }
         }
 
         return {
@@ -620,6 +650,7 @@ export class ScheduleSyncService {
           startYear: candidate.startingYear.startingYear,
           scheduleIds,
           yearData,
+          cycleConfigs,
         }
       })
 

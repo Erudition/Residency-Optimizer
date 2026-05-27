@@ -74,25 +74,6 @@ export const RESIDENTS_QUERY = /* GraphQL */ `
   }
 `
 
-export const CLINIC_CYCLES_QUERY = /* GraphQL */ `
-  query ClinicCycles($where: ClinicCycle_where) {
-    ClinicCycles(where: $where, limit: 200) {
-      docs {
-        id
-        number
-        label
-        academicYear {
-          id
-          startingYear
-        }
-        residents {
-          id
-          displayName
-        }
-      }
-    }
-  }
-`
 
 export const ACADEMIC_YEAR_QUERY = /* GraphQL */ `
   query AcademicYear($where: AcademicYear_where) {
@@ -100,7 +81,6 @@ export const ACADEMIC_YEAR_QUERY = /* GraphQL */ `
       docs {
         id
         startingYear
-        clinicWeeksPerCycle
         canonicalSchedule {
           id
         }
@@ -117,6 +97,14 @@ export const ALL_ACADEMIC_YEARS_QUERY = /* GraphQL */ `
         startingYear
         canonicalSchedule {
           id
+          cycleConfig {
+            clinicWeeksPerCycle
+            cohorts {
+              residents {
+                id
+              }
+            }
+          }
         }
       }
     }
@@ -299,6 +287,14 @@ export const CANDIDATES_WITH_SCHEDULES_QUERY = /* GraphQL */ `
             academicYear {
               id
               startingYear
+            }
+            cycleConfig {
+              clinicWeeksPerCycle
+              cohorts {
+                residents {
+                  id
+                }
+              }
             }
             scheduleAssignments(limit: 5000) {
               docs {
