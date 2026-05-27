@@ -777,7 +777,7 @@ const AppContent: React.FC = () => {
   
   const [viewMode, setViewMode] = useState<'singleYear' | 'unified'>('singleYear');
   const [cellPadding, setCellPadding] = useState<'comfortable' | 'minimal' | 'none'>('comfortable');
-  const [rowHeight, setRowHeight] = useState<'1' | '2' | '3'>('1');
+  const [rowHeight, setRowHeight] = useState<'1' | '2' | '3'>('3');
 
   const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
     setViewMode(mode);
@@ -3184,53 +3184,34 @@ const AppContent: React.FC = () => {
                     {/* Left: Group By */}
                     <div className="flex items-center gap-6">
                       {viewMode !== 'unified' && (
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-black text-muted uppercase tracking-wider">Group By</span>
-                          <div className="flex bg-light-2 p-1 rounded-xl border border-light-5">
-                            <Button
-                              variant="ghost"
-                              onClick={() => setResidentSortOrder('cycle')}
-                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'cycle' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                            >
-                              <Users size={14} />
-                              Cycle
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              onClick={() => setResidentSortOrder('pgy')}
-                              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${residentSortOrder === 'pgy' ? 'bg-white text-blue shadow-sm border border-light-5' : 'text-muted hover:text-primary'}`}
-                            >
-                              <LayoutGrid size={14} />
-                              PGY
-                            </Button>
-                          </div>
-                        </div>
+                        <select 
+                          className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
+                          value={residentSortOrder}
+                          onChange={(e) => setResidentSortOrder(e.target.value as any)}
+                        >
+                          <option value="cycle">By Cycle</option>
+                          <option value="pgy">By PGY</option>
+                        </select>
                       )}
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-muted uppercase tracking-wider">Spacing</span>
-                          <select 
-                            className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
-                            value={cellPadding}
-                            onChange={(e) => setCellPadding(e.target.value as any)}
-                          >
-                            <option value="comfortable">Comfortable</option>
-                            <option value="minimal">Minimal</option>
-                            <option value="none">None</option>
-                          </select>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-muted uppercase tracking-wider">Height</span>
-                          <select 
-                            className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
-                            value={rowHeight}
-                            onChange={(e) => setRowHeight(e.target.value as any)}
-                          >
-                            <option value="1">1 (1rem)</option>
-                            <option value="2">2 (2rem)</option>
-                            <option value="3">3 (3rem)</option>
-                          </select>
-                        </div>
+                        <select 
+                          className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
+                          value={cellPadding}
+                          onChange={(e) => setCellPadding(e.target.value as any)}
+                        >
+                          <option value="comfortable">Comfortable</option>
+                          <option value="minimal">Minimal Spacing</option>
+                          <option value="none">No Spacing</option>
+                        </select>
+                        <select 
+                          className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
+                          value={rowHeight}
+                          onChange={(e) => setRowHeight(e.target.value as any)}
+                        >
+                          <option value="3">Height 3</option>
+                          <option value="2">Height 2</option>
+                          <option value="1">Height 1</option>
+                        </select>
                       </div>
                     </div>
 

@@ -68,7 +68,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   onLockResident,
   onToggleLock,
   cellPadding = 'comfortable',
-  rowHeight = '1'
+  rowHeight = '3'
 }) => {
   const programData = useProgramData();
   const totalWeeks = useMemo(() => {
