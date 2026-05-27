@@ -909,7 +909,7 @@ const AppContent: React.FC = () => {
 
   // Helper to derive active residents for any year (graduation aware)
   const getResidentsForYear = (year: number) => {
-    let yearCohorts = year === activeYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year]);
+    let yearCohorts = activeSchedule?.cohortAssignments?.[year] || historicalCohortsByYear[year];
     const augmented = getAugmentedResidents(residents, year + 1);
 
     if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
@@ -1377,7 +1377,7 @@ const AppContent: React.FC = () => {
 
       const fullCohortAssignments: Record<number, Record<string, number>> = {};
       for (let y = genStartYear; y < genStartYear + totalYears; y++) {
-        let yearCohorts = y === genStartYear ? activeYearCohorts : (activeSchedule?.cohortAssignments?.[y] || historicalCohortsByYear[y]);
+        let yearCohorts = activeSchedule?.cohortAssignments?.[y] || historicalCohortsByYear[y];
         if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
           const augmented = getAugmentedResidents(residents, y + 1);
           const activeResidents = augmented.filter(r => {
