@@ -142,13 +142,13 @@ const AutoWidthSelect = ({ value, onChange, options, className }: any) => {
   const selectedLabel = options.find((o: any) => o.value === value)?.label || '';
   return (
     <div className="relative inline-grid items-center">
-      <span className={`invisible col-start-1 row-start-1 whitespace-pre ${className}`}>
+      <span className={`invisible whitespace-pre ${className}`}>
         {selectedLabel}
       </span>
       <select
         value={value}
         onChange={onChange}
-        className={`col-start-1 row-start-1 w-full appearance-none bg-no-repeat bg-[length:12px_12px] bg-[right_8px_center] ${className}`}
+        className={`absolute inset-0 w-full h-full appearance-none bg-no-repeat bg-[length:12px_12px] bg-[right_8px_center] ${className}`}
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")` }}
       >
         {options.map((o: any) => (
