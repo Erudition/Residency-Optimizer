@@ -637,6 +637,20 @@ const AppContent: React.FC = () => {
             continue;
           }
 
+          // Convert backend cycleConfigs → cohortAssignments map
+          const cohortAssignments: Record<number, Record<string, number>> = {};
+          if (c.cycleConfigs) {
+            for (const [yearStr, cc] of Object.entries(c.cycleConfigs) as [string, { clinicWeeksPerCycle: number; cohorts: Array<{ residentIds: number[] }> }][]) {
+              const year = parseInt(yearStr, 10);
+              cohortAssignments[year] = {};
+              for (let i = 0; i < cc.cohorts.length; i++) {
+                for (const resId of cc.cohorts[i].residentIds) {
+                  cohortAssignments[year][resId.toString()] = i;
+                }
+              }
+            }
+          }
+
           validCandidates.push({
             kind: 'published',
             id: `pub-${c.candidateId}`,
@@ -648,6 +662,7 @@ const AppContent: React.FC = () => {
             createdAt: new Date(),
             startYear: c.startYear,
             lastSyncedAt: new Date(),
+            cohortAssignments: Object.keys(cohortAssignments).length > 0 ? cohortAssignments : undefined,
           });
         }
 
@@ -1542,6 +1557,25 @@ const AppContent: React.FC = () => {
             activeSched.name,
             newData,
             augmentedResidents,
+            // Pass existing cycleConfigs if available
+            activeSched.cohortAssignments ? (() => {
+              const cc: Record<number, { clinicWeeksPerCycle: number; cohorts: Array<{ residentIds: number[] }> }> = {};
+              for (const [yearStr, yearMap] of Object.entries(activeSched.cohortAssignments!)) {
+                const year = parseInt(yearStr, 10);
+                const maxIdx = Math.max(0, ...Object.values(yearMap));
+                const cohorts: Array<{ residentIds: number[] }> = [];
+                for (let i = 0; i <= maxIdx; i++) {
+                  cohorts.push({
+                    residentIds: Object.entries(yearMap)
+                      .filter(([, idx]) => idx === i)
+                      .map(([id]) => parseInt(id, 10))
+                      .filter(id => !isNaN(id)),
+                  });
+                }
+                cc[year] = { clinicWeeksPerCycle: programData.cycleConfig.Y, cohorts };
+              }
+              return Object.keys(cc).length > 0 ? cc : undefined;
+            })() : undefined,
           );
           if (saveErrors && saveErrors.length > 0) {
             console.error('Failed to save healed schedule to server:', saveErrors);
@@ -1714,11 +1748,35 @@ const AppContent: React.FC = () => {
         }
       }
 
+      // Build cycleConfigs from cohortAssignments for the bulk endpoint
+      const cycleConfigs: Record<number, { clinicWeeksPerCycle: number; cohorts: Array<{ residentIds: number[] }> }> = {};
+      if (sched.cohortAssignments) {
+        for (const [yearStr, yearMap] of Object.entries(sched.cohortAssignments)) {
+          const year = parseInt(yearStr, 10);
+          // Determine cohort count from the max cohort index + 1
+          const maxIdx = Math.max(0, ...Object.values(yearMap));
+          const cohorts: Array<{ residentIds: number[] }> = [];
+          for (let i = 0; i <= maxIdx; i++) {
+            cohorts.push({
+              residentIds: Object.entries(yearMap)
+                .filter(([, idx]) => idx === i)
+                .map(([id]) => parseInt(id, 10))
+                .filter(id => !isNaN(id)),
+            });
+          }
+          cycleConfigs[year] = {
+            clinicWeeksPerCycle: programData.cycleConfig.Y,
+            cohorts,
+          };
+        }
+      }
+
       const { scheduleIds, errors: saveErrors, residentIdMap } = await syncService.saveCandidateGrids(
         candidateId,
         candidateName.trim(),
         publishGridData,
         augmentedResidents,
+        Object.keys(cycleConfigs).length > 0 ? cycleConfigs : undefined,
       );
 
       // Remap synthetic frontend keys → backend numeric IDs in the grid data
