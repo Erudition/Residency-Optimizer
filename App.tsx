@@ -166,7 +166,8 @@ const AssignmentModal = ({
   current,
   onSave,
   anchorRect,
-  onShowMore
+  onShowMore,
+  isClinicWeek
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -174,6 +175,7 @@ const AssignmentModal = ({
   onSave: (val: AssignmentType | null) => void;
   anchorRect: DOMRect | null;
   onShowMore: () => void;
+  isClinicWeek?: boolean;
 }) => {
   if (!isOpen || !anchorRect) return null;
 
@@ -183,8 +185,15 @@ const AssignmentModal = ({
   const placeholderTargetTag = isPlaceholder ? programData.placeholderTagMap.get(current) : null;
 
   const availableRotations = Array.from(programData.rotations.entries()).filter(([key, config]) => {
-    if (!isPlaceholder) return true;
     const configTags = programData.rotationTags.get(key) || [];
+    
+    if (isClinicWeek !== undefined && !isClinicWeek) {
+      if (configTags.includes('Clinic') || configTags.includes('Continuity Clinic')) {
+        return false;
+      }
+    }
+
+    if (!isPlaceholder) return true;
     const hasMatchingTag = placeholderTargetTag ? configTags.includes(placeholderTargetTag) : false;
     const isAbsence = key === 'VAC' || configTags.includes('Vacation') || configTags.includes('Absence');
     return hasMatchingTag || isAbsence || key === current;
@@ -3896,7 +3905,34 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} anchorRect={anchorRect} onShowMore={handleShowMore} />
+      {(() => {
+        let isSelectedClinicWeek: boolean | undefined = undefined;
+        if (selectedCell) {
+          let weekYear = activeYear;
+          let localWeek = selectedCell.week;
+          if (viewMode === 'unified' && activeSchedule?.unifiedData) {
+            const schedStartYear = activeSchedule.startYear || ACTIVE_START_YEAR;
+            weekYear = schedStartYear + Math.floor(selectedCell.week / TOTAL_WEEKS);
+            localWeek = selectedCell.week % TOTAL_WEEKS;
+          }
+          const cohortIdx = (activeSchedule?.cohortAssignments?.[weekYear] || historicalCohortsByYear[weekYear])?.[selectedCell.resId];
+          if (cohortIdx !== undefined && programData) {
+            const { Y, Z } = programData.cycleConfig;
+            isSelectedClinicWeek = Math.floor((localWeek % Z) / Y) === cohortIdx;
+          }
+        }
+        return (
+          <AssignmentModal 
+            isOpen={modalOpen} 
+            onClose={() => setModalOpen(false)} 
+            current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} 
+            onSave={handleAssignmentSave} 
+            anchorRect={anchorRect} 
+            onShowMore={handleShowMore}
+            isClinicWeek={isSelectedClinicWeek}
+          />
+        );
+      })()}
       <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => { setRenameModalOpen(false); setPublishState('idle'); setScheduleToRename(null); }} onSave={publishState === 'naming' ? handlePublishSave : handleRename} />
     </div>
   );
