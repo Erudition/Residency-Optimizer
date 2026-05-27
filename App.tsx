@@ -138,6 +138,27 @@ const loadState = <T,>(key: string, fallback: T): T => {
   }
 };
 
+const AutoWidthSelect = ({ value, onChange, options, className }: any) => {
+  const selectedLabel = options.find((o: any) => o.value === value)?.label || '';
+  return (
+    <div className="relative inline-grid items-center">
+      <span className={`invisible col-start-1 row-start-1 whitespace-pre ${className}`}>
+        {selectedLabel}
+      </span>
+      <select
+        value={value}
+        onChange={onChange}
+        className={`col-start-1 row-start-1 w-full appearance-none bg-no-repeat bg-[length:12px_12px] bg-[right_8px_center] ${className}`}
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")` }}
+      >
+        {options.map((o: any) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+};
+
 
 const AssignmentModal = ({
   isOpen,
@@ -3184,34 +3205,37 @@ const AppContent: React.FC = () => {
                     {/* Left: Group By */}
                     <div className="flex items-center gap-6">
                       {viewMode !== 'unified' && (
-                        <select 
-                          className="inline-flex items-center justify-center font-button font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2 px-4 py-1.5 text-xs bg-white text-muted hover:text-primary border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none cursor-pointer outline-none"
+                        <AutoWidthSelect 
+                          className="inline-flex items-center justify-center font-button font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2 pl-3 pr-7 py-1.5 text-xs bg-white text-muted hover:text-primary border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none cursor-pointer outline-none"
                           value={residentSortOrder}
-                          onChange={(e) => setResidentSortOrder(e.target.value as any)}
-                        >
-                          <option value="cycle">By Cycle</option>
-                          <option value="pgy">By PGY</option>
-                        </select>
+                          onChange={(e: any) => setResidentSortOrder(e.target.value)}
+                          options={[
+                            { value: 'cycle', label: 'By Cycle' },
+                            { value: 'pgy', label: 'By PGY' }
+                          ]}
+                        />
                       )}
                       <div className="flex items-center gap-3">
-                        <select 
-                          className="inline-flex items-center justify-center font-button font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2 px-4 py-1.5 text-xs bg-white text-muted hover:text-primary border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none cursor-pointer outline-none"
+                        <AutoWidthSelect 
+                          className="inline-flex items-center justify-center font-button font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2 pl-3 pr-7 py-1.5 text-xs bg-white text-muted hover:text-primary border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none cursor-pointer outline-none"
                           value={cellPadding}
-                          onChange={(e) => setCellPadding(e.target.value as any)}
-                        >
-                          <option value="comfortable">Comfortable</option>
-                          <option value="minimal">Minimal Spacing</option>
-                          <option value="none">No Spacing</option>
-                        </select>
-                        <select 
-                          className="inline-flex items-center justify-center font-button font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2 px-4 py-1.5 text-xs bg-white text-muted hover:text-primary border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none cursor-pointer outline-none"
+                          onChange={(e: any) => setCellPadding(e.target.value)}
+                          options={[
+                            { value: 'comfortable', label: 'Comfortable' },
+                            { value: 'minimal', label: 'Minimal Spacing' },
+                            { value: 'none', label: 'No Spacing' }
+                          ]}
+                        />
+                        <AutoWidthSelect 
+                          className="inline-flex items-center justify-center font-button font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2 pl-3 pr-7 py-1.5 text-xs bg-white text-muted hover:text-primary border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none cursor-pointer outline-none"
                           value={rowHeight}
-                          onChange={(e) => setRowHeight(e.target.value as any)}
-                        >
-                          <option value="3">Height 3</option>
-                          <option value="2">Height 2</option>
-                          <option value="1">Height 1</option>
-                        </select>
+                          onChange={(e: any) => setRowHeight(e.target.value)}
+                          options={[
+                            { value: '3', label: 'Height 3' },
+                            { value: '2', label: 'Height 2' },
+                            { value: '1', label: 'Height 1' }
+                          ]}
+                        />
                       </div>
                     </div>
 
