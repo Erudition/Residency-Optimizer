@@ -67,6 +67,7 @@ interface GqlRotation {
   title: string
   codename: string
   intensity: number
+  preferredDuration: number | null
   outpatientPercentage: number
   color: string | null
   isFlexible: boolean
@@ -331,7 +332,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
       label: r.title,
       category: r.tags[0]?.title,
       intensity: r.intensity,
-      duration: 4, // Default block length; will be replaced by X from cycle config
+      duration: 4, // Temporary default — overridden below after cycleConfig is built
       setting: deriveSettingFromPercentage(r.outpatientPercentage),
       minInterns: staffing?.preferences.length
         ? Math.min(...staffing.preferences.map(p => p.internCount))
@@ -431,6 +432,23 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     Z,
     X,
     assignments: cycleAssignments,
+  }
+
+  // ── Fix up rotation durations now that cycleConfig is known ──
+  // Clinic rotations are fixed to Y (clinic weeks per cycle).
+  // Non-clinic rotations use the backend's preferredDuration (or X as default),
+  // capped at X so blocks never exceed the inpatient span.
+  for (const r of gqlRotations) {
+    const config = rotations.get(r.codename)
+    if (!config) continue
+
+    const isClinic = r.tags.some(t => t.title === 'Clinic' || t.title === 'Continuity Clinic')
+    if (isClinic) {
+      config.duration = Y
+    } else {
+      const preferred = r.preferredDuration ?? X
+      config.duration = Math.min(preferred, X)
+    }
   }
 
   // ── Construct Historical Cohorts ──
