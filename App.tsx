@@ -3976,7 +3976,7 @@ const AppContent: React.FC = () => {
         if (selection && selectionBounds) {
           isMultiResidentSelection = selectionBounds.minRow !== selectionBounds.maxRow;
           isHomogeneous = true;
-          let hasUnlocked = false;
+          let hasEditable = false;
           const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
 
           for (let r = selectionBounds.minRow; r <= selectionBounds.maxRow; r++) {
@@ -3984,11 +3984,14 @@ const AppContent: React.FC = () => {
             if (resident) {
               for (let c = selectionBounds.minCol; c <= selectionBounds.maxCol; c++) {
                 const cell = displayGrid[resident.id]?.[c];
-                if (cell?.locked || shouldIgnoreCell(cell?.assignment)) continue;
-                hasUnlocked = true;
+                if (shouldIgnoreCell(cell?.assignment)) continue;
+                const assign = cell?.assignment || null;
+                if (!cell?.locked || (assign && (programData.placeholderCodenames.has(assign) || programData.rotationTags.get(assign)?.includes('Clinic') || programData.rotationTags.get(assign)?.includes('Continuity Clinic')))) {
+                  hasEditable = true;
+                }
                 if (commonAssignment === null) {
-                  commonAssignment = cell?.assignment || null;
-                } else if (commonAssignment !== (cell?.assignment || null)) {
+                  commonAssignment = assign;
+                } else if (commonAssignment !== assign) {
                   isHomogeneous = false;
                   break;
                 }
@@ -3996,7 +3999,7 @@ const AppContent: React.FC = () => {
             }
             if (!isHomogeneous) break;
           }
-          if (!hasUnlocked) isHomogeneous = false;
+          if (!hasEditable) isHomogeneous = false;
         }
 
         if (selectedCell) {
