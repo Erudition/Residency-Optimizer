@@ -575,7 +575,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           </div>
                         )}
                         <button
-                          className={`h-full ${isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')} ${isCellDragged ? 'is-pressed' : ''}`}
+                          className={`h-full ${isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')} ${(isCellDragged || isCellSelected) ? 'is-pressed' : ''}`}
                           style={{ '--slot-bg': isOutOfBounds ? '#f1f5f9' : bgHex } as React.CSSProperties}
                           onMouseDown={(e) => {
                             if (isOutOfBounds) return;
@@ -593,7 +593,6 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           title={isOutOfBounds ? "Outside residency period" : (isEditable ? "Click to resolve" : (isReadOnly ? "Historical block (Locked)" : (isPast ? "Past block (Locked)" : "Click and drag to select, Double-click to toggle lock")))}
                           disabled={isOutOfBounds}
                         >
-                          {isCellSelected && <div className="absolute inset-0 bg-blue/15 pointer-events-none rounded-[4px] z-10" />}
                           {isCellSwapSource && <div className="absolute inset-0 bg-emerald-500/15 pointer-events-none rounded-[4px] z-10" />}
                           {assign && !isOutOfBounds ? (
                             <span className="truncate w-full block">
