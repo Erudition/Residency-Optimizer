@@ -3381,6 +3381,8 @@ const AppContent: React.FC = () => {
                         startYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
                         cohortAssignments={activeYearCohorts}
                         isReadOnly={activeSchedule?.isHistory || isHealing}
+                        selection={selection}
+                        selectedCell={selectedCell}
                         onSelectionChange={(sel, rect) => {
                           setSelection(sel);
                           setSelectionRect(rect || null);

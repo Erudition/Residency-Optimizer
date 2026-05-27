@@ -14,6 +14,7 @@ interface Props {
   isReadOnly?: boolean;
 
   selection: SelectionRange | null;
+  selectedCell?: { resId: string; week: number } | null;
   onSelectionChange: (sel: SelectionRange | null, rect?: DOMRect | null) => void;
   swapSourceSelection?: SelectionRange | null;
 
@@ -60,6 +61,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   isReadOnly = false,
 
   selection,
+  selectedCell,
   onSelectionChange,
   swapSourceSelection = null,
 
@@ -309,19 +311,29 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   const activeSelection = isSelecting ? null : selection;
 
   const selectionBounds = useMemo(() => {
-    if (!activeSelection) return null;
-    
-    const startRowIdx = residents.findIndex(r => r.id === activeSelection.startResidentId);
-    const endRowIdx = residents.findIndex(r => r.id === activeSelection.endResidentId);
-    if (startRowIdx === -1 || endRowIdx === -1) return null;
+    if (activeSelection) {
+      const startRowIdx = residents.findIndex(r => r.id === activeSelection.startResidentId);
+      const endRowIdx = residents.findIndex(r => r.id === activeSelection.endResidentId);
+      if (startRowIdx === -1 || endRowIdx === -1) return null;
 
-    return {
-      minRow: Math.min(startRowIdx, endRowIdx),
-      maxRow: Math.max(startRowIdx, endRowIdx),
-      minCol: Math.min(activeSelection.startWeekIdx, activeSelection.endWeekIdx),
-      maxCol: Math.max(activeSelection.startWeekIdx, activeSelection.endWeekIdx),
-    };
-  }, [activeSelection, residents]);
+      return {
+        minRow: Math.min(startRowIdx, endRowIdx),
+        maxRow: Math.max(startRowIdx, endRowIdx),
+        minCol: Math.min(activeSelection.startWeekIdx, activeSelection.endWeekIdx),
+        maxCol: Math.max(activeSelection.startWeekIdx, activeSelection.endWeekIdx),
+      };
+    } else if (selectedCell && !isSelecting) {
+      const rowIdx = residents.findIndex(r => r.id === selectedCell.resId);
+      if (rowIdx === -1) return null;
+      return {
+        minRow: rowIdx,
+        maxRow: rowIdx,
+        minCol: selectedCell.week,
+        maxCol: selectedCell.week,
+      };
+    }
+    return null;
+  }, [activeSelection, selectedCell, residents, isSelecting]);
 
   const dragSelectionBounds = useMemo(() => {
     if (!isSelecting || !localSelection || !isDraggingRef.current) return null;
