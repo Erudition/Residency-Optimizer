@@ -148,11 +148,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
   const dragStartRef = useRef<{ residentId: string; weekIdx: number } | null>(null);
   const isDraggingRef = useRef(false);
 
+  const dragModeRef = useRef<'cell' | 'col' | 'row'>('cell');
+
   // Multi-selection handlers
   const handleCellMouseDown = (e: React.MouseEvent, residentId: string, weekIdx: number) => {
     if (isReadOnly || e.button !== 0) return; // Left click only
     setIsSelecting(true);
     isDraggingRef.current = false;
+    dragModeRef.current = 'cell';
     dragStartRef.current = { residentId, weekIdx };
     
     const initialSel: SelectionRange = {
@@ -164,19 +167,69 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     setLocalSelection(initialSel);
   };
 
-  const handleCellMouseEnterDrag = (residentId: string, weekIdx: number) => {
-    if (!isSelecting || !dragStartRef.current) return;
-    
-    if (residentId !== dragStartRef.current.residentId || weekIdx !== dragStartRef.current.weekIdx) {
-      isDraggingRef.current = true;
-    }
+  const handleColHeaderMouseDown = (e: React.MouseEvent, weekIdx: number) => {
+    if (isReadOnly || e.button !== 0 || !residents.length) return;
+    setIsSelecting(true);
+    isDraggingRef.current = false;
+    dragModeRef.current = 'col';
+    dragStartRef.current = { residentId: '', weekIdx };
     
     setLocalSelection({
-      startResidentId: dragStartRef.current.residentId,
-      startWeekIdx: dragStartRef.current.weekIdx,
-      endResidentId: residentId,
+      startResidentId: residents[0].id,
+      startWeekIdx: weekIdx,
+      endResidentId: residents[residents.length - 1].id,
       endWeekIdx: weekIdx
     });
+  };
+
+  const handleRowHeaderMouseDown = (e: React.MouseEvent, residentId: string) => {
+    if (isReadOnly || e.button !== 0 || !residents.length) return;
+    setIsSelecting(true);
+    isDraggingRef.current = false;
+    dragModeRef.current = 'row';
+    dragStartRef.current = { residentId, weekIdx: -1 };
+    
+    setLocalSelection({
+      startResidentId: residentId,
+      startWeekIdx: 0,
+      endResidentId: residentId,
+      endWeekIdx: WEEKS.length - 1
+    });
+  };
+
+  const handleMouseEnterDrag = (residentId?: string, weekIdx?: number) => {
+    if (!isSelecting || !dragStartRef.current) return;
+    
+    if (dragModeRef.current === 'cell') {
+      if (!residentId || weekIdx === undefined) return;
+      if (residentId !== dragStartRef.current.residentId || weekIdx !== dragStartRef.current.weekIdx) {
+        isDraggingRef.current = true;
+      }
+      setLocalSelection({
+        startResidentId: dragStartRef.current.residentId,
+        startWeekIdx: dragStartRef.current.weekIdx,
+        endResidentId: residentId,
+        endWeekIdx: weekIdx
+      });
+    } else if (dragModeRef.current === 'col') {
+      if (weekIdx === undefined) return;
+      if (weekIdx !== dragStartRef.current.weekIdx) isDraggingRef.current = true;
+      setLocalSelection({
+        startResidentId: residents[0].id,
+        startWeekIdx: dragStartRef.current.weekIdx,
+        endResidentId: residents[residents.length - 1].id,
+        endWeekIdx: weekIdx
+      });
+    } else if (dragModeRef.current === 'row') {
+      if (!residentId) return;
+      if (residentId !== dragStartRef.current.residentId) isDraggingRef.current = true;
+      setLocalSelection({
+        startResidentId: dragStartRef.current.residentId,
+        startWeekIdx: 0,
+        endResidentId: residentId,
+        endWeekIdx: WEEKS.length - 1
+      });
+    }
   };
 
   useEffect(() => {
@@ -443,8 +496,10 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                 return (
                   <th
                     key={w}
+                    onMouseDown={(e) => handleColHeaderMouseDown(e, idx)}
+                    onMouseEnter={() => handleMouseEnterDrag(undefined, idx)}
                     onDoubleClick={() => !isReadOnly && onLockWeek(idx)}
-                    className={`p-1 min-w-[80px] text-center bg-light-1 transition-colors relative ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
+                    className={`p-1 min-w-[80px] text-center bg-light-1 select-none transition-colors relative ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
                     style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                     title={
                       deficitInfo
@@ -474,8 +529,10 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               return (
                 <tr key={resident.id} className="hover:bg-light-1 transition-colors">
                   <td
-                    className={`sticky left-0 z-20 font-medium text-black group bg-white/80 backdrop-blur-md transition-colors ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
+                    className={`sticky left-0 z-20 font-medium text-black select-none group bg-white/80 backdrop-blur-md transition-colors ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
+                    onMouseDown={(e) => handleRowHeaderMouseDown(e, resident.id)}
+                    onMouseEnter={() => handleMouseEnterDrag(resident.id, undefined)}
                     onDoubleClick={() => !isReadOnly && onLockResident(resident.id)}
                     title={isReadOnly ? undefined : `Double-click to toggle lock for ${resident.name}`}
                   >
@@ -584,7 +641,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           onMouseEnter={(e) => {
                             if (isOutOfBounds) return;
                             if (isSelecting) {
-                              handleCellMouseEnterDrag(resident.id, idx);
+                              handleMouseEnterDrag(resident.id, idx);
                             } else if (assign) {
                               handleMouseEnter(e, resident, idx, assign);
                             }
