@@ -1753,11 +1753,15 @@ const AppContent: React.FC = () => {
       // a restored backup), remap them to current backend IDs by name before
       // sending to the bulk endpoint. This prevents creating orphaned assignments.
       let publishGridData = sched.data;
-      if (detectStaleResidentIds(sched.data, programData.residents)) {
+      let publishCohortAssignments = sched.cohortAssignments;
+      if (detectStaleResidentIds(sched.data, programData.residents, sched.cohortAssignments)) {
         const backupResidents = augmentedResidents.map(r => ({ id: r.id, name: r.name }));
-        const result = remapScheduleResidentIds(sched.data, backupResidents, programData.residents);
+        const result = remapScheduleResidentIds(sched.data, backupResidents, programData.residents, sched.cohortAssignments);
         if (result.stats.needed) {
           publishGridData = result.data;
+          if (result.cohortAssignments) {
+            publishCohortAssignments = result.cohortAssignments;
+          }
           toast.info(
             `Remapped ${result.stats.remapped} resident ID(s) to match the current database before publishing.`,
             { duration: 6000 },
@@ -1804,10 +1808,9 @@ const AppContent: React.FC = () => {
 
       // Remap synthetic frontend keys → backend numeric IDs in the grid data
       // so subsequent cell edits sync correctly via real-time upserts.
-      let publishData = sched.data;
-      let publishCohortAssignments = sched.cohortAssignments;
+      let publishData = publishGridData;
       if (Object.keys(residentIdMap).length > 0) {
-        publishData = { ...sched.data };
+        publishData = { ...publishGridData };
         for (const [yearStr, grid] of Object.entries(publishData)) {
           const remappedGrid = { ...grid };
           for (const [synthKey, backendId] of Object.entries(residentIdMap)) {
@@ -2556,7 +2559,7 @@ const AppContent: React.FC = () => {
         // Detect if the backup's resident IDs are stale relative to the current backend
         const anyScheduleStale = json.schedules.some((s: any) => {
           const data = s.data || s.schedule || {};
-          return detectStaleResidentIds(data, augmentedForImport);
+          return detectStaleResidentIds(data, augmentedForImport, s.cohortAssignments);
         });
 
         let residentsToUse: Resident[] = programData.residents;

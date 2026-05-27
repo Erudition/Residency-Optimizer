@@ -46,11 +46,18 @@ export interface RemapResult {
 export function detectStaleResidentIds(
   data: ScheduleHistory,
   currentResidents: Resident[],
+  cohortAssignments?: Record<number, Record<string, number>>
 ): boolean {
   const knownIds = new Set(currentResidents.map(r => r.id));
   const gridIds = new Set(
     Object.values(data).flatMap(grid => Object.keys(grid)),
   );
+  if (cohortAssignments) {
+    Object.values(cohortAssignments).forEach(yearMap => {
+      Object.keys(yearMap).forEach(id => gridIds.add(id));
+    });
+  }
+
   if (gridIds.size === 0) return false;
 
   const matchCount = [...gridIds].filter(id => knownIds.has(id)).length;
@@ -74,10 +81,15 @@ export function remapScheduleResidentIds(
 ): RemapResult {
   const knownIds = new Set(currentResidents.map(r => r.id));
 
-  // Collect all unique grid resident IDs across all years
+  // Collect all unique resident IDs across all years
   const allGridIds = new Set(
     Object.values(data).flatMap(grid => Object.keys(grid)),
   );
+  if (cohortAssignments) {
+    Object.values(cohortAssignments).forEach(yearMap => {
+      Object.keys(yearMap).forEach(id => allGridIds.add(id));
+    });
+  }
 
   // Quick exit: if most IDs already match, no remapping needed
   const alreadyMatched = [...allGridIds].filter(id => knownIds.has(id)).length;
