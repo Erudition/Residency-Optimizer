@@ -14,6 +14,7 @@ export const ROTATIONS_QUERY = /* GraphQL */ `
         title
         codename
         intensity
+        preferredDuration
         outpatientPercentage
         color
         isFlexible
