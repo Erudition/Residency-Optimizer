@@ -228,11 +228,9 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     };
   }, [isSelecting, localSelection, residents, schedule, isReadOnly, startYear, programData]);
 
-  // Only show the active drag selection if they have actually started dragging
-  // to avoid a brief flash of the selection box on simple clicks.
-  const activeSelection = isSelecting 
-    ? (isDraggingRef.current ? localSelection : null) 
-    : selection;
+  // Only show the active drag selection outline on mouse up (when done selecting)
+  // to avoid crawling border during the drag operation itself.
+  const activeSelection = isSelecting ? null : selection;
 
   const selectionBounds = useMemo(() => {
     if (!activeSelection) return null;
@@ -248,6 +246,21 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
       maxCol: Math.max(activeSelection.startWeekIdx, activeSelection.endWeekIdx),
     };
   }, [activeSelection, residents]);
+
+  const dragSelectionBounds = useMemo(() => {
+    if (!isSelecting || !localSelection || !isDraggingRef.current) return null;
+    
+    const startRowIdx = residents.findIndex(r => r.id === localSelection.startResidentId);
+    const endRowIdx = residents.findIndex(r => r.id === localSelection.endResidentId);
+    if (startRowIdx === -1 || endRowIdx === -1) return null;
+
+    return {
+      minRow: Math.min(startRowIdx, endRowIdx),
+      maxRow: Math.max(startRowIdx, endRowIdx),
+      minCol: Math.min(localSelection.startWeekIdx, localSelection.endWeekIdx),
+      maxCol: Math.max(localSelection.startWeekIdx, localSelection.endWeekIdx),
+    };
+  }, [isSelecting, localSelection, residents]);
 
   const swapSourceSelectionBounds = useMemo(() => {
     if (!swapSourceSelection) return null;
@@ -530,6 +543,12 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     const isSwapLeftBorder = isCellSwapSource && idx === swapSourceSelectionBounds!.minCol;
                     const isSwapRightBorder = isCellSwapSource && idx === swapSourceSelectionBounds!.maxCol;
 
+                    const isCellDragged = dragSelectionBounds &&
+                      rowIdx >= dragSelectionBounds.minRow &&
+                      rowIdx <= dragSelectionBounds.maxRow &&
+                      idx >= dragSelectionBounds.minCol &&
+                      idx <= dragSelectionBounds.maxCol;
+
                     const paddingClass = cellPadding === 'none' ? 'p-0' : cellPadding === 'minimal' ? 'p-[1px]' : 'p-1';
                     const heightClass = rowHeight === '3' ? 'h-12' : rowHeight === '2' ? 'h-8' : 'h-[1px]';
 
@@ -556,7 +575,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           </div>
                         )}
                         <button
-                          className={`h-full ${isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')}`}
+                          className={`h-full ${isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')} ${isCellDragged ? 'is-pressed' : ''}`}
                           style={{ '--slot-bg': isOutOfBounds ? '#f1f5f9' : bgHex } as React.CSSProperties}
                           onMouseDown={(e) => {
                             if (isOutOfBounds) return;
