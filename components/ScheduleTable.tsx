@@ -228,7 +228,11 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
     };
   }, [isSelecting, localSelection, residents, schedule, isReadOnly, startYear, programData]);
 
-  const activeSelection = isSelecting ? localSelection : selection;
+  // Only show the active drag selection if they have actually started dragging
+  // to avoid a brief flash of the selection box on simple clicks.
+  const activeSelection = isSelecting 
+    ? (isDraggingRef.current ? localSelection : null) 
+    : selection;
 
   const selectionBounds = useMemo(() => {
     if (!activeSelection) return null;
