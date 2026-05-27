@@ -524,7 +524,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                     return (
                       <td
                         key={`${resident.id}-${w}`}
-                        className="p-1 text-center select-none relative"
+                        className="p-1 text-center select-none relative h-[1px]"
                         style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                       >
                         {isCellSelected && (
@@ -544,7 +544,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           </div>
                         )}
                         <button
-                          className={isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')}
+                          className={`h-full min-h-[2.5rem] ${isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')}`}
                           style={{ '--slot-bg': isOutOfBounds ? '#f1f5f9' : bgHex } as React.CSSProperties}
                           onMouseDown={(e) => {
                             if (isOutOfBounds) return;
