@@ -544,7 +544,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                           </div>
                         )}
                         <button
-                          className={`h-full min-h-[2.5rem] ${isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')}`}
+                          className={`h-full ${isOutOfBounds ? 'lemon-slot-locked' : (cell?.locked ? 'lemon-slot-locked' : 'lemon-slot')}`}
                           style={{ '--slot-bg': isOutOfBounds ? '#f1f5f9' : bgHex } as React.CSSProperties}
                           onMouseDown={(e) => {
                             if (isOutOfBounds) return;
