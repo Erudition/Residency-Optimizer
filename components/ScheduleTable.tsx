@@ -595,7 +595,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                         >
                           {isCellSwapSource && <div className="absolute inset-0 bg-emerald-500/15 pointer-events-none rounded-[4px] z-10" />}
                           {assign && !isOutOfBounds ? (
-                            <span className="truncate w-full block">
+                            <span className={`truncate w-full block ${((isCellSelected || isCellDragged) && (cell?.locked || isPast)) ? 'line-through' : ''}`}>
                               {programData.placeholderCodenames.has(assign) ? `${assign}?` : assign}
                             </span>
                           ) : (
