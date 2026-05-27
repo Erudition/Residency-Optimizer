@@ -13,6 +13,8 @@ export enum ClinicalSetting {
 export interface Resident {
   id: string;
   name: string;
+  firstName: string;
+  lastName: string;
   level: PgyLevel; // Computed level for the active year context
   startYear: number; // Matriculation year: the calendar year they entered PGY-1 (e.g. 2026)
   avoidResidentIds: string[];

@@ -35,9 +35,12 @@ export const ResidentManager: React.FC<Props> = ({ residents, setResidents, acti
   const handleAdd = () => {
     if (!newResidentName.trim()) return;
     const newId = `manual-${Date.now()}`;
+    const commaIdx = newResidentName.indexOf(',');
     const newResident: Resident = {
       id: newId,
       name: newResidentName,
+      firstName: commaIdx > 0 ? newResidentName.substring(commaIdx + 1).trim() : newResidentName.trim(),
+      lastName: commaIdx > 0 ? newResidentName.substring(0, commaIdx).trim() : '',
       level: 1, // Placeholder, calculated on-the-fly in schedule views
       startYear: newResidentStartYear,
       avoidResidentIds: [],
@@ -174,9 +177,12 @@ Robert Brown,${activeYear - 2},2`;
 
         const cohort = parts[2] ? parseInt(parts[2]) : undefined;
 
+        const csvCommaIdx = cleanName.indexOf(',');
         newResidents.push({
             id: `imported-${Date.now()}-${idCounter++}`,
             name: cleanName,
+            firstName: csvCommaIdx > 0 ? cleanName.substring(csvCommaIdx + 1).trim() : cleanName.trim(),
+            lastName: csvCommaIdx > 0 ? cleanName.substring(0, csvCommaIdx).trim() : '',
             level: 1, // Placeholder
             startYear: startYear,
             cohort: !isNaN(cohort as any) && cohort !== undefined ? cohort : undefined,

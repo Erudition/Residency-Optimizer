@@ -386,7 +386,7 @@ export class ScheduleSyncService {
     candidateId: number,
     title: string,
     data: Record<number, ScheduleGrid>,
-    residents: Array<{ id: string; name: string; startYear: number }>,
+    residents: Array<{ id: string; firstName: string; lastName: string; startYear: number }>,
     cycleConfigs?: Record<number, { clinicWeeksPerCycle: number; cohorts: Array<{ residentIds: number[] }> }>,
   ): Promise<{ scheduleIds: Record<number, number>; errors: string[]; residentIdMap: Record<string, number> }> {
     if (!isAuthenticated()) throw new SyncError('Not authenticated', 'AUTH_REQUIRED')
@@ -435,10 +435,8 @@ export class ScheduleSyncService {
         if (isSynthetic && !syntheticResidents.some(sr => sr.frontendKey === residentId)) {
           const resident = residentLookup.get(residentId)
           if (resident) {
-            // Parse name like "New 2027 Resident 1" → firstName: "New 2027 Resident", lastName: "1"
-            const lastSpace = resident.name.lastIndexOf(' ')
-            const firstName = lastSpace > 0 ? resident.name.substring(0, lastSpace) : resident.name
-            const lastName = lastSpace > 0 ? resident.name.substring(lastSpace + 1) : '1'
+            const firstName = resident.firstName
+            const lastName = resident.lastName
 
             const startYearId = this.ayIdCache?.get(resident.startYear)
             if (startYearId) {

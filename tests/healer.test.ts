@@ -7,8 +7,8 @@ describe('Healer Solver Strategies', () => {
     test('runs healer with each strategy successfully', async () => {
         const programData = getMockProgramData();
         const residents: Resident[] = [
-            { id: 'res1', name: 'Dr. A', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52, avoidResidentIds: [] },
-            { id: 'res2', name: 'Dr. B', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52, avoidResidentIds: [] },
+            { id: 'res1', name: 'Dr. A', firstName: 'A', lastName: 'Dr.', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52, avoidResidentIds: [] },
+            { id: 'res2', name: 'Dr. B', firstName: 'B', lastName: 'Dr.', level: 1, startYear: 2026, activeWeekStart: 0, activeWeekEnd: 52, avoidResidentIds: [] },
         ];
 
         const schedule: ScheduleGrid = {

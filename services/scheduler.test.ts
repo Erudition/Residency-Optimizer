@@ -122,8 +122,8 @@ let residents: Resident[];
 
 describe('getAugmentedResidents', () => {
     const baseResidents: Resident[] = [
-        { id: '1', name: 'Real 2025 Resident 1', startYear: 2025, level: 1, avoidResidentIds: [] },
-        { id: '2', name: 'Real 2025 Resident 2', startYear: 2025, level: 1, avoidResidentIds: [] },
+        { id: '1', name: 'Real 2025 Resident 1', firstName: 'Real 2025 Resident', lastName: '1', startYear: 2025, level: 1, avoidResidentIds: [] },
+        { id: '2', name: 'Real 2025 Resident 2', firstName: 'Real 2025 Resident', lastName: '2', startYear: 2025, level: 1, avoidResidentIds: [] },
     ];
 
     it('should generate complete cohort of synthetic residents when no residents exist for a future year', () => {
@@ -141,7 +141,7 @@ describe('getAugmentedResidents', () => {
         // Pre-populate one synthetic resident from the database
         const withOneSynthetic: Resident[] = [
             ...baseResidents,
-            { id: 'db-synth-1', name: 'New 2026 Resident 1', startYear: 2026, level: 1, avoidResidentIds: [], isSynthetic: true }
+            { id: 'db-synth-1', name: 'New 2026 Resident 1', firstName: 'New 2026 Resident', lastName: '1', startYear: 2026, level: 1, avoidResidentIds: [], isSynthetic: true }
         ];
 
         const augmented = getAugmentedResidents(withOneSynthetic, 2026, 2025);
@@ -165,8 +165,8 @@ describe('getAugmentedResidents', () => {
     it('should preserve all synthetic residents and not backfill if cohort is already full', () => {
         const withTwoSynthetic: Resident[] = [
             ...baseResidents,
-            { id: 'db-synth-1', name: 'New 2026 Resident 1', startYear: 2026, level: 1, avoidResidentIds: [], isSynthetic: true },
-            { id: 'db-synth-2', name: 'New 2026 Resident 2', startYear: 2026, level: 1, avoidResidentIds: [], isSynthetic: true }
+            { id: 'db-synth-1', name: 'New 2026 Resident 1', firstName: 'New 2026 Resident', lastName: '1', startYear: 2026, level: 1, avoidResidentIds: [], isSynthetic: true },
+            { id: 'db-synth-2', name: 'New 2026 Resident 2', firstName: 'New 2026 Resident', lastName: '2', startYear: 2026, level: 1, avoidResidentIds: [], isSynthetic: true }
         ];
 
         const augmented = getAugmentedResidents(withTwoSynthetic, 2026, 2025);

@@ -9,6 +9,8 @@ test.skip('Healer performance check', () => {
     const residents: Resident[] = Array.from({ length: 45 }, (_, i) => ({
         id: `r${i}`,
         name: `Resident ${i}`,
+        firstName: `Resident`,
+        lastName: `${i}`,
         level: (i % 3) + 1 as any,
         startYear: 2024,
         avoidResidentIds: []

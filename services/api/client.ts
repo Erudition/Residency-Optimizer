@@ -407,6 +407,8 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     return {
       id: frontendId,
       name: r.displayName,
+      firstName: r.firstName,
+      lastName: r.lastName,
       level: pgyLevel,
       startYear: r.startYear.startingYear,
       avoidResidentIds: [], // Will be populated after all residents are created

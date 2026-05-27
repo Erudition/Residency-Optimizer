@@ -49,9 +49,15 @@ export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
             if (transferOutYear !== undefined && transferOutYear < activeYear) continue;
             if (transferInYear !== undefined && transferInYear > activeYear) continue;
 
+            const commaIdx = name.indexOf(',');
+            const firstName = commaIdx > 0 ? name.substring(commaIdx + 1).trim() : name;
+            const lastName = commaIdx > 0 ? name.substring(0, commaIdx).trim() : '';
+
             residents.push({
                 id: `c${startYear}-${i + 1}`,
                 name,
+                firstName,
+                lastName,
                 level,
                 startYear,
                 avoidResidentIds: [],

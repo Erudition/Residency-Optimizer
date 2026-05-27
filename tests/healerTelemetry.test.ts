@@ -19,6 +19,8 @@ describe('Healer Telemetry Synchronization', () => {
       return {
         id: `r${i}`,
         name: `Resident ${i}`,
+        firstName: `Resident`,
+        lastName: `${i}`,
         level: 1, // Not strictly used for 3-year logic if startYear is set
         startYear: resStartYear,
         activeWeekStart: cohortIndex * 52,

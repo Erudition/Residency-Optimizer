@@ -98,6 +98,8 @@ export const getAugmentedResidents = (baseResidents: Resident[], maxYear: number
           cohort.push({
             id: `c${currentY}-${nextIdx}`,
             name: `New ${currentY} Resident ${nextIdx}`,
+            firstName: `New ${currentY} Resident`,
+            lastName: `${nextIdx}`,
             startYear: currentY,
             level: 1,
             avoidResidentIds: [],
