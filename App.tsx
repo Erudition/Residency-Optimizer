@@ -2388,6 +2388,10 @@ const AppContent: React.FC = () => {
           if (displayCell && shouldIgnoreCell(displayCell.assignment)) {
             return;
           }
+          // Skip locked cells unless they are placeholders (which are always resolvable)
+          if (displayCell?.locked && !(displayCell.assignment && programData.placeholderCodenames.has(displayCell.assignment))) {
+            return;
+          }
 
           if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
             const uWeeks = [...(updatedUnified[rid] || [])];
@@ -3987,7 +3991,7 @@ const AppContent: React.FC = () => {
                 const assign = cell?.assignment || null;
                 if (!cell?.locked) {
                   hasEditable = true;
-                } else if (assign && (programData.placeholderCodenames.has(assign) || programData.rotationTags.get(assign)?.includes('Clinic') || programData.rotationTags.get(assign)?.includes('Continuity Clinic'))) {
+                } else if (assign && programData.placeholderCodenames.has(assign)) {
                   hasEditable = true;
                 }
                 if (commonAssignment === null) {
