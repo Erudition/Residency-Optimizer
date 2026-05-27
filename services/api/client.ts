@@ -221,7 +221,7 @@ export function deserializeProgramData(data: any): ProgramData {
  * This is the single entry point for all engine configuration.
  */
 export async function loadProgramData(academicYear: number): Promise<ProgramData> {
-  // Fetch everything in parallel
+  // Phase 1: Fetch configuration data and all academic years in parallel
   const [
     rotationsRes,
     residentsRes,
@@ -230,7 +230,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     annualReqsRes,
     avoidanceRes,
     tagsRes,
-    assignmentsRes,
+    allAYsRes,
   ] = await Promise.all([
     client.request<{ Rotations: { docs: GqlRotation[] } }>(ROTATIONS_QUERY),
     client.request<{ Residents: { docs: GqlResident[] } }>(RESIDENTS_QUERY),
@@ -241,7 +241,9 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
     client.request<{ AnnualRequirements: { docs: GqlAnnualRequirement[] } }>(ANNUAL_REQUIREMENTS_QUERY),
     client.request<{ AvoidanceRules: { docs: GqlAvoidanceRule[] } }>(AVOIDANCE_RULES_QUERY),
     client.request<{ Tags: { docs: GqlTag[] } }>(TAGS_QUERY),
-    client.request<{ ScheduleAssignments: { docs: GqlScheduleAssignment[] } }>(SCHEDULE_ASSIGNMENTS_QUERY),
+    client.request<{ AcademicYears: { docs: Array<GqlAcademicYear & {
+      canonicalSchedule?: GqlCanonicalSchedule | null
+    }> } }>(ALL_ACADEMIC_YEARS_QUERY),
   ])
 
   let gqlRotations = rotationsRes.Rotations.docs
@@ -251,23 +253,28 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   let gqlAnnualReqs = annualReqsRes.AnnualRequirements.docs
   const gqlAvoidance = avoidanceRes.AvoidanceRules.docs
   const tags = tagsRes.Tags.docs
-  const gqlAssignments = assignmentsRes.ScheduleAssignments.docs
 
   if (!ay) {
     throw new Error(`Academic year ${academicYear} not found in the backend`)
   }
 
   // ── Resolve canonical schedule IDs for historical filtering ──
-  // Fetch ALL academic years to build the set of canonical schedule IDs.
-  // This ensures historical schedules are loaded only from the official record.
-  const allAYsRes = await client.request<{ AcademicYears: { docs: Array<GqlAcademicYear & {
-    canonicalSchedule?: GqlCanonicalSchedule | null
-  }> } }>(ALL_ACADEMIC_YEARS_QUERY)
   const canonicalScheduleIds = new Set(
     allAYsRes.AcademicYears.docs
       .filter(ayDoc => ayDoc.canonicalSchedule)
       .map(ayDoc => ayDoc.canonicalSchedule!.id),
   )
+
+  // Phase 2: Fetch assignments filtered to only canonical schedules
+  // This prevents candidate schedule assignments from consuming the query limit.
+  const canonicalIdArray = Array.from(canonicalScheduleIds)
+  const assignmentsRes = canonicalIdArray.length > 0
+    ? await client.request<{ ScheduleAssignments: { docs: GqlScheduleAssignment[] } }>(
+        SCHEDULE_ASSIGNMENTS_QUERY,
+        { where: { schedule: { in: canonicalIdArray } } },
+      )
+    : { ScheduleAssignments: { docs: [] as GqlScheduleAssignment[] } }
+  const gqlAssignments = assignmentsRes.ScheduleAssignments.docs
 
   // Locally filter relationship data to bypass Payload GraphQL nested operator limitations
   gqlRotations = gqlRotations.filter(r => 
@@ -470,8 +477,7 @@ export async function loadProgramData(academicYear: number): Promise<ProgramData
   // ── Transform Historical Schedules ──
   const historicalSchedules: ScheduleHistory = {}
   for (const assign of gqlAssignments) {
-    // Only load assignments from canonical (official) schedules
-    if (canonicalScheduleIds.size > 0 && !canonicalScheduleIds.has(assign.schedule.id)) continue
+    // Assignments are already filtered to canonical schedules at the query level
 
     const year = assign.schedule?.academicYear?.startingYear
     if (year && year <= academicYear) {
