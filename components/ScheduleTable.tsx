@@ -452,7 +452,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
               return (
                 <tr key={resident.id} className="hover:bg-light-1 transition-colors">
                   <td
-                    className={`sticky left-0 z-20 p-2 font-medium text-black group bg-white/80 backdrop-blur-md transition-colors ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
+                    className={`sticky left-0 z-20 font-medium text-black group bg-white/80 backdrop-blur-md transition-colors ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-light-blue/20'}`}
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
                     onDoubleClick={() => !isReadOnly && onLockResident(resident.id)}
                     title={isReadOnly ? undefined : `Double-click to toggle lock for ${resident.name}`}
