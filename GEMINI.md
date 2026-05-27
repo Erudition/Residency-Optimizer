@@ -170,6 +170,7 @@ When JSON backups are restored from a different database era (e.g. after Residen
 *   **Clinic Assignment Exclusivity**: Clinic assignments (`CLINIC` or specific clinic codenames) must never be scheduled, generated, or mutated on non-clinic (flexible) weeks.
 *   **Continuity Clinic Tag Integration**: The scheduling helper `isClinicRotation` must check for both `'Clinic'` and `'Continuity Clinic'` tags to align with the seeded tag titles in the database.
 *   **Generator Requirement Checks**: All generator algorithms must explicitly filter out clinic rotations from their educational block-placement loops to prevent clinic assignments from being scheduled as blocks on non-clinic weeks.
+*   **Clear Never Locks**: Clearing a slot (setting `assignment` to `null`) must never set `locked: true`. Only assigning a real rotation locks the slot. The explicit "Lock Selection" batch action is the sole exception (it locks all selected slots regardless of content).
 ## Unified Educational Requirements Spreadsheet Grid
 *   **Grid layout and columns**: All individual ACGME and Curriculum educational requirements from the backend are represented as columns, and residents as rows. Old ACGME, Curriculum, and ACGME Audit screens are consolidated into this single screen.
 *   **Sticky row header resizing**: The resident name row header column is sticky and can be horizontally resized by dragging the right border of the column.
