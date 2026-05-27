@@ -2361,7 +2361,7 @@ const AppContent: React.FC = () => {
     }
   }, [selection, swapSourceSelection, selectionBounds, swapSourceSelectionBounds]);
 
-  const handleBatchSetRotation = (newRotation: AssignmentType | null) => {
+  const handleBatchSetRotation = (newRotation: AssignmentType | null, force = false) => {
     if (!activeScheduleId || !selection || !selectionBounds) return;
     const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
     const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
@@ -2386,7 +2386,7 @@ const AppContent: React.FC = () => {
           }
 
           const displayCell = displayGrid[rid]?.[w];
-          if (displayCell && shouldIgnoreCell(displayCell.assignment)) {
+          if (!force && displayCell && shouldIgnoreCell(displayCell.assignment)) {
             return;
           }
           // Skip locked cells unless they are placeholders (which are always resolvable)
@@ -4080,7 +4080,7 @@ const AppContent: React.FC = () => {
                 handleAssignmentSave(val);
                 setSelectedCell(null);
               } else if (selection && isHomogeneous) {
-                handleBatchSetRotation(val);
+                handleBatchSetRotation(val, true);
                 setSelection(null);
                 setSelectionRect(null);
               }
