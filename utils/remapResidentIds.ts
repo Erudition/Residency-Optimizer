@@ -13,6 +13,10 @@ import type { ScheduleGrid, ScheduleHistory, Resident } from '../types';
 const normalizeName = (name: string): string =>
   name.trim().replace(/,\s*$/, '').toLowerCase();
 
+/** Tokenize a name into sorted, lowercase components to match names even if first/last are swapped */
+const tokenizeName = (name: string): string =>
+  name.replace(/,/g, ' ').split(/\s+/).filter(Boolean).map(s => s.toLowerCase()).sort().join(' ');
+
 export interface RemapStats {
   /** Total unique resident IDs found in the grid */
   totalGridIds: number;
@@ -102,9 +106,11 @@ export function remapScheduleResidentIds(
   // Exact name first, then normalized fallback
   const exactNameToId = new Map<string, string>();
   const normalizedNameToId = new Map<string, string>();
+  const tokenizedNameToId = new Map<string, string>();
   for (const r of currentResidents) {
     exactNameToId.set(r.name, r.id);
     normalizedNameToId.set(normalizeName(r.name), r.id);
+    tokenizedNameToId.set(tokenizeName(r.name), r.id);
   }
 
   // Build the remap: staleId → currentId
@@ -128,6 +134,10 @@ export function remapScheduleResidentIds(
     if (!currentId) {
       // Try normalized match
       currentId = normalizedNameToId.get(normalizeName(name));
+    }
+    if (!currentId) {
+      // Try tokenized match for flipped names
+      currentId = tokenizedNameToId.get(tokenizeName(name));
     }
 
     if (currentId) {
