@@ -2391,14 +2391,14 @@ const AppContent: React.FC = () => {
 
           if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
             const uWeeks = [...(updatedUnified[rid] || [])];
-            uWeeks[w] = { assignment: newRotation as any, locked: true };
+            uWeeks[w] = { assignment: newRotation as any, locked: !!newRotation };
             updatedUnified[rid] = uWeeks;
           }
 
           updatedData[targetYear] = { ...(updatedData[targetYear] || {}) };
           if (!updatedData[targetYear][rid]) updatedData[targetYear][rid] = [];
           const weeks = [...updatedData[targetYear][rid]];
-          weeks[weekIdxInYear] = { assignment: newRotation as any, locked: true };
+          weeks[weekIdxInYear] = { assignment: newRotation as any, locked: !!newRotation };
           updatedData[targetYear][rid] = weeks;
 
           if (s.backendId && newRotation) {
