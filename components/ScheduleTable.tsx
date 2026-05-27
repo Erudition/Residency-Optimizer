@@ -14,7 +14,7 @@ interface Props {
   isReadOnly?: boolean;
 
   selection: SelectionRange | null;
-  onSelectionChange: (sel: SelectionRange | null) => void;
+  onSelectionChange: (sel: SelectionRange | null, rect?: DOMRect | null) => void;
   swapSourceSelection?: SelectionRange | null;
 
   onCellClick: (residentId: string, week: number, rect?: DOMRect) => void;
@@ -282,10 +282,14 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
             }
           }
 
+          const target = e.target as HTMLElement;
+          const buttonElement = target.closest('button');
+          const rect = buttonElement?.getBoundingClientRect() || target?.getBoundingClientRect?.() || new DOMRect(e.clientX, e.clientY, 0, 0);
+
           if (isIdentical) {
             onSelectionChange(null);
           } else {
-            onSelectionChange(localSelection);
+            onSelectionChange(localSelection, rect);
           }
         }
       }

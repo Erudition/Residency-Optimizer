@@ -167,7 +167,8 @@ const AssignmentModal = ({
   onSave,
   anchorRect,
   onShowMore,
-  isClinicWeek
+  isClinicWeek,
+  isMultiResidentSelection
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -176,6 +177,7 @@ const AssignmentModal = ({
   anchorRect: DOMRect | null;
   onShowMore: () => void;
   isClinicWeek?: boolean;
+  isMultiResidentSelection?: boolean;
 }) => {
   if (!isOpen || !anchorRect) return null;
 
@@ -189,6 +191,12 @@ const AssignmentModal = ({
     
     if (isClinicWeek !== undefined && !isClinicWeek) {
       if (configTags.includes('Clinic') || configTags.includes('Continuity Clinic')) {
+        return false;
+      }
+    }
+
+    if (isMultiResidentSelection) {
+      if (key === 'VAC' || configTags.includes('Vacation') || configTags.includes('Absence')) {
         return false;
       }
     }
@@ -604,6 +612,8 @@ const AppContent: React.FC = () => {
   const [bestHealGrid, setBestHealGrid] = useState<ScheduleGrid | null>(null);
   const healWorkerRef = useRef<Worker | null>(null);
   const [selection, setSelection] = useState<SelectionRange | null>(null);
+  const [selectionRect, setSelectionRect] = useState<DOMRect | null>(null);
+  const [forceSidePanel, setForceSidePanel] = useState(false);
   const [swapSourceSelection, setSwapSourceSelection] = useState<SelectionRange | null>(null);
   const [includeClinicInBatch, setIncludeClinicInBatch] = useState(false);
   const [includeAbsencesInBatch, setIncludeAbsencesInBatch] = useState(false);
@@ -3371,8 +3381,12 @@ const AppContent: React.FC = () => {
                         startYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
                         cohortAssignments={activeYearCohorts}
                         isReadOnly={activeSchedule?.isHistory || isHealing}
-                        selection={selection}
-                        onSelectionChange={setSelection}
+                        onSelectionChange={(sel, rect) => {
+                          setSelection(sel);
+                          setSelectionRect(rect || null);
+                          setForceSidePanel(false);
+                          setSwapSourceSelection(null);
+                        }}
                         swapSourceSelection={swapSourceSelection}
 
                         onCellClick={handleCellClick}
@@ -3409,7 +3423,38 @@ const AppContent: React.FC = () => {
                       const isSwapMode = !!swapSourceSelection;
                       const activeBounds = selectionBounds || swapSourceSelectionBounds;
 
-                      if (!activeBounds) return null;
+                      let isHomogeneous = false;
+                      let commonAssignment: string | null = null;
+                      let isMultiResidentSelection = false;
+                      let hasUnlocked = false;
+
+                      if (selectionBounds) {
+                        isMultiResidentSelection = selectionBounds.minRow !== selectionBounds.maxRow;
+                        isHomogeneous = true;
+                        
+                        for (let r = selectionBounds.minRow; r <= selectionBounds.maxRow; r++) {
+                          const resident = currentResidents[r];
+                          if (resident) {
+                            for (let c = selectionBounds.minCol; c <= selectionBounds.maxCol; c++) {
+                              const cell = displayGrid[resident.id]?.[c];
+                              if (cell?.locked || shouldIgnoreCell(cell?.assignment)) continue;
+                              hasUnlocked = true;
+                              if (commonAssignment === null) {
+                                commonAssignment = cell?.assignment || null;
+                              } else if (commonAssignment !== (cell?.assignment || null)) {
+                                isHomogeneous = false;
+                                break;
+                              }
+                            }
+                          }
+                          if (!isHomogeneous) break;
+                        }
+                        if (!hasUnlocked) isHomogeneous = false;
+                      }
+
+                      const showSidePanel = (!selection || forceSidePanel || !isHomogeneous) && (selection || swapSourceSelection);
+
+                      if (!activeBounds || !showSidePanel) return null;
 
                       let hasLockedBlocks = false;
                       if (activeBounds) {
@@ -3599,7 +3644,17 @@ const AppContent: React.FC = () => {
                                       </button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-1">
-                                      {Array.from(programData.rotations.entries()).map(([key, config]) => {
+                                      {Array.from(programData.rotations.entries())
+                                        .filter(([key, config]) => {
+                                          if (isMultiResidentSelection) {
+                                            const tags = programData.rotationTags.get(key) || [];
+                                            if (key === 'VAC' || tags.includes('Vacation') || tags.includes('Absence')) {
+                                              return false;
+                                            }
+                                          }
+                                          return true;
+                                        })
+                                        .map(([key, config]) => {
                                         const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
                                         return (
                                           <button
@@ -3907,6 +3962,36 @@ const AppContent: React.FC = () => {
 
       {(() => {
         let isSelectedClinicWeek: boolean | undefined = undefined;
+        let isHomogeneous = false;
+        let commonAssignment: string | null = null;
+        let isMultiResidentSelection = false;
+        
+        if (selection && selectionBounds) {
+          isMultiResidentSelection = selectionBounds.minRow !== selectionBounds.maxRow;
+          isHomogeneous = true;
+          let hasUnlocked = false;
+          const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+
+          for (let r = selectionBounds.minRow; r <= selectionBounds.maxRow; r++) {
+            const resident = currentResidents[r];
+            if (resident) {
+              for (let c = selectionBounds.minCol; c <= selectionBounds.maxCol; c++) {
+                const cell = displayGrid[resident.id]?.[c];
+                if (cell?.locked || shouldIgnoreCell(cell?.assignment)) continue;
+                hasUnlocked = true;
+                if (commonAssignment === null) {
+                  commonAssignment = cell?.assignment || null;
+                } else if (commonAssignment !== (cell?.assignment || null)) {
+                  isHomogeneous = false;
+                  break;
+                }
+              }
+            }
+            if (!isHomogeneous) break;
+          }
+          if (!hasUnlocked) isHomogeneous = false;
+        }
+
         if (selectedCell) {
           let weekYear = activeYear;
           let localWeek = selectedCell.week;
@@ -3921,15 +4006,39 @@ const AppContent: React.FC = () => {
             isSelectedClinicWeek = Math.floor((localWeek % Z) / Y) === cohortIdx;
           }
         }
+        
+        const showModal = modalOpen || (!forceSidePanel && selection && isHomogeneous && !!selectionRect);
+
         return (
           <AssignmentModal 
-            isOpen={modalOpen} 
-            onClose={() => setModalOpen(false)} 
-            current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} 
-            onSave={handleAssignmentSave} 
-            anchorRect={anchorRect} 
-            onShowMore={handleShowMore}
+            isOpen={showModal} 
+            onClose={() => {
+              setModalOpen(false);
+              if (showModal && !modalOpen) {
+                setSelection(null);
+                setSelectionRect(null);
+              }
+            }} 
+            current={modalOpen ? (selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null) : commonAssignment} 
+            onSave={val => {
+              if (modalOpen) {
+                handleAssignmentSave(val);
+              } else if (selection && isHomogeneous) {
+                handleBatchSetRotation(val);
+                setSelection(null);
+                setSelectionRect(null);
+              }
+            }} 
+            anchorRect={modalOpen ? anchorRect : selectionRect} 
+            onShowMore={() => {
+              if (modalOpen) {
+                handleShowMore();
+              } else {
+                setForceSidePanel(true);
+              }
+            }}
             isClinicWeek={isSelectedClinicWeek}
+            isMultiResidentSelection={isMultiResidentSelection}
           />
         );
       })()}
