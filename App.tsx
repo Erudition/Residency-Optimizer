@@ -165,23 +165,39 @@ const AssignmentModal = ({
   onClose,
   current,
   onSave,
-  anchorRect
+  anchorRect,
+  onShowMore
 }: {
   isOpen: boolean;
   onClose: () => void;
   current: AssignmentType | null;
   onSave: (val: AssignmentType | null) => void;
   anchorRect: DOMRect | null;
+  onShowMore: () => void;
 }) => {
   if (!isOpen || !anchorRect) return null;
 
   const programData = useProgramData();
-  const keys = Array.from(programData.rotations.keys());
+  
+  const isPlaceholder = current && programData.placeholderCodenames.has(current);
+  const placeholderTags = isPlaceholder ? (programData.rotationTags.get(current) || []) : [];
+
+  const availableRotations = Array.from(programData.rotations.entries()).filter(([key, config]) => {
+    if (!isPlaceholder) return true;
+    const configTags = programData.rotationTags.get(key) || [];
+    const hasMatchingTag = placeholderTags.some(tag => configTags.includes(tag));
+    const isAbsence = key === 'VAC' || configTags.includes('Vacation') || configTags.includes('Absence');
+    return hasMatchingTag || isAbsence || key === current;
+  });
+
+  const keys = availableRotations.map(([key]) => key);
+  
   let r = 0;
   let c = 0;
 
+  // +1 offset because the "Clear Block" button will be the first item
   if (current && keys.includes(current)) {
-    const i = keys.indexOf(current);
+    const i = keys.indexOf(current) + 1;
     r = Math.floor(i / 4);
     c = i % 4;
   }
@@ -191,12 +207,14 @@ const AssignmentModal = ({
   const gap = 6;
   const pPadding = 12;
   const titleHeight = 24;
+  const showMoreHeight = 40;
 
   const popupBtnLeft = pPadding + c * (btnWidth + gap) + btnWidth / 2;
   const popupBtnTop = pPadding + titleHeight + gap + r * (btnHeight + gap) + btnHeight / 2;
 
-  const popupWidth = 490;
-  const popupHeight = 462;
+  const rows = Math.ceil((availableRotations.length + 1) / 4);
+  const popupWidth = pPadding * 2 + 4 * btnWidth + 3 * gap;
+  const popupHeight = pPadding * 2 + titleHeight + gap + rows * (btnHeight + gap) + gap + showMoreHeight;
 
   let left = anchorRect.left + anchorRect.width / 2 - popupBtnLeft;
   let top = anchorRect.top + anchorRect.height / 2 - popupBtnTop;
@@ -232,7 +250,18 @@ const AssignmentModal = ({
           <button onClick={onClose} className="text-muted hover:text-black text-sm select-none px-1">✕</button>
         </div>
         <div className="grid grid-cols-4 gap-1.5 select-none">
-          {Array.from(programData.rotations.entries()).map(([key, config]) => {
+          <button
+            onClick={() => onSave(null)}
+            className="h-10 rounded font-bold text-[10px] text-muted bg-white transition-all flex items-center justify-center text-center leading-tight hover:brightness-95 hover:text-red-600 active:translate-y-[1px] select-none p-1"
+            style={{
+              width: `${btnWidth}px`,
+              border: `1.5px dashed #e2e8f0`,
+              boxShadow: `0 2px 0 #f1f5f9`,
+            }}
+          >
+            Clear Block
+          </button>
+          {availableRotations.map(([key, config]) => {
             const label = config.label;
             const bgHex = getAssignmentColor(config.color || 0, config.intensity, false);
             return (
@@ -253,12 +282,18 @@ const AssignmentModal = ({
               </button>
             );
           })}
-          <button
-            onClick={() => onSave(null)}
-            className="p-2 h-10 rounded font-bold text-xs text-red hover:bg-red/10 border border-light-4 transition-all active:translate-y-[1px] col-span-4 select-none"
+        </div>
+        <div className="pt-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              onClose();
+              onShowMore();
+            }}
+            className="w-full h-10 border border-light-4 bg-light-1 text-primary hover:bg-light-2 text-xs font-bold rounded"
           >
-            Clear Assignment
-          </button>
+            Show More
+          </Button>
         </div>
       </div>
     </>
@@ -1958,6 +1993,20 @@ const AppContent: React.FC = () => {
     setSelectedCell({ resId, week });
     if (rect) setAnchorRect(rect);
     setModalOpen(true);
+  };
+
+  const handleShowMore = () => {
+    if (selectedCell) {
+      const resIndex = displayResidents.findIndex(r => r.id === selectedCell.resId);
+      if (resIndex !== -1) {
+        setSelection({
+          startRow: resIndex,
+          startCol: selectedCell.week,
+          endRow: resIndex,
+          endCol: selectedCell.week
+        });
+      }
+    }
   };
 
   const handleAssignmentSave = (type: AssignmentType | null) => {
@@ -3851,7 +3900,7 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} anchorRect={anchorRect} />
+      <AssignmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} current={selectedCell && currentGrid[selectedCell.resId]?.[selectedCell.week]?.assignment || null} onSave={handleAssignmentSave} anchorRect={anchorRect} onShowMore={handleShowMore} />
       <RenameModal isOpen={renameModalOpen} initialName={scheduleToRename?.name || ''} onClose={() => { setRenameModalOpen(false); setPublishState('idle'); setScheduleToRename(null); }} onSave={publishState === 'naming' ? handlePublishSave : handleRename} />
     </div>
   );
