@@ -2525,10 +2525,15 @@ const AppContent: React.FC = () => {
           ? json.residents.map((r: any) => ({ id: String(r.id), name: r.name }))
           : [];
 
+        // Determine max year for augmented residents calculation
+        const maxYear = Math.max(...json.schedules.flatMap((s: any) => Object.keys(s.data || s.schedule || {}).map(Number))) + 2 || activeYear + 3;
+        // Filter out overlapping synthetic residents just like the UI does
+        const augmentedForImport = getAugmentedResidents(programData.residents, maxYear);
+
         // Detect if the backup's resident IDs are stale relative to the current backend
         const anyScheduleStale = json.schedules.some((s: any) => {
           const data = s.data || s.schedule || {};
-          return detectStaleResidentIds(data, programData.residents);
+          return detectStaleResidentIds(data, augmentedForImport);
         });
 
         let residentsToUse: Resident[] = programData.residents;
@@ -2537,14 +2542,14 @@ const AppContent: React.FC = () => {
         if (anyScheduleStale && backupResidents.length > 0) {
           // Build a summary of what will be remapped
           const sampleData = (json.schedules[0]?.data || json.schedules[0]?.schedule || {}) as ScheduleHistory;
-          const sampleResult = remapScheduleResidentIds(sampleData, backupResidents, programData.residents);
+          const sampleResult = remapScheduleResidentIds(sampleData, backupResidents, augmentedForImport);
           const { stats } = sampleResult;
 
           // Check for name/count differences between backup and current residents
-          const diff = compareResidentLists(backupResidents, programData.residents);
+          const diff = compareResidentLists(backupResidents, augmentedForImport);
           const warnings: string[] = [];
           if (diff.countDiffers) {
-            warnings.push(`Resident count differs: backup has ${backupResidents.length}, current database has ${programData.residents.length}.`);
+            warnings.push(`Resident count differs: backup has ${backupResidents.length}, current database has ${augmentedForImport.length}.`);
           }
           if (diff.backupOnly.length > 0) {
             warnings.push(`In backup but not in database: ${diff.backupOnly.join(', ')}.`);
@@ -2574,7 +2579,7 @@ const AppContent: React.FC = () => {
             const result = remapScheduleResidentIds(
               data,
               backupResidents,
-              programData.residents,
+              augmentedForImport,
               s.cohortAssignments,
             );
             return {
