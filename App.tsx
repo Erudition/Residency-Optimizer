@@ -2367,6 +2367,7 @@ const AppContent: React.FC = () => {
     const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
     const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
     const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+    let changeCount = 0;
 
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
@@ -2392,6 +2393,8 @@ const AppContent: React.FC = () => {
           if (displayCell?.locked && !(displayCell.assignment && programData.placeholderCodenames.has(displayCell.assignment))) {
             return;
           }
+
+          changeCount++;
 
           if (viewMode === 'unified' && s.unifiedData && updatedUnified) {
             const uWeeks = [...(updatedUnified[rid] || [])];
@@ -2423,7 +2426,9 @@ const AppContent: React.FC = () => {
         unifiedData: updatedUnified
       };
     }));
-    toast.success(`Set selection to ${newRotation || 'Unassigned'}`);
+    if (changeCount > 0) {
+      toast.success(`Set ${changeCount} cell${changeCount !== 1 ? 's' : ''} to ${newRotation || 'Unassigned'}`);
+    }
   };
 
   const handleBatchLockSelection = () => {
@@ -3437,7 +3442,7 @@ const AppContent: React.FC = () => {
                       let isHomogeneous = false;
                       let commonAssignment: string | null = null;
                       let isMultiResidentSelection = false;
-                      let hasUnlocked = false;
+                      let hasEditable = false;
 
                       if (selectionBounds) {
                         isMultiResidentSelection = selectionBounds.minRow !== selectionBounds.maxRow;
@@ -3448,11 +3453,15 @@ const AppContent: React.FC = () => {
                           if (resident) {
                             for (let c = selectionBounds.minCol; c <= selectionBounds.maxCol; c++) {
                               const cell = displayGrid[resident.id]?.[c];
-                              if (cell?.locked || shouldIgnoreCell(cell?.assignment)) continue;
-                              hasUnlocked = true;
+                              const assign = cell?.assignment || null;
+                              if (!cell?.locked) {
+                                hasEditable = true;
+                              } else if (assign && programData.placeholderCodenames.has(assign)) {
+                                hasEditable = true;
+                              }
                               if (commonAssignment === null) {
-                                commonAssignment = cell?.assignment || null;
-                              } else if (commonAssignment !== (cell?.assignment || null)) {
+                                commonAssignment = assign;
+                              } else if (commonAssignment !== assign) {
                                 isHomogeneous = false;
                                 break;
                               }
@@ -3460,7 +3469,7 @@ const AppContent: React.FC = () => {
                           }
                           if (!isHomogeneous) break;
                         }
-                        if (!hasUnlocked) isHomogeneous = false;
+                        if (!hasEditable) isHomogeneous = false;
                       }
 
                       const showSidePanel = (!selection || forceSidePanel || !isHomogeneous) && (selection || swapSourceSelection);
