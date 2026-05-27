@@ -3077,34 +3077,6 @@ const AppContent: React.FC = () => {
             </>
           )}
           <NavButton id="export" label={viewMode === 'unified' ? "Export 3yr" : "Export"} icon={FileSpreadsheet} />
-          {activeTab === 'schedule' && (
-            <div className="flex-1 flex justify-end items-center gap-4 px-2">
-              <div className="flex items-center gap-2">
-                <label className="text-[10px] font-bold text-muted uppercase tracking-wider">Spacing</label>
-                <select 
-                  className="text-xs bg-light-3 border border-light-4 rounded px-2 py-1 outline-none text-black font-medium"
-                  value={cellPadding}
-                  onChange={(e) => setCellPadding(e.target.value as any)}
-                >
-                  <option value="comfortable">Comfortable</option>
-                  <option value="minimal">Minimal</option>
-                  <option value="none">None</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-[10px] font-bold text-muted uppercase tracking-wider">Row Height</label>
-                <select 
-                  className="text-xs bg-light-3 border border-light-4 rounded px-2 py-1 outline-none text-black font-medium"
-                  value={rowHeight}
-                  onChange={(e) => setRowHeight(e.target.value as any)}
-                >
-                  <option value="1">1 (1rem)</option>
-                  <option value="2">2 (2rem)</option>
-                  <option value="3">3 (3rem)</option>
-                </select>
-              </div>
-            </div>
-          )}
         </div>
       ) : null}
 
@@ -3234,6 +3206,32 @@ const AppContent: React.FC = () => {
                           </div>
                         </div>
                       )}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-muted uppercase tracking-wider">Spacing</span>
+                          <select 
+                            className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
+                            value={cellPadding}
+                            onChange={(e) => setCellPadding(e.target.value as any)}
+                          >
+                            <option value="comfortable">Comfortable</option>
+                            <option value="minimal">Minimal</option>
+                            <option value="none">None</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-muted uppercase tracking-wider">Height</span>
+                          <select 
+                            className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
+                            value={rowHeight}
+                            onChange={(e) => setRowHeight(e.target.value as any)}
+                          >
+                            <option value="1">1 (1rem)</option>
+                            <option value="2">2 (2rem)</option>
+                            <option value="3">3 (3rem)</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
 
 
