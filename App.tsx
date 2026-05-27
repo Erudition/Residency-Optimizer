@@ -310,14 +310,14 @@ const sanitizeScheduleGrid = (
   const residentsMap = new Map<string, Resident>();
   if (Array.isArray(residentsList)) {
     residentsList?.forEach(r => {
-      residentsMap.set(r.id, r);
+      residentsMap.set(String(r.id), r);
       residentsMap.set(r.name, r);
     });
   } else if (residentsList && typeof residentsList === 'object') {
     Object.entries(residentsList)?.forEach(([name, data]: [string, any]) => {
       const id = data.id || name;
       const r = { id, name, ...data } as Resident;
-      residentsMap.set(id, r);
+      residentsMap.set(String(id), r);
       residentsMap.set(name, r);
     });
   }
@@ -414,12 +414,12 @@ const syncResidentsWithBackend = (cached: Resident[], backendResidents: Resident
   if (!cached || cached.length === 0) {
     return backendResidents;
   }
-  const cachedMap = new Map(cached.map(r => [r.id, r]));
+  const cachedMap = new Map(cached.map(r => [String(r.id), r]));
   const merged: Resident[] = [];
   
   // Process all backend residents (active source of truth)
   backendResidents.forEach(backendRes => {
-    const cachedRes = cachedMap.get(backendRes.id);
+    const cachedRes = cachedMap.get(String(backendRes.id));
     if (cachedRes) {
       merged.push({
         ...backendRes,
