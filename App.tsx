@@ -3984,9 +3984,10 @@ const AppContent: React.FC = () => {
             if (resident) {
               for (let c = selectionBounds.minCol; c <= selectionBounds.maxCol; c++) {
                 const cell = displayGrid[resident.id]?.[c];
-                if (shouldIgnoreCell(cell?.assignment)) continue;
                 const assign = cell?.assignment || null;
-                if (!cell?.locked || (assign && (programData.placeholderCodenames.has(assign) || programData.rotationTags.get(assign)?.includes('Clinic') || programData.rotationTags.get(assign)?.includes('Continuity Clinic')))) {
+                if (!cell?.locked) {
+                  hasEditable = true;
+                } else if (assign && (programData.placeholderCodenames.has(assign) || programData.rotationTags.get(assign)?.includes('Clinic') || programData.rotationTags.get(assign)?.includes('Continuity Clinic'))) {
                   hasEditable = true;
                 }
                 if (commonAssignment === null) {
