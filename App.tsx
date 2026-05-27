@@ -3185,7 +3185,7 @@ const AppContent: React.FC = () => {
                     <div className="flex items-center gap-6">
                       {viewMode !== 'unified' && (
                         <select 
-                          className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
+                          className="inline-flex items-center justify-center font-button font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2 px-4 py-1.5 text-xs bg-white text-muted hover:text-primary border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none cursor-pointer outline-none"
                           value={residentSortOrder}
                           onChange={(e) => setResidentSortOrder(e.target.value as any)}
                         >
@@ -3195,7 +3195,7 @@ const AppContent: React.FC = () => {
                       )}
                       <div className="flex items-center gap-3">
                         <select 
-                          className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
+                          className="inline-flex items-center justify-center font-button font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2 px-4 py-1.5 text-xs bg-white text-muted hover:text-primary border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none cursor-pointer outline-none"
                           value={cellPadding}
                           onChange={(e) => setCellPadding(e.target.value as any)}
                         >
@@ -3204,7 +3204,7 @@ const AppContent: React.FC = () => {
                           <option value="none">No Spacing</option>
                         </select>
                         <select 
-                          className="text-[11px] font-bold bg-white border border-light-4 rounded-lg px-2 py-1.5 outline-none text-black hover:border-light-5 transition-colors cursor-pointer"
+                          className="inline-flex items-center justify-center font-button font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2 px-4 py-1.5 text-xs bg-white text-muted hover:text-primary border border-light-5 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-light-5 hover:translate-y-[-1px] hover:shadow-[0_4px_0_var(--tw-shadow-color)] active:translate-y-[3px] active:shadow-none cursor-pointer outline-none"
                           value={rowHeight}
                           onChange={(e) => setRowHeight(e.target.value as any)}
                         >
