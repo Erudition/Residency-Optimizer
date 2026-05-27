@@ -306,7 +306,6 @@ const AssignmentModal = ({
           <Button
             variant="secondary"
             onClick={() => {
-              onClose();
               onShowMore();
             }}
             className="w-full h-10 border border-light-4 bg-light-1 text-primary hover:bg-light-2 text-xs font-bold rounded"
@@ -4062,6 +4061,7 @@ const AppContent: React.FC = () => {
             onSave={val => {
               if (modalOpen) {
                 handleAssignmentSave(val);
+                setSelectedCell(null);
               } else if (selection && isHomogeneous) {
                 handleBatchSetRotation(val);
                 setSelection(null);
@@ -4071,6 +4071,7 @@ const AppContent: React.FC = () => {
             anchorRect={modalOpen ? anchorRect : selectionRect} 
             onShowMore={() => {
               if (modalOpen) {
+                setModalOpen(false);
                 handleShowMore();
               } else {
                 setForceSidePanel(true);
