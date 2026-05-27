@@ -650,7 +650,7 @@ export const ScheduleTable: React.FC<Props> = React.memo(({
                         className={`${paddingClass} text-center select-none relative ${heightClass}`}
                         style={(idx === 51 || idx === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
                       >
-                        {isCellSelected && (
+                        {isCellSelected && !!activeSelection && (
                           <div className="absolute inset-0 pointer-events-none z-20">
                             {isTopBorder && <div className="absolute top-0 left-0 right-0 h-[2px] marching-ants-x" />}
                             {isBottomBorder && <div className="absolute bottom-0 left-0 right-0 h-[2px] marching-ants-x" style={{ animationDirection: 'reverse' }} />}

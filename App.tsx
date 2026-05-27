@@ -189,7 +189,10 @@ const AssignmentModal = ({
   const availableRotations = Array.from(programData.rotations.entries()).filter(([key, config]) => {
     const configTags = programData.rotationTags.get(key) || [];
     
-    if (isClinicWeek !== undefined && !isClinicWeek) {
+    const currentTags = current ? programData.rotationTags.get(current) || [] : [];
+    const isCurrentClinic = currentTags.includes('Clinic') || currentTags.includes('Continuity Clinic') || (isPlaceholder && (placeholderTargetTag === 'Clinic' || placeholderTargetTag === 'Continuity Clinic'));
+
+    if (isClinicWeek !== undefined && !isClinicWeek && !isCurrentClinic) {
       if (configTags.includes('Clinic') || configTags.includes('Continuity Clinic')) {
         return false;
       }
@@ -3388,6 +3391,9 @@ const AppContent: React.FC = () => {
                           setSelectionRect(rect || null);
                           setForceSidePanel(false);
                           setSwapSourceSelection(null);
+                          if (sel) {
+                            setSelectedCell(null);
+                          }
                         }}
                         swapSourceSelection={swapSourceSelection}
 
@@ -4007,6 +4013,36 @@ const AppContent: React.FC = () => {
             const { Y, Z } = programData.cycleConfig;
             isSelectedClinicWeek = Math.floor((localWeek % Z) / Y) === cohortIdx;
           }
+        } else if (selection && selectionBounds) {
+          let allClinic = true;
+          const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
+          for (let r = selectionBounds.minRow; r <= selectionBounds.maxRow; r++) {
+            const resident = currentResidents[r];
+            if (resident) {
+              for (let c = selectionBounds.minCol; c <= selectionBounds.maxCol; c++) {
+                let weekYear = activeYear;
+                let localWeek = c;
+                if (viewMode === 'unified' && activeSchedule?.unifiedData) {
+                  const schedStartYear = activeSchedule.startYear || ACTIVE_START_YEAR;
+                  weekYear = schedStartYear + Math.floor(c / TOTAL_WEEKS);
+                  localWeek = c % TOTAL_WEEKS;
+                }
+                const cohortIdx = (activeSchedule?.cohortAssignments?.[weekYear] || historicalCohortsByYear[weekYear])?.[resident.id];
+                if (cohortIdx !== undefined && programData) {
+                  const { Y, Z } = programData.cycleConfig;
+                  if (Math.floor((localWeek % Z) / Y) !== cohortIdx) {
+                    allClinic = false;
+                    break;
+                  }
+                } else {
+                  allClinic = false;
+                  break;
+                }
+              }
+            }
+            if (!allClinic) break;
+          }
+          isSelectedClinicWeek = allClinic;
         }
         
         const showModal = modalOpen || (!forceSidePanel && selection && isHomogeneous && !!selectionRect);
@@ -4016,6 +4052,7 @@ const AppContent: React.FC = () => {
             isOpen={showModal} 
             onClose={() => {
               setModalOpen(false);
+              setSelectedCell(null);
               if (showModal && !modalOpen) {
                 setSelection(null);
                 setSelectionRect(null);
