@@ -2034,7 +2034,7 @@ const AppContent: React.FC = () => {
         const yearCopy = { ...yearGrid };
         if (!yearCopy[selectedCell.resId]) yearCopy[selectedCell.resId] = [];
         const updatedRow = [...yearCopy[selectedCell.resId]];
-        updatedRow[selectedCell.week] = { assignment: type as any, locked: true };
+        updatedRow[selectedCell.week] = { assignment: type as any, locked: !!type };
         yearCopy[selectedCell.resId] = updatedRow;
 
         const dataCopy = { ...s.data, [activeYear]: yearCopy };
@@ -2108,7 +2108,7 @@ const AppContent: React.FC = () => {
           if (!yearCopy[rid]) yearCopy[rid] = [];
           const updatedRow = [...yearCopy[rid]];
           const newAssign = reversedAssignments[index];
-          updatedRow[w] = newAssign ? { ...newAssign, locked: true } : { assignment: null, locked: true };
+          updatedRow[w] = newAssign ? { ...newAssign, locked: true } : { assignment: null, locked: false };
           yearCopy[rid] = updatedRow;
 
           if (s.backendId && newAssign?.assignment) {
@@ -2151,7 +2151,7 @@ const AppContent: React.FC = () => {
 
         selectedWeeks.forEach((w, index) => {
           const newVal = reversedVals[index];
-          currentRow[w] = newVal ? { ...newVal, locked: true } : { assignment: null, locked: true };
+          currentRow[w] = newVal ? { ...newVal, locked: true } : { assignment: null, locked: false };
           
           if (s.backendId && newVal?.assignment) {
             syncService.upsertCell(
