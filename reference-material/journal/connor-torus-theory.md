@@ -146,8 +146,11 @@ Residents with **deficits from prior years** (a minority) are handled by "absent
 
 Map abstract "PGY-1 in cohort A, relative week 3" slots to actual humans. Break remaining symmetries by:
 - Fairness (equal distribution of high-intensity rotations)
-- Diversity (avoid same-resident-pair assignments)
+- Coworking Diversity (avoid same-resident-pair assignments)
 - Preference satisfaction (if applicable)
+- Rotation diversity (avoid same rotation appearing for the same resident multiple times)
+- Educational Requirements that are also core rotations (where others within the equivalence class aren't)
+
 
 ---
 
@@ -171,7 +174,7 @@ Map abstract "PGY-1 in cohort A, relative week 3" slots to actual humans. Break 
 
 2. **Multi-year coupling.** When the torus wraps across year boundaries, educational requirements that span multiple years create coupling between cycles. How should the solver handle cumulative graduation minimums vs per-year ideals?
 
-3. **Non-uniform cohorts.** If cohort sizes differ (e.g., 3 cohorts of 3 and 2 cohorts of 4), the cyclic symmetry is partially broken. How much of the toroidal structure survives?
+3. **Non-uniform cohorts.** ✅ **Resolved.** Management guarantees cohorts are as balanced as possible, so sizes differ by at most 1: ⌊n/Z⌋ ("small") and ⌈n/Z⌉ ("large"). The torus has at most two cohort types. Any cyclic rotation of the small/large pattern (e.g., [S,S,S,L,L] → [L,S,S,S,L]) produces an isomorphic staffing profile, because diagonal constraints rotate with it. Fix one canonical arrangement (e.g., large cohorts first), solve the template once, and all rotations are covered. The full toroidal structure survives.
 
 4. **Practical template size.** With ~8 equivalence classes, 4 flex phases, 3 PGY levels, and 5 cohort classes, the template has ~480 cells. Is this small enough for complete enumeration, or does it still need heuristic guidance?
 
