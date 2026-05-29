@@ -484,9 +484,11 @@ function staffingPreAssign(
   state: CSPState,
   programData: ProgramData,
   gridStartYear: number,
+  eduNeeds: EducationalNeed[],
 ): void {
   const totalWeeks = Math.max(...state.vars.map(v => v.startWeek + v.duration), 0);
   let preAssigned = 0;
+  let eduAligned = 0;
 
   for (let w = 0; w < totalWeeks; w++) {
     for (const { codename: rot, minI, minS } of state.staffingFloorRotations) {
@@ -498,8 +500,12 @@ function staffingPreAssign(
 
       // Fill intern slots
       while (getCurrentCounts().interns < minI) {
-        const v = findBestStaffingCandidate(state, w, rot, 1, programData);
+        const v = findBestStaffingCandidate(state, w, rot, 1, programData, eduNeeds);
         if (!v) break;
+        const hasEduNeed = eduNeeds.some(
+          n => n.residentId === v.residentId && n.codenames.includes(rot)
+        );
+        if (hasEduNeed) eduAligned++;
         v.assigned = rot;
         v.domain = [rot];
         recordAssignment(state, v, rot, programData, gridStartYear);
@@ -508,8 +514,12 @@ function staffingPreAssign(
 
       // Fill senior slots
       while (getCurrentCounts().seniors < minS) {
-        const v = findBestStaffingCandidate(state, w, rot, 2, programData);
+        const v = findBestStaffingCandidate(state, w, rot, 2, programData, eduNeeds);
         if (!v) break;
+        const hasEduNeed = eduNeeds.some(
+          n => n.residentId === v.residentId && n.codenames.includes(rot)
+        );
+        if (hasEduNeed) eduAligned++;
         v.assigned = rot;
         v.domain = [rot];
         recordAssignment(state, v, rot, programData, gridStartYear);
@@ -517,7 +527,7 @@ function staffingPreAssign(
       }
     }
   }
-  console.log(`[CSP] Staffing pre-assignment: ${preAssigned} variables locked`);
+  console.log(`[CSP] Staffing pre-assignment: ${preAssigned} variables locked (${eduAligned} education-aligned)`);
 }
 
 /**
@@ -532,6 +542,7 @@ function findBestStaffingCandidate(
   rot: string,
   pgyLevel: number,
   programData: ProgramData,
+  eduNeeds: EducationalNeed[],
 ): Variable | null {
   const meta = programData.rotations.get(rot);
   let best: Variable | null = null;
@@ -562,8 +573,23 @@ function findBestStaffingCandidate(
       if (!ceilingOk) continue;
     }
 
-    // Prefer larger domain (more flexible, less constrained)
-    let score = v.domain.length;
+    // Score: educational alignment is primary, then flexibility as tiebreak
+    let score = 0;
+
+    // Strong preference for residents who need this rotation educationally
+    const resNeeds = eduNeeds.filter(n => n.residentId === v.residentId);
+    for (const need of resNeeds) {
+      if (!need.codenames.includes(rot)) continue;
+      const progress = state.eduProgress.get(v.residentId)
+        ?.get(v.yearIndex)?.get(need.tagTitle) || 0;
+      const deficit = need.minWeeks - progress;
+      if (deficit > 0) {
+        score += 10000 + deficit; // Strongly prefer, and prefer higher deficit
+      }
+    }
+
+    // Tiebreak: prefer larger domain (more flexible variable, less disruption)
+    score += v.domain.length;
 
     if (score > bestScore) {
       bestScore = score;
@@ -575,23 +601,95 @@ function findBestStaffingCandidate(
 
 // ─── Phase 3: Search ─────────────────────────────────────────────────────────
 
-/** Select the unassigned variable with the smallest domain (MRV). */
-function selectVariable(state: CSPState): Variable | null {
-  let best: Variable | null = null;
-  let bestSize = Infinity;
+/**
+ * Select the next unassigned variable.
+ * Fair-distribution heuristic:
+ *   First, identify all residents with unmet educational needs and pick the one
+ *   who has received the FEWEST educational assignments so far. Among that
+ *   resident's variables, pick the one with the highest addressable deficit.
+ *   This ensures fair rotation distribution across all residents.
+ *   Falls back to MRV for variables with no educational relevance.
+ */
+function selectVariable(state: CSPState, eduNeeds: EducationalNeed[]): Variable | null {
+  // Group unassigned variables by resident, tracking each resident's progress
+  const residentVars = new Map<string, Variable[]>();
   for (const v of state.vars) {
     if (v.assigned !== null) continue;
-    if (v.domain.length < bestSize) {
-      bestSize = v.domain.length;
-      best = v;
+    if (!residentVars.has(v.residentId)) residentVars.set(v.residentId, []);
+    residentVars.get(v.residentId)!.push(v);
+  }
+
+  // For each resident with unassigned variables, calculate:
+  // - total educational progress (assignments already made this session)
+  // - maximum addressable deficit across their unassigned variables
+  let bestVar: Variable | null = null;
+  let bestResProgress = Infinity;
+  let bestVarDeficit = 0;
+  let bestVarDomainSize = Infinity;
+
+  for (const [residentId, vars] of residentVars) {
+    // Get this resident's needs
+    const resNeeds = eduNeeds.filter(n => n.residentId === residentId);
+    if (resNeeds.length === 0) continue; // No educational needs
+
+    // Total educational progress: how many edu-weeks already assigned
+    let totalProgress = 0;
+    const yearMap = state.eduProgress.get(residentId);
+    if (yearMap) {
+      for (const tagMap of yearMap.values()) {
+        for (const weeks of tagMap.values()) {
+          totalProgress += weeks;
+        }
+      }
+    }
+
+    // Find the best variable for this resident (highest addressable deficit)
+    for (const v of vars) {
+      let maxDeficit = 0;
+      for (const need of resNeeds) {
+        const progress = state.eduProgress.get(residentId)
+          ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
+        const deficit = need.minWeeks - progress;
+        if (deficit <= 0) continue;
+        if (need.codenames.some(c => v.domain.includes(c))) {
+          if (deficit > maxDeficit) maxDeficit = deficit;
+        }
+      }
+      if (maxDeficit <= 0) continue;
+
+      // Fair distribution: prefer residents with LESS progress
+      // Tiebreak: higher deficit variable, then smaller domain (MRV)
+      if (totalProgress < bestResProgress ||
+          (totalProgress === bestResProgress && maxDeficit > bestVarDeficit) ||
+          (totalProgress === bestResProgress && maxDeficit === bestVarDeficit &&
+           v.domain.length < bestVarDomainSize)) {
+        bestResProgress = totalProgress;
+        bestVarDeficit = maxDeficit;
+        bestVarDomainSize = v.domain.length;
+        bestVar = v;
+      }
     }
   }
-  return best;
+
+  if (bestVar) return bestVar;
+
+  // Fallback: pure MRV for variables with no educational relevance
+  let mrvBest: Variable | null = null;
+  let mrvSize = Infinity;
+  for (const v of state.vars) {
+    if (v.assigned !== null) continue;
+    if (v.domain.length < mrvSize) {
+      mrvSize = v.domain.length;
+      mrvBest = v;
+    }
+  }
+  return mrvBest;
 }
 
 /**
  * Order values for a variable: prioritize rotations the resident needs most
- * (largest educational deficit), then those that disturb staffing least.
+ * (largest educational deficit across all years), penalize filler rotations
+ * when the resident still has unmet requirements.
  */
 function orderValues(
   v: Variable,
@@ -599,17 +697,49 @@ function orderValues(
   eduNeeds: EducationalNeed[],
   programData: ProgramData,
 ): string[] {
-  const resNeeds = eduNeeds.filter(
-    n => n.residentId === v.residentId && n.yearIndex === v.yearIndex
-  );
+  // Get ALL needs for this resident (cross-year)
+  const resNeeds = eduNeeds.filter(n => n.residentId === v.residentId);
+  const fillers = new Set(['ELEC', 'VAC', 'RSCH']);
+
+  // Check if this resident still has unmet educational needs
+  let totalResidentDeficit = 0;
+  for (const need of resNeeds) {
+    const progress = state.eduProgress.get(v.residentId)
+      ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
+    const deficit = need.minWeeks - progress;
+    if (deficit > 0) totalResidentDeficit += deficit;
+  }
+
+  const { X } = programData.cycleConfig;
 
   return [...v.domain].sort((a, b) => {
-    // Priority 1: Educational deficit (higher deficit → try first)
+    // Weighted educational deficit: deficit × weeks-contributed.
+    // A 4-week rotation at deficit 28 scores 4×28=112 while a 2-week rotation
+    // at deficit 30 scores 2×30=60. This ensures 4-week slots are used for
+    // large requirements (Wards, Core) instead of being split for specialties.
     const defA = getDeficitForCodename(a, v, resNeeds, state, programData);
     const defB = getDeficitForCodename(b, v, resNeeds, state, programData);
-    if (defB !== defA) return defB - defA;
+    const durA = Math.min(programData.rotations.get(a)?.duration || X, v.duration);
+    const durB = Math.min(programData.rotations.get(b)?.duration || X, v.duration);
 
-    // Priority 2: Staffing need at this week (higher need → try first)
+    // Surplus penalty: if a rotation addresses an ALREADY-MET requirement
+    // for THIS year, penalize it to prevent hogging (e.g. giving one resident
+    // 48 ward weeks). Always computed alongside deficit for balanced scoring.
+    const surplusA = getSurplusForCodename(a, v, resNeeds, state, programData);
+    const surplusB = getSurplusForCodename(b, v, resNeeds, state, programData);
+
+    const weightedA = defA * durA - surplusA;
+    const weightedB = defB * durB - surplusB;
+    if (weightedB !== weightedA) return weightedB - weightedA;
+
+    // Tiebreak 1: Penalize filler rotations when resident still has unmet needs
+    if (totalResidentDeficit > 0) {
+      const fillerA = fillers.has(a) ? 1 : 0;
+      const fillerB = fillers.has(b) ? 1 : 0;
+      if (fillerA !== fillerB) return fillerA - fillerB; // non-fillers first
+    }
+
+    // Tiebreak 2: Staffing need at this week (higher need → try first)
     const staffA = getStaffingNeed(a, v, state, programData);
     const staffB = getStaffingNeed(b, v, state, programData);
     if (staffB !== staffA) return staffB - staffA;
@@ -618,6 +748,10 @@ function orderValues(
   });
 }
 
+/**
+ * Calculate the maximum educational deficit this codename would address
+ * for the given variable's resident, considering ALL years (not just current).
+ */
 function getDeficitForCodename(
   codename: string,
   v: Variable,
@@ -629,11 +763,38 @@ function getDeficitForCodename(
   for (const need of resNeeds) {
     if (!RequirementsEngine.fulfills(codename, need.tagTitle, programData)) continue;
     const progress = state.eduProgress.get(v.residentId)
-      ?.get(v.yearIndex)?.get(need.tagTitle) || 0;
+      ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
     const deficit = need.minWeeks - progress;
     if (deficit > maxDeficit) maxDeficit = deficit;
   }
   return maxDeficit;
+}
+
+/**
+ * Calculate the surplus (overshoot) this codename would contribute for
+ * already-met requirements in THIS variable's year. Returns 0 if no
+ * relevant need is already met, or the max surplus across met needs.
+ */
+function getSurplusForCodename(
+  codename: string,
+  v: Variable,
+  resNeeds: EducationalNeed[],
+  state: CSPState,
+  programData: ProgramData,
+): number {
+  let maxSurplus = 0;
+  for (const need of resNeeds) {
+    if (need.yearIndex !== v.yearIndex) continue; // Only check this variable's year
+    if (!RequirementsEngine.fulfills(codename, need.tagTitle, programData)) continue;
+    const progress = state.eduProgress.get(v.residentId)
+      ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
+    const surplus = progress - need.minWeeks;
+    if (surplus >= 0) {
+      // Already met for this year — penalize by how much we'd overshoot
+      maxSurplus = Math.max(maxSurplus, surplus + v.duration);
+    }
+  }
+  return maxSurplus;
 }
 
 function getStaffingNeed(
@@ -675,7 +836,7 @@ function search(
     console.log(`[CSP] ... ${stats.nodes} nodes explored, ${stats.backtracks} backtracks, depth ${depth}`);
   }
 
-  const v = selectVariable(state);
+  const v = selectVariable(state, eduNeeds);
   if (!v) return true; // All variables assigned — solution found
 
   if (depth === 0) {
@@ -760,7 +921,129 @@ function restoreState(target: CSPState, saved: CSPState): void {
   target.eduProgress = saved.eduProgress;
 }
 
-// ─── Phase 5: Fill Grid ──────────────────────────────────────────────────────
+// ─── Phase 4: Educational Improvement Pass ──────────────────────────────────
+
+/**
+ * Post-search optimization: iteratively swap filler rotations (ELEC, VAC, RSCH)
+ * for educationally useful rotations when the resident has unmet requirements.
+ * Respects staffing ceilings. Runs multiple rounds until convergence.
+ */
+function educationalImprovementPass(
+  state: CSPState,
+  eduNeeds: EducationalNeed[],
+  programData: ProgramData,
+  gridStartYear: number,
+): void {
+  const fillers = new Set(['ELEC', 'VAC', 'RSCH']);
+  const maxRounds = 10;
+  let totalSwaps = 0;
+
+  for (let round = 0; round < maxRounds; round++) {
+    let roundSwaps = 0;
+
+    for (const v of state.vars) {
+      if (!v.assigned || !fillers.has(v.assigned)) continue;
+
+      // Get this resident's unmet educational needs
+      const resNeeds = eduNeeds.filter(n => n.residentId === v.residentId);
+      let bestSwap: string | null = null;
+      let bestDeficit = 0;
+
+      for (const need of resNeeds) {
+        const progress = state.eduProgress.get(v.residentId)
+          ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
+        const deficit = need.minWeeks - progress;
+        if (deficit <= 0) continue;
+
+        // Find a rotation that fulfills this need and fits in this slot
+        for (const codename of need.codenames) {
+          if (fillers.has(codename)) continue; // Don't swap filler for filler
+          const meta = programData.rotations.get(codename);
+          if (!meta) continue;
+          const dur = meta.duration || programData.cycleConfig.X;
+          if (dur > v.duration) continue; // Doesn't fit
+          if (dur < v.duration) continue; // Would need to split — skip for simplicity
+
+          // Check PGY ceiling
+          if (v.pgy === 1 && (meta.maxInterns ?? 99) === 0) continue;
+          if (v.pgy >= 2 && (meta.maxSeniors ?? 99) === 0) continue;
+
+          // Check staffing ceiling for all weeks in this block
+          let ceilingOk = true;
+          for (let w = v.startWeek; w < v.startWeek + v.duration; w++) {
+            const counts = state.weekStaffing.get(w)?.get(codename) || { interns: 0, seniors: 0 };
+            if (v.pgy === 1 && counts.interns >= (meta.maxInterns ?? 99)) {
+              ceilingOk = false;
+              break;
+            }
+            if (v.pgy >= 2 && counts.seniors >= (meta.maxSeniors ?? 99)) {
+              ceilingOk = false;
+              break;
+            }
+          }
+          if (!ceilingOk) continue;
+
+          if (deficit > bestDeficit) {
+            bestDeficit = deficit;
+            bestSwap = codename;
+          }
+        }
+      }
+
+      if (bestSwap) {
+        // Undo old assignment from staffing/edu tracking
+        unrecordAssignment(state, v, v.assigned, programData);
+        // Apply new assignment
+        v.assigned = bestSwap;
+        recordAssignment(state, v, bestSwap, programData, gridStartYear);
+        roundSwaps++;
+      }
+    }
+
+    totalSwaps += roundSwaps;
+    if (roundSwaps === 0) break; // Converged
+  }
+
+  if (totalSwaps > 0) {
+    console.log(`[CSP] Educational improvement: ${totalSwaps} filler→edu swaps`);
+  }
+}
+
+/**
+ * Undo a variable's assignment from the state tracking (inverse of recordAssignment).
+ */
+function unrecordAssignment(
+  state: CSPState,
+  v: Variable,
+  codename: string,
+  programData: ProgramData,
+): void {
+  const isIntern = v.pgy === 1;
+
+  // Undo weekly staffing counts
+  for (let w = v.startWeek; w < v.startWeek + v.duration; w++) {
+    const rotMap = state.weekStaffing.get(w);
+    if (!rotMap) continue;
+    const counts = rotMap.get(codename);
+    if (!counts) continue;
+    if (isIntern) counts.interns = Math.max(0, counts.interns - 1);
+    else counts.seniors = Math.max(0, counts.seniors - 1);
+  }
+
+  // Undo educational progress
+  const yearMap = state.eduProgress.get(v.residentId);
+  if (!yearMap) return;
+  const tagMap = yearMap.get(v.yearIndex);
+  if (!tagMap) return;
+
+  const tags = programData.rotationTags.get(codename) || [];
+  for (const tag of [codename, ...tags]) {
+    const current = tagMap.get(tag) || 0;
+    tagMap.set(tag, Math.max(0, current - v.duration));
+  }
+}
+
+
 
 function writeToGrid(
   state: CSPState,
@@ -892,7 +1175,7 @@ export const ConstraintPropagationGenerator: ScheduleGenerator = {
     // Phase 2b: Deterministic staffing pre-assignment
     // Fill all staffing floor obligations before the CSP search begins,
     // guaranteeing zero staffing violations without backtracking.
-    staffingPreAssign(state, programData, gridStartYear);
+    staffingPreAssign(state, programData, gridStartYear, eduNeeds);
 
     // Run forward check for newly pre-assigned staffing variables
     for (const v of state.vars) {
@@ -909,6 +1192,10 @@ export const ConstraintPropagationGenerator: ScheduleGenerator = {
 
     const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
     console.log(`[CSP] Search ${found ? 'SUCCEEDED' : 'FAILED'} in ${elapsed}s (${stats.nodes} nodes, ${stats.backtracks} backtracks)`);
+
+    // Post-search: iteratively improve educational coverage by swapping filler
+    // rotations for educationally useful ones
+    educationalImprovementPass(state, eduNeeds, programData, gridStartYear);
 
     // Write solution to grid
     writeToGrid(state, grid, programData);
