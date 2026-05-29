@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Users, GripHorizontal } from 'lucide-react';
+import { Users, GripHorizontal, Trash2 } from 'lucide-react';
 import { Resident } from '../types';
 import { useProgramData } from '../contexts/ProgramDataContext';
 import { Badge } from './ui/Badge';
@@ -10,6 +10,11 @@ interface Props {
   cycleAssignments: Record<string, number>;
   onAssignCycle: (residentId: string, cycleIndex: number) => void;
   onPlaceClinicWeeks?: () => void;
+  hasPlacedClinicWeeks?: boolean;
+  customCycleConfig?: { cohortCount: number; Y: number; Z: number };
+  onChangeY?: (newY: number) => void;
+  onAddCycle?: () => void;
+  onRemoveCycle?: (cycleIndex: number) => void;
 }
 
 export const CycleKanban: React.FC<Props> = ({ 
@@ -17,10 +22,17 @@ export const CycleKanban: React.FC<Props> = ({
   activeYear, 
   cycleAssignments, 
   onAssignCycle,
-  onPlaceClinicWeeks
+  onPlaceClinicWeeks,
+  hasPlacedClinicWeeks,
+  customCycleConfig,
+  onChangeY,
+  onAddCycle,
+  onRemoveCycle
 }) => {
   const programData = useProgramData();
-  const cycleCount = programData.cycleConfig.cohortCount; // Matches backend cohortCount, mapped to cycles
+  const cycleConfigToUse = customCycleConfig || programData.cycleConfig;
+  const cycleCount = cycleConfigToUse.cohortCount;
+  const Y = cycleConfigToUse.Y;
   const [dragOverCycle, setDragOverCycle] = React.useState<number | null>(null);
 
   const handleDragStart = (e: React.DragEvent, residentId: string) => {
@@ -40,6 +52,8 @@ export const CycleKanban: React.FC<Props> = ({
   const handleDrop = (e: React.DragEvent, cycleIndex: number) => {
     e.preventDefault();
     setDragOverCycle(null);
+    if (hasPlacedClinicWeeks) return; // In swap mode, dropping on the column does nothing
+
     const residentId = e.dataTransfer.getData('residentId');
     if (residentId) {
       onAssignCycle(residentId, cycleIndex);
@@ -93,7 +107,32 @@ export const CycleKanban: React.FC<Props> = ({
             <p className="text-xs text-muted font-medium">Assign residents to clinic cycles for AY {activeYear}-{activeYear+1}</p>
           </div>
         </div>
-        {onPlaceClinicWeeks && (
+        
+        {!hasPlacedClinicWeeks && onChangeY && onAddCycle && (
+          <div className="flex items-center gap-4 bg-light-2 px-4 py-2 rounded-xl border border-light-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-muted uppercase">Weeks per cycle (Y) =</span>
+              <select 
+                value={Y}
+                onChange={(e) => onChangeY(parseInt(e.target.value))}
+                className="text-xs p-1 rounded border border-light-4 bg-white outline-none font-bold text-primary"
+              >
+                <option value={1}>1 Week</option>
+                <option value={2}>2 Weeks</option>
+                <option value={3}>3 Weeks</option>
+                <option value={4}>4 Weeks</option>
+              </select>
+            </div>
+            <button 
+              onClick={onAddCycle}
+              className="px-3 py-1 bg-white border border-light-4 rounded-lg text-xs font-bold shadow-sm hover:bg-light-1 text-primary transition-colors"
+            >
+              + Add Cycle
+            </button>
+          </div>
+        )}
+
+        {onPlaceClinicWeeks && !hasPlacedClinicWeeks && (
           <button 
             onClick={onPlaceClinicWeeks}
             className="flex items-center gap-2 px-4 py-2 bg-blue text-white rounded-lg text-sm font-bold shadow hover:bg-blue-dark transition-all"
@@ -108,10 +147,21 @@ export const CycleKanban: React.FC<Props> = ({
         {cycles.map(cycle => (
           <div key={cycle.index} className="w-72 flex flex-col gap-4 shrink-0">
             <div className={`p-4 rounded-2xl border border-light-4 bg-white flex items-center justify-between shadow-sm`}>
-              <span className="font-black text-sm uppercase tracking-wider text-primary">{cycle.name}</span>
-              <Badge variant="info" className="bg-light-1 border-light-4 text-muted px-2 py-0.5 text-xs">
-                {cycle.residents.length}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-sm uppercase tracking-wider text-primary">{cycle.name}</span>
+                <Badge variant="info" className="bg-light-1 border-light-4 text-muted px-2 py-0.5 text-xs">
+                  {cycle.residents.length}
+                </Badge>
+              </div>
+              {!hasPlacedClinicWeeks && onRemoveCycle && cycleCount > Y * 2 && (
+                <button 
+                  onClick={() => onRemoveCycle(cycle.index)}
+                  className="p-1 text-light-5 hover:text-rose-500 hover:bg-rose-50 rounded transition-colors"
+                  title="Remove Cycle"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </div>
 
             <div 
@@ -133,6 +183,29 @@ export const CycleKanban: React.FC<Props> = ({
                     key={resident.id} 
                     draggable
                     onDragStart={(e) => handleDragStart(e, resident.id)}
+                    onDragOver={(e) => {
+                      if (hasPlacedClinicWeeks) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                    onDrop={(e) => {
+                      if (hasPlacedClinicWeeks) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const sourceId = e.dataTransfer.getData('residentId');
+                        const sourceResident = residents.find(r => r.id === sourceId);
+                        const targetLevel = level;
+                        const sourceLevel = sourceResident ? activeYear - sourceResident.startYear + 1 : -1;
+                        
+                        if (sourceId && sourceId !== resident.id && sourceLevel === targetLevel) {
+                          const sourceCycle = cycleAssignments?.[sourceId] ?? 0;
+                          const targetCycle = cycle.index;
+                          onAssignCycle(sourceId, targetCycle);
+                          onAssignCycle(resident.id, sourceCycle);
+                        }
+                      }
+                    }}
                     className={`group bg-white border border-light-5 border-l-4 ${levelColors} rounded-xl p-3 shadow-sm hover:shadow-md active:scale-95 active:shadow-inner transition-all cursor-grab relative`}
                   >
                     <div className="flex items-center justify-between">

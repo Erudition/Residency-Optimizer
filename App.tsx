@@ -880,7 +880,8 @@ const AppContent: React.FC = () => {
       if (s.id !== activeScheduleId) return s;
       const updatedData = { ...s.data };
       const grid = { ...(updatedData[activeYear] || {}) };
-      const { Y, Z } = programData!.cycleConfig;
+      const configToUse = s.customCycleConfig || programData!.cycleConfig;
+      const { Y, Z } = configToUse;
       
       const cohortAssignments = s.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {};
       
@@ -2610,6 +2611,87 @@ const AppContent: React.FC = () => {
     }));
   };
 
+  const handleCycleConfigChange = (newConfig: { cohortCount: number, Y: number, Z: number }, removedCycleIndex?: number) => {
+    if (!activeScheduleId) return;
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+
+      const newCycleConfig = { ...newConfig };
+      const updatedCycles = { ...(s.cohortAssignments || {}) };
+      const yearMapping = { ...(updatedCycles[activeYear] || activeYearCohorts) };
+
+      if (removedCycleIndex !== undefined) {
+        // Find residents in the removed cycle and reassign them
+        const residentsInRemoved = Object.keys(yearMapping).filter(resId => yearMapping[resId] === removedCycleIndex);
+
+        // Shift down cycles greater than the removed index
+        Object.keys(yearMapping).forEach(resId => {
+          if (yearMapping[resId] > removedCycleIndex) {
+            yearMapping[resId] -= 1;
+          }
+        });
+
+        // Distribute removed residents to the remaining cycles evenly
+        const cycleCounts = Array(newConfig.cohortCount).fill(0);
+        Object.values(yearMapping).forEach(val => {
+          const cycleIdx = val as number;
+          if (cycleIdx < newConfig.cohortCount && cycleIdx >= 0) {
+            cycleCounts[cycleIdx]++;
+          }
+        });
+
+        residentsInRemoved.forEach(resId => {
+          let minIdx = 0;
+          for (let i = 1; i < newConfig.cohortCount; i++) {
+            if (cycleCounts[i] < cycleCounts[minIdx]) minIdx = i;
+          }
+          yearMapping[resId] = minIdx;
+          cycleCounts[minIdx]++;
+        });
+      } else if (newConfig.cohortCount > (s.customCycleConfig?.cohortCount || programData!.cycleConfig.cohortCount)) {
+        // A cycle was added
+        const newCycleIdx = newConfig.cohortCount - 1;
+        const totalResidents = Object.keys(yearMapping).length;
+        const targetAvg = Math.floor(totalResidents / newConfig.cohortCount);
+        
+        let movedCount = 0;
+        while (movedCount < targetAvg) {
+          const cycleCounts = Array(newConfig.cohortCount).fill(0);
+          Object.values(yearMapping).forEach(val => {
+            const cycleIdx = val as number;
+            if (cycleIdx < newConfig.cohortCount && cycleIdx >= 0) {
+              cycleCounts[cycleIdx]++;
+            }
+          });
+          
+          let maxIdx = 0;
+          for (let i = 1; i < newConfig.cohortCount - 1; i++) {
+            if (cycleCounts[i] > cycleCounts[maxIdx]) maxIdx = i;
+          }
+          
+          if (cycleCounts[maxIdx] <= targetAvg) break;
+
+          const resIdToMove = Object.keys(yearMapping).find(resId => yearMapping[resId] === maxIdx);
+          if (resIdToMove) {
+            yearMapping[resIdToMove] = newCycleIdx;
+            movedCount++;
+          } else {
+            break;
+          }
+        }
+      }
+
+      updatedCycles[activeYear] = yearMapping;
+
+      return {
+        ...s,
+        customCycleConfig: newCycleConfig,
+        cohortAssignments: updatedCycles
+      };
+    }));
+  };
+
+
   const handleExportJSON = () => {
     try {
       const data = {
@@ -3805,6 +3887,29 @@ const AppContent: React.FC = () => {
                     cycleAssignments={activeYearCohorts}
                     onAssignCycle={handleAssignCycle}
                     onPlaceClinicWeeks={activeSchedule && !activeSchedule.isHistory ? handlePlaceClinicWeeks : undefined}
+                    hasPlacedClinicWeeks={hasPlacedClinicWeeks}
+                    customCycleConfig={activeSchedule?.customCycleConfig}
+                    onChangeY={(newY: number) => {
+                      const currentCount = activeSchedule?.customCycleConfig?.cohortCount || programData!.cycleConfig.cohortCount;
+                      const countToUse = Math.max(currentCount, newY * 2);
+                      handleCycleConfigChange({ cohortCount: countToUse, Y: newY, Z: countToUse * newY });
+                    }}
+                    onAddCycle={() => {
+                      const currentConfig = activeSchedule?.customCycleConfig || programData!.cycleConfig;
+                      handleCycleConfigChange({ 
+                        cohortCount: currentConfig.cohortCount + 1, 
+                        Y: currentConfig.Y, 
+                        Z: (currentConfig.cohortCount + 1) * currentConfig.Y 
+                      });
+                    }}
+                    onRemoveCycle={(idx: number) => {
+                      const currentConfig = activeSchedule?.customCycleConfig || programData!.cycleConfig;
+                      handleCycleConfigChange({ 
+                        cohortCount: currentConfig.cohortCount - 1, 
+                        Y: currentConfig.Y, 
+                        Z: (currentConfig.cohortCount - 1) * currentConfig.Y 
+                      }, idx);
+                    }}
                   />
                 </div>
               )}

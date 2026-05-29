@@ -244,6 +244,11 @@ interface CandidateBase {
   isHistory?: boolean;
   startYear?: number;
   lockedUntilWeek?: number;
+  customCycleConfig?: {
+    cohortCount: number;
+    Y: number;
+    Z: number;
+  };
 }
 
 /** Local-only candidate, persisted in localStorage */
