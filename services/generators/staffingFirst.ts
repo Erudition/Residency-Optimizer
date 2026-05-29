@@ -114,19 +114,13 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         const historicalCounts = priorRequirementCounts || {};
 
-        // Staffing sweep: iterate by block-aligned start positions to avoid
-        // redundant checks on weeks mid-block.
-        staffingTypes.forEach(type => {
-            const meta = programData.rotations.get(type);
-            if (!meta) return;
-            const dur = meta.duration || programData.cycleConfig.X;
+        // Staffing sweep: Week-first, rotation-second iteration to distribute resources fairly
+        for (let w = 0; w < totalWeeks; w++) {
+            staffingTypes.forEach(type => {
+                const meta = programData.rotations.get(type);
+                if (!meta) return;
+                const dur = meta.duration || programData.cycleConfig.X;
 
-            // Iterate by block-aligned positions instead of every single week.
-            // For 4-week rotations, check at weeks 0, 4, 8, ... etc.
-            // But also check every week for short-duration rotations (dur=1 or 2).
-            const step = dur >= 4 ? dur : 1;
-
-            for (let w = 0; w < totalWeeks; w += step) {
                 // Interns
                 let safetyI = 0;
                 while (getAssignedCount(newSchedule, residents, w, type, 1) < (meta.minInterns || 0) && safetyI < 10) {
@@ -171,8 +165,8 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                     if (pool.length === 0) break;
                     placeBlock(newSchedule, pool[0].id, w, dur, type);
                 }
-            }
-        });
+            });
+        }
 
 
         // 3. Education Placement SECOND (Segmented by Year)

@@ -471,7 +471,7 @@ export class RequirementsEngine {
       const activeResidentsAtWeek = residents.filter(r => {
         const start = r.activeWeekStart ?? 0;
         const end = r.activeWeekEnd ?? 9999;
-        return globalWeek >= start && globalWeek < end;
+        return week >= start && week < end;
       });
 
       const weeklyViolations = this.getViolationsForWeek(
@@ -617,7 +617,7 @@ export class RequirementsEngine {
     programData: ProgramData
   ): boolean {
     for (let w = startWeek; w < startWeek + duration; w++) {
-      const activeResidentsAtWeek = residents.filter(r => {
+        const activeResidentsAtWeek = residents.filter(r => {
         const start = r.activeWeekStart ?? 0;
         const end = r.activeWeekEnd ?? 9999;
         return w >= start && w < end;
