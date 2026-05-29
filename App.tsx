@@ -3351,6 +3351,40 @@ const AppContent: React.FC = () => {
         </div>
         {/* Right: Settings Icons */}
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setActiveSettingsTab('residents');
+              setIsSettingsOpen(true);
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
+          >
+            <Users size={14} />
+            Residents
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setActiveSettingsTab('backup');
+              setIsSettingsOpen(true);
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
+          >
+            <Download size={14} />
+            Backup
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setActiveSettingsTab('reset');
+              setIsSettingsOpen(true);
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
+          >
+            <RotateCcw size={14} />
+            Reset
+          </Button>
+          
           {currentUser ? (
             <div className="relative group ml-1 mr-2">
               <Button
@@ -3393,39 +3427,6 @@ const AppContent: React.FC = () => {
               </Button>
             </div>
           )}
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setActiveSettingsTab('residents');
-              setIsSettingsOpen(true);
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
-          >
-            <Users size={14} />
-            Residents
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setActiveSettingsTab('backup');
-              setIsSettingsOpen(true);
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
-          >
-            <Download size={14} />
-            Backup
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setActiveSettingsTab('reset');
-              setIsSettingsOpen(true);
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all"
-          >
-            <RotateCcw size={14} />
-            Reset
-          </Button>
         </div>
      </div>
 
