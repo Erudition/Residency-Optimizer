@@ -237,6 +237,51 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     return calcs;
   }, [sortedResidents, columns, schedule, hist, activeYear, isUnified, programData]);
 
+  // Calculate Mutually Exclusive Flexibility Stats
+  const flexibilityStats = useMemo(() => {
+    let requiredInternWeeks = 0;
+    let requiredSeniorWeeks = 0;
+
+    const mhsReqs = programData.requirements?.filter(r => r.source === 'mhs') || [];
+
+    sortedResidents.forEach(res => {
+      if (isUnified) {
+        mhsReqs.forEach(req => {
+          requiredInternWeeks += (req.pgy1Ideal || 0);
+          requiredSeniorWeeks += (req.pgy2Ideal || 0) + (req.pgy3Ideal || 0);
+        });
+      } else {
+        const pgy = activeYear! - res.startYear + 1;
+        mhsReqs.forEach(req => {
+          if (pgy === 1) requiredInternWeeks += (req.pgy1Ideal || 0);
+          else if (pgy === 2) requiredSeniorWeeks += (req.pgy2Ideal || 0);
+          else if (pgy >= 3) requiredSeniorWeeks += (req.pgy3Ideal || 0);
+        });
+      }
+    });
+
+    const numInterns = sortedResidents.filter(r => isUnified || (activeYear! - r.startYear + 1) === 1).length;
+    const numSeniors = sortedResidents.filter(r => isUnified || (activeYear! - r.startYear + 1) > 1).length;
+
+    const internAvailable = numInterns * (isUnified ? 52 : 52);
+    const seniorAvailable = numSeniors * (isUnified ? 104 : 52);
+
+    const internFlexibility = internAvailable - requiredInternWeeks;
+    const seniorFlexibility = seniorAvailable - requiredSeniorWeeks;
+    
+    return {
+      requiredInternWeeks,
+      requiredSeniorWeeks,
+      totalRequired: requiredInternWeeks + requiredSeniorWeeks,
+      internAvailable,
+      seniorAvailable,
+      totalAvailable: internAvailable + seniorAvailable,
+      internFlexibility,
+      seniorFlexibility,
+      totalFlexibility: internFlexibility + seniorFlexibility,
+    };
+  }, [sortedResidents, isUnified, activeYear, programData.requirements]);
+
   // Handle cell enter for tooltips
   const handleCellEnter = (e: React.MouseEvent, res: Resident, req: any) => {
     const calc = cellCalculations[res.id]?.[req.id] || { actual: 0, minWeeks: 0, weeksList: [] };
@@ -528,6 +573,44 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
           </tbody>
         </table>
       </div>
+
+      {/* Bottom Flexibility Totals Section */}
+      <div className="bg-slate-50 border-t border-light-5 px-4 py-3 shrink-0">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-black uppercase tracking-wider text-slate-500">Curriculum Flexibility Analysis</span>
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-200 text-slate-600">Mutually Exclusive Blocks Only</span>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Intern Weeks</span>
+            <div className="flex justify-between items-end mt-1">
+              <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredInternWeeks} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.internAvailable}</span></span>
+              <span className={`text-xs font-bold ${flexibilityStats.internFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {flexibilityStats.internFlexibility >= 0 ? '+' : ''}{flexibilityStats.internFlexibility} flex
+              </span>
+            </div>
+          </div>
+          <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Senior Weeks</span>
+            <div className="flex justify-between items-end mt-1">
+              <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredSeniorWeeks} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.seniorAvailable}</span></span>
+              <span className={`text-xs font-bold ${flexibilityStats.seniorFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {flexibilityStats.seniorFlexibility >= 0 ? '+' : ''}{flexibilityStats.seniorFlexibility} flex
+              </span>
+            </div>
+          </div>
+          <div className="bg-slate-100 border border-slate-200 rounded flex flex-col p-2 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Program</span>
+            <div className="flex justify-between items-end mt-1">
+              <span className="text-sm font-black text-slate-800">{flexibilityStats.totalRequired} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.totalAvailable}</span></span>
+              <span className={`text-xs font-bold ${flexibilityStats.totalFlexibility >= 0 ? 'text-blue' : 'text-rose-600'}`}>
+                {flexibilityStats.totalFlexibility >= 0 ? '+' : ''}{flexibilityStats.totalFlexibility} flex
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
 
       {/* Hover Floating Tooltip */}
       {cellTooltip && (
