@@ -11,9 +11,15 @@ interface Props {
   history?: ScheduleHistory;
   activeYear?: number;
   startYear?: number;
+  customCycleConfig?: {
+    cohortCount: number;
+    Y: number;
+    Z: number;
+    clinicAssignments?: Record<string, string>;
+  };
 }
 
-export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear, startYear }) => {
+export const RequirementsStats: React.FC<Props> = React.memo(({ residents, schedule, history, activeYear, startYear, customCycleConfig }) => {
   const programData = useProgramData();
   const hist = history || {};
 
@@ -110,7 +116,8 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
   }, [programData.requirements, sourceFilter]);
 
   const getCohortSortValue = (cohort: number, year: number) => {
-    const { Y, Z } = programData.cycleConfig;
+    const config = customCycleConfig || programData.cycleConfig;
+    const { Y, Z } = config;
     const startYr = startYear ?? 2025;
     const startWeek = (year - startYr) * 52;
     const startingCohort = Math.floor((startWeek % Z) / Y);
@@ -326,7 +333,8 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     let internAvailable = 0;
     let pgy2Available = 0;
     let pgy3Available = 0;
-    const { Y, Z } = programData.cycleConfig;
+    const config = customCycleConfig || programData.cycleConfig;
+    const { Y, Z } = config;
 
     sortedResidents.forEach(res => {
       const cohort = res.cohort ?? 0;

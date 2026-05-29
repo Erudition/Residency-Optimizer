@@ -980,8 +980,9 @@ const AppContent: React.FC = () => {
         return a.name.localeCompare(b.name);
       });
       const defaultCohorts: Record<string, number> = {};
+      const cohortCount = activeSchedule?.customCycleConfig?.cohortCount || programData.cycleConfig.cohortCount;
       activeResidentsForDefault?.forEach((r, idx) => {
-        defaultCohorts[r.id] = idx % programData.cycleConfig.cohortCount;
+        defaultCohorts[r.id] = idx % cohortCount;
       });
       yearCohorts = defaultCohorts;
     }
@@ -989,7 +990,8 @@ const AppContent: React.FC = () => {
   }, [activeSchedule, activeYear, historicalCohortsByYear, residents]);
 
   const getCohortSortValue = (cohort: number, year: number) => {
-    const { Y, Z } = programData.cycleConfig;
+    const config = activeSchedule?.customCycleConfig || programData.cycleConfig;
+    const { Y, Z } = config;
     const startYear = activeSchedule?.startYear || CANDIDATE_START_YEAR;
     const startWeek = (year - startYear) * 52;
     const startingCohort = Math.floor((startWeek % Z) / Y);
@@ -1015,8 +1017,9 @@ const AppContent: React.FC = () => {
         return a.name.localeCompare(b.name);
       });
       const defaultCohorts: Record<string, number> = {};
+      const cohortCount = activeSchedule?.customCycleConfig?.cohortCount || programData.cycleConfig.cohortCount;
       activeResidents?.forEach((r, idx) => {
-        defaultCohorts[r.id] = idx % programData.cycleConfig.cohortCount;
+        defaultCohorts[r.id] = idx % cohortCount;
       });
       yearCohorts = defaultCohorts;
     }
@@ -1719,7 +1722,7 @@ const AppContent: React.FC = () => {
                       .filter(id => !isNaN(id)),
                   });
                 }
-                cc[year] = { clinicWeeksPerCycle: programData.cycleConfig.Y, cohorts };
+                cc[year] = { clinicWeeksPerCycle: activeSched.customCycleConfig?.Y || programData.cycleConfig.Y, cohorts };
               }
               return Object.keys(cc).length > 0 ? cc : undefined;
             })() : undefined,
@@ -1916,7 +1919,7 @@ const AppContent: React.FC = () => {
             });
           }
           cycleConfigs[year] = {
-            clinicWeeksPerCycle: programData.cycleConfig.Y,
+            clinicWeeksPerCycle: sched.customCycleConfig?.Y || programData.cycleConfig.Y,
             cohorts,
           };
         }
@@ -4098,6 +4101,7 @@ const AppContent: React.FC = () => {
                     schedule={viewMode === 'unified' ? displayGrid : currentGrid}
                     activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || CANDIDATE_START_YEAR) : activeYear}
                     startYear={activeSchedule?.startYear || CANDIDATE_START_YEAR}
+                    customCycleConfig={activeSchedule?.customCycleConfig}
                   />
                 </div>
               )}
@@ -4109,6 +4113,7 @@ const AppContent: React.FC = () => {
                     history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
                     activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || CANDIDATE_START_YEAR) : activeYear}
                     startYear={activeSchedule?.startYear || CANDIDATE_START_YEAR}
+                    customCycleConfig={activeSchedule?.customCycleConfig}
                   />
                 </div>
               )}
@@ -4155,7 +4160,7 @@ const AppContent: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'coworking' && <div className="flex-1 overflow-hidden"><RelationshipStats residents={activeResidents} schedule={currentGrid} activeYear={activeYear} startYear={activeSchedule?.startYear || CANDIDATE_START_YEAR} /></div>}
+              {activeTab === 'coworking' && <div className="flex-1 overflow-hidden"><RelationshipStats residents={activeResidents} schedule={currentGrid} activeYear={activeYear} startYear={activeSchedule?.startYear || CANDIDATE_START_YEAR} customCycleConfig={activeSchedule?.customCycleConfig} /></div>}
               {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={fairness} /></div>}
               {activeTab === 'export' && (
                 <div className="flex-1 overflow-y-auto p-8 bg-light-1">
@@ -4432,7 +4437,8 @@ const AppContent: React.FC = () => {
           }
           const cohortIdx = (activeSchedule?.cohortAssignments?.[weekYear] || historicalCohortsByYear[weekYear])?.[selectedCell.resId];
           if (cohortIdx !== undefined && programData) {
-            const { Y, Z } = programData.cycleConfig;
+            const config = activeSchedule?.customCycleConfig || programData.cycleConfig;
+            const { Y, Z } = config;
             isSelectedClinicWeek = Math.floor((localWeek % Z) / Y) === cohortIdx;
           }
         } else if (selection && selectionBounds) {
@@ -4451,7 +4457,8 @@ const AppContent: React.FC = () => {
                 }
                 const cohortIdx = (activeSchedule?.cohortAssignments?.[weekYear] || historicalCohortsByYear[weekYear])?.[resident.id];
                 if (cohortIdx !== undefined && programData) {
-                  const { Y, Z } = programData.cycleConfig;
+                  const config = activeSchedule?.customCycleConfig || programData.cycleConfig;
+                  const { Y, Z } = config;
                   if (Math.floor((localWeek % Z) / Y) !== cohortIdx) {
                     allClinic = false;
                     break;

@@ -10,6 +10,12 @@ interface Props {
   schedule: ScheduleGrid;
   activeYear?: number;
   startYear?: number;
+  customCycleConfig?: {
+    cohortCount: number;
+    Y: number;
+    Z: number;
+    clinicAssignments?: Record<string, string>;
+  };
 }
 
 const getBaseColorStyle = (count: number, max: number, hue: number, intensityScore: number): React.CSSProperties => {
@@ -28,12 +34,13 @@ const getBaseColorStyle = (count: number, max: number, hue: number, intensitySco
   };
 };
 
-export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents, schedule, activeYear, startYear }) => {
+export const ResidentAssignmentsStats: React.FC<Props> = React.memo(({ residents, schedule, activeYear, startYear, customCycleConfig }) => {
   const programData = useProgramData();
   const { rotations } = programData;
 
   const getCohortSortValue = (cohort: number, year: number) => {
-    const { Y, Z } = programData.cycleConfig;
+    const config = customCycleConfig || programData.cycleConfig;
+    const { Y, Z } = config;
     const startYr = startYear ?? 2025;
     const startWeek = (year - startYr) * 52;
     const startingCohort = Math.floor((startWeek % Z) / Y);

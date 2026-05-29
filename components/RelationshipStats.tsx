@@ -9,6 +9,12 @@ interface Props {
   schedule: ScheduleGrid;
   activeYear?: number;
   startYear?: number;
+  customCycleConfig?: {
+    cohortCount: number;
+    Y: number;
+    Z: number;
+    clinicAssignments?: Record<string, string>;
+  };
 }
 
 type StatRow = {
@@ -22,7 +28,7 @@ type StatRow = {
   maxOverlapName: string;
 };
 
-export const RelationshipStats: React.FC<Props> = React.memo(({ residents, schedule, activeYear, startYear }) => {
+export const RelationshipStats: React.FC<Props> = React.memo(({ residents, schedule, activeYear, startYear, customCycleConfig }) => {
   const [colWidth, setColWidth] = useState(240);
   const isResizing = useRef(false);
   const startX = useRef(0);
@@ -81,7 +87,8 @@ export const RelationshipStats: React.FC<Props> = React.memo(({ residents, sched
   const programData = useProgramData();
 
   const getCohortSortValue = (cohort: number, year: number) => {
-    const { Y, Z } = programData.cycleConfig;
+    const config = customCycleConfig || programData.cycleConfig;
+    const { Y, Z } = config;
     const startYr = startYear ?? 2025;
     const startWeek = (year - startYr) * 52;
     const startingCohort = Math.floor((startWeek % Z) / Y);
