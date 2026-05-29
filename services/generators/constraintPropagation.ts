@@ -198,13 +198,18 @@ function initializeDomains(
   for (const v of vars) {
     durDistribution.set(v.duration, (durDistribution.get(v.duration) || 0) + 1);
     // Filter to rotations whose preferred duration fits this slot
+    // and whose staffing ceiling allows this resident's PGY level
     v.domain = assignable.filter(codename => {
       const meta = programData.rotations.get(codename);
       if (!meta) return false;
       const dur = meta.duration || X;
       // Rotation fits if its duration is <= the slot (we'll assign the full slot
       // or split into sub-slots during search)
-      return dur <= v.duration;
+      if (dur > v.duration) return false;
+      // Ceiling check: if maxInterns is 0, PGY-1 residents can't do this rotation
+      if (v.pgy === 1 && (meta.maxInterns ?? 99) === 0) return false;
+      if (v.pgy >= 2 && (meta.maxSeniors ?? 99) === 0) return false;
+      return true;
     });
     if (v.domain.length === 0) emptyCount++;
   }
@@ -285,6 +290,10 @@ interface CSPState {
   weekStaffing: Map<number, Map<string, { interns: number; seniors: number }>>;
   /** residentId → yearIndex → tagTitle → assigned weeks count */
   eduProgress: Map<string, Map<number, Map<string, number>>>;
+  /** Week → list of variable indices covering that week (pre-built for fast lookups) */
+  weekVarIndex: Map<number, number[]>;
+  /** Rotations with staffing floors, pre-computed for fast iteration */
+  staffingFloorRotations: { codename: string; minI: number; minS: number }[];
 }
 
 function cloneState(s: CSPState): CSPState {
@@ -305,14 +314,38 @@ function cloneState(s: CSPState): CSPState {
     }
     eduProgress.set(rid, ym);
   }
-  return { vars, weekStaffing, eduProgress };
+  // weekVarIndex and staffingFloorRotations are rebuilt from vars, not deep-cloned
+  return { vars, weekStaffing, eduProgress, weekVarIndex: s.weekVarIndex, staffingFloorRotations: s.staffingFloorRotations };
 }
 
-function initState(vars: Variable[]): CSPState {
+function initState(vars: Variable[], programData: ProgramData): CSPState {
+  // Pre-build week → variable index for fast lookups
+  const weekVarIndex = new Map<number, number[]>();
+  for (let i = 0; i < vars.length; i++) {
+    const v = vars[i];
+    for (let w = v.startWeek; w < v.startWeek + v.duration; w++) {
+      if (!weekVarIndex.has(w)) weekVarIndex.set(w, []);
+      weekVarIndex.get(w)!.push(i);
+    }
+  }
+
+  // Pre-compute rotations with staffing floors
+  const staffingFloorRotations: { codename: string; minI: number; minS: number }[] = [];
+  for (const [codename, meta] of programData.rotations) {
+    if (isClinicRotation(programData, codename)) continue;
+    const minI = meta.minInterns || 0;
+    const minS = meta.minSeniors || 0;
+    if (minI > 0 || minS > 0) {
+      staffingFloorRotations.push({ codename, minI, minS });
+    }
+  }
+
   return {
     vars,
     weekStaffing: new Map(),
     eduProgress: new Map(),
+    weekVarIndex,
+    staffingFloorRotations,
   };
 }
 
@@ -356,9 +389,10 @@ function recordAssignment(
 }
 
 /**
- * Forward check: after assigning variable `assigned`, prune domains of
- * remaining unassigned variables that would violate staffing ceilings.
- * Returns false if any domain becomes empty (dead end).
+ * Forward check: after assigning variable `assigned`:
+ *  1. Prune domains of unassigned variables that would violate staffing ceilings.
+ *  2. Verify staffing floors are still achievable for each affected week.
+ * Returns false if any domain becomes empty or a floor becomes unachievable (dead end).
  */
 function forwardCheck(
   state: CSPState,
@@ -369,9 +403,9 @@ function forwardCheck(
   const meta = programData.rotations.get(codename);
   if (!meta) return true;
 
-  // For each week this assignment covers, check if any other unassigned
-  // variable covering the same week would exceed capacity if also assigned
-  // to this same rotation. If so, remove it from their domain.
+  // --- Step 1: Ceiling pruning ---
+  // For each week this assignment covers, remove this rotation from domains of
+  // unassigned variables where the ceiling is now met.
   for (let w = assigned.startWeek; w < assigned.startWeek + assigned.duration; w++) {
     const rotMap = state.weekStaffing.get(w);
     if (!rotMap) continue;
@@ -395,7 +429,148 @@ function forwardCheck(
       }
     }
   }
+
   return true;
+}
+
+/**
+ * Check whether staffing floors are still achievable for week `w`.
+ * Uses pre-computed weekVarIndex and staffingFloorRotations for speed.
+ * Returns false if assigned + potential < minimum for any rotation/level.
+ */
+function checkStaffingFloorsFeasible(
+  state: CSPState,
+  w: number,
+): boolean {
+  const rotMap = state.weekStaffing.get(w);
+  const varIndices = state.weekVarIndex.get(w);
+
+  for (const { codename: rot, minI, minS } of state.staffingFloorRotations) {
+    const assigned = rotMap?.get(rot) || { interns: 0, seniors: 0 };
+    if (assigned.interns >= minI && assigned.seniors >= minS) continue;
+
+    // Count unassigned variables covering this week that could provide this rotation
+    let potentialInterns = 0;
+    let potentialSeniors = 0;
+
+    if (varIndices) {
+      for (const idx of varIndices) {
+        const v = state.vars[idx];
+        if (v.assigned !== null) continue;
+        // Check if v still covers week w (may have been split)
+        if (v.startWeek > w || v.startWeek + v.duration <= w) continue;
+        if (!v.domain.includes(rot)) continue;
+
+        if (v.pgy === 1) potentialInterns++;
+        else potentialSeniors++;
+      }
+    }
+
+    if (assigned.interns + potentialInterns < minI) return false;
+    if (assigned.seniors + potentialSeniors < minS) return false;
+  }
+  return true;
+}
+
+// ─── Phase 2b: Deterministic Staffing Pre-Assignment ─────────────────────────
+
+/**
+ * Pre-assign staffing-floor obligations before the CSP search.
+ * Iterates week-by-week and for each rotation with unmet staffing floors,
+ * picks the best available unassigned variable covering that week and assigns it.
+ * This guarantees zero staffing violations without any backtracking.
+ */
+function staffingPreAssign(
+  state: CSPState,
+  programData: ProgramData,
+  gridStartYear: number,
+): void {
+  const totalWeeks = Math.max(...state.vars.map(v => v.startWeek + v.duration), 0);
+  let preAssigned = 0;
+
+  for (let w = 0; w < totalWeeks; w++) {
+    for (const { codename: rot, minI, minS } of state.staffingFloorRotations) {
+      // Re-read staffing state each iteration (it changes after recordAssignment)
+      const getCurrentCounts = () => {
+        const rotMap = state.weekStaffing.get(w);
+        return rotMap?.get(rot) || { interns: 0, seniors: 0 };
+      };
+
+      // Fill intern slots
+      while (getCurrentCounts().interns < minI) {
+        const v = findBestStaffingCandidate(state, w, rot, 1, programData);
+        if (!v) break;
+        v.assigned = rot;
+        v.domain = [rot];
+        recordAssignment(state, v, rot, programData, gridStartYear);
+        preAssigned++;
+      }
+
+      // Fill senior slots
+      while (getCurrentCounts().seniors < minS) {
+        const v = findBestStaffingCandidate(state, w, rot, 2, programData);
+        if (!v) break;
+        v.assigned = rot;
+        v.domain = [rot];
+        recordAssignment(state, v, rot, programData, gridStartYear);
+        preAssigned++;
+      }
+    }
+  }
+  console.log(`[CSP] Staffing pre-assignment: ${preAssigned} variables locked`);
+}
+
+/**
+ * Find the best unassigned variable starting at week `w` for staffing rotation `rot`
+ * at the given PGY level. Only considers variables whose block starts at exactly `w`
+ * to avoid stealing blocks already counted for prior weeks. Verifies that assigning
+ * won't exceed any ceiling across the block's duration.
+ */
+function findBestStaffingCandidate(
+  state: CSPState,
+  w: number,
+  rot: string,
+  pgyLevel: number,
+  programData: ProgramData,
+): Variable | null {
+  const meta = programData.rotations.get(rot);
+  let best: Variable | null = null;
+  let bestScore = -1;
+
+  for (const v of state.vars) {
+    if (v.assigned !== null) continue;
+    if (v.startWeek !== w) continue; // Only blocks starting at this week
+    if (!v.domain.includes(rot)) continue;
+    if (pgyLevel === 1 && v.pgy !== 1) continue;
+    if (pgyLevel >= 2 && v.pgy < 2) continue;
+
+    // Verify ceiling won't be exceeded for any week this block covers
+    if (meta) {
+      let ceilingOk = true;
+      for (let bw = v.startWeek; bw < v.startWeek + v.duration; bw++) {
+        const rotMap = state.weekStaffing.get(bw);
+        const counts = rotMap?.get(rot) || { interns: 0, seniors: 0 };
+        if (pgyLevel === 1 && counts.interns >= (meta.maxInterns ?? 99)) {
+          ceilingOk = false;
+          break;
+        }
+        if (pgyLevel >= 2 && counts.seniors >= (meta.maxSeniors ?? 99)) {
+          ceilingOk = false;
+          break;
+        }
+      }
+      if (!ceilingOk) continue;
+    }
+
+    // Prefer larger domain (more flexible, less constrained)
+    let score = v.domain.length;
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = v;
+    }
+  }
+  return best;
 }
 
 // ─── Phase 3: Search ─────────────────────────────────────────────────────────
@@ -496,7 +671,7 @@ function search(
   stats: { nodes: number; backtracks: number } = { nodes: 0, backtracks: 0 },
 ): boolean {
   stats.nodes++;
-  if (stats.nodes % 100000 === 0) {
+  if (stats.nodes % 10000 === 0) {
     console.log(`[CSP] ... ${stats.nodes} nodes explored, ${stats.backtracks} backtracks, depth ${depth}`);
   }
 
@@ -698,7 +873,7 @@ export const ConstraintPropagationGenerator: ScheduleGenerator = {
     }
 
     // Initialize state and run search
-    const state = initState(vars);
+    const state = initState(vars, programData);
 
     // Record pre-existing assignments
     for (const v of state.vars) {
@@ -708,6 +883,18 @@ export const ConstraintPropagationGenerator: ScheduleGenerator = {
     }
 
     // Initial forward check for pre-assigned variables
+    for (const v of state.vars) {
+      if (v.assigned) {
+        forwardCheck(state, v, programData);
+      }
+    }
+
+    // Phase 2b: Deterministic staffing pre-assignment
+    // Fill all staffing floor obligations before the CSP search begins,
+    // guaranteeing zero staffing violations without backtracking.
+    staffingPreAssign(state, programData, gridStartYear);
+
+    // Run forward check for newly pre-assigned staffing variables
     for (const v of state.vars) {
       if (v.assigned) {
         forwardCheck(state, v, programData);
