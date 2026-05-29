@@ -239,24 +239,81 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
   // Calculate Mutually Exclusive Flexibility Stats
   const flexibilityStats = useMemo(() => {
+    // Helper to calculate MWIS for a given weight accessor
+    const getMWIS = (getWeight: (r: any) => number) => {
+      const reqs = (programData.requirements || []).filter(r => getWeight(r) > 0);
+      if (reqs.length === 0) return 0;
+      
+      // Compute overlapping requirements
+      const overlaps = new Map<number, Set<number>>();
+      reqs.forEach(r => overlaps.set(r.id, new Set()));
+      const rotations = Array.from(programData.rotationTags?.keys() || []);
+      
+      for (let i = 0; i < reqs.length; i++) {
+        for (let j = i + 1; j < reqs.length; j++) {
+          let overlap = false;
+          for (const rot of rotations) {
+            if (RequirementsEngine.fulfills(rot, reqs[i].tag.title, programData) && 
+                RequirementsEngine.fulfills(rot, reqs[j].tag.title, programData)) {
+              overlap = true;
+              break;
+            }
+          }
+          if (overlap) {
+            overlaps.get(reqs[i].id)!.add(reqs[j].id);
+            overlaps.get(reqs[j].id)!.add(reqs[i].id);
+          }
+        }
+      }
+
+      // Branch and bound MWIS
+      let maxWeight = 0;
+      const sortedReqs = [...reqs].sort((a, b) => getWeight(b) - getWeight(a));
+      
+      const search = (index: number, currentWeight: number, allowed: Set<number>) => {
+        if (index === sortedReqs.length) {
+          if (currentWeight > maxWeight) maxWeight = currentWeight;
+          return;
+        }
+
+        const req = sortedReqs[index];
+        let maxPossible = currentWeight;
+        for (let i = index; i < sortedReqs.length; i++) {
+          if (allowed.has(sortedReqs[i].id)) maxPossible += getWeight(sortedReqs[i]);
+        }
+        if (maxPossible <= maxWeight) return; // prune
+
+        // Do not include
+        search(index + 1, currentWeight, allowed);
+
+        // Include if allowed
+        if (allowed.has(req.id)) {
+          const newAllowed = new Set(allowed);
+          overlaps.get(req.id)!.forEach(c => newAllowed.delete(c));
+          search(index + 1, currentWeight + getWeight(req), newAllowed);
+        }
+      };
+
+      search(0, 0, new Set(sortedReqs.map(r => r.id)));
+      return maxWeight;
+    };
+
     let requiredInternWeeks = 0;
     let requiredSeniorWeeks = 0;
 
-    const mhsReqs = programData.requirements?.filter(r => r.source === 'mhs') || [];
-
     sortedResidents.forEach(res => {
       if (isUnified) {
-        mhsReqs.forEach(req => {
-          requiredInternWeeks += (req.pgy1Ideal || 0);
-          requiredSeniorWeeks += (req.pgy2Ideal || 0) + (req.pgy3Ideal || 0);
-        });
+        requiredInternWeeks += getMWIS(req => req.pgy1Ideal || 0);
+        requiredSeniorWeeks += getMWIS(req => (req.pgy2Ideal || 0) + (req.pgy3Ideal || 0));
       } else {
         const pgy = activeYear! - res.startYear + 1;
-        mhsReqs.forEach(req => {
-          if (pgy === 1) requiredInternWeeks += (req.pgy1Ideal || 0);
-          else if (pgy === 2) requiredSeniorWeeks += (req.pgy2Ideal || 0);
-          else if (pgy >= 3) requiredSeniorWeeks += (req.pgy3Ideal || 0);
-        });
+        if (pgy === 1) {
+          requiredInternWeeks += getMWIS(req => req.pgy1Ideal || 0);
+        } else if (pgy === 2) {
+          requiredSeniorWeeks += getMWIS(req => req.pgy2Ideal || 0);
+        } else if (pgy >= 3) {
+          requiredSeniorWeeks += getMWIS(req => req.pgy3Ideal || 0);
+        }
       }
     });
 
@@ -280,7 +337,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       seniorFlexibility,
       totalFlexibility: internFlexibility + seniorFlexibility,
     };
-  }, [sortedResidents, isUnified, activeYear, programData.requirements]);
+  }, [sortedResidents, isUnified, activeYear, programData]);
 
   // Handle cell enter for tooltips
   const handleCellEnter = (e: React.MouseEvent, res: Resident, req: any) => {
