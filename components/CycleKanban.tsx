@@ -111,7 +111,7 @@ export const CycleKanban: React.FC<Props> = ({
         {!hasPlacedClinicWeeks && onChangeY && onAddCycle && (
           <div className="flex items-center gap-4 bg-light-2 px-4 py-2 rounded-xl border border-light-4">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-muted uppercase">Weeks per cycle (Y) =</span>
+              <span className="text-xs font-bold text-muted uppercase">Clinic Weeks per Cycle (Y) =</span>
               <select 
                 value={Y}
                 onChange={(e) => onChangeY(parseInt(e.target.value))}

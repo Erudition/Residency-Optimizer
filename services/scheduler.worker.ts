@@ -45,8 +45,11 @@ const postProgress = (iteration: number, scores: (number | null)[], attempts: Re
 };
 
 onmessage = async (e: MessageEvent) => {
-  const { type, totalYears, residents, historicalSchedules, constraints, params, algorithmIds } = e.data;
+  const { type, totalYears, residents, historicalSchedules, constraints, params, algorithmIds, customCycleConfig } = e.data;
   const programData = deserializeProgramData(e.data.programData);
+  if (customCycleConfig) {
+    programData.cycleConfig = customCycleConfig;
+  }
 
   if (type === 'generate') {
     cancelledAlgorithmIds.clear();

@@ -874,6 +874,21 @@ const AppContent: React.FC = () => {
     return foundClinic;
   }, [activeSchedule, activeYear, viewMode, activeScheduleId, programData]);
 
+  const fillPercentage = useMemo(() => {
+    if (!activeScheduleId || activeScheduleId === 'all') return 0;
+    const gridToCheck = viewMode === 'unified' ? activeSchedule?.unifiedData : activeSchedule?.data[activeYear];
+    if (!gridToCheck) return 0;
+    let filled = 0;
+    let total = 0;
+    Object.values(gridToCheck).forEach(row => {
+      (row as any[]).forEach(cell => {
+        total++;
+        if (cell?.assignment) filled++;
+      });
+    });
+    return total > 0 ? filled / total : 0;
+  }, [activeSchedule, activeYear, viewMode, activeScheduleId]);
+
   const handlePlaceClinicWeeks = () => {
     if (!activeScheduleId || !activeSchedule) return;
     setSchedules(prev => prev.map(s => {
@@ -1214,6 +1229,9 @@ const AppContent: React.FC = () => {
         originalResolve(val);
       };
 
+      const candidateForConfig = schedules.find(s => s.id === baseScheduleIdForGeneration);
+      const customConfig = candidateForConfig?.customCycleConfig;
+
       worker.postMessage({ 
         type: 'generate', 
         year: startYear, 
@@ -1223,7 +1241,8 @@ const AppContent: React.FC = () => {
         constraints: { existing },
         programData: serializeProgramData(programData),
         params,
-        algorithmIds
+        algorithmIds,
+        customCycleConfig: customConfig
       });
     });
   };
@@ -1602,7 +1621,8 @@ const AppContent: React.FC = () => {
       totalYears,
       cohortAssignments: activeSched.cohortAssignments,
       programData: serializeProgramData(programData),
-      strategy
+      strategy,
+      customCycleConfig: activeSched.customCycleConfig
     });
   };
 
@@ -2631,54 +2651,80 @@ const AppContent: React.FC = () => {
           }
         });
 
-        // Distribute removed residents to the remaining cycles evenly
-        const cycleCounts = Array(newConfig.cohortCount).fill(0);
-        Object.values(yearMapping).forEach(val => {
-          const cycleIdx = val as number;
+        const getPgy = (rId: string) => {
+          const r = activeResidents.find(res => res.id === rId);
+          return r ? activeYear - r.startYear + 1 : 1;
+        };
+
+        const cycleCountsByPgy: Record<number, number[]> = {};
+
+        Object.keys(yearMapping).forEach(rId => {
+          const cycleIdx = yearMapping[rId];
           if (cycleIdx < newConfig.cohortCount && cycleIdx >= 0) {
-            cycleCounts[cycleIdx]++;
+            const pgy = getPgy(rId);
+            if (!cycleCountsByPgy[pgy]) cycleCountsByPgy[pgy] = Array(newConfig.cohortCount).fill(0);
+            cycleCountsByPgy[pgy][cycleIdx]++;
           }
         });
 
         residentsInRemoved.forEach(resId => {
+          const pgy = getPgy(resId);
+          if (!cycleCountsByPgy[pgy]) cycleCountsByPgy[pgy] = Array(newConfig.cohortCount).fill(0);
+          
           let minIdx = 0;
           for (let i = 1; i < newConfig.cohortCount; i++) {
-            if (cycleCounts[i] < cycleCounts[minIdx]) minIdx = i;
+            if (cycleCountsByPgy[pgy][i] < cycleCountsByPgy[pgy][minIdx]) minIdx = i;
           }
           yearMapping[resId] = minIdx;
-          cycleCounts[minIdx]++;
+          cycleCountsByPgy[pgy][minIdx]++;
         });
       } else if (newConfig.cohortCount > (s.customCycleConfig?.cohortCount || programData!.cycleConfig.cohortCount)) {
         // A cycle was added
         const newCycleIdx = newConfig.cohortCount - 1;
-        const totalResidents = Object.keys(yearMapping).length;
-        const targetAvg = Math.floor(totalResidents / newConfig.cohortCount);
         
-        let movedCount = 0;
-        while (movedCount < targetAvg) {
-          const cycleCounts = Array(newConfig.cohortCount).fill(0);
-          Object.values(yearMapping).forEach(val => {
-            const cycleIdx = val as number;
-            if (cycleIdx < newConfig.cohortCount && cycleIdx >= 0) {
-              cycleCounts[cycleIdx]++;
-            }
-          });
-          
-          let maxIdx = 0;
-          for (let i = 1; i < newConfig.cohortCount - 1; i++) {
-            if (cycleCounts[i] > cycleCounts[maxIdx]) maxIdx = i;
-          }
-          
-          if (cycleCounts[maxIdx] <= targetAvg) break;
+        const getPgy = (rId: string) => {
+          const r = activeResidents.find(res => res.id === rId);
+          return r ? activeYear - r.startYear + 1 : 1;
+        };
 
-          const resIdToMove = Object.keys(yearMapping).find(resId => yearMapping[resId] === maxIdx);
-          if (resIdToMove) {
-            yearMapping[resIdToMove] = newCycleIdx;
-            movedCount++;
-          } else {
-            break;
+        const residentsByPgy: Record<number, string[]> = {};
+        Object.keys(yearMapping).forEach(rId => {
+          const pgy = getPgy(rId);
+          if (!residentsByPgy[pgy]) residentsByPgy[pgy] = [];
+          residentsByPgy[pgy].push(rId);
+        });
+
+        Object.keys(residentsByPgy).forEach(pgyStr => {
+          const pgy = parseInt(pgyStr);
+          const totalInPgy = residentsByPgy[pgy].length;
+          const targetAvg = Math.floor(totalInPgy / newConfig.cohortCount);
+          
+          let movedCount = 0;
+          while (movedCount < targetAvg) {
+            const cycleCounts = Array(newConfig.cohortCount).fill(0);
+            residentsByPgy[pgy].forEach(rId => {
+              const cycleIdx = yearMapping[rId];
+              if (cycleIdx < newConfig.cohortCount && cycleIdx >= 0) {
+                cycleCounts[cycleIdx]++;
+              }
+            });
+            
+            let maxIdx = 0;
+            for (let i = 1; i < newConfig.cohortCount - 1; i++) {
+              if (cycleCounts[i] > cycleCounts[maxIdx]) maxIdx = i;
+            }
+            
+            if (cycleCounts[maxIdx] <= targetAvg) break;
+
+            const resIdToMove = residentsByPgy[pgy].find(rId => yearMapping[rId] === maxIdx);
+            if (resIdToMove) {
+              yearMapping[resIdToMove] = newCycleIdx;
+              movedCount++;
+            } else {
+              break;
+            }
           }
-        }
+        });
       }
 
       updatedCycles[activeYear] = yearMapping;
@@ -3453,7 +3499,7 @@ const AppContent: React.FC = () => {
                           </Button>
                         )
                       )}
-                      {!activeSchedule?.isHistory && (
+                      {!activeSchedule?.isHistory && fillPercentage > 0.6 && (
                         <Button
                           variant={isHealing ? 'ghost' : 'secondary'}
                           size="sm"
@@ -3479,7 +3525,7 @@ const AppContent: React.FC = () => {
                         </Button>
                       )}
                       {/* Publish button — only for draft, non-history schedules when authenticated */}
-                      {!activeSchedule?.isHistory && isAuthenticated() && activeSchedule && (
+                      {!activeSchedule?.isHistory && isAuthenticated() && activeSchedule && fillPercentage > 0.6 && (
                         isPublished(activeSchedule) ? (
                           <span className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
                             <CloudUpload size={13} />
