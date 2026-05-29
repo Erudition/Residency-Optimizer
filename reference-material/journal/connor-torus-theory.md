@@ -100,6 +100,38 @@ The year-boundary truncated blocks (weeks before the first clinic of the new yea
 
 ---
 
+## Balanced Necklace Theorem (Non-Uniform Cohorts)
+
+Management guarantees cohorts are as balanced as possible. When the total resident count is not evenly divisible by Z (cohort count), cohort sizes differ by at most 1: ⌊n/Z⌋ ("small") and ⌈n/Z⌉ ("large"). This yields exactly two cohort types.
+
+### Alternating is strictly superior
+
+For staffing feasibility, the arrangement of S and L cohorts around the cycle matters. **Maximally alternating** (spacing the L cohorts as evenly as possible) is provably optimal:
+
+1. **Staffing constraints are per-week floors.** Surplus staff in week A cannot compensate for a shortage in week B. Each week is independently checked.
+2. **Blocks span multiple weeks.** A 4-week contiguous block must maintain staffing across all 4 weeks. The binding constraint is the worst week within the block.
+3. **Alternating minimizes the worst case per block.** It guarantees no 4-week window contains more than one low-staffing week (when a large cohort is on clinic). Grouping L cohorts adjacently creates windows with 2 consecutive low-staffing weeks — strictly more constrained.
+4. **No countervailing benefit.** The "easy" windows in a grouped arrangement (0 low weeks) provide no advantage, because surplus cannot transfer to the hard windows.
+
+This is the classic **load-balancing argument**: uniform distribution of load minimizes the maximum load, and feasibility is gated by the maximum.
+
+**Example** (17 residents, 5 cohorts: 2L of 4, 3S of 3):
+
+| Arrangement | Staffing per week | Consecutive low-staff |
+|---|---|---|
+| Grouped [L,L,S,S,S] | 13, **13**, 14, 14, 14 | 2 consecutive |
+| Alternating [L,S,L,S,S] | 13, 14, 13, 14, 14 | max 1 |
+
+### Uniqueness
+
+With k large cohorts in Z positions, the maximally-alternating arrangement — spacing L's as evenly as possible around the cycle — is the **balanced necklace**, which is unique up to rotation. The solver fixes this one canonical arrangement, collapsing the cohort ordering space from C(Z, k) arrangements down to **1**.
+
+### Implication for symmetry
+
+Cyclic rotations of the balanced necklace are isomorphic (same staffing profile, rotated). The solver picks one canonical rotation and all others are eliminated. Combined with the rotation equivalence classes, this means the template-solving phase operates on a single, small, canonical problem.
+
+---
+
 ## Hierarchical Solver Architecture
 
 ### Phase 1: Define equivalence classes
@@ -174,7 +206,6 @@ Map abstract "PGY-1 in cohort A, relative week 3" slots to actual humans. Break 
 
 2. **Multi-year coupling.** When the torus wraps across year boundaries, educational requirements that span multiple years create coupling between cycles. How should the solver handle cumulative graduation minimums vs per-year ideals?
 
-3. **Non-uniform cohorts.** ✅ **Resolved.** Management guarantees cohorts are as balanced as possible, so sizes differ by at most 1: ⌊n/Z⌋ ("small") and ⌈n/Z⌉ ("large"). The torus has at most two cohort types. Any cyclic rotation of the small/large pattern (e.g., [S,S,S,L,L] → [L,S,S,S,L]) produces an isomorphic staffing profile, because diagonal constraints rotate with it. Fix one canonical arrangement (e.g., large cohorts first), solve the template once, and all rotations are covered. The full toroidal structure survives.
 
 4. **Practical template size.** With ~8 equivalence classes, 4 flex phases, 3 PGY levels, and 5 cohort classes, the template has ~480 cells. Is this small enough for complete enumeration, or does it still need heuristic guidance?
 
