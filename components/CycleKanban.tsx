@@ -9,13 +9,15 @@ interface Props {
   activeYear: number;
   cycleAssignments: Record<string, number>;
   onAssignCycle: (residentId: string, cycleIndex: number) => void;
+  onPlaceClinicWeeks?: () => void;
 }
 
 export const CycleKanban: React.FC<Props> = ({ 
   residents, 
   activeYear, 
   cycleAssignments, 
-  onAssignCycle 
+  onAssignCycle,
+  onPlaceClinicWeeks
 }) => {
   const programData = useProgramData();
   const cycleCount = programData.cycleConfig.cohortCount; // Matches backend cohortCount, mapped to cycles
@@ -91,6 +93,14 @@ export const CycleKanban: React.FC<Props> = ({
             <p className="text-xs text-muted font-medium">Assign residents to clinic cycles for AY {activeYear}-{activeYear+1}</p>
           </div>
         </div>
+        {onPlaceClinicWeeks && (
+          <button 
+            onClick={onPlaceClinicWeeks}
+            className="flex items-center gap-2 px-4 py-2 bg-blue text-white rounded-lg text-sm font-bold shadow hover:bg-blue-dark transition-all"
+          >
+            Place Clinic Weeks
+          </button>
+        )}
       </div>
 
       {/* Kanban Board */}

@@ -5,6 +5,7 @@ import { buildLevelRequirements } from './generators/reqBuilder';
 
 // Helper to check if a cell is modifiable based on settings
 const isModifiable = (cell: ScheduleCell, params: AdaptationParams): boolean => {
+    if (!cell) return true;
     if (cell.locked) return false;
     if (cell.assignment === null) return true;
     if (cell.assignment === 'ELEC') return true;
@@ -53,7 +54,7 @@ export const adaptSchedule = (
         residents.forEach(r => {
             const reqs = buildLevelRequirements(programData, r.level) || [];
             reqs.forEach(req => {
-                const currentCount = schedule[r.id]?.filter(c => c.assignment === req.type).length || 0;
+                const currentCount = schedule[r.id]?.filter(c => c && c.assignment === req.type).length || 0;
                 let missing = req.minWeeks - currentCount;
                 
                 if (missing > 0) {

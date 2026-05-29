@@ -41,7 +41,7 @@ export class RequirementsEngine {
         const y = parseInt(yStr);
         if (y < sessionStartYear) {
           const yearCells = historicalSchedules[y][resident.id] || [];
-          total += yearCells.filter(c => this.fulfills(c.assignment, requirementType, programData)).length;
+          total += yearCells.filter(c => c && this.fulfills(c.assignment, requirementType, programData)).length;
         }
       });
     }
@@ -56,7 +56,7 @@ export class RequirementsEngine {
         const yearStart = yearIdx * 52;
         const yearEnd = (yearIdx + 1) * 52;
         const cells = (schedule[resident.id] || []).slice(yearStart, yearEnd);
-        total += cells.filter(c => this.fulfills(c.assignment, requirementType, programData)).length;
+        total += cells.filter(c => c && this.fulfills(c.assignment, requirementType, programData)).length;
       }
     }
 

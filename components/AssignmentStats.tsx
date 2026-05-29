@@ -171,7 +171,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                 </div>
               </th>
               {WEEKS.map(w => (
-                <th key={w} className="border-b border-light-5 min-w-[30px] text-center w-8 text-[10px]" style={(w === 51 || w === 103) ? { borderRight: '3px solid #1e293b' } : undefined}>
+                <th key={w} className="border-b border-light-5 min-w-[30px] text-center w-8 text-[10px]" style={(w % 52 === 0) ? { borderRight: '3px solid #1e293b' } : undefined}>
                   {w}
                 </th>
               ))}
@@ -223,7 +223,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
                       <td
                         key={i}
                         className={`border-b text-center cursor-default relative p-0 ${error ? 'border-red border-2 z-10' : 'border-light-3'}`}
-                        style={(i === 51 || i === 103) ? { borderRight: '3px solid #1e293b' } : undefined}
+                        style={((i + 1) % 52 === 0) ? { borderRight: '3px solid #1e293b' } : undefined}
                         onMouseEnter={(e) => handleCellEnter(e, type, i)}
                         onMouseLeave={() => setCellTooltip(null)}
                       >

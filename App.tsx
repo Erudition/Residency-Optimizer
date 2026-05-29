@@ -611,6 +611,7 @@ const AppContent: React.FC = () => {
 
   const [genStatus, setGenStatus] = useState('');
   const isGeneratingRef = useRef(false);
+  const [baseScheduleIdForGeneration, setBaseScheduleIdForGeneration] = useState<string | null>(null);
 
   const [isHealing, setIsHealing] = useState(false);
   const [bestHealCount, setBestHealCount] = useState<number | null>(null);
@@ -857,6 +858,50 @@ const AppContent: React.FC = () => {
   const [viewMode, setViewMode] = useState<'singleYear' | 'unified'>('singleYear');
   const [cellPadding, setCellPadding] = useState<'comfortable' | 'minimal' | 'none'>('comfortable');
   const [rowHeight, setRowHeight] = useState<'1' | '2' | '3'>('3');
+
+  const hasPlacedClinicWeeks = useMemo(() => {
+    if (!activeScheduleId || activeScheduleId === 'all') return false;
+    const gridToHeal = viewMode === 'unified' ? activeSchedule?.unifiedData : activeSchedule?.data[activeYear];
+    if (!gridToHeal) return false;
+    let foundClinic = false;
+    Object.values(gridToHeal).forEach(row => {
+      (row as any[]).forEach(cell => {
+        if (cell?.assignment === 'CLINIC' || (cell?.assignment && programData?.rotationTags.get(cell.assignment)?.includes('Clinic'))) {
+          foundClinic = true;
+        }
+      });
+    });
+    return foundClinic;
+  }, [activeSchedule, activeYear, viewMode, activeScheduleId, programData]);
+
+  const handlePlaceClinicWeeks = () => {
+    if (!activeScheduleId || !activeSchedule) return;
+    setSchedules(prev => prev.map(s => {
+      if (s.id !== activeScheduleId) return s;
+      const updatedData = { ...s.data };
+      const grid = { ...(updatedData[activeYear] || {}) };
+      const { Y, Z } = programData!.cycleConfig;
+      
+      const cohortAssignments = s.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {};
+      
+      activeResidents.forEach(res => {
+        const cohortIdx = cohortAssignments[res.id];
+        if (cohortIdx === undefined) return;
+        
+        const row = [...(grid[res.id] || Array(52).fill(null))];
+        for (let w = 0; w < 52; w++) {
+          if (Math.floor((w % Z) / Y) === cohortIdx) {
+            row[w] = { assignment: 'CLINIC', locked: true };
+          }
+        }
+        grid[res.id] = row;
+      });
+      
+      updatedData[activeYear] = grid;
+      return { ...s, data: updatedData };
+    }));
+    toast.success("Clinic weeks placed and locked");
+  };
 
   const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
     setViewMode(mode);
@@ -1377,11 +1422,12 @@ const AppContent: React.FC = () => {
         lastUpdateRef.current = Date.now();
       });
 
+      const baseSched = schedules.find(s => s.id === baseScheduleIdForGeneration) || activeSchedule;
       const { results, unifiedResidents, cohortAssignments } = await runGenerationTask(
         genStartYear,
         totalYears,
         residents,
-        {},
+        baseSched?.unifiedData || baseSched?.data?.[baseSched?.startYear ?? genStartYear] || {},
         compParams,
         (iteration, attempts, scores, year, overallProgress, exhPoints, exhCount, hProgress) => {
           const now = Date.now();
@@ -3297,6 +3343,34 @@ const AppContent: React.FC = () => {
 
                     <div className="flex items-center gap-3">
                       {!activeSchedule?.isHistory && (
+                        hasPlacedClinicWeeks ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              startTransition(() => {
+                                setBaseScheduleIdForGeneration(activeScheduleId);
+                                setActiveScheduleId('draft');
+                              });
+                            }}
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-muted hover:text-primary"
+                          >
+                            <Sparkles size={14} />
+                            Auto-fill
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setActiveTab('cycles')}
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-muted hover:text-primary"
+                          >
+                            <Users size={14} />
+                            Assign Cycles
+                          </Button>
+                        )
+                      )}
+                      {!activeSchedule?.isHistory && (
                         <Button
                           variant={isHealing ? 'ghost' : 'secondary'}
                           size="sm"
@@ -3729,6 +3803,7 @@ const AppContent: React.FC = () => {
                     activeYear={activeYear}
                     cycleAssignments={activeYearCohorts}
                     onAssignCycle={handleAssignCycle}
+                    onPlaceClinicWeeks={activeSchedule && !activeSchedule.isHistory ? handlePlaceClinicWeeks : undefined}
                   />
                 </div>
               )}
@@ -3941,18 +4016,29 @@ const AppContent: React.FC = () => {
           {/* Right: Generate button */}
           <div
             onClick={() => {
+              const newId = Math.random().toString(36).substring(2, 9);
+              const lastCohorts = activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {};
+              const newCandidate: DraftCandidate = {
+                kind: 'draft',
+                id: newId,
+                name: `New Candidate`,
+                data: { [activeYear]: {} },
+                createdAt: new Date(),
+                cohortAssignments: { [activeYear]: JSON.parse(JSON.stringify(lastCohorts)) },
+                startYear: activeYear,
+                metrics: undefined,
+              };
               startTransition(() => {
-                setActiveScheduleId('draft');
+                setSchedules(prev => [...prev, newCandidate]);
+                setActiveScheduleId(newId);
+                if (['residents', 'backup', 'reset'].includes(activeTab)) setActiveTab('schedule');
+                setActiveTab('cycles'); // Ensure cycles tab opens
               });
             }}
-            className={`flex items-center gap-1.5 px-4 text-[11px] font-bold cursor-pointer transition-all border-l border-light-4 ${
-              activeScheduleId === 'draft'
-                ? 'bg-white text-blue'
-                : 'text-muted hover:text-primary hover:bg-light-2'
-            }`}
+            className={`flex items-center gap-1.5 px-4 text-[11px] font-bold cursor-pointer transition-all border-l border-light-4 text-muted hover:text-primary hover:bg-light-2`}
           >
             <Sparkles size={12} />
-            Generate
+            New Candidate
           </div>
         </div>
       )}
