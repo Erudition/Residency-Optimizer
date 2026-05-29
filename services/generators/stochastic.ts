@@ -5,7 +5,7 @@ import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
 import { getAllCodenames, isClinicRotation } from '../programDataUtils';
 
-import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
+import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap, getPgy } from './utils';
 
 
 class SeededRNG {
@@ -60,7 +60,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                 const isClinic = Math.floor((w % Z) / Y) === cohort;
                 if (isClinic) {
                     if (row[w].locked) continue;
-                    const pgy = Math.min(3, r.level + Math.floor(w / 52));
+                    const pgy = getPgy(r, w, residents);
                     const weeklyClinicType = 'CLINIC';
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
@@ -125,7 +125,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                                         const maxI = meta?.maxInterns || 99;
                                         const maxS = meta?.maxSeniors || 99;
 
-                                        const currentLevelAtW = res.level + Math.floor(w / 52);
+                                        const currentLevelAtW = getPgy(res, w, residents);
                                         if (currentLevelAtW === 1 && cI >= maxI) { possible = false; break; }
                                         if (currentLevelAtW > 1 && cS >= maxS) { possible = false; break; }
                                         
@@ -171,7 +171,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                 while (getAssignedCount(newSchedule, residents, w, type, 1) < (meta.minInterns || 0) && safetyI < 10) {
                     safetyI++;
                     const pool = seededShuffle(residents.filter(r => {
-                        const level = r.level + Math.floor(w / 52);
+                        const level = getPgy(r, w, residents);
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                         const start = r.activeWeekStart ?? 0;
                         const end = r.activeWeekEnd ?? totalWeeks;
@@ -192,7 +192,7 @@ export const StochasticGenerator: ScheduleGenerator = {
                 while (getAssignedCount(newSchedule, residents, w, type, 2) < (meta.minSeniors || 0) && safetyS < 10) {
                     safetyS++;
                     const pool = seededShuffle(residents.filter(r => {
-                        const level = r.level + Math.floor(w / 52);
+                        const level = getPgy(r, w, residents);
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
                         const start = r.activeWeekStart ?? 0;
                         const end = r.activeWeekEnd ?? totalWeeks;

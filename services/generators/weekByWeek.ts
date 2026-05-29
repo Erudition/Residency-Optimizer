@@ -4,7 +4,7 @@ import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../..
 import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
 
-import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap, getCappedDuration } from './utils';
+import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap, getCappedDuration, getPgy } from './utils';
 import { isClinicRotation } from '../programDataUtils';
 
 
@@ -55,7 +55,8 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 const w = week + i;
                 if (w >= totalWeeks) continue;
                 if (!weekTypeCounts[w]) weekTypeCounts[w] = { interns: {}, seniors: {} };
-                const currentPgy = Math.min(3, Math.floor(w / 52) + baseLevel);
+                const rObj = residents.find(res => res.id === rId);
+                const currentPgy = rObj ? getPgy(rObj, w, residents) : Math.min(3, Math.floor(w / 52) + baseLevel);
                 if (currentPgy === 1) {
                     if (!weekTypeCounts[w].interns) weekTypeCounts[w].interns = {};
                     weekTypeCounts[w].interns[type] = (weekTypeCounts[w].interns[type] || 0) + 1;
@@ -98,7 +99,7 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
         };
 
         const getPgyAtWeek = (r: Resident, w: number) => {
-            return Math.min(3, Math.floor(w / 52) + r.level);
+            return getPgy(r, w, residents);
         };
 
         // 1. Initialize & Clinic Lock

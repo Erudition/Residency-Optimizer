@@ -65,15 +65,29 @@ export const getCumulativeRequirementCount = (residentId: string, currentYearRow
 };
 export const isAligned = (w: number, cohort: number, dur: number, programData: ProgramData): boolean => {
     const { X, Y, Z } = programData.cycleConfig;
-    if (dur !== X && dur !== X / 2) return true;
     const blockStart = (cohort * Y + Y) % Z;
     const startRelToInpatient = ((w % Z) - blockStart + Z) % Z;
+    
     if (dur === X) return startRelToInpatient === 0;
     if (dur === X / 2) return startRelToInpatient === 0 || startRelToInpatient === X / 2;
-    return true;
+    
+    // For truncated durations resulting from year boundaries or upcoming clinics:
+    // They must STILL start at the beginning of the inpatient block OR exactly at a year boundary.
+    if (w % 52 === 0) return true;
+    
+    return startRelToInpatient === 0;
 };
 
-export const getAssignedCount = (schedule: ScheduleGrid, residents: { id: string, level: number }[], week: number, type: AssignmentType, requestedLevel?: number) => {
+export const getPgy = (res: any, week: number, residents: any[]): number => {
+    if (res.startYear && res.startYear > 0) {
+        const firstRes = residents.find((r: any) => r.startYear && r.startYear > 0);
+        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : 2025;
+        return Math.min(3, gridStartYear + Math.floor(week / 52) - res.startYear + 1);
+    }
+    return Math.min(3, (Number(res.level) || 1) + Math.floor(week / 52));
+};
+
+export const getAssignedCount = (schedule: ScheduleGrid, residents: any[], week: number, type: AssignmentType, requestedLevel?: number) => {
     return residents.filter(r => {
         const cell = schedule[r.id]?.[week];
         if (!cell || !cell.assignment) return false;
@@ -82,7 +96,7 @@ export const getAssignedCount = (schedule: ScheduleGrid, residents: { id: string
         const isMatch = cell.assignment === type;
         
         // Graduation aware level
-        const currentLevel = Number(r.level) + Math.floor(week / 52);
+        const currentLevel = getPgy(r, week, residents);
 
         if (requestedLevel === 1) return currentLevel === 1 && isMatch;
         if (requestedLevel === 2) return currentLevel >= 2 && isMatch;
@@ -144,5 +158,6 @@ export const getCappedDuration = (w: number, cohort: number, requestedDur: numbe
             break;
         }
     }
-    return Math.min(requestedDur, maxDurBeforeClinic, totalWeeks - w);
+    const nextYearBoundary = Math.ceil((w + 1) / 52) * 52;
+    return Math.min(requestedDur, maxDurBeforeClinic, nextYearBoundary - w, totalWeeks - w);
 };
