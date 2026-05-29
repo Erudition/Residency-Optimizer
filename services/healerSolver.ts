@@ -1,7 +1,7 @@
 import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory } from '../types';
 import { RequirementsEngine } from './requirementsEngine';
 import { ProgramData } from './api/client';
-import { ACTIVE_START_YEAR } from '../constants';
+import { CANDIDATE_START_YEAR } from '../constants';
 import { getAllCodenames, isClinicRotation } from './programDataUtils';
 import { getCohortAtWeek, getStandardCohortMap } from './generators/utils';
 import { buildLevelRequirements } from './generators/reqBuilder';
@@ -78,7 +78,7 @@ export const healer: HealerSolver = {
         const TOTAL_CYCLES = Math.floor((totalWeeks - 1) / programData.cycleConfig.Z) + 1;
 
         const firstRes = residents.find(res => res.startYear && res.startYear > 0);
-        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : ACTIVE_START_YEAR;
+        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : CANDIDATE_START_YEAR;
 
         const getPgyAtWeek = (res: Resident, week: number): number => {
             return Math.min(3, RequirementsEngine.getPgyAtWeek(res, week, gridStartYear));

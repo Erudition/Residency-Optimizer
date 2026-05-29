@@ -1,13 +1,13 @@
 import * as fs from 'fs';
 import { getWeeklyViolations } from '../services/scheduler';
 import { Resident } from '../types';
-import { ACTIVE_START_YEAR } from '../constants';
+import { LATEST_HISTORICAL_YEAR } from '../constants';
 
 const data = JSON.parse(fs.readFileSync('schedules/hunter_manual_healed.json', 'utf8'));
 const grid = data.grid;
 const residents: Resident[] = data.residents;
 
-const violations = getWeeklyViolations(residents, grid, ACTIVE_START_YEAR);
+const violations = getWeeklyViolations(residents, grid, LATEST_HISTORICAL_YEAR);
 
 let lockedViolations = 0;
 let totalViolations = violations.length;

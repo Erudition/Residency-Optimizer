@@ -19,8 +19,11 @@ import {
 import {
   TOTAL_WEEKS
 } from './constants';
-import { deriveActiveStartYear, isClinicRotation, hasTag } from './services/programDataUtils';
-const ACTIVE_START_YEAR = deriveActiveStartYear();
+import { deriveLatestHistoricalYear, isClinicRotation, hasTag } from './services/programDataUtils';
+/** The most recent academic year with a finalized/canonical schedule. */
+const LATEST_HISTORICAL_YEAR = deriveLatestHistoricalYear();
+/** The first year in the candidate (future) schedule generation window. */
+const CANDIDATE_START_YEAR = LATEST_HISTORICAL_YEAR + 1;
 import { 
   generateSchedule, 
   calculateStats, 
@@ -545,7 +548,7 @@ const AppContent: React.FC = () => {
     loadState('rsp_active_id', 'all')
   );
 
-  const [activeYear, setActiveYear] = useState<number>(ACTIVE_START_YEAR);
+  const [activeYear, setActiveYear] = useState<number>(LATEST_HISTORICAL_YEAR);
   const [residentSortOrder, setResidentSortOrder] = useState<'pgy' | 'cycle'>(() =>
     loadState('rsp_sort_order', 'cycle')
   );
@@ -553,7 +556,7 @@ const AppContent: React.FC = () => {
   const historicalYears = useMemo(() => 
     Object.keys(programData.historicalSchedules)
       .map(Number)
-      .filter(y => y < ACTIVE_START_YEAR)
+      .filter(y => y < LATEST_HISTORICAL_YEAR)
       .sort((a, b) => a - b),
     [programData.historicalSchedules]
   );
@@ -561,14 +564,14 @@ const AppContent: React.FC = () => {
   // All academic years: historical + current + future
   const allAcademicYears = useMemo(() => [
     ...historicalYears,
-    ACTIVE_START_YEAR,
-    ACTIVE_START_YEAR + 1,
-    ACTIVE_START_YEAR + 2,
-    ACTIVE_START_YEAR + 3
+    LATEST_HISTORICAL_YEAR,
+    LATEST_HISTORICAL_YEAR + 1,
+    LATEST_HISTORICAL_YEAR + 2,
+    LATEST_HISTORICAL_YEAR + 3
   ], [historicalYears]);
 
-  const isHistoricalYear = activeYear <= ACTIVE_START_YEAR;
-  const isFutureYear = activeYear > ACTIVE_START_YEAR;
+  const isHistoricalYear = activeYear <= LATEST_HISTORICAL_YEAR;
+  const isFutureYear = activeYear > LATEST_HISTORICAL_YEAR;
 
   const { history: historySchedules, cohortAssignments: historicalCohortsByYear } = useMemo(() => {
     return {
@@ -901,7 +904,7 @@ const AppContent: React.FC = () => {
 
   const getCohortSortValue = (cohort: number, year: number) => {
     const { Y, Z } = programData.cycleConfig;
-    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+    const startYear = activeSchedule?.startYear || CANDIDATE_START_YEAR;
     const startWeek = (year - startYear) * 52;
     const startingCohort = Math.floor((startWeek % Z) / Y);
     return (cohort - startingCohort + Z) % Z;
@@ -964,7 +967,7 @@ const AppContent: React.FC = () => {
   const currentGrid = useMemo(() => {
     if (isHealing && bestHealGrid) {
       if (activeSchedule?.unifiedData && viewMode === 'unified') {
-        const startYear = activeSchedule.startYear || ACTIVE_START_YEAR;
+        const startYear = activeSchedule.startYear || CANDIDATE_START_YEAR;
         const offset = (activeYear - startYear) * TOTAL_WEEKS;
         const sliced: ScheduleGrid = {};
         Object.entries(bestHealGrid)?.forEach(([rId, row]) => {
@@ -988,7 +991,7 @@ const AppContent: React.FC = () => {
 
   const displayResidents = useMemo(() => {
     if (viewMode === 'unified') {
-       const startYear = activeSchedule?.startYear || activeYear || ACTIVE_START_YEAR;
+       const startYear = activeSchedule?.startYear || activeYear || LATEST_HISTORICAL_YEAR;
        return getUnifiedResidents(residents, startYear, 3).map(r => ({
            ...r,
            clinicType: r.startYear === 2025 ? 'NIMA' : 'CCIM',
@@ -1014,7 +1017,7 @@ const AppContent: React.FC = () => {
     // For requirement violations, we need full history (historical + active session data)
     const activeScheduleData = (isHealing && bestHealGrid)
       ? (viewMode === 'unified' 
-          ? sliceIntoYears(bestHealGrid, activeSchedule.startYear || ACTIVE_START_YEAR, 3)
+          ? sliceIntoYears(bestHealGrid, activeSchedule.startYear || CANDIDATE_START_YEAR, 3)
           : { ...activeSchedule.data, [activeYear]: bestHealGrid })
       : (activeSchedule.data || {});
 
@@ -1034,7 +1037,7 @@ const AppContent: React.FC = () => {
   const currentCoverageViolationsCount = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
     const useUnified = viewMode === 'unified' && !!activeSchedule.unifiedData;
-    const startYear = useUnified ? (activeSchedule.startYear || ACTIVE_START_YEAR) : activeYear;
+    const startYear = useUnified ? (activeSchedule.startYear || CANDIDATE_START_YEAR) : activeYear;
 
     if (useUnified) {
       const unifiedGrid = (isHealing && bestHealGrid) ? bestHealGrid : (activeSchedule.unifiedData || {});
@@ -1048,7 +1051,7 @@ const AppContent: React.FC = () => {
   const currentRequirementsViolationsCount = useMemo(() => {
     if (!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') return 0;
     const useUnified = viewMode === 'unified' && !!activeSchedule.unifiedData;
-    const startYear = useUnified ? (activeSchedule.startYear || ACTIVE_START_YEAR) : activeYear;
+    const startYear = useUnified ? (activeSchedule.startYear || CANDIDATE_START_YEAR) : activeYear;
     
     const activeScheduleData = (isHealing && bestHealGrid)
       ? (useUnified 
@@ -1105,10 +1108,9 @@ const AppContent: React.FC = () => {
     params: CompetitionParams, 
     onProgress: (iteration: number, attempts: number[], scores: (number | null)[] | undefined, year: number, overallProgress: number, exhaustionPoints: number[], exhaustedCount: number, healerProgress?: number) => void,
     historicalSchedules: ScheduleHistory, 
-    cohortAssignments: Record<number, Record<string, number>>,
     algorithmIds: string[],
     signal?: AbortSignal
-  ): Promise<{ results: any[], unifiedResidents?: Resident[] }> => {
+  ): Promise<{ results: any[], unifiedResidents?: Resident[], cohortAssignments: Record<number, Record<string, number>> }> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('./services/scheduler.worker.ts', import.meta.url), { type: 'module' });
       activeWorkersRef.current.add(worker);
@@ -1128,14 +1130,14 @@ const AppContent: React.FC = () => {
       }
 
       worker.onmessage = (e) => {
-        const { type, iteration, overallProgress, bestScore, attempts, exhaustionPoints, exhaustedCount, results, error, unifiedResidents, healerProgress } = e.data;
+        const { type, iteration, overallProgress, bestScore, attempts, exhaustionPoints, exhaustedCount, results, error, unifiedResidents, healerProgress, cohortAssignments } = e.data;
         if (type === 'progress') {
           onProgress(iteration, attempts, bestScore, startYear, overallProgress, exhaustionPoints, exhaustedCount || 0, healerProgress);
         } else if (type === 'success') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
           worker.terminate();
-          resolve({ results, unifiedResidents });
+          resolve({ results, unifiedResidents, cohortAssignments });
         } else if (type === 'error') {
           if (signal) signal.removeEventListener('abort', onAbort);
           activeWorkersRef.current.delete(worker);
@@ -1171,7 +1173,7 @@ const AppContent: React.FC = () => {
         totalYears, 
         residents,
         historicalSchedules,
-        constraints: { existing, cohortAssignments },
+        constraints: { existing },
         programData: serializeProgramData(programData),
         params,
         algorithmIds
@@ -1367,7 +1369,7 @@ const AppContent: React.FC = () => {
     try {
       const totalYears = compParams.multiYear || 1;
       // Always generate from the program's base year, regardless of which year tab is selected
-      const genStartYear = ACTIVE_START_YEAR;
+      const genStartYear = CANDIDATE_START_YEAR;
       
       startTransition(() => {
         setConvergenceData([]);
@@ -1375,33 +1377,7 @@ const AppContent: React.FC = () => {
         lastUpdateRef.current = Date.now();
       });
 
-      const fullCohortAssignments: Record<number, Record<string, number>> = {};
-      for (let y = genStartYear; y < genStartYear + totalYears; y++) {
-        let yearCohorts = activeSchedule?.cohortAssignments?.[y] || historicalCohortsByYear[y];
-        if (!yearCohorts || Object.keys(yearCohorts).length === 0) {
-          const augmented = getAugmentedResidents(residents, y + 1);
-          const activeResidents = augmented.filter(r => {
-            const level = y - r.startYear + 1;
-            const isPgyInRange = level >= 1 && level <= 3;
-            const hasJoined = r.transferInYear === undefined || r.transferInYear <= y;
-            const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= y;
-            return isPgyInRange && hasJoined && hasNotLeft;
-          }).sort((a, b) => {
-            const levelA = y - a.startYear + 1;
-            const levelB = y - b.startYear + 1;
-            if (levelA !== levelB) return levelA - levelB;
-            return a.name.localeCompare(b.name);
-          });
-          const defaultCohorts: Record<string, number> = {};
-          activeResidents?.forEach((r, idx) => {
-            defaultCohorts[r.id] = idx % programData.cycleConfig.cohortCount;
-          });
-          yearCohorts = defaultCohorts;
-        }
-        fullCohortAssignments[y] = yearCohorts;
-      }
-
-      const { results, unifiedResidents } = await runGenerationTask(
+      const { results, unifiedResidents, cohortAssignments } = await runGenerationTask(
         genStartYear,
         totalYears,
         residents,
@@ -1429,7 +1405,6 @@ const AppContent: React.FC = () => {
           }
         },
         historySchedules,
-        fullCohortAssignments,
         compParams.algorithmIds || [],
         controller.signal
       );
@@ -1460,7 +1435,7 @@ const AppContent: React.FC = () => {
             data: res.schedule,
             unifiedData: res.unifiedSchedule,
             metrics: res.metrics,
-            cohortAssignments: fullCohortAssignments,
+            cohortAssignments: cohortAssignments,
             startYear: genStartYear,
             createdAt: new Date(),
             isGenerating: false,
@@ -1514,7 +1489,7 @@ const AppContent: React.FC = () => {
     const gridToHeal = useUnified ? activeSched.unifiedData! : activeSched.data[activeYear];
     if (!gridToHeal) return;
 
-    const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+    const startYear = useUnified ? (activeSched.startYear || CANDIDATE_START_YEAR) : activeYear;
     const totalYears = useUnified ? 3 : 1;
 
     setIsHealerUnified(useUnified);
@@ -1537,7 +1512,7 @@ const AppContent: React.FC = () => {
     const gridToHeal = bestHealGrid || (useUnified ? activeSched.unifiedData! : activeSched.data[activeYear]);
     if (!gridToHeal) return;
 
-    const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+    const startYear = useUnified ? (activeSched.startYear || CANDIDATE_START_YEAR) : activeYear;
     const totalYears = useUnified ? 3 : 1;
 
     const healingResidents = useUnified 
@@ -1599,7 +1574,7 @@ const AppContent: React.FC = () => {
       const activeSched = schedules.find(s => s.id === activeScheduleId);
       if (!activeSched) return;
       const useUnified = isHealerUnified;
-      const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+      const startYear = useUnified ? (activeSched.startYear || CANDIDATE_START_YEAR) : activeYear;
 
       let newData = activeSched.data;
       let newUnifiedData = activeSched.unifiedData;
@@ -1699,7 +1674,7 @@ const AppContent: React.FC = () => {
       const activeSched = schedules.find(s => s.id === activeScheduleId);
       if (!activeSched) return;
       const useUnified = isHealerUnified;
-      const startYear = useUnified ? (activeSched.startYear || ACTIVE_START_YEAR) : activeYear;
+      const startYear = useUnified ? (activeSched.startYear || CANDIDATE_START_YEAR) : activeYear;
 
       let newData = activeSched.data;
       let newUnifiedData = activeSched.unifiedData;
@@ -2196,7 +2171,7 @@ const AppContent: React.FC = () => {
     if (!activeScheduleId || !swapSourceSelection || !selection || !swapSourceSelectionBounds || !selectionBounds) return;
 
     const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
-    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+    const startYear = activeSchedule?.startYear || CANDIDATE_START_YEAR;
 
     const getSelectionCells = (bounds: typeof selectionBounds) => {
       const cells: { residentId: string; weekIdx: number; }[] = [];
@@ -2368,7 +2343,7 @@ const AppContent: React.FC = () => {
     const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
     const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
     const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
-    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+    const startYear = activeSchedule?.startYear || CANDIDATE_START_YEAR;
     let changeCount = 0;
 
     setSchedules(prev => prev.map(s => {
@@ -2438,7 +2413,7 @@ const AppContent: React.FC = () => {
     const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
     const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
     const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
-    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+    const startYear = activeSchedule?.startYear || CANDIDATE_START_YEAR;
 
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
@@ -2506,7 +2481,7 @@ const AppContent: React.FC = () => {
     const currentResidents = viewMode === 'unified' ? displayResidents : activeResidents;
     const selectedResidentIds = currentResidents.slice(selectionBounds.minRow, selectionBounds.maxRow + 1).map(r => r.id);
     const selectedWeeks = Array.from({ length: selectionBounds.maxCol - selectionBounds.minCol + 1 }, (_, i) => selectionBounds.minCol + i);
-    const startYear = activeSchedule?.startYear || ACTIVE_START_YEAR;
+    const startYear = activeSchedule?.startYear || CANDIDATE_START_YEAR;
 
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
@@ -3073,7 +3048,7 @@ const AppContent: React.FC = () => {
         <div className="flex-1 flex items-center justify-center gap-2">
           <div className="flex bg-light-2 p-0.5 rounded-xl border border-light-5">
             {allAcademicYears.map(y => {
-              const isUnifiedRelevant = viewMode === 'unified' && y >= (activeSchedule?.startYear || ACTIVE_START_YEAR) && y <= (activeSchedule?.startYear || ACTIVE_START_YEAR) + 2;
+              const isUnifiedRelevant = viewMode === 'unified' && y >= (activeSchedule?.startYear || CANDIDATE_START_YEAR) && y <= (activeSchedule?.startYear || CANDIDATE_START_YEAR) + 2;
               const isActive = viewMode === 'unified' ? isUnifiedRelevant : activeYear === y;
               return (
                 <Button
@@ -3085,7 +3060,7 @@ const AppContent: React.FC = () => {
                       handleSetViewMode('singleYear');
                       if (activeScheduleId === 'settings') {
                         // keep settings open
-                      } else if (y < ACTIVE_START_YEAR) {
+                      } else if (y < LATEST_HISTORICAL_YEAR) {
                         // For historical years, switch to schedule view but preserve candidate selection
                         if (['residents', 'backup', 'reset'].includes(activeTab)) {
                           setActiveTab('schedule');
@@ -3099,7 +3074,7 @@ const AppContent: React.FC = () => {
                       : 'text-muted hover:text-primary'
                   }`}
                 >
-                  {y < ACTIVE_START_YEAR && <History size={11} className="inline mr-1 -mt-px" />}
+                  {y < LATEST_HISTORICAL_YEAR && <History size={11} className="inline mr-1 -mt-px" />}
                   {getYearLabel(y)}
                 </Button>
               );
@@ -3391,7 +3366,7 @@ const AppContent: React.FC = () => {
                       <ScheduleTable
                         residents={displayResidents}
                         schedule={displayGrid}
-                        startYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
+                        startYear={viewMode === 'unified' ? (activeSchedule?.startYear || CANDIDATE_START_YEAR) : (activeSchedule?.isHistory ? activeSchedule.startYear : activeYear)}
                         cohortAssignments={activeYearCohorts}
                         isReadOnly={activeSchedule?.isHistory || isHealing}
                         selection={selection}
@@ -3731,8 +3706,8 @@ const AppContent: React.FC = () => {
                   <ResidentAssignmentsStats
                     residents={viewMode === 'unified' ? displayResidents : activeResidents}
                     schedule={viewMode === 'unified' ? displayGrid : currentGrid}
-                    activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
-                    startYear={activeSchedule?.startYear || ACTIVE_START_YEAR}
+                    activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || CANDIDATE_START_YEAR) : activeYear}
+                    startYear={activeSchedule?.startYear || CANDIDATE_START_YEAR}
                   />
                 </div>
               )}
@@ -3742,8 +3717,8 @@ const AppContent: React.FC = () => {
                     residents={viewMode === 'unified' ? displayResidents : activeResidents}
                     schedule={viewMode === 'unified' ? displayGrid : currentGrid}
                     history={{ ...historySchedules, ...(activeSchedule?.data || {}) }}
-                    activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || ACTIVE_START_YEAR) : activeYear}
-                    startYear={activeSchedule?.startYear || ACTIVE_START_YEAR}
+                    activeYear={viewMode === 'unified' ? (activeSchedule?.startYear || CANDIDATE_START_YEAR) : activeYear}
+                    startYear={activeSchedule?.startYear || CANDIDATE_START_YEAR}
                   />
                 </div>
               )}
@@ -3757,7 +3732,7 @@ const AppContent: React.FC = () => {
                   />
                 </div>
               )}
-              {activeTab === 'coworking' && <div className="flex-1 overflow-hidden"><RelationshipStats residents={activeResidents} schedule={currentGrid} activeYear={activeYear} startYear={activeSchedule?.startYear || ACTIVE_START_YEAR} /></div>}
+              {activeTab === 'coworking' && <div className="flex-1 overflow-hidden"><RelationshipStats residents={activeResidents} schedule={currentGrid} activeYear={activeYear} startYear={activeSchedule?.startYear || CANDIDATE_START_YEAR} /></div>}
               {activeTab === 'fairness' && <div className="flex-1 overflow-y-auto"><FairnessStats residents={activeResidents} schedule={currentGrid} precalculated={fairness} /></div>}
               {activeTab === 'export' && (
                 <div className="flex-1 overflow-y-auto p-8 bg-light-1">
@@ -4022,7 +3997,7 @@ const AppContent: React.FC = () => {
           let weekYear = activeYear;
           let localWeek = selectedCell.week;
           if (viewMode === 'unified' && activeSchedule?.unifiedData) {
-            const schedStartYear = activeSchedule.startYear || ACTIVE_START_YEAR;
+            const schedStartYear = activeSchedule.startYear || CANDIDATE_START_YEAR;
             weekYear = schedStartYear + Math.floor(selectedCell.week / TOTAL_WEEKS);
             localWeek = selectedCell.week % TOTAL_WEEKS;
           }
@@ -4041,7 +4016,7 @@ const AppContent: React.FC = () => {
                 let weekYear = activeYear;
                 let localWeek = c;
                 if (viewMode === 'unified' && activeSchedule?.unifiedData) {
-                  const schedStartYear = activeSchedule.startYear || ACTIVE_START_YEAR;
+                  const schedStartYear = activeSchedule.startYear || CANDIDATE_START_YEAR;
                   weekYear = schedStartYear + Math.floor(c / TOTAL_WEEKS);
                   localWeek = c % TOTAL_WEEKS;
                 }
@@ -4117,7 +4092,7 @@ const App: React.FC = () => {
     setIsSlow(false);
     const slowTimer = setTimeout(() => setIsSlow(true), 5000);
 
-    loadProgramData(ACTIVE_START_YEAR)
+    loadProgramData(LATEST_HISTORICAL_YEAR)
       .then(data => {
         clearTimeout(slowTimer);
         setProgramData(data);

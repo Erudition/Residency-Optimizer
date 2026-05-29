@@ -59,7 +59,7 @@ All year keys, variables, and data structures across both the frontend and backe
 *   AY 2025-26 → year key `2025` (July 2025 – June 2026)
 *   AY 2024-25 → year key `2024` (July 2024 – June 2025)
 
-This applies to: schedule data keys, `activeYear` state, `ACTIVE_START_YEAR`, `deriveActiveStartYear()`, `Resident.startYear`, `AcademicYear.startingYear` (backend), historical schedule keys, and any new code that references academic years. Never use the ending calendar year as a key.
+This applies to: schedule data keys, `activeYear` state, `LATEST_HISTORICAL_YEAR`, `CANDIDATE_START_YEAR`, `deriveLatestHistoricalYear()`, `Resident.startYear`, `AcademicYear.startingYear` (backend), historical schedule keys, and any new code that references academic years. Never use the ending calendar year as a key. `LATEST_HISTORICAL_YEAR` is the most recent finalized academic year (e.g. 2025 for AY 2025-26). `CANDIDATE_START_YEAR = LATEST_HISTORICAL_YEAR + 1` is the first year in the future schedule generation window. The UI state `activeYear` is purely a display cursor indicating which year tab the user is viewing — it must never influence generation logic.
 
 # Specification
 The files found in the `specification/` folder are the authoritative sources of truth for the application code you write. Report, and then correct, any code that is out of sync with the spec.

@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Resident, ScheduleGrid } from '../types';
 import { AlertTriangle } from 'lucide-react';
 import { useProgramData } from '../contexts/ProgramDataContext';
-import { getDisplayOrderedCodenames, deriveActiveStartYear } from '../services/programDataUtils';
+import { getDisplayOrderedCodenames, deriveLatestHistoricalYear } from '../services/programDataUtils';
 import { RequirementsEngine } from '../services/requirementsEngine';
 import { oklchToHex } from '../utils/colorUtils';
 
@@ -110,7 +110,7 @@ export const AssignmentStats: React.FC<Props> = React.memo(({ residents, schedul
 
   const checkConstraints = (type: string, assignees: Resident[], weekIdx: number) => {
     const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
-    const baseYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveActiveStartYear();
+    const baseYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveLatestHistoricalYear();
     return RequirementsEngine.getStaffingViolation(type, assignees, weekIdx, baseYear, programData);
   };
 

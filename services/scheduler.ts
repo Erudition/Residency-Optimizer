@@ -3,7 +3,7 @@ import type { ProgramData } from './api/client';
 import { RequirementsEngine } from './requirementsEngine';
 import { CompetitionParams, CompetitionPriority, Resident, PgyLevel, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting, DetailedScore } from '../types';
 import { TOTAL_WEEKS } from '../constants';
-import { getAllCodenames, isClinicRotation, deriveActiveStartYear } from './programDataUtils';
+import { getAllCodenames, isClinicRotation, deriveLatestHistoricalYear } from './programDataUtils';
 import { getRequirementCount, getCumulativeRequirementCount, getYearRequirementCount, getStandardCohortMap } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
 import { StaffingFirstGenerator } from './generators/staffingFirst';
@@ -64,7 +64,7 @@ export const mergeYearsIntoUnified = (yearsGrid: Record<number, ScheduleGrid>, s
 
 
 export const getAugmentedResidents = (baseResidents: Resident[], maxYear: number, startYear?: number): Resident[] => {
-  const derivedStartYear = startYear ?? deriveActiveStartYear();
+  const derivedStartYear = startYear ?? deriveLatestHistoricalYear();
   const realResidents = baseResidents.filter(r => !r.isSynthetic);
   const minYear = realResidents.length > 0 ? Math.min(...realResidents.map(r => r.startYear), derivedStartYear) : derivedStartYear;
   
@@ -141,24 +141,64 @@ export const getUnifiedResidents = (baseResidents: Resident[], startYear: number
   });
 };
 
+export const buildCohortAssignments = (
+  startYear: number,
+  totalYears: number,
+  unifiedResidents: Resident[],
+  programData: any
+): Record<number, Record<string, number>> => {
+  const fullCohortAssignments: Record<number, Record<string, number>> = {};
+  for (let y = startYear; y < startYear + totalYears; y++) {
+    const yearCohorts: Record<string, number> = {};
+    
+    const ay = programData.academicYears?.find((ay: any) => ay.startingYear === y);
+    if (ay?.canonicalSchedule?.cohortAssignments?.[y]) {
+      Object.assign(yearCohorts, ay.canonicalSchedule.cohortAssignments[y]);
+    }
+    
+    const activeForYear = unifiedResidents.filter(r => {
+      const level = y - r.startYear + 1;
+      const isPgyInRange = level >= 1 && level <= 3;
+      const hasJoined = r.transferInYear === undefined || r.transferInYear <= y;
+      const hasNotLeft = r.transferOutYear === undefined || r.transferOutYear >= y;
+      return isPgyInRange && hasJoined && hasNotLeft;
+    }).sort((a, b) => {
+      const levelA = y - a.startYear + 1;
+      const levelB = y - b.startYear + 1;
+      if (levelA !== levelB) return levelA - levelB;
+      return a.name.localeCompare(b.name);
+    });
+
+    activeForYear.forEach((r, idx) => {
+      if (yearCohorts[r.id] === undefined) {
+        yearCohorts[r.id] = r.cohort !== undefined ? r.cohort : (idx % programData.cycleConfig.cohortCount);
+      }
+    });
+    
+    fullCohortAssignments[y] = yearCohorts;
+  }
+  return fullCohortAssignments;
+};
+
 export const generateSchedule = async (
   startYear: number,
   totalYears: number,
   baseResidents: Resident[],
   historicalSchedules: ScheduleHistory,
-  constraints: { existing: ScheduleHistory, cohortAssignments?: Record<number, Record<string, number>> },
+  constraints: { existing: ScheduleHistory },
   programData: any, // ProgramData type (imported at top or just any)
   params: CompetitionParams,
   algorithmIds: string[],
   isAlgorithmCanceled: (id: string) => boolean,
   onProgress: (iteration: number, scores: (number | null)[], attempts: Record<string, number>, exhaustionPoints: Record<string, number>, exhaustedCount: number) => void,
   isPromoted: () => boolean = () => false
-): Promise<{ results: CompetitionResult[], unifiedResidents: Resident[] }> => {
+): Promise<{ results: CompetitionResult[], unifiedResidents: Resident[], cohortAssignments: Record<number, Record<string, number>> }> => {
 
-  const { existing, cohortAssignments } = constraints;
+  const { existing } = constraints;
 
   const unifiedResidents = getUnifiedResidents(baseResidents, startYear, totalYears);
   const totalSpanWeeks = totalYears * TOTAL_WEEKS;
+  const derivedCohortAssignments = buildCohortAssignments(startYear, totalYears, unifiedResidents, programData);
 
   // Base unified grid with existing/continuity
   const buildBaseUnifiedGrid = (): ScheduleGrid => {
@@ -302,7 +342,7 @@ export const generateSchedule = async (
           programData,
           attemptSeed, 
           combinedPriorCounts,
-          cohortAssignments
+          derivedCohortAssignments
         );
 
         // Score and validate unified grid
@@ -380,7 +420,7 @@ export const generateSchedule = async (
     i++;
   }
 
-  return { results, unifiedResidents };
+  return { results, unifiedResidents, cohortAssignments: derivedCohortAssignments };
 };
 
 // --- Analysis Helpers (Kept for UI/Analysis) ---
@@ -569,7 +609,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   let educationNumerator = 0;
 
   const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
-  const baseYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveActiveStartYear();
+  const baseYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveLatestHistoricalYear();
 
   residents?.forEach(r => {
     for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {

@@ -13,12 +13,12 @@ import {
   CompetitionParams, 
   CompetitionPriority 
 } from '../types';
-import { GENERATE_INITIAL_RESIDENTS, ACTIVE_START_YEAR } from '../constants';
+import { GENERATE_INITIAL_RESIDENTS, LATEST_HISTORICAL_YEAR } from '../constants';
 
 describe.skip('End-to-End Compliance Verification (Generator + Healer)', () => {
 test('StaffingFirst + Healer produces a compliant 3-year schedule', async () => {
         const residents = GENERATE_INITIAL_RESIDENTS();
-        const startYear = ACTIVE_START_YEAR;
+        const startYear = LATEST_HISTORICAL_YEAR;
         const totalYears = 3;
 
         const params: CompetitionParams = {

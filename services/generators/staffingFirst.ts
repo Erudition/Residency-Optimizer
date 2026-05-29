@@ -2,7 +2,7 @@ import { buildLevelRequirements } from './reqBuilder';
 import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator, ScheduleCell } from '../../types';
 import type { ProgramData } from '../api/client';
-import { TOTAL_WEEKS, ACTIVE_START_YEAR } from '../../constants';
+import { TOTAL_WEEKS, CANDIDATE_START_YEAR } from '../../constants';
 import { getAllCodenames, isClinicRotation } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
@@ -41,7 +41,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
 
         // Ensure all residents have rows and helper functions for PGY calculation
         const firstRes = residents.find(res => res.startYear && res.startYear > 0);
-        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : ACTIVE_START_YEAR;
+        const gridStartYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : CANDIDATE_START_YEAR;
         const getPgy = (res: Resident, week: number): number => {
             if (res.startYear && res.startYear > 0) {
                 return Math.min(3, gridStartYear + Math.floor(week / 52) - res.startYear + 1);

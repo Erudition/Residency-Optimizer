@@ -1,5 +1,5 @@
 import { generateSchedule } from './services/scheduler';
-import { GENERATE_INITIAL_RESIDENTS, ACTIVE_START_YEAR } from './constants';
+import { GENERATE_INITIAL_RESIDENTS, CANDIDATE_START_YEAR } from './constants';
 import { CompetitionParams, CompetitionPriority } from './types';
 import * as fs from 'fs';
 
@@ -18,7 +18,7 @@ async function runGenerator() {
     const duration = 5 * 60 * 1000;
     
     const result = await generateSchedule(
-        ACTIVE_START_YEAR,
+        CANDIDATE_START_YEAR,
         3,
         residents,
         {},

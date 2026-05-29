@@ -9,7 +9,7 @@ import {
   ScheduleCell
 } from '../types';
 import { ProgramData } from './api/client';
-import { isClinicRotation, deriveActiveStartYear } from './programDataUtils';
+import { isClinicRotation, deriveLatestHistoricalYear } from './programDataUtils';
 import { getStandardCohortMap } from './generators/utils';
 
 /**
@@ -453,7 +453,7 @@ export class RequirementsEngine {
     const violations: WeeklyViolation[] = [];
     const safeGrid = schedule || {};
     const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
-    const fallbackYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveActiveStartYear();
+    const fallbackYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveLatestHistoricalYear();
     const currentYear = activeYear || fallbackYear;
     const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
     const { cohortCount, Y, Z, X, cohortCount: totalCohorts } = programData.cycleConfig;

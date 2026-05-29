@@ -1,7 +1,10 @@
 import { Resident, AssignmentType } from './types';
 
 export const TOTAL_WEEKS = 52;
-export const ACTIVE_START_YEAR = 2025;
+/** The most recent academic year with a finalized/canonical schedule (AY 2025-26 → 2025). */
+export const LATEST_HISTORICAL_YEAR = 2025;
+/** The first academic year in the candidate generation window (AY 2026-27 → 2026). */
+export const CANDIDATE_START_YEAR = LATEST_HISTORICAL_YEAR + 1;
 export const COHORT_COUNT = 5;
 
 export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
@@ -71,7 +74,7 @@ export const GENERATE_RESIDENTS_FOR_YEAR = (activeYear: number): Resident[] => {
 };
 
 export const GENERATE_INITIAL_RESIDENTS = (): Resident[] => {
-    return GENERATE_RESIDENTS_FOR_YEAR(ACTIVE_START_YEAR);
+    return GENERATE_RESIDENTS_FOR_YEAR(LATEST_HISTORICAL_YEAR);
 };
 
 export const CORE_TYPES: AssignmentType[] = ['W-RED', 'W-BLUE', 'ICU', 'NF', 'EM', 'CCIM'];

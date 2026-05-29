@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import { healSchedule } from '../services/healer';
 import { Resident, ScheduleGrid, AssignmentType } from '../types';
-import { GENERATE_INITIAL_RESIDENTS, ACTIVE_START_YEAR } from '../constants';
+import { GENERATE_INITIAL_RESIDENTS, LATEST_HISTORICAL_YEAR } from '../constants';
 import { preloadHistoricalData } from '../services/generators/historyPreloader';
 
 async function run() {
@@ -11,7 +11,7 @@ async function run() {
     // The resident IDs match the master list, but only some residents are present in each year.
     const nestedSchedule = data.schedules["0"].data; 
     const residents: Resident[] = data.residents || GENERATE_INITIAL_RESIDENTS();
-    const startYear = data.startYear || ACTIVE_START_YEAR;
+    const startYear = data.startYear || LATEST_HISTORICAL_YEAR;
     
     const { history, cohortAssignments } = preloadHistoricalData(residents);
     
