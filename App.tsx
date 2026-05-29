@@ -453,7 +453,12 @@ const normalizeAndSanitizeSchedule = (s: any, residentsList: Resident[]): Candid
   const startYear = s.startYear || 2026;
 
   const sanitizedData: Record<string, ScheduleGrid> = {};
-  Object.entries(data)?.forEach(([yearStr, grid]) => {
+  
+  // Detect old single-year schedule format where data[residentId] = array of cells
+  const isLegacySingleYear = Object.values(data).length > 0 && Array.isArray(Object.values(data)[0]);
+  const normalizedData = isLegacySingleYear ? { [startYear]: data } : data;
+
+  Object.entries(normalizedData)?.forEach(([yearStr, grid]) => {
     sanitizedData[yearStr] = sanitizeScheduleGrid(grid as ScheduleGrid, residentsList, parseInt(yearStr), startYear);
   });
 
@@ -4337,6 +4342,10 @@ const AppContent: React.FC = () => {
                     onClick={() => {
                       startTransition(() => {
                         setActiveScheduleId(sched.id);
+                        if (activeYear < sched.startYear || activeYear > sched.startYear + 2) {
+                          setActiveYear(sched.startYear);
+                          handleSetViewMode('singleYear');
+                        }
                         if (['residents', 'backup', 'reset'].includes(activeTab)) setActiveTab('schedule');
                       });
                     }}

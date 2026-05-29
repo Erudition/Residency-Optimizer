@@ -1,10 +1,9 @@
 Frontend:
-- fix the solid line in the coverage tab that marks the end of the year - it's currently correct after the main rows, but appears one cell too early in the header row
-- Move "Generate" to be a button up in the schedule toolbar just like "Heal". Name it "Auto-fill". In the place where "Generate" is now, simply make it "New Candidate". When New Candidate is clicked, a blank schedule is made, with no blocks assigned, and the "Cycles" tab is open by default. On the Cycles screen, there should be a "Place Clinic Weeks" button, which places all the clinic weeks for all residents on the schedule, making the cycle assignments permanent. "Auto-fill" should be hidden until clinic weeks have been placed, instead there can simply be an "Assign Cycles" button to take them to the Cycles tab. As usual, the Cycles default to the most recently used assignments.
+
 
 
 Payload Admin:
-
+- Users can have duplicate Tenant assignments
 
 Seed Data:
 
