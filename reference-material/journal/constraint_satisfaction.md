@@ -223,6 +223,44 @@ Phase 5: Write solution to grid + fill remaining nulls with ELEC
 
 ---
 
+---
+
+## Phase 6: Hard vs Soft Requirement Discovery
+
+### The Problem
+The CSP generator was chasing 36 weeks of Wards per resident (12w/year × 3 years). With 67 residents needing 2,412 ward-weeks globally but only ~1,330 ward-weeks of ceiling capacity, this appeared to be a mathematical impossibility.
+
+### Investigation
+Traced the 36-week figure through the code:
+1. `reqBuilder.ts` reads `pgy*Ideal` (backend per-PGY-year ideals) and maps them to `minWeeks`
+2. Every generator, the healer, the adapter, and the scoring engine all consume this via `buildLevelRequirements`
+3. The backend schema (`GradRequirements`) clearly distinguishes:
+   - `minimum`: *"Hard floor (total weeks across residency)"*
+   - `ideal` / `pgy*Ideal`: *"Soft goal"* / *"Additional weeks targeted during PGY-N"*
+
+**The 36-week Wards figure is an ideal, not a minimum.** The actual ACGME minimum for Wards+ICU combined is 40 weeks across all 3 years (per MHS Curriculum spec line 107).
+
+### Why It Was Done This Way
+The legacy generators (StaffingFirst, EducationFirst, WeekByWeek, Stochastic) have no concept of soft vs hard goals. They iterate a requirements list and try to place each one. If a requirement has `minWeeks: 0`, it simply doesn't appear in the list and the generator never attempts it. Mapping ideals to minWeeks was an intentional choice to make the generators aim for them at all.
+
+### The Fix
+Added `buildEnrichedLevelRequirements` to `reqBuilder.ts` that returns both:
+- `idealWeeks`: per-PGY-year ideal (soft goal) — what the optimizer aims for
+- `hardMinWeeks`: per-PGY-year hard floor, pro-rated from graduation minimum using ideal distribution as weights
+- `graduationMin`: raw graduation minimum from the backend
+
+The CSP generator now uses the enriched function. All optimization heuristics (variable selection, value ordering, surplus penalty) use `idealWeeks` (behavior unchanged). `hardMinWeeks` is available for future hard constraint enforcement.
+
+Legacy generators continue using `buildLevelRequirements` unchanged.
+
+### Impact
+The `hardMinWeeks` field exposes the actual hard floor for each requirement. This means:
+- The "mathematical impossibility" of 36w Wards/resident may not exist — the hard minimum could be much lower
+- The CSP can eventually distinguish between "violation" (unmet hard minimum) and "suboptimal" (unmet ideal)
+- Scoring and violation reporting can be updated to weight hard and soft differently
+
+---
+
 ## Open Questions / Future Work
 
 1. **Jeopardy gap constraint**: ~84 violations remain for the "at least one PGY-3 on flexible block" rule. This needs a specialized constraint checker.
@@ -234,3 +272,7 @@ Phase 5: Write solution to grid + fill remaining nulls with ELEC
 4. **Block splitting at boundaries**: Year-boundary truncated blocks (weeks before the first clinic) are currently 2-3 week fragments. These could be filled more aggressively with educational rotations.
 
 5. **Redistribution pass**: Instead of only swapping fillers, try swapping between residents — if resident A has 36w wards and resident B has 4w, swap one of A's ward blocks with B's non-ward block. This requires careful constraint checking but could dramatically improve distribution.
+
+6. **Hard constraint enforcement in CSP**: Use `hardMinWeeks` to trigger backtracking when a hard minimum can't be met, while keeping `idealWeeks` as a soft optimization target.
+
+7. **RequirementsEngine violation reporting**: Update `getResidentViolations` to distinguish hard violations (unmet graduation minimums) from soft shortfalls (unmet ideals) — possibly with different severity levels in the UI.
