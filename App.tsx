@@ -2975,7 +2975,7 @@ const AppContent: React.FC = () => {
     // Academic year starts July 1st (month index 6)
     const currentAY = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
     
-    if (y === currentAY) return `AY ${y}-${(y+1).toString().slice(-2)} (Current)`;
+    if (y === currentAY) return `AY ${y}-${(y+1).toString().slice(-2)} (Ongoing)`;
     
     const diff = y - currentAY;
     if (diff === 1) return `AY ${y}-${(y+1).toString().slice(-2)} (Next)`;
@@ -3835,7 +3835,7 @@ const AppContent: React.FC = () => {
 
       {activeScheduleId !== 'settings' && !isHistoricalYear && (
         <div className="h-9 bg-light-3 flex items-stretch shrink-0 z-30 px-2 border-t border-light-4 relative">
-          {/* Left: Future Schedules label */}
+          {/* Left: Future Candidates label */}
           <div
             onClick={() => {
               startTransition(() => {
@@ -3849,7 +3849,7 @@ const AppContent: React.FC = () => {
                 : 'text-muted hover:text-primary hover:bg-light-2'
             }`}
           >
-            Future Schedules
+            Future Candidates
           </div>
 
           {/* Center: Scrollable candidate tabs */}
