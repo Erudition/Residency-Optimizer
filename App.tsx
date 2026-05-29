@@ -882,6 +882,11 @@ const AppContent: React.FC = () => {
     return foundClinic;
   }, [activeSchedule, activeYear, viewMode, activeScheduleId, programData, isHistoricalYear]);
 
+  useEffect(() => {
+    setIsCreatingCandidate(false);
+    setEditingScheduleId(null);
+  }, [activeYear, activeScheduleId, activeTab]);
+
   const fillPercentage = useMemo(() => {
     if (!activeScheduleId || activeScheduleId === 'all') return 0;
     const gridToCheck = viewMode === 'unified' ? activeSchedule?.unifiedData : activeSchedule?.data[activeYear];
@@ -3384,11 +3389,36 @@ const AppContent: React.FC = () => {
                     handleAssignCycle(residentId, cycleIndex);
                   }}
                   onPlaceClinicWeeks={() => {
+                    const defaultClinicRotation = getClinicCodenames(programData)[0] || 'CLINIC';
                     if (editingScheduleId) {
                       setSchedules(prev => prev.map(s => {
                         if (s.id !== editingScheduleId) return s;
+                        
+                        const updatedData = { ...s.data };
+                        const grid = { ...(updatedData[activeYear] || {}) };
+                        const { Y, Z } = creationCycleConfig;
+                        
+                        activeResidents.forEach(res => {
+                          const cohortIdx = creationCohortAssignments[res.id];
+                          const residentClinic = creationCycleConfig.clinicAssignments?.[res.id] || defaultClinicRotation;
+                          
+                          if (cohortIdx === undefined) return;
+                          
+                          const row = [...(grid[res.id] || Array(52).fill(null))];
+                          for (let w = 0; w < 52; w++) {
+                            if (Math.floor((w % Z) / Y) === cohortIdx) {
+                              row[w] = { assignment: residentClinic, locked: true };
+                            } else if (row[w]?.assignment && isClinicRotation(programData, row[w].assignment)) {
+                              row[w] = { assignment: null, locked: false };
+                            }
+                          }
+                          grid[res.id] = row;
+                        });
+
                         const updatedCohorts = { ...(s.cohortAssignments || {}) };
                         updatedCohorts[activeYear] = JSON.parse(JSON.stringify(creationCohortAssignments));
+                        
+                        updatedData[activeYear] = grid;
                         return {
                           ...s,
                           cohortAssignments: updatedCohorts,
@@ -3398,19 +3428,39 @@ const AppContent: React.FC = () => {
                             Z: creationCycleConfig.Z,
                             clinicAssignments: creationCycleConfig.clinicAssignments
                           },
+                          data: updatedData,
                           hasUnsavedClinicChanges: true
                         };
                       }));
                       setIsCreatingCandidate(false);
                       setEditingScheduleId(null);
-                      setTimeout(() => handlePlaceClinicWeeks(true, editingScheduleId), 0);
+                      setActiveTab('schedule');
+                      toast.success("Clinic weeks placed and locked");
                     } else {
                       const newId = Math.random().toString(36).substring(2, 9);
+                      const grid: Record<string, any> = {};
+                      const { Y, Z } = creationCycleConfig;
+                      
+                      activeResidents.forEach(res => {
+                        const cohortIdx = creationCohortAssignments[res.id];
+                        const residentClinic = creationCycleConfig.clinicAssignments?.[res.id] || defaultClinicRotation;
+                        
+                        if (cohortIdx === undefined) return;
+                        
+                        const row = Array(52).fill(null);
+                        for (let w = 0; w < 52; w++) {
+                          if (Math.floor((w % Z) / Y) === cohortIdx) {
+                            row[w] = { assignment: residentClinic, locked: true };
+                          }
+                        }
+                        grid[res.id] = row;
+                      });
+
                       const newCandidate: DraftCandidate = {
                         kind: 'draft',
                         id: newId,
                         name: `New Candidate`,
-                        data: { [activeYear]: {} },
+                        data: { [activeYear]: grid },
                         createdAt: new Date(),
                         cohortAssignments: { [activeYear]: JSON.parse(JSON.stringify(creationCohortAssignments)) },
                         startYear: activeYear,
@@ -3422,14 +3472,12 @@ const AppContent: React.FC = () => {
                           clinicAssignments: creationCycleConfig.clinicAssignments
                         }
                       };
-                      startTransition(() => {
-                        setSchedules(prev => [...prev, newCandidate]);
-                        setActiveScheduleId(newId);
-                        setIsCreatingCandidate(false);
-                        setActiveTab('schedule');
-                        // We need to defer handlePlaceClinicWeeks so the new schedule is in state
-                        setTimeout(() => handlePlaceClinicWeeks(true, newId), 0);
-                      });
+                      
+                      setSchedules(prev => [...prev, newCandidate]);
+                      setActiveScheduleId(newId);
+                      setIsCreatingCandidate(false);
+                      setActiveTab('schedule');
+                      toast.success("Clinic weeks placed and locked");
                     }
                   }}
                   customCycleConfig={creationCycleConfig}

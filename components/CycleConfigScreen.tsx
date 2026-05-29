@@ -92,7 +92,7 @@ export const CycleConfigScreen: React.FC<Props> = ({
   }, [residents, cycleAssignments, activeYear, cycleCount]);
 
   return (
-    <div className="flex flex-col h-full bg-light-1 overflow-hidden z-[100] fixed inset-0">
+    <div className="flex flex-col h-full bg-light-1 overflow-hidden z-50 absolute inset-0">
       {/* Kanban Header */}
       <div className="bg-white border-b border-light-5 px-8 py-4 flex items-center justify-between shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
