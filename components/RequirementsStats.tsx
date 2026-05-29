@@ -349,6 +349,12 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
     const internFlexibility = internAvailable - requiredInternWeeks;
     const seniorFlexibility = seniorAvailable - requiredSeniorWeeks;
+    const totalFlexibility = (internAvailable + seniorAvailable) - (requiredInternWeeks + requiredSeniorWeeks);
+
+    const internFlexPercent = internAvailable > 0 ? Math.round((internFlexibility / internAvailable) * 100) : 0;
+    const seniorFlexPercent = seniorAvailable > 0 ? Math.round((seniorFlexibility / seniorAvailable) * 100) : 0;
+    const totalAvailable = internAvailable + seniorAvailable;
+    const totalFlexPercent = totalAvailable > 0 ? Math.round((totalFlexibility / totalAvailable) * 100) : 0;
     
     return {
       requiredInternWeeks,
@@ -356,10 +362,13 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       totalRequired: requiredInternWeeks + requiredSeniorWeeks,
       internAvailable,
       seniorAvailable,
-      totalAvailable: internAvailable + seniorAvailable,
+      totalAvailable,
       internFlexibility,
       seniorFlexibility,
-      totalFlexibility: internFlexibility + seniorFlexibility,
+      totalFlexibility,
+      internFlexPercent,
+      seniorFlexPercent,
+      totalFlexPercent,
     };
   }, [sortedResidents, isUnified, activeYear, programData]);
 
@@ -667,7 +676,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm text-slate-500 font-medium"><span className="font-black text-slate-800">{flexibilityStats.requiredInternWeeks}</span> required / <span className="font-black text-slate-800">{flexibilityStats.internAvailable}</span> available</span>
               <span className={`text-xs font-bold ${flexibilityStats.internFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                {flexibilityStats.internFlexibility >= 0 ? '+' : ''}{flexibilityStats.internFlexibility} flex
+                {flexibilityStats.internFlexibility >= 0 ? '+' : ''}{flexibilityStats.internFlexibility} flex ({flexibilityStats.internFlexPercent}%)
               </span>
             </div>
           </div>
@@ -676,7 +685,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm text-slate-500 font-medium"><span className="font-black text-slate-800">{flexibilityStats.requiredSeniorWeeks}</span> required / <span className="font-black text-slate-800">{flexibilityStats.seniorAvailable}</span> available</span>
               <span className={`text-xs font-bold ${flexibilityStats.seniorFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                {flexibilityStats.seniorFlexibility >= 0 ? '+' : ''}{flexibilityStats.seniorFlexibility} flex
+                {flexibilityStats.seniorFlexibility >= 0 ? '+' : ''}{flexibilityStats.seniorFlexibility} flex ({flexibilityStats.seniorFlexPercent}%)
               </span>
             </div>
           </div>
@@ -685,7 +694,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm text-slate-500 font-medium"><span className="font-black text-slate-800">{flexibilityStats.totalRequired}</span> required / <span className="font-black text-slate-800">{flexibilityStats.totalAvailable}</span> available</span>
               <span className={`text-xs font-bold ${flexibilityStats.totalFlexibility >= 0 ? 'text-blue' : 'text-rose-600'}`}>
-                {flexibilityStats.totalFlexibility >= 0 ? '+' : ''}{flexibilityStats.totalFlexibility} flex
+                {flexibilityStats.totalFlexibility >= 0 ? '+' : ''}{flexibilityStats.totalFlexibility} flex ({flexibilityStats.totalFlexPercent}%)
               </span>
             </div>
           </div>
