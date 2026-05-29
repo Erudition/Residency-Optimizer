@@ -69,7 +69,20 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     source: string;
     actual: number;
     minWeeks: number;
-    weeksList: number[];
+  } | null>(null);
+
+  // Tooltip state for hovering over requirement row headers
+  const [rowTooltip, setRowTooltip] = useState<{
+    x: number;
+    y: number;
+    reqTitle: string;
+    source: string;
+    minimum: number | null;
+    pgy1Ideal: number | null;
+    pgy2Ideal: number | null;
+    pgy3Ideal: number | null;
+    totalBurden: number;
+    isCumulative: boolean;
   } | null>(null);
 
   // Filter and sort the rows of requirements
@@ -231,6 +244,30 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     });
   };
 
+  const handleRowEnter = (e: React.MouseEvent, req: any) => {
+    // Calculate total burden from precomputed cellCalculations
+    const totalBurden = sortedResidents.reduce((sum, res) => {
+      return sum + (cellCalculations[res.id]?.[req.id]?.minWeeks || 0);
+    }, 0);
+
+    // Calculate position based on the td element rather than the innermost span
+    const tdElement = (e.currentTarget as HTMLElement);
+    const rect = tdElement.getBoundingClientRect();
+
+    setRowTooltip({
+      x: rect.left + window.scrollX + rect.width / 2,
+      y: rect.top + window.scrollY,
+      reqTitle: req.tag.title,
+      source: req.source,
+      minimum: req.minimum || null,
+      pgy1Ideal: req.pgy1Ideal || null,
+      pgy2Ideal: req.pgy2Ideal || null,
+      pgy3Ideal: req.pgy3Ideal || null,
+      isCumulative: req.isCumulative,
+      totalBurden
+    });
+  };
+
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden relative">
       {/* Top Header Toolbar */}
@@ -353,6 +390,8 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                   <td
                     className="sticky left-0 z-20 bg-light-1/90 backdrop-blur-md border-b border-r p-1 px-2 font-medium text-black transition-colors"
                     style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
+                    onMouseEnter={(e) => handleRowEnter(e, req)}
+                    onMouseLeave={() => setRowTooltip(null)}
                   >
                     <div className="flex items-center gap-1.5 truncate">
                       <span
@@ -467,6 +506,68 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             )}
           </div>
 
+          {/* Tooltip caret */}
+          <div className="absolute left-1/2 -bottom-1 w-2.5 h-2.5 bg-slate-900 border-r border-b border-slate-800/20 transform -translate-x-1/2 rotate-45" />
+        </div>
+      )}
+
+      {/* Row Header Hover Floating Tooltip */}
+      {rowTooltip && (
+        <div
+          className="fixed z-[200] bg-slate-900 text-white text-xs rounded-xl py-3 px-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-10px] min-w-[220px] border border-slate-750"
+          style={{ left: rowTooltip.x, top: rowTooltip.y }}
+        >
+          <div className="font-black text-sm border-b border-slate-800 pb-1.5 mb-2 flex items-center justify-between gap-4">
+            <span className="text-white truncate">{rowTooltip.reqTitle}</span>
+            <span
+              className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase ${rowTooltip.source === 'acgme' ? 'bg-blue text-white' : 'bg-emerald-600 text-white'}`}
+            >
+              {rowTooltip.source === 'acgme' ? 'ACGME' : 'Curriculum'}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <div className="text-slate-400 font-semibold mb-2">Requirement Details:</div>
+            
+            {rowTooltip.minimum !== null && rowTooltip.minimum > 0 && (
+              <div className="flex justify-between gap-4 text-[11px]">
+                <span className="text-slate-400">Graduation Min:</span>
+                <span className="font-bold text-slate-100">{rowTooltip.minimum} weeks</span>
+              </div>
+            )}
+            
+            {rowTooltip.pgy1Ideal !== null && rowTooltip.pgy1Ideal > 0 && (
+              <div className="flex justify-between gap-4 text-[11px]">
+                <span className="text-slate-400">PGY-1 Target:</span>
+                <span className="font-bold text-slate-200">{rowTooltip.pgy1Ideal} weeks</span>
+              </div>
+            )}
+            
+            {rowTooltip.pgy2Ideal !== null && rowTooltip.pgy2Ideal > 0 && (
+              <div className="flex justify-between gap-4 text-[11px]">
+                <span className="text-slate-400">PGY-2 Target:</span>
+                <span className="font-bold text-slate-200">{rowTooltip.pgy2Ideal} weeks</span>
+              </div>
+            )}
+            
+            {rowTooltip.pgy3Ideal !== null && rowTooltip.pgy3Ideal > 0 && (
+              <div className="flex justify-between gap-4 text-[11px]">
+                <span className="text-slate-400">PGY-3 Target:</span>
+                <span className="font-bold text-slate-200">{rowTooltip.pgy3Ideal} weeks</span>
+              </div>
+            )}
+
+            <div className="mt-2.5 pt-2 border-t border-slate-800">
+              <div className="flex justify-between items-center gap-4 text-[11px]">
+                <span className="text-blue-300 font-bold">Total Program Burden:</span>
+                <span className="font-black text-blue-200">{rowTooltip.totalBurden} res-weeks</span>
+              </div>
+              <div className="text-[9px] text-slate-500 mt-0.5">
+                (Based on {sortedResidents.length} displayed residents)
+              </div>
+            </div>
+          </div>
+          
           {/* Tooltip caret */}
           <div className="absolute left-1/2 -bottom-1 w-2.5 h-2.5 bg-slate-900 border-r border-b border-slate-800/20 transform -translate-x-1/2 rotate-45" />
         </div>
