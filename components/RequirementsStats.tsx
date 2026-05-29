@@ -327,20 +327,23 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
     sortedResidents.forEach(res => {
       const cohort = res.cohort ?? 0;
-      let nonClinicWeeks1Yr = 0;
+      let flexWeeks1Yr = 0;
       for (let w = 0; w < 52; w++) {
         if (Math.floor((w % Z) / Y) !== cohort) {
-          nonClinicWeeks1Yr++;
+          flexWeeks1Yr++;
         }
       }
+      
+      // Deduct 2 weeks for standard vacation/holiday per year
+      flexWeeks1Yr = Math.max(0, flexWeeks1Yr - 2);
 
       if (isUnified) {
-        internAvailable += nonClinicWeeks1Yr;
-        seniorAvailable += nonClinicWeeks1Yr * 2;
+        internAvailable += flexWeeks1Yr;
+        seniorAvailable += flexWeeks1Yr * 2;
       } else {
         const pgy = activeYear! - res.startYear + 1;
-        if (pgy === 1) internAvailable += nonClinicWeeks1Yr;
-        else if (pgy > 1) seniorAvailable += nonClinicWeeks1Yr;
+        if (pgy === 1) internAvailable += flexWeeks1Yr;
+        else if (pgy > 1) seniorAvailable += flexWeeks1Yr;
       }
     });
 
@@ -660,7 +663,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Intern Non-Clinic Weeks</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Intern Flex Weeks</span>
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredInternWeeks} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.internAvailable}</span></span>
               <span className={`text-xs font-bold ${flexibilityStats.internFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -669,7 +672,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             </div>
           </div>
           <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Senior Non-Clinic Weeks</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Senior Flex Weeks</span>
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredSeniorWeeks} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.seniorAvailable}</span></span>
               <span className={`text-xs font-bold ${flexibilityStats.seniorFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -678,7 +681,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             </div>
           </div>
           <div className="bg-slate-100 border border-slate-200 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Program Non-Clinic Weeks</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Program Flex Weeks</span>
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm font-black text-slate-800">{flexibilityStats.totalRequired} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.totalAvailable}</span></span>
               <span className={`text-xs font-bold ${flexibilityStats.totalFlexibility >= 0 ? 'text-blue' : 'text-rose-600'}`}>
