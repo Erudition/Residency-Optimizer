@@ -87,6 +87,14 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     isCumulative: boolean;
   } | null>(null);
 
+  // Tooltip state for hovering over resident column headers
+  const [colTooltip, setColTooltip] = useState<{
+    x: number;
+    y: number;
+    residentName: string;
+    deficits: { reqTitle: string; expected: number; actual: number; deficit: number }[];
+  } | null>(null);
+
   // Filter and sort the rows of requirements
   const columns = useMemo(() => {
     const reqs = programData.requirements || [];
@@ -290,6 +298,53 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     });
   };
 
+  const handleColEnter = (e: React.MouseEvent, res: Resident) => {
+    // Only check deficits for PGY-2+ (level > 1)
+    const incomingLevel = activeYear! - res.startYear + 1;
+    const deficits: { reqTitle: string; expected: number; actual: number; deficit: number }[] = [];
+    
+    if (incomingLevel > 1) {
+      columns.forEach(req => {
+        // Calculate expected past weeks based on ideals
+        const expectedPast = (req.pgy1Ideal || 0) + (incomingLevel >= 3 ? (req.pgy2Ideal || 0) : 0);
+        
+        if (expectedPast > 0) {
+          // Calculate actual past weeks from history
+          let actualPast = 0;
+          Object.keys(hist).forEach(yStr => {
+            const y = parseInt(yStr);
+            if (y < activeYear!) {
+              const yearCells = hist[y]?.[res.id] || [];
+              actualPast += yearCells.filter(c => c?.assignment && RequirementsEngine.fulfills(c.assignment, req.tag.title, programData)).length;
+            }
+          });
+          
+          if (actualPast < expectedPast) {
+            deficits.push({
+              reqTitle: req.tag.title,
+              expected: expectedPast,
+              actual: actualPast,
+              deficit: expectedPast - actualPast
+            });
+          }
+        }
+      });
+    }
+
+    // Sort deficits by size descending
+    deficits.sort((a, b) => b.deficit - a.deficit);
+
+    const thElement = (e.currentTarget as HTMLElement);
+    const rect = thElement.getBoundingClientRect();
+
+    setColTooltip({
+      x: rect.left + window.scrollX + rect.width / 2,
+      y: rect.bottom + window.scrollY + 10,
+      residentName: res.name,
+      deficits
+    });
+  };
+
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden relative">
       {/* Top Header Toolbar */}
@@ -388,6 +443,8 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
                   key={res.id}
                   className="border-b border-light-5 w-11 min-w-[44px] h-28 p-0 bg-light-1 relative"
                   style={{ zIndex: 100 - idx }}
+                  onMouseEnter={(e) => handleColEnter(e, res)}
+                  onMouseLeave={() => setColTooltip(null)}
                 >
                   <div className="h-full flex items-end justify-start pb-4 relative overflow-visible">
                     <span
@@ -604,6 +661,46 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
           
           {/* Tooltip caret pointing left */}
           <div className="absolute top-1/2 -left-1.5 w-3 h-3 bg-slate-900 border-l border-b border-slate-750 transform -translate-y-1/2 rotate-45" />
+        </div>
+      )}
+
+      {/* Column Header Hover Floating Tooltip */}
+      {colTooltip && (
+        <div
+          className="fixed z-[200] bg-slate-900 text-white text-xs rounded-xl py-3 px-4 shadow-xl pointer-events-none transform -translate-x-1/2 min-w-[220px] border border-slate-750"
+          style={{ left: colTooltip.x, top: colTooltip.y }}
+        >
+          <div className="font-black text-sm border-b border-slate-800 pb-1.5 mb-2 flex items-center justify-between gap-4">
+            <span className="text-white truncate">{colTooltip.residentName}</span>
+            <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-slate-700 text-slate-300">
+              Pre-existing Deficits
+            </span>
+          </div>
+
+          <div className="space-y-2 mt-2">
+            {colTooltip.deficits.length === 0 ? (
+              <div className="text-emerald-400 font-bold text-[11px] flex items-center gap-1.5">
+                <span>✅</span> No prior deficits
+              </div>
+            ) : (
+              colTooltip.deficits.map((def, i) => (
+                <div key={i} className="flex justify-between items-center gap-4 text-[11px] border-b border-slate-800/50 pb-1.5 last:border-0 last:pb-0">
+                  <span className="text-slate-300 font-medium truncate max-w-[120px]" title={def.reqTitle}>
+                    {def.reqTitle}
+                  </span>
+                  <span className="font-black text-rose-400 flex items-center gap-1">
+                    -{def.deficit} wk
+                    <span className="text-[9px] text-slate-500 font-normal ml-0.5">
+                      ({def.actual}/{def.expected})
+                    </span>
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+          
+          {/* Tooltip caret pointing UP */}
+          <div className="absolute -top-1.5 left-1/2 w-3 h-3 bg-slate-900 border-l border-t border-slate-750 transform -translate-x-1/2 rotate-45" />
         </div>
       )}
     </div>
