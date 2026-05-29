@@ -303,26 +303,29 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     };
 
     let requiredInternWeeks = 0;
-    let requiredSeniorWeeks = 0;
+    let requiredPgy2Weeks = 0;
+    let requiredPgy3Weeks = 0;
 
     sortedResidents.forEach(res => {
       if (isUnified) {
         requiredInternWeeks += getMWIS(req => req.pgy1Ideal || 0);
-        requiredSeniorWeeks += getMWIS(req => (req.pgy2Ideal || 0) + (req.pgy3Ideal || 0));
+        requiredPgy2Weeks += getMWIS(req => req.pgy2Ideal || 0);
+        requiredPgy3Weeks += getMWIS(req => req.pgy3Ideal || 0);
       } else {
         const pgy = activeYear! - res.startYear + 1;
         if (pgy === 1) {
           requiredInternWeeks += getMWIS(req => req.pgy1Ideal || 0);
         } else if (pgy === 2) {
-          requiredSeniorWeeks += getMWIS(req => req.pgy2Ideal || 0);
+          requiredPgy2Weeks += getMWIS(req => req.pgy2Ideal || 0);
         } else if (pgy >= 3) {
-          requiredSeniorWeeks += getMWIS(req => req.pgy3Ideal || 0);
+          requiredPgy3Weeks += getMWIS(req => req.pgy3Ideal || 0);
         }
       }
     });
 
     let internAvailable = 0;
-    let seniorAvailable = 0;
+    let pgy2Available = 0;
+    let pgy3Available = 0;
     const { Y, Z } = programData.cycleConfig;
 
     sortedResidents.forEach(res => {
@@ -339,35 +342,43 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
 
       if (isUnified) {
         internAvailable += flexWeeks1Yr;
-        seniorAvailable += flexWeeks1Yr * 2;
+        pgy2Available += flexWeeks1Yr;
+        pgy3Available += flexWeeks1Yr;
       } else {
         const pgy = activeYear! - res.startYear + 1;
         if (pgy === 1) internAvailable += flexWeeks1Yr;
-        else if (pgy > 1) seniorAvailable += flexWeeks1Yr;
+        else if (pgy === 2) pgy2Available += flexWeeks1Yr;
+        else if (pgy >= 3) pgy3Available += flexWeeks1Yr;
       }
     });
 
     const internFlexibility = internAvailable - requiredInternWeeks;
-    const seniorFlexibility = seniorAvailable - requiredSeniorWeeks;
-    const totalFlexibility = (internAvailable + seniorAvailable) - (requiredInternWeeks + requiredSeniorWeeks);
+    const pgy2Flexibility = pgy2Available - requiredPgy2Weeks;
+    const pgy3Flexibility = pgy3Available - requiredPgy3Weeks;
+    const totalFlexibility = (internAvailable + pgy2Available + pgy3Available) - (requiredInternWeeks + requiredPgy2Weeks + requiredPgy3Weeks);
 
     const internFlexPercent = internAvailable > 0 ? Math.round((internFlexibility / internAvailable) * 100) : 0;
-    const seniorFlexPercent = seniorAvailable > 0 ? Math.round((seniorFlexibility / seniorAvailable) * 100) : 0;
-    const totalAvailable = internAvailable + seniorAvailable;
+    const pgy2FlexPercent = pgy2Available > 0 ? Math.round((pgy2Flexibility / pgy2Available) * 100) : 0;
+    const pgy3FlexPercent = pgy3Available > 0 ? Math.round((pgy3Flexibility / pgy3Available) * 100) : 0;
+    const totalAvailable = internAvailable + pgy2Available + pgy3Available;
     const totalFlexPercent = totalAvailable > 0 ? Math.round((totalFlexibility / totalAvailable) * 100) : 0;
     
     return {
       requiredInternWeeks,
-      requiredSeniorWeeks,
-      totalRequired: requiredInternWeeks + requiredSeniorWeeks,
+      requiredPgy2Weeks,
+      requiredPgy3Weeks,
+      totalRequired: requiredInternWeeks + requiredPgy2Weeks + requiredPgy3Weeks,
       internAvailable,
-      seniorAvailable,
+      pgy2Available,
+      pgy3Available,
       totalAvailable,
       internFlexibility,
-      seniorFlexibility,
+      pgy2Flexibility,
+      pgy3Flexibility,
       totalFlexibility,
       internFlexPercent,
-      seniorFlexPercent,
+      pgy2FlexPercent,
+      pgy3FlexPercent,
       totalFlexPercent,
     };
   }, [sortedResidents, isUnified, activeYear, programData]);
@@ -670,7 +681,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
           <span className="text-xs font-black uppercase tracking-wider text-slate-500">Curriculum Flexibility Analysis</span>
           <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-200 text-slate-600">Mutually Exclusive Blocks Only</span>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
             <span className="text-[10px] font-bold text-slate-400 uppercase">Intern Weeks</span>
             <div className="flex justify-between items-end mt-1">
@@ -681,16 +692,25 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             </div>
           </div>
           <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Senior Weeks</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">PGY-2 Weeks</span>
             <div className="flex justify-between items-end mt-1">
-              <span className="text-sm text-slate-500 font-medium"><span className="font-black text-slate-800">{flexibilityStats.requiredSeniorWeeks}</span> required / <span className="font-black text-slate-800">{flexibilityStats.seniorAvailable}</span> available</span>
-              <span className={`text-xs font-bold ${flexibilityStats.seniorFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                {flexibilityStats.seniorFlexibility >= 0 ? '+' : ''}{flexibilityStats.seniorFlexibility} flex ({flexibilityStats.seniorFlexPercent}%)
+              <span className="text-sm text-slate-500 font-medium"><span className="font-black text-slate-800">{flexibilityStats.requiredPgy2Weeks}</span> required / <span className="font-black text-slate-800">{flexibilityStats.pgy2Available}</span> available</span>
+              <span className={`text-xs font-bold ${flexibilityStats.pgy2Flexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {flexibilityStats.pgy2Flexibility >= 0 ? '+' : ''}{flexibilityStats.pgy2Flexibility} flex ({flexibilityStats.pgy2FlexPercent}%)
+              </span>
+            </div>
+          </div>
+          <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">PGY-3 Weeks</span>
+            <div className="flex justify-between items-end mt-1">
+              <span className="text-sm text-slate-500 font-medium"><span className="font-black text-slate-800">{flexibilityStats.requiredPgy3Weeks}</span> required / <span className="font-black text-slate-800">{flexibilityStats.pgy3Available}</span> available</span>
+              <span className={`text-xs font-bold ${flexibilityStats.pgy3Flexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {flexibilityStats.pgy3Flexibility >= 0 ? '+' : ''}{flexibilityStats.pgy3Flexibility} flex ({flexibilityStats.pgy3FlexPercent}%)
               </span>
             </div>
           </div>
           <div className="bg-slate-100 border border-slate-200 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Program Weeks</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Program</span>
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm text-slate-500 font-medium"><span className="font-black text-slate-800">{flexibilityStats.totalRequired}</span> required / <span className="font-black text-slate-800">{flexibilityStats.totalAvailable}</span> available</span>
               <span className={`text-xs font-bold ${flexibilityStats.totalFlexibility >= 0 ? 'text-blue' : 'text-rose-600'}`}>
