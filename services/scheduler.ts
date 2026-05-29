@@ -2,7 +2,7 @@ import { buildLevelRequirements } from './generators/reqBuilder';
 import type { ProgramData } from './api/client';
 import { RequirementsEngine } from './requirementsEngine';
 import { CompetitionParams, CompetitionPriority, Resident, PgyLevel, ScheduleGrid, ScheduleHistory, AssignmentType, ScheduleCell, ScheduleStats, CohortFairnessMetrics, RequirementViolation, WeeklyViolation, ResidentFairnessMetrics, ConvergenceDataPoint, CompetitionResult, ClinicalSetting, DetailedScore } from '../types';
-import { TOTAL_WEEKS } from '../constants';
+import { TOTAL_WEEKS, CANDIDATE_START_YEAR } from '../constants';
 import { getAllCodenames, isClinicRotation, deriveLatestHistoricalYear } from './programDataUtils';
 import { getRequirementCount, getCumulativeRequirementCount, getYearRequirementCount, getStandardCohortMap } from './generators/utils';
 import { WeekByWeekGenerator } from './generators/weekByWeek';
@@ -64,7 +64,7 @@ export const mergeYearsIntoUnified = (yearsGrid: Record<number, ScheduleGrid>, s
 
 
 export const getAugmentedResidents = (baseResidents: Resident[], maxYear: number, startYear?: number): Resident[] => {
-  const derivedStartYear = startYear ?? deriveLatestHistoricalYear();
+  const derivedStartYear = startYear ?? CANDIDATE_START_YEAR;
   const realResidents = baseResidents.filter(r => !r.isSynthetic);
   const minYear = realResidents.length > 0 ? Math.min(...realResidents.map(r => r.startYear), derivedStartYear) : derivedStartYear;
   
@@ -439,18 +439,18 @@ export const calculateStats = (residents: Resident[], schedule: ScheduleGrid): S
   return stats;
 };
 
-export const getRequirementViolations = (residents: Resident[], schedule: ScheduleGrid, programData: ProgramData, historicalSchedules?: ScheduleHistory, activeYear?: number): RequirementViolation[] => {
-  return RequirementsEngine.getViolations(residents, schedule, historicalSchedules || {}, activeYear || 2026, programData);
+export const getRequirementViolations = (residents: Resident[], schedule: ScheduleGrid, programData: ProgramData, historicalSchedules?: ScheduleHistory, gridStartYear?: number): RequirementViolation[] => {
+  return RequirementsEngine.getViolations(residents, schedule, historicalSchedules || {}, gridStartYear || (deriveLatestHistoricalYear() + 1), programData);
 };
 
 
-export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid, programData: ProgramData, activeYear?: number): WeeklyViolation[] => {
-  return RequirementsEngine.getWeeklyViolations(residents, schedule, programData, activeYear);
+export const getWeeklyViolations = (residents: Resident[], schedule: ScheduleGrid, programData: ProgramData, gridStartYear?: number): WeeklyViolation[] => {
+  return RequirementsEngine.getWeeklyViolations(residents, schedule, programData, gridStartYear);
 };
 
 
-export const getAuditViolations = (residents: Resident[], history: ScheduleHistory, programData: ProgramData, activeYear?: number): number => {
-  return RequirementsEngine.getAuditViolations(residents, history, programData, activeYear);
+export const getAuditViolations = (residents: Resident[], history: ScheduleHistory, programData: ProgramData, gridStartYear?: number): number => {
+  return RequirementsEngine.getAuditViolations(residents, history, programData, gridStartYear);
 };
 
 export const getRequirementsViolationsCount = (
@@ -609,7 +609,7 @@ export const calculateDetailedScheduleScore = (residents: Resident[], schedule: 
   let educationNumerator = 0;
 
   const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
-  const baseYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveLatestHistoricalYear();
+  const baseYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : CANDIDATE_START_YEAR;
 
   residents?.forEach(r => {
     for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {

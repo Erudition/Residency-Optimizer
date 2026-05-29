@@ -67,7 +67,7 @@ export class RequirementsEngine {
     r: Resident,
     schedule: ScheduleGrid,
     historicalSchedules: ScheduleHistory = {},
-    activeYear: number,
+    gridStartYear: number,
     programData: ProgramData,
     isUnified: boolean = false
   ): RequirementViolation[] {
@@ -76,7 +76,7 @@ export class RequirementsEngine {
       : (Object.keys(historicalSchedules || {}).length || (isUnified ? 3 : 1));
     let isActive = false;
     for (let offset = 0; offset < numYears; offset++) {
-      const pgy = (activeYear + offset) - r.startYear + 1;
+      const pgy = (gridStartYear + offset) - r.startYear + 1;
       if (pgy >= 1 && pgy <= 3) {
         isActive = true;
         break;
@@ -89,7 +89,7 @@ export class RequirementsEngine {
     if (isUnified) {
       // Unified 3-year logic: evaluates total graduation minimum (req.minimum) scaled by PGY ideals for future resident classes
       (programData.requirements || []).forEach(req => {
-        const lastActiveYear = Math.min(r.startYear + 2, activeYear + 2);
+        const lastActiveYear = Math.min(r.startYear + 2, gridStartYear + 2);
         const lastLevel = lastActiveYear - r.startYear + 1;
         const minWeeks = lastLevel >= 3 
           ? (req.minimum || 0) 
@@ -100,7 +100,7 @@ export class RequirementsEngine {
           req.tag.title,
           schedule,
           historicalSchedules,
-          activeYear,
+          gridStartYear,
           lastActiveYear,
           true,
           programData
@@ -112,7 +112,7 @@ export class RequirementsEngine {
             type: req.tag.title,
             minWeeks,
             actual,
-            year: activeYear
+            year: gridStartYear
           });
         }
       });
@@ -122,7 +122,7 @@ export class RequirementsEngine {
       const numYears = Math.ceil(totalWeeks / 52);
 
       for (let yearIdx = 0; yearIdx < numYears; yearIdx++) {
-        const currentYear = activeYear + yearIdx;
+        const currentYear = gridStartYear + yearIdx;
         const pgy = currentYear - r.startYear + 1;
         
         if (pgy < 1 || pgy > 3) continue;
@@ -139,13 +139,13 @@ export class RequirementsEngine {
                        (pgy >= 2 ? (req.pgy2Ideal || 0) : 0) + 
                        (pgy >= 3 ? (req.pgy3Ideal || 0) : 0);
             
-            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, true, programData);
+            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, gridStartYear, currentYear, true, programData);
           } else {
             // Operational annual logic
             minWeeks = pgy === 1 ? (req.pgy1Ideal || 0) : 
                       (pgy === 2 ? (req.pgy2Ideal || 0) : 
                                    (req.pgy3Ideal || 0));
-            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, activeYear, currentYear, false, programData);
+            actual = this.getActualWeeks(r, req.tag.title, schedule, historicalSchedules, gridStartYear, currentYear, false, programData);
           }
 
           if (minWeeks > 0 && actual < minWeeks) {
@@ -171,13 +171,13 @@ export class RequirementsEngine {
     residents: Resident[],
     schedule: ScheduleGrid,
     historicalSchedules: ScheduleHistory = {},
-    activeYear: number,
+    gridStartYear: number,
     programData: ProgramData,
     isUnified: boolean = false
   ): RequirementViolation[] {
     const violations: RequirementViolation[] = [];
     residents.forEach(r => {
-      violations.push(...this.getResidentViolations(r, schedule, historicalSchedules, activeYear, programData, isUnified));
+      violations.push(...this.getResidentViolations(r, schedule, historicalSchedules, gridStartYear, programData, isUnified));
     });
     return violations;
   }
@@ -448,20 +448,20 @@ export class RequirementsEngine {
     residents: Resident[],
     schedule: ScheduleGrid,
     programData: ProgramData,
-    activeYear?: number
+    gridStartYear?: number
   ): WeeklyViolation[] {
     const violations: WeeklyViolation[] = [];
     const safeGrid = schedule || {};
     const firstRes = residents?.find(res => res.startYear && res.startYear > 0);
     const fallbackYear = firstRes ? (firstRes.startYear + Number(firstRes.level) - 1) : deriveLatestHistoricalYear();
-    const currentYear = activeYear || fallbackYear;
+    const currentYear = gridStartYear || fallbackYear;
     const totalWeeks = Object.values(safeGrid)[0]?.length || 52;
     const { cohortCount, Y, Z, X, cohortCount: totalCohorts } = programData.cycleConfig;
     
     const cohortMap = getStandardCohortMap(residents, programData);
 
-    const gridStartYear = Math.min(...residents.filter(r => r.startYear > 0).map(r => r.startYear));
-    const validGridStartYear = isFinite(gridStartYear) ? gridStartYear : currentYear;
+    const earliestMatriculationYear = Math.min(...residents.filter(r => r.startYear > 0).map(r => r.startYear));
+    const validGridStartYear = isFinite(earliestMatriculationYear) ? earliestMatriculationYear : currentYear;
     const offsetWeeks = Math.max(0, (currentYear - validGridStartYear)) * 52;
 
     for (let week = 0; week < totalWeeks; week++) {
@@ -591,10 +591,10 @@ export class RequirementsEngine {
     residents: Resident[],
     history: ScheduleHistory,
     programData: ProgramData,
-    activeYear?: number
+    gridStartYear?: number
   ): number {
     let violationCount = 0;
-    const currentYear = activeYear || 2026;
+    const currentYear = gridStartYear || (deriveLatestHistoricalYear() + 1);
 
     residents?.forEach(r => {
       // Since history includes the merged current grid when called from the UI,

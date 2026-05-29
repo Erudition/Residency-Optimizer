@@ -52,6 +52,8 @@ Do not use the word "target" in code, comments, specs, or conversation — it co
 *   **Ideal** — a soft goal. Getting closer improves the schedule score, but not reaching it is NOT a violation. Milestones (e.g., cumulative progress checkpoints at PGY-year boundaries) are ideals.
 *   **Property Mapping** — Programmatically, minimum requirements are stored in the `minWeeks` property. The legacy `target` property has been deprecated and must not be used.
 *   **Matriculation Year** — The academic year a resident entered PGY-1 (stored as `startYear`). Graduation requirements are resolved against this year. Prefer "matriculation year" in documentation and specs; `startYear` remains the code-level field name for brevity.
+*   **`startYear` Property Overloading** — Two distinct concepts share the property name `startYear`: `Resident.startYear` is the matriculation year (when the resident entered PGY-1), while `DraftCandidate.startYear` / `activeSchedule.startYear` is the academic year of the schedule grid's first week. These do not conflict at runtime but can confuse contributors. When referring to the schedule's first year in code, prefer the name `gridStartYear`.
+*   **`gridStartYear` Convention** — All `RequirementsEngine` public methods and scheduler wrapper functions use `gridStartYear` (never `activeYear`) for the parameter representing the academic year of the schedule grid's first week. The UI state `activeYear` is scoped exclusively to `App.tsx` as a display cursor.
 
 # Academic Year Convention
 All year keys, variables, and data structures across both the frontend and backend use the **starting calendar year** of the academic year. Academic years begin on July 1.
