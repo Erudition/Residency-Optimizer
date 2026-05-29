@@ -136,7 +136,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       if (residentSortOrder === 'pgy') {
         const pgyA = currentYr - a.startYear + 1;
         const pgyB = currentYr - b.startYear + 1;
-        if (pgyA !== pgyB) return pgyA - pgyB;
+        if (pgyA !== pgyB) return pgyB - pgyA; // Highest PGY first
         const cohortSortA = getCohortSortValue(a.cohort ?? 0, currentYr);
         const cohortSortB = getCohortSortValue(b.cohort ?? 0, currentYr);
         if (cohortSortA !== cohortSortB) return cohortSortA - cohortSortB;
@@ -147,7 +147,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
         if (cohortSortA !== cohortSortB) return cohortSortA - cohortSortB;
         const pgyA = currentYr - a.startYear + 1;
         const pgyB = currentYr - b.startYear + 1;
-        if (pgyA !== pgyB) return pgyA - pgyB;
+        if (pgyA !== pgyB) return pgyB - pgyA; // Highest PGY first
         return a.name.localeCompare(b.name);
       }
     });
