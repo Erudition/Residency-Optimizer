@@ -5,7 +5,7 @@ import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS, CANDIDATE_START_YEAR } from '../../constants';
 import { getAllCodenames, isClinicRotation } from '../programDataUtils';
 
-import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
+import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap, getCappedDuration } from './utils';
 
 
 class SeededRNG {
@@ -125,45 +125,53 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 let safetyI = 0;
                 while (getAssignedCount(newSchedule, residents, w, type, 1) < (meta.minInterns || 0) && safetyI < 10) {
                     safetyI++;
-                    const pool = seededShuffle(residents.filter(r => {
-                        const currentPgy = getPgy(r, w);
+                    const pool = seededShuffle(residents.map(r => {
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                        return isActive(r, w, dur) &&
+                        const residentDur = getCappedDuration(w, cohort, dur, totalWeeks, programData);
+                        return { r, cohort, residentDur };
+                    }).filter(({ r, cohort, residentDur }) => {
+                        const currentPgy = getPgy(r, w);
+                        return residentDur > 0 &&
+                               isActive(r, w, residentDur) &&
                                currentPgy === 1 && 
-                               canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, cohort, dur, programData) &&
+                               canFitBlock(newSchedule, r.id, w, residentDur) && 
+                               isAligned(w, cohort, residentDur, programData) &&
                                getAssignedCount(newSchedule, residents, w, type, 1) < (meta.maxInterns || 99);
                     })).sort((a, b) => {
                         // Prefer residents who need this rotation for education too
-                        const needA = getYearRequirementCount(newSchedule[a.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
-                        const needB = getYearRequirementCount(newSchedule[b.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
+                        const needA = getYearRequirementCount(newSchedule[a.r.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[a.r.id] || {}, type);
+                        const needB = getYearRequirementCount(newSchedule[b.r.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[b.r.id] || {}, type);
                         return needA - needB;
                     });
                     
                     if (pool.length === 0) break;
-                    placeBlock(newSchedule, pool[0].id, w, dur, type);
+                    placeBlock(newSchedule, pool[0].r.id, w, pool[0].residentDur, type);
                 }
 
                 // Seniors
                 let safetyS = 0;
                 while (getAssignedCount(newSchedule, residents, w, type, 2) < (meta.minSeniors || 0) && safetyS < 10) {
                     safetyS++;
-                    const pool = seededShuffle(residents.filter(r => {
-                        const currentPgy = getPgy(r, w);
+                    const pool = seededShuffle(residents.map(r => {
                         const cohort = getCohortAtWeek(r, w, validCohortAssignments);
-                        return isActive(r, w, dur) &&
+                        const residentDur = getCappedDuration(w, cohort, dur, totalWeeks, programData);
+                        return { r, cohort, residentDur };
+                    }).filter(({ r, cohort, residentDur }) => {
+                        const currentPgy = getPgy(r, w);
+                        return residentDur > 0 &&
+                               isActive(r, w, residentDur) &&
                                currentPgy >= 2 && 
-                               canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, cohort, dur, programData) &&
+                               canFitBlock(newSchedule, r.id, w, residentDur) && 
+                               isAligned(w, cohort, residentDur, programData) &&
                                getAssignedCount(newSchedule, residents, w, type, 2) < (meta.maxSeniors || 99);
                     })).sort((a, b) => {
-                        const needA = getYearRequirementCount(newSchedule[a.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[a.id] || {}, type);
-                        const needB = getYearRequirementCount(newSchedule[b.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[b.id] || {}, type);
+                        const needA = getYearRequirementCount(newSchedule[a.r.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[a.r.id] || {}, type);
+                        const needB = getYearRequirementCount(newSchedule[b.r.id], type, 0, totalWeeks, programData) + getPriorRequirementCount(historicalCounts[b.r.id] || {}, type);
                         return needA - needB;
                     });
                     
                     if (pool.length === 0) break;
-                    placeBlock(newSchedule, pool[0].id, w, dur, type);
+                    placeBlock(newSchedule, pool[0].r.id, w, pool[0].residentDur, type);
                 }
             });
         }
@@ -224,34 +232,37 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                             let safety = 0;
                             while (getYearRequirementCount(newSchedule[res.id], req.type, yearStart, yearEnd, programData) < req.minWeeks && safety < 100) {
                                 safety++;
-                                let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity;
+                                let bestW = -1, bestType = compatibleTypes[0], bestScore = Infinity, bestDur = dur;
 
                                 // Generate candidate weeks, preferring block-aligned positions first
-                                const blockAlignedWeeks: number[] = [];
-                                const otherWeeks: number[] = [];
-                                for (let i = 0; i <= yearEnd - yearStart - dur; i++) {
+                                const blockAlignedWeeks: {w: number, currentDur: number}[] = [];
+                                const otherWeeks: {w: number, currentDur: number}[] = [];
+                                for (let i = 0; i <= yearEnd - yearStart - 1; i++) {
                                     const w = yearStart + i;
                                     const cohort = getCohortAtWeek(res, w, validCohortAssignments);
-                                    if (isAligned(w, cohort, dur, programData)) {
-                                        blockAlignedWeeks.push(w);
+                                    const currentDur = getCappedDuration(w, cohort, dur, totalWeeks, programData);
+                                    if (currentDur <= 0 || w + currentDur > yearEnd) continue;
+
+                                    if (isAligned(w, cohort, currentDur, programData)) {
+                                        blockAlignedWeeks.push({w, currentDur});
                                     } else {
-                                        otherWeeks.push(w);
+                                        otherWeeks.push({w, currentDur});
                                     }
                                 }
                                 const possibleWeeks = [...seededShuffle(blockAlignedWeeks), ...seededShuffle(otherWeeks)];
 
-                                for (const w of possibleWeeks) {
+                                for (const {w, currentDur} of possibleWeeks) {
                                     const cohort = getCohortAtWeek(res, w, validCohortAssignments);
-                                    if (!isAligned(w, cohort, dur, programData)) continue;
-                                    if (!canFitBlock(newSchedule, res.id, w, dur)) continue;
-                                    if (!isActive(res, w, dur)) continue;
+                                    if (!isAligned(w, cohort, currentDur, programData)) continue;
+                                    if (!canFitBlock(newSchedule, res.id, w, currentDur)) continue;
+                                    if (!isActive(res, w, currentDur)) continue;
 
                                     for (const type of compatibleTypes) {
                                         const meta = programData.rotations.get(type);
                                         let score = 0;
                                         let possible = true;
 
-                                        for (let i = 0; i < dur; i++) {
+                                        for (let i = 0; i < currentDur; i++) {
                                             const currentLevel = getPgy(res, w + i);
                                             const cI = getAssignedCount(newSchedule, residents, w + i, type, 1);
                                             const cS = getAssignedCount(newSchedule, residents, w + i, type, 2);
@@ -267,6 +278,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                                             bestScore = score;
                                             bestW = w;
                                             bestType = type;
+                                            bestDur = currentDur;
                                         }
                                     }
                                     // Early exit if we found a zero-conflict slot
@@ -274,7 +286,7 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                                 }
 
                                 if (bestW === -1) break;
-                                placeBlock(newSchedule, res.id, bestW, dur, bestType);
+                                placeBlock(newSchedule, res.id, bestW, bestDur, bestType);
                             }
                         });
                     });

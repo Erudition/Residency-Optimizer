@@ -4,7 +4,7 @@ import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator } from '../..
 import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
 
-import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap } from './utils';
+import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap, getCappedDuration } from './utils';
 import { isClinicRotation } from '../programDataUtils';
 
 
@@ -143,36 +143,46 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
 
                 // Interns
                 while ((weekTypeCounts[w].interns[type] || 0) < meta.minInterns) {
-                    const pool = seededShuffle(residents.filter(r => {
+                    const pool = seededShuffle(residents.map(r => {
+                        const cohort = getCohortAtWeek(r, w, validCohortAssignments);
+                        const residentDur = getCappedDuration(w, cohort, dur, totalWeeks, programData);
+                        return { r, cohort, residentDur };
+                    }).filter(({ r, cohort, residentDur }) => {
                         const currentPgy = getPgyAtWeek(r, w);
-                        return isResidentActive(r, w) &&
+                        return residentDur > 0 &&
+                               isResidentActive(r, w) &&
                                currentPgy === 1 && 
-                               canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, getCohortAtWeek(r, w, validCohortAssignments), dur, programData) &&
+                               canFitBlock(newSchedule, r.id, w, residentDur) && 
+                               isAligned(w, cohort, residentDur, programData) &&
                                (weekTypeCounts[w].interns[type] || 0) < meta.maxInterns;
-                    })).sort((a, b) => getReqCountCumulative(a.id, type, w) - 
-                                     getReqCountCumulative(b.id, type, w));
+                    })).sort((a, b) => getReqCountCumulative(a.r.id, type, w) - 
+                                     getReqCountCumulative(b.r.id, type, w));
                     
                     if (pool.length === 0) break;
-                    placeBlock(newSchedule, pool[0].id, w, dur, type);
-                    updateCounts(pool[0].id, pool[0].level, w, type, dur);
+                    placeBlock(newSchedule, pool[0].r.id, w, pool[0].residentDur, type);
+                    updateCounts(pool[0].r.id, getPgyAtWeek(pool[0].r, w), w, type, pool[0].residentDur);
                 }
 
                 // Seniors
                 while ((weekTypeCounts[w].seniors[type] || 0) < meta.minSeniors) {
-                    const pool = seededShuffle(residents.filter(r => {
+                    const pool = seededShuffle(residents.map(r => {
+                        const cohort = getCohortAtWeek(r, w, validCohortAssignments);
+                        const residentDur = getCappedDuration(w, cohort, dur, totalWeeks, programData);
+                        return { r, cohort, residentDur };
+                    }).filter(({ r, cohort, residentDur }) => {
                         const currentPgy = getPgyAtWeek(r, w);
-                        return isResidentActive(r, w) &&
+                        return residentDur > 0 &&
+                               isResidentActive(r, w) &&
                                currentPgy >= 2 && 
-                               canFitBlock(newSchedule, r.id, w, dur) && 
-                               isAligned(w, getCohortAtWeek(r, w, validCohortAssignments), dur, programData) &&
+                               canFitBlock(newSchedule, r.id, w, residentDur) && 
+                               isAligned(w, cohort, residentDur, programData) &&
                                (weekTypeCounts[w].seniors[type] || 0) < meta.maxSeniors;
-                    })).sort((a, b) => getReqCountCumulative(a.id, type, w) - 
-                                     getReqCountCumulative(b.id, type, w));
+                    })).sort((a, b) => getReqCountCumulative(a.r.id, type, w) - 
+                                     getReqCountCumulative(b.r.id, type, w));
                     
                     if (pool.length === 0) break;
-                    placeBlock(newSchedule, pool[0].id, w, dur, type);
-                    updateCounts(pool[0].id, pool[0].level, w, type, dur);
+                    placeBlock(newSchedule, pool[0].r.id, w, pool[0].residentDur, type);
+                    updateCounts(pool[0].r.id, getPgyAtWeek(pool[0].r, w), w, type, pool[0].residentDur);
                 }
             });
 
@@ -186,14 +196,24 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 });
                 for (const req of pendingReqs) {
                     const dur = (programData.rotations.get(req.type)?.duration || programData.cycleConfig.X);
-                    if (canFitBlock(newSchedule, r.id, w, dur) && isAligned(w, getCohortAtWeek(r, w, validCohortAssignments), dur, programData)) {
+                    const cohort = getCohortAtWeek(r, w, validCohortAssignments);
+                    const residentDur = getCappedDuration(w, cohort, dur, totalWeeks, programData);
+                    if (residentDur <= 0) continue;
+
+                    if (canFitBlock(newSchedule, r.id, w, residentDur) && isAligned(w, cohort, residentDur, programData)) {
                         const meta = programData.rotations.get(req.type);
-                        const cI = weekTypeCounts[w].interns[req.type] || 0;
-                        const cS = weekTypeCounts[w].seniors[req.type] || 0;
                         
-                        if ((currentPgy === 1 && cI < (meta?.maxInterns ?? 99)) || (currentPgy > 1 && cS < (meta?.maxSeniors ?? 99))) {
-                            placeBlock(newSchedule, r.id, w, dur, req.type);
-                            updateCounts(r.id, r.level, w, req.type, dur);
+                        let possible = true;
+                        for (let i = 0; i < residentDur; i++) {
+                            const cI = weekTypeCounts[w + i]?.interns[req.type] || 0;
+                            const cS = weekTypeCounts[w + i]?.seniors[req.type] || 0;
+                            if (currentPgy === 1 && cI >= (meta?.maxInterns ?? 99)) { possible = false; break; }
+                            if (currentPgy > 1 && cS >= (meta?.maxSeniors ?? 99)) { possible = false; break; }
+                        }
+                        
+                        if (possible) {
+                            placeBlock(newSchedule, r.id, w, residentDur, req.type);
+                            updateCounts(r.id, currentPgy, w, req.type, residentDur);
                             break;
                         }
                     }

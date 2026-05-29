@@ -23,7 +23,7 @@ The application must programmatically enforce the following recovery rules when 
 *   **UI Stability**: Components (like `ScheduleTable`) must handle optional or missing cohort data defensively (e.g., fallback to 'N/A') to maintain functionality across different academic years.
 
 ### Jeopardy & Backup Coverage Logic
-The system must ensure a guaranteed backup pool exists every week to handle call-outs without breaking ACGME inpatient caps:
+The system should aim to ensure a guaranteed backup pool exists every week to handle call-outs without breaking ACGME inpatient caps:
 *   **Jeopardy Pool Definition**: Any PGY-2 or PGY-3 resident currently assigned to a **flexible block** (Elective or Subspecialty Consult).
 *   **Exclusion**: Interns (PGY-1s) and residents on Core rotations (Wards, ICU, NF, EM, Clinic) are EXCLUDED from the jeopardy pool.
 *   **Minimum Pool Size**: The engine should prioritize maintaining at least **one PGY-3 and one PGY-2** on a flexible block per week to serve as 1st and 2nd line jeopardy.
@@ -61,3 +61,8 @@ The healer must not touch locked blocks.
 
 ### Requirement Engine (Single Source of Truth)
 It's critical that the requirements used to calculate scores, count violations, and run tests be the same exact code used to display requirement stats in the UI. The `RequirementsEngine` class is the single source of truth for this information. It automatically distinguishes between **Cumulative (ACGME)** types (which sum history + session data, frozen at the resident's matriculation year) and **Annual (MHS)** types (which are year-bound and effective for the schedule year). See `specification/effective_dating.md` for the full effective-dating semantics.
+
+## Edge Effects and Year Boundary Handling
+Since cohort/cycle assignments change at year boundaries, only 1 cohort will be able to fit a full X-week block before their first clinic week. For this period, the duration targets of all placement strategies should be relaxed - if a cohort has N weeks before their first clinic week, the contiguous duration target for any attempted placement should be capped at N. The same is true for the end of the year.
+
+This is important to fix year-start/year-end "edge effect" staffing violations due to "impossible" duration fit. Note that continuity with the previous year's rotations is still preferred.

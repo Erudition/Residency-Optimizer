@@ -135,3 +135,14 @@ export const getStandardCohortMap = (residents: Resident[], programData: Program
     });
     return map;
 };
+export const getCappedDuration = (w: number, cohort: number, requestedDur: number, totalWeeks: number, programData: ProgramData): number => {
+    const { X, Y, Z } = programData.cycleConfig;
+    let maxDurBeforeClinic = requestedDur;
+    for (let i = w; i < Math.min(w + requestedDur, totalWeeks); i++) {
+        if (Math.floor((i % Z) / Y) === cohort) {
+            maxDurBeforeClinic = i - w;
+            break;
+        }
+    }
+    return Math.min(requestedDur, maxDurBeforeClinic, totalWeeks - w);
+};

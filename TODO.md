@@ -1,7 +1,5 @@
 Frontend:
-- generating year 3 still broken
-- staffing first produces worse staffing results than weekbyweek
-
+- add solid year lines in 3-year view for Coverage tab just like schedule tab
 
 Payload Admin:
 
