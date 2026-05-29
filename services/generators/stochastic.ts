@@ -3,7 +3,7 @@ import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleHistory, ScheduleGenerator } from '../../types';
 import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
-import { getAllCodenames, isClinicRotation } from '../programDataUtils';
+import { getAllCodenames, isClinicRotation, getClinicCodenames } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap, getPgy } from './utils';
 
@@ -61,7 +61,8 @@ export const StochasticGenerator: ScheduleGenerator = {
                 if (isClinic) {
                     if (row[w].locked) continue;
                     const pgy = getPgy(r, w, residents);
-                    const weeklyClinicType = 'CLINIC';
+                    const defaultClinicRotation = getClinicCodenames(programData)[0] || 'CLINIC';
+                    const weeklyClinicType = (programData.cycleConfig as any).clinicAssignments?.[r.id] || defaultClinicRotation;
                     newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                 }
             }

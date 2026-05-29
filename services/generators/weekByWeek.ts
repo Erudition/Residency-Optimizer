@@ -5,7 +5,7 @@ import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS } from '../../constants';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap, getCappedDuration, getPgy } from './utils';
-import { isClinicRotation } from '../programDataUtils';
+import { isClinicRotation, getClinicCodenames } from '../programDataUtils';
 
 
 class SeededRNG {
@@ -116,7 +116,8 @@ export const WeekByWeekGenerator: ScheduleGenerator = {
                 if (isClinic) {
                     if (row[w].locked) continue;
                     if (!row[w].assignment) {
-                        const weeklyClinicType = 'CLINIC';
+                        const defaultClinicRotation = getClinicCodenames(programData)[0] || 'CLINIC';
+                        const weeklyClinicType = (programData.cycleConfig as any).clinicAssignments?.[r.id] || defaultClinicRotation;
                         newSchedule[r.id][w] = { assignment: weeklyClinicType, locked: true };
                         updateCounts(r.id, r.level, w, weeklyClinicType, 1);
                     }

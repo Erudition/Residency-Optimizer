@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { Users, GripHorizontal, Trash2 } from 'lucide-react';
+import { Users, GripHorizontal, Trash2, Play } from 'lucide-react';
 import { Resident } from '../types';
 import { useProgramData } from '../contexts/ProgramDataContext';
 import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
 
 interface Props {
   residents: Resident[];
@@ -15,6 +16,9 @@ interface Props {
   onChangeY?: (newY: number) => void;
   onAddCycle?: () => void;
   onRemoveCycle?: (cycleIndex: number) => void;
+  availableClinics?: string[];
+  onChangeClinic?: (residentId: string, clinicCodename: string) => void;
+  hasUnsavedClinicChanges?: boolean;
 }
 
 export const CycleKanban: React.FC<Props> = ({ 
@@ -27,13 +31,17 @@ export const CycleKanban: React.FC<Props> = ({
   customCycleConfig,
   onChangeY,
   onAddCycle,
-  onRemoveCycle
+  onRemoveCycle,
+  availableClinics = [],
+  onChangeClinic,
+  hasUnsavedClinicChanges
 }) => {
   const programData = useProgramData();
   const cycleConfigToUse = customCycleConfig || programData.cycleConfig;
   const cycleCount = cycleConfigToUse.cohortCount;
   const Y = cycleConfigToUse.Y;
   const [dragOverCycle, setDragOverCycle] = React.useState<number | null>(null);
+  const [recentSwaps, setRecentSwaps] = React.useState<Set<string>>(new Set());
 
   const handleDragStart = (e: React.DragEvent, residentId: string) => {
     e.dataTransfer.setData('residentId', residentId);
@@ -132,13 +140,14 @@ export const CycleKanban: React.FC<Props> = ({
           </div>
         )}
 
-        {onPlaceClinicWeeks && !hasPlacedClinicWeeks && (
-          <button 
+        {onPlaceClinicWeeks && (!hasPlacedClinicWeeks || hasUnsavedClinicChanges) && (
+          <Button variant="primary" size="md" 
             onClick={onPlaceClinicWeeks}
-            className="flex items-center gap-2 px-4 py-2 bg-blue text-white rounded-lg text-sm font-bold shadow hover:bg-blue-dark transition-all"
+            className="flex items-center gap-2.5 uppercase tracking-widest group"
           >
-            Place Clinic Weeks
-          </button>
+            <Play size={16} fill="currentColor" className="group-hover:translate-x-0.5 transition-transform" />
+            <span>{hasPlacedClinicWeeks ? "Update Clinic Weeks" : "Place Clinic Weeks"}</span>
+          </Button>
         )}
       </div>
 
@@ -203,10 +212,15 @@ export const CycleKanban: React.FC<Props> = ({
                           const targetCycle = cycle.index;
                           onAssignCycle(sourceId, targetCycle);
                           onAssignCycle(resident.id, sourceCycle);
+
+                          setRecentSwaps(new Set([sourceId, resident.id]));
+                          setTimeout(() => {
+                            setRecentSwaps(new Set());
+                          }, 800);
                         }
                       }
                     }}
-                    className={`group bg-white border border-light-5 border-l-4 ${levelColors} rounded-xl p-3 shadow-sm hover:shadow-md active:scale-95 active:shadow-inner transition-all cursor-grab relative`}
+                    className={`group bg-white border border-light-5 border-l-4 ${levelColors} rounded-xl p-3 shadow-sm hover:shadow-md active:scale-95 active:shadow-inner transition-all duration-500 cursor-grab relative ${recentSwaps.has(resident.id) ? 'ring-2 ring-blue bg-blue/5 scale-105 shadow-lg' : ''}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col">
@@ -220,6 +234,19 @@ export const CycleKanban: React.FC<Props> = ({
                         <GripHorizontal size={14} />
                       </div>
                     </div>
+                    {availableClinics.length > 0 && (
+                      <div className="mt-2 border-t border-light-4 pt-2">
+                        <select
+                          value={cycleConfigToUse.clinicAssignments?.[resident.id] || availableClinics[0]}
+                          onChange={(e) => onChangeClinic?.(resident.id, e.target.value)}
+                          className="w-full text-[10px] font-bold p-1 bg-light-2 border border-light-4 rounded text-muted outline-none focus:border-blue transition-colors"
+                        >
+                          {availableClinics.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 );
               })}

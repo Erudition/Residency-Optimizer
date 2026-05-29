@@ -42,7 +42,9 @@ export function isClinicRotation(programData: ProgramData, codename: string): bo
 
 /** Get the clinic codenames (e.g. ['CCIM', 'NIMA', 'CLINIC']). */
 export function getClinicCodenames(programData: ProgramData): string[] {
-  return getCodenamesByTag(programData, 'Clinic')
+  const clinic = getCodenamesByTag(programData, 'Clinic');
+  const continuity = getCodenamesByTag(programData, 'Continuity Clinic');
+  return Array.from(new Set([...clinic, ...continuity]));
 }
 
 /** Get a sorted list of all codenames for display.

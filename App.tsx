@@ -19,7 +19,7 @@ import {
 import {
   TOTAL_WEEKS
 } from './constants';
-import { deriveLatestHistoricalYear, isClinicRotation, hasTag } from './services/programDataUtils';
+import { deriveLatestHistoricalYear, isClinicRotation, hasTag, getClinicCodenames } from './services/programDataUtils';
 /** The most recent academic year with a finalized/canonical schedule. */
 const LATEST_HISTORICAL_YEAR = deriveLatestHistoricalYear();
 /** The first year in the candidate (future) schedule generation window. */
@@ -38,6 +38,7 @@ import {
   getUnifiedResidents,
   getAugmentedResidents
 } from './services/scheduler';
+import { getStandardCohortMap } from './services/generators/utils';
 import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
 import { getScheduleSyncService, SyncError, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
 import { extractTokenFromURL, isAuthenticated, verifyToken } from './services/api/auth';
@@ -56,6 +57,7 @@ import { RequirementsStats } from './components/RequirementsStats';
 import { ScheduleComparison } from './components/ScheduleComparison';
 import { CompetitorStudio } from './components/CompetitorStudio';
 import { CycleKanban } from './components/CycleKanban';
+import { CycleConfigScreen } from './components/CycleConfigScreen';
 import { GenerationDashboard } from './components/GenerationDashboard';
 import { SettingsOverlay } from './components/SettingsOverlay';
 import { HealerPanel } from './components/HealerPanel';
@@ -580,7 +582,12 @@ const AppContent: React.FC = () => {
     };
   }, [programData.historicalSchedules, programData.historicalCohorts]);
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cycles' | 'totals'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'workload' | 'assignments' | 'fairness' | 'requirements' | 'coworking' | 'residents' | 'reset' | 'backup' | 'export' | 'draft' | 'cycles' | 'totals' | 'loading'>('schedule');
+  const [isCreatingCandidate, setIsCreatingCandidate] = useState(false);
+  const [creationCycleConfig, setCreationCycleConfig] = useState<{ cohortCount: number, Y: number, Z: number }>({ cohortCount: 5, Y: 1, Z: 5 });
+  const [creationCohortAssignments, setCreationCohortAssignments] = useState<Record<string, number>>({});
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'residents' | 'backup' | 'reset'>('residents');
   
@@ -860,6 +867,7 @@ const AppContent: React.FC = () => {
   const [rowHeight, setRowHeight] = useState<'1' | '2' | '3'>('3');
 
   const hasPlacedClinicWeeks = useMemo(() => {
+    if (activeSchedule?.isHistory || isHistoricalYear) return true;
     if (!activeScheduleId || activeScheduleId === 'all') return false;
     const gridToHeal = viewMode === 'unified' ? activeSchedule?.unifiedData : activeSchedule?.data[activeYear];
     if (!gridToHeal) return false;
@@ -872,7 +880,7 @@ const AppContent: React.FC = () => {
       });
     });
     return foundClinic;
-  }, [activeSchedule, activeYear, viewMode, activeScheduleId, programData]);
+  }, [activeSchedule, activeYear, viewMode, activeScheduleId, programData, isHistoricalYear]);
 
   const fillPercentage = useMemo(() => {
     if (!activeScheduleId || activeScheduleId === 'all') return 0;
@@ -889,35 +897,46 @@ const AppContent: React.FC = () => {
     return total > 0 ? filled / total : 0;
   }, [activeSchedule, activeYear, viewMode, activeScheduleId]);
 
-  const handlePlaceClinicWeeks = () => {
-    if (!activeScheduleId || !activeSchedule) return;
+  const handlePlaceClinicWeeks = (fromCycleConfig = false, targetId?: string) => {
+    const idToUse = targetId || activeScheduleId;
+    if (!idToUse) return;
+    const schedule = schedules.find(s => s.id === idToUse);
+    // If it's a new schedule not yet in the 'schedules' ref (due to stale closure), 
+    // it will be picked up inside the setSchedules callback safely.
     setSchedules(prev => prev.map(s => {
-      if (s.id !== activeScheduleId) return s;
+      if (s.id !== idToUse) return s;
       const updatedData = { ...s.data };
       const grid = { ...(updatedData[activeYear] || {}) };
       const configToUse = s.customCycleConfig || programData!.cycleConfig;
       const { Y, Z } = configToUse;
       
       const cohortAssignments = s.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {};
+      const defaultClinicRotation = getClinicCodenames(programData)[0] || 'CLINIC';
       
       activeResidents.forEach(res => {
         const cohortIdx = cohortAssignments[res.id];
+        const residentClinic = s.customCycleConfig?.clinicAssignments?.[res.id] || defaultClinicRotation;
+
         if (cohortIdx === undefined) return;
         
         const row = [...(grid[res.id] || Array(52).fill(null))];
         for (let w = 0; w < 52; w++) {
           if (Math.floor((w % Z) / Y) === cohortIdx) {
-            row[w] = { assignment: 'CLINIC', locked: true };
+            row[w] = { assignment: residentClinic, locked: true };
+          } else if (row[w]?.assignment && isClinicRotation(programData, row[w].assignment)) {
+            row[w] = { assignment: null, locked: false };
           }
         }
         grid[res.id] = row;
       });
       
       updatedData[activeYear] = grid;
-      return { ...s, data: updatedData };
+      return { ...s, data: updatedData, hasUnsavedClinicChanges: false };
     }));
     toast.success("Clinic weeks placed and locked");
-    setActiveTab('schedule');
+    if (fromCycleConfig) {
+      setActiveTab('schedule');
+    }
   };
 
   const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
@@ -2613,6 +2632,14 @@ const AppContent: React.FC = () => {
   };
 
   const handleAssignCycle = (residentId: string, cycleIndex: number) => {
+    if (isCreatingCandidate) {
+      setCreationCohortAssignments(prev => ({
+        ...prev,
+        [residentId]: cycleIndex
+      }));
+      return;
+    }
+
     if (!activeScheduleId) return;
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
@@ -2626,12 +2653,63 @@ const AppContent: React.FC = () => {
 
       return {
         ...s,
-        cohortAssignments: updatedCycles
+        cohortAssignments: updatedCycles,
+        hasUnsavedClinicChanges: true
       };
     }));
   };
 
   const handleCycleConfigChange = (newConfig: { cohortCount: number, Y: number, Z: number }, removedCycleIndex?: number) => {
+    const getPgy = (rId: string) => {
+      const r = activeResidents.find(res => res.id === rId);
+      return r ? activeYear - r.startYear + 1 : 1;
+    };
+
+    if (isCreatingCandidate) {
+      const newCycleConfig = { ...newConfig, clinicAssignments: creationCycleConfig?.clinicAssignments || {} };
+      const yearMapping = { ...creationCohortAssignments };
+
+      if (newConfig.cohortCount !== creationCycleConfig.cohortCount) {
+        const allResIds = Object.keys(yearMapping);
+        const newMapping: Record<string, number> = {};
+        
+        const pgyLevels = Array.from(new Set(allResIds.map(getPgy))).sort((a, b) => a - b);
+        const cycleTotals = Array(newConfig.cohortCount).fill(0);
+        const cyclePgyTotals: Record<number, number[]> = {};
+        pgyLevels.forEach(pgy => { cyclePgyTotals[pgy] = Array(newConfig.cohortCount).fill(0); });
+        
+        pgyLevels.forEach(pgy => {
+          const resInPgy = allResIds.filter(r => getPgy(r) === pgy);
+          const resNames = activeResidents.reduce((acc, r) => { acc[r.id] = r.name; return acc; }, {} as Record<string, string>);
+          resInPgy.sort((a, b) => (resNames[a] || '').localeCompare(resNames[b] || ''));
+          
+          resInPgy.forEach(resId => {
+            let bestIdx = 0;
+            let minPgyCount = Infinity;
+            let minTotalCount = Infinity;
+            for (let i = 0; i < newConfig.cohortCount; i++) {
+              const currentPgyCount = cyclePgyTotals[pgy][i];
+              const currentTotalCount = cycleTotals[i];
+              if (currentPgyCount < minPgyCount || (currentPgyCount === minPgyCount && currentTotalCount < minTotalCount)) {
+                minPgyCount = currentPgyCount;
+                minTotalCount = currentTotalCount;
+                bestIdx = i;
+              }
+            }
+            newMapping[resId] = bestIdx;
+            cyclePgyTotals[pgy][bestIdx]++;
+            cycleTotals[bestIdx]++;
+          });
+        });
+        
+        Object.keys(yearMapping).forEach(k => delete yearMapping[k]);
+        Object.assign(yearMapping, newMapping);
+      }
+      setCreationCycleConfig(newCycleConfig);
+      setCreationCohortAssignments(yearMapping);
+      return;
+    }
+
     if (!activeScheduleId) return;
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
@@ -2640,91 +2718,49 @@ const AppContent: React.FC = () => {
       const updatedCycles = { ...(s.cohortAssignments || {}) };
       const yearMapping = { ...(updatedCycles[activeYear] || activeYearCohorts) };
 
-      if (removedCycleIndex !== undefined) {
-        // Find residents in the removed cycle and reassign them
-        const residentsInRemoved = Object.keys(yearMapping).filter(resId => yearMapping[resId] === removedCycleIndex);
-
-        // Shift down cycles greater than the removed index
-        Object.keys(yearMapping).forEach(resId => {
-          if (yearMapping[resId] > removedCycleIndex) {
-            yearMapping[resId] -= 1;
-          }
-        });
-
-        const getPgy = (rId: string) => {
-          const r = activeResidents.find(res => res.id === rId);
-          return r ? activeYear - r.startYear + 1 : 1;
-        };
-
-        const cycleCountsByPgy: Record<number, number[]> = {};
-
-        Object.keys(yearMapping).forEach(rId => {
-          const cycleIdx = yearMapping[rId];
-          if (cycleIdx < newConfig.cohortCount && cycleIdx >= 0) {
-            const pgy = getPgy(rId);
-            if (!cycleCountsByPgy[pgy]) cycleCountsByPgy[pgy] = Array(newConfig.cohortCount).fill(0);
-            cycleCountsByPgy[pgy][cycleIdx]++;
-          }
-        });
-
-        residentsInRemoved.forEach(resId => {
-          const pgy = getPgy(resId);
-          if (!cycleCountsByPgy[pgy]) cycleCountsByPgy[pgy] = Array(newConfig.cohortCount).fill(0);
-          
-          let minIdx = 0;
-          for (let i = 1; i < newConfig.cohortCount; i++) {
-            if (cycleCountsByPgy[pgy][i] < cycleCountsByPgy[pgy][minIdx]) minIdx = i;
-          }
-          yearMapping[resId] = minIdx;
-          cycleCountsByPgy[pgy][minIdx]++;
-        });
-      } else if (newConfig.cohortCount > (s.customCycleConfig?.cohortCount || programData!.cycleConfig.cohortCount)) {
-        // A cycle was added
-        const newCycleIdx = newConfig.cohortCount - 1;
+      if (newConfig.cohortCount !== (s.customCycleConfig?.cohortCount || programData!.cycleConfig.cohortCount)) {
+        // Complete rebalance for any cohortCount change to guarantee optimal distribution
+        const allResIds = Object.keys(yearMapping);
+        const newMapping: Record<string, number> = {};
         
-        const getPgy = (rId: string) => {
-          const r = activeResidents.find(res => res.id === rId);
-          return r ? activeYear - r.startYear + 1 : 1;
-        };
-
-        const residentsByPgy: Record<number, string[]> = {};
-        Object.keys(yearMapping).forEach(rId => {
-          const pgy = getPgy(rId);
-          if (!residentsByPgy[pgy]) residentsByPgy[pgy] = [];
-          residentsByPgy[pgy].push(rId);
-        });
-
-        Object.keys(residentsByPgy).forEach(pgyStr => {
-          const pgy = parseInt(pgyStr);
-          const totalInPgy = residentsByPgy[pgy].length;
-          const targetAvg = Math.floor(totalInPgy / newConfig.cohortCount);
+        const pgyLevels = Array.from(new Set(allResIds.map(getPgy))).sort((a, b) => a - b);
+        const cycleTotals = Array(newConfig.cohortCount).fill(0);
+        const cyclePgyTotals: Record<number, number[]> = {};
+        pgyLevels.forEach(pgy => { cyclePgyTotals[pgy] = Array(newConfig.cohortCount).fill(0); });
+        
+        pgyLevels.forEach(pgy => {
+          const resInPgy = allResIds.filter(r => getPgy(r) === pgy);
+          // Sort alphabetically to maintain stable assignment
+          const resNames = activeResidents.reduce((acc, r) => { acc[r.id] = r.name; return acc; }, {} as Record<string, string>);
+          resInPgy.sort((a, b) => (resNames[a] || '').localeCompare(resNames[b] || ''));
           
-          let movedCount = 0;
-          while (movedCount < targetAvg) {
-            const cycleCounts = Array(newConfig.cohortCount).fill(0);
-            residentsByPgy[pgy].forEach(rId => {
-              const cycleIdx = yearMapping[rId];
-              if (cycleIdx < newConfig.cohortCount && cycleIdx >= 0) {
-                cycleCounts[cycleIdx]++;
+          resInPgy.forEach(resId => {
+            // Find the cycle with the minimum residents of this PGY.
+            // Break ties with the minimum TOTAL residents across all PGYs.
+            let bestIdx = 0;
+            let minPgyCount = Infinity;
+            let minTotalCount = Infinity;
+            
+            for (let i = 0; i < newConfig.cohortCount; i++) {
+              const currentPgyCount = cyclePgyTotals[pgy][i];
+              const currentTotalCount = cycleTotals[i];
+              
+              if (currentPgyCount < minPgyCount || (currentPgyCount === minPgyCount && currentTotalCount < minTotalCount)) {
+                minPgyCount = currentPgyCount;
+                minTotalCount = currentTotalCount;
+                bestIdx = i;
               }
-            });
-            
-            let maxIdx = 0;
-            for (let i = 1; i < newConfig.cohortCount - 1; i++) {
-              if (cycleCounts[i] > cycleCounts[maxIdx]) maxIdx = i;
             }
             
-            if (cycleCounts[maxIdx] <= targetAvg) break;
-
-            const resIdToMove = residentsByPgy[pgy].find(rId => yearMapping[rId] === maxIdx);
-            if (resIdToMove) {
-              yearMapping[resIdToMove] = newCycleIdx;
-              movedCount++;
-            } else {
-              break;
-            }
-          }
+            newMapping[resId] = bestIdx;
+            cyclePgyTotals[pgy][bestIdx]++;
+            cycleTotals[bestIdx]++;
+          });
         });
+        
+        // Overwrite the mapping completely
+        Object.keys(yearMapping).forEach(k => delete yearMapping[k]);
+        Object.assign(yearMapping, newMapping);
       }
 
       updatedCycles[activeYear] = yearMapping;
@@ -2732,7 +2768,8 @@ const AppContent: React.FC = () => {
       return {
         ...s,
         customCycleConfig: newCycleConfig,
-        cohortAssignments: updatedCycles
+        cohortAssignments: updatedCycles,
+        hasUnsavedClinicChanges: true
       };
     }));
   };
@@ -3159,6 +3196,10 @@ const AppContent: React.FC = () => {
     return `AY ${y}-${(y+1).toString().slice(-2)} (${sign}${diff}y)`;
   };
 
+  const availableClinics = useMemo(() => {
+    return getClinicCodenames(programData);
+  }, [programData]);
+
   return (
     <div className={`min-h-screen bg-light-1 flex flex-col font-sans transition-all duration-300 ${isGenerating ? 'engine-busy' : ''}`}>
       {/* ─── Global Header Bar ─── */}
@@ -3322,7 +3363,7 @@ const AppContent: React.FC = () => {
           />}
           {viewMode !== 'unified' && (
             <>
-              <NavButton id="cycles" label="Cycles" icon={Users} />
+              {hasPlacedClinicWeeks && <NavButton id="cycles" label="Clinics" icon={Users} />}
               {hasPlacedClinicWeeks && <NavButton id="coworking" label="Coworking" icon={Network} />}
               {hasPlacedClinicWeeks && <NavButton id="fairness" label="Fairness" icon={Scale} />}
             </>
@@ -3333,7 +3374,90 @@ const AppContent: React.FC = () => {
 
       <main className="flex-1 overflow-hidden relative bg-white min-h-0">
         <div className="absolute inset-0 flex flex-col">
-          {activeScheduleId === 'draft' && !isHistoricalYear ? (
+          {isCreatingCandidate ? (
+            <div className="flex-1 overflow-hidden">
+               <CycleConfigScreen 
+                  residents={activeResidents}
+                  activeYear={activeYear}
+                  cycleAssignments={creationCohortAssignments}
+                  onAssignCycle={(residentId, cycleIndex) => {
+                    handleAssignCycle(residentId, cycleIndex);
+                  }}
+                  onPlaceClinicWeeks={() => {
+                    if (editingScheduleId) {
+                      setSchedules(prev => prev.map(s => {
+                        if (s.id !== editingScheduleId) return s;
+                        const updatedCohorts = { ...(s.cohortAssignments || {}) };
+                        updatedCohorts[activeYear] = JSON.parse(JSON.stringify(creationCohortAssignments));
+                        return {
+                          ...s,
+                          cohortAssignments: updatedCohorts,
+                          customCycleConfig: {
+                            cohortCount: creationCycleConfig.cohortCount,
+                            Y: creationCycleConfig.Y,
+                            Z: creationCycleConfig.Z,
+                            clinicAssignments: creationCycleConfig.clinicAssignments
+                          },
+                          hasUnsavedClinicChanges: true
+                        };
+                      }));
+                      setIsCreatingCandidate(false);
+                      setEditingScheduleId(null);
+                      setTimeout(() => handlePlaceClinicWeeks(true, editingScheduleId), 0);
+                    } else {
+                      const newId = Math.random().toString(36).substring(2, 9);
+                      const newCandidate: DraftCandidate = {
+                        kind: 'draft',
+                        id: newId,
+                        name: `New Candidate`,
+                        data: { [activeYear]: {} },
+                        createdAt: new Date(),
+                        cohortAssignments: { [activeYear]: JSON.parse(JSON.stringify(creationCohortAssignments)) },
+                        startYear: activeYear,
+                        metrics: undefined,
+                        customCycleConfig: {
+                          cohortCount: creationCycleConfig.cohortCount,
+                          Y: creationCycleConfig.Y,
+                          Z: creationCycleConfig.Z,
+                          clinicAssignments: creationCycleConfig.clinicAssignments
+                        }
+                      };
+                      startTransition(() => {
+                        setSchedules(prev => [...prev, newCandidate]);
+                        setActiveScheduleId(newId);
+                        setIsCreatingCandidate(false);
+                        setActiveTab('schedule');
+                        // We need to defer handlePlaceClinicWeeks so the new schedule is in state
+                        setTimeout(() => handlePlaceClinicWeeks(true, newId), 0);
+                      });
+                    }
+                  }}
+                  customCycleConfig={creationCycleConfig}
+                  onChangeY={(newY: number) => {
+                    const currentCount = creationCycleConfig.cohortCount;
+                    const countToUse = Math.max(currentCount, newY * 2);
+                    handleCycleConfigChange({ cohortCount: countToUse, Y: newY, Z: countToUse * newY });
+                  }}
+                  onAddCycle={() => {
+                    const currentConfig = creationCycleConfig;
+                    handleCycleConfigChange({ 
+                      cohortCount: currentConfig.cohortCount + 1, 
+                      Y: currentConfig.Y, 
+                      Z: (currentConfig.cohortCount + 1) * currentConfig.Y 
+                    });
+                  }}
+                  onRemoveCycle={(idx: number) => {
+                    const currentConfig = creationCycleConfig;
+                    handleCycleConfigChange({ 
+                      cohortCount: currentConfig.cohortCount - 1, 
+                      Y: currentConfig.Y, 
+                      Z: (currentConfig.cohortCount - 1) * currentConfig.Y 
+                    }, idx);
+                  }}
+                  onCancel={() => setIsCreatingCandidate(false)}
+               />
+            </div>
+          ) : activeScheduleId === 'draft' && !isHistoricalYear ? (
             isGenerating ? renderGenerationDashboard() : (
               <CompetitorStudio
                 algorithms={algoConfig}
@@ -3489,13 +3613,28 @@ const AppContent: React.FC = () => {
                           </Button>
                         ) : (
                           <Button
-                            variant="secondary"
+                            variant="primary"
                             size="sm"
-                            onClick={() => setActiveTab('cycles')}
-                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-muted hover:text-primary"
+                            onClick={() => {
+                              if (!activeSchedule) return;
+                              const currentConfig = activeSchedule.customCycleConfig || programData.cycleConfig;
+                              const currentCohorts = activeSchedule.cohortAssignments?.[activeYear] || activeYearCohorts;
+                              
+                              setCreationCohortAssignments(JSON.parse(JSON.stringify(currentCohorts)));
+                              setCreationCycleConfig({
+                                cohortCount: currentConfig.cohortCount,
+                                Y: currentConfig.Y,
+                                Z: currentConfig.Z,
+                                clinicAssignments: currentConfig.clinicAssignments || {}
+                              });
+                              
+                              setEditingScheduleId(activeSchedule.id);
+                              setIsCreatingCandidate(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-[0_0_8px_rgba(249,115,22,0.5)] animate-pulse"
                           >
                             <Users size={14} />
-                            Assign Cycles
+                            Assign Clinics
                           </Button>
                         )
                       )}
@@ -3932,7 +4071,7 @@ const AppContent: React.FC = () => {
                     activeYear={activeYear}
                     cycleAssignments={activeYearCohorts}
                     onAssignCycle={handleAssignCycle}
-                    onPlaceClinicWeeks={activeSchedule && !activeSchedule.isHistory ? handlePlaceClinicWeeks : undefined}
+                    onPlaceClinicWeeks={activeSchedule && !activeSchedule.isHistory ? () => handlePlaceClinicWeeks(false) : undefined}
                     hasPlacedClinicWeeks={hasPlacedClinicWeeks}
                     customCycleConfig={activeSchedule?.customCycleConfig}
                     onChangeY={(newY: number) => {
@@ -3955,6 +4094,15 @@ const AppContent: React.FC = () => {
                         Y: currentConfig.Y, 
                         Z: (currentConfig.cohortCount - 1) * currentConfig.Y 
                       }, idx);
+                    }}
+                    availableClinics={availableClinics}
+                    onChangeClinic={(resId, codename) => {
+                      setSchedules(prev => prev.map(s => {
+                        if (s.id !== activeScheduleId) return s;
+                        const newConfig = { ...s.customCycleConfig, cohortCount: s.customCycleConfig?.cohortCount || programData.cycleConfig.cohortCount, Y: s.customCycleConfig?.Y || programData.cycleConfig.Y, Z: s.customCycleConfig?.Z || programData.cycleConfig.Z };
+                        newConfig.clinicAssignments = { ...newConfig.clinicAssignments, [resId]: codename };
+                        return { ...s, customCycleConfig: newConfig };
+                      }));
                     }}
                   />
                 </div>
@@ -4168,26 +4316,21 @@ const AppContent: React.FC = () => {
           {/* Right: Generate button */}
           <div
             onClick={() => {
-              const newId = Math.random().toString(36).substring(2, 9);
-              const lastCohorts = activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear] || {};
-              const newCandidate: DraftCandidate = {
-                kind: 'draft',
-                id: newId,
-                name: `New Candidate`,
-                data: { [activeYear]: {} },
-                createdAt: new Date(),
-                cohortAssignments: { [activeYear]: JSON.parse(JSON.stringify(lastCohorts)) },
-                startYear: activeYear,
-                metrics: undefined,
-              };
-              startTransition(() => {
-                setSchedules(prev => [...prev, newCandidate]);
-                setActiveScheduleId(newId);
-                if (['residents', 'backup', 'reset'].includes(activeTab)) setActiveTab('schedule');
-                setActiveTab('cycles'); // Ensure cycles tab opens
-              });
+              const lastCohorts = activeSchedule?.cohortAssignments?.[activeYear] || historicalCohortsByYear[activeYear];
+              const cohortsToUse = lastCohorts && Object.keys(lastCohorts).length > 0 ? lastCohorts : getStandardCohortMap(programData.residents, programData);
+              
+              setCreationCohortAssignments(JSON.parse(JSON.stringify(cohortsToUse)));
+              setCreationCycleConfig({
+                cohortCount: programData.cycleConfig.cohortCount,
+                Y: programData.cycleConfig.Y,
+                Z: programData.cycleConfig.Z,
+                clinicAssignments: {}
+              } as any); // cast to any to satisfy the interface or update the state definition
+              
+              setEditingScheduleId(null);
+              setIsCreatingCandidate(true);
             }}
-            className={`flex items-center gap-1.5 px-4 text-[11px] font-bold cursor-pointer transition-all border-l border-light-4 text-muted hover:text-primary hover:bg-light-2`}
+            className={`flex items-center gap-1.5 px-4 text-[11px] font-bold cursor-pointer transition-all border-l border-light-4 ${isCreatingCandidate ? 'bg-white text-blue shadow-inner border-t border-t-blue' : 'text-muted hover:text-primary hover:bg-light-2'}`}
           >
             <Sparkles size={12} />
             New Candidate

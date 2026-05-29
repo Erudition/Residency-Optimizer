@@ -3,7 +3,7 @@ import { RequirementsEngine } from '../requirementsEngine';
 import { Resident, ScheduleGrid, AssignmentType, ScheduleGenerator, ScheduleCell } from '../../types';
 import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS, CANDIDATE_START_YEAR } from '../../constants';
-import { getAllCodenames, isClinicRotation } from '../programDataUtils';
+import { getAllCodenames, isClinicRotation, getClinicCodenames } from '../programDataUtils';
 
 import { canFitBlock, placeBlock, getYearRequirementCount, getPriorRequirementCount, isAligned, getAssignedCount, getCohortAtWeek, getStandardCohortMap, getCappedDuration } from './utils';
 
@@ -85,7 +85,8 @@ export const StaffingFirstGenerator: ScheduleGenerator = {
                 const isClinic = Math.floor((w % Z) / Y) === cohort;
                 if (isClinic) {
                     if (row[w].locked) continue;
-                    const clinicType = 'CLINIC';
+                    const defaultClinicRotation = getClinicCodenames(programData)[0] || 'CLINIC';
+                    const clinicType = (programData.cycleConfig as any).clinicAssignments?.[r.id] || defaultClinicRotation;
                     newSchedule[r.id][w] = { assignment: clinicType, locked: true };
 
                 }
