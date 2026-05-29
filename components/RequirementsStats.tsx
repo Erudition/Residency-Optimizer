@@ -241,7 +241,11 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
   const flexibilityStats = useMemo(() => {
     // Helper to calculate MWIS for a given weight accessor
     const getMWIS = (getWeight: (r: any) => number) => {
-      const reqs = (programData.requirements || []).filter(r => getWeight(r) > 0);
+      const reqs = (programData.requirements || []).filter(r => 
+        getWeight(r) > 0 &&
+        r.tag.title !== 'Clinic' &&
+        r.tag.title !== 'Continuity Clinic'
+      );
       if (reqs.length === 0) return 0;
       
       // Compute overlapping requirements
@@ -317,11 +321,28 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       }
     });
 
-    const numInterns = sortedResidents.filter(r => isUnified || (activeYear! - r.startYear + 1) === 1).length;
-    const numSeniors = sortedResidents.filter(r => isUnified || (activeYear! - r.startYear + 1) > 1).length;
+    let internAvailable = 0;
+    let seniorAvailable = 0;
+    const { Y, Z } = programData.cycleConfig;
 
-    const internAvailable = numInterns * (isUnified ? 52 : 52);
-    const seniorAvailable = numSeniors * (isUnified ? 104 : 52);
+    sortedResidents.forEach(res => {
+      const cohort = res.cohort ?? 0;
+      let nonClinicWeeks1Yr = 0;
+      for (let w = 0; w < 52; w++) {
+        if (Math.floor((w % Z) / Y) !== cohort) {
+          nonClinicWeeks1Yr++;
+        }
+      }
+
+      if (isUnified) {
+        internAvailable += nonClinicWeeks1Yr;
+        seniorAvailable += nonClinicWeeks1Yr * 2;
+      } else {
+        const pgy = activeYear! - res.startYear + 1;
+        if (pgy === 1) internAvailable += nonClinicWeeks1Yr;
+        else if (pgy > 1) seniorAvailable += nonClinicWeeks1Yr;
+      }
+    });
 
     const internFlexibility = internAvailable - requiredInternWeeks;
     const seniorFlexibility = seniorAvailable - requiredSeniorWeeks;
@@ -639,7 +660,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Intern Weeks</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Intern Non-Clinic Weeks</span>
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredInternWeeks} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.internAvailable}</span></span>
               <span className={`text-xs font-bold ${flexibilityStats.internFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -648,7 +669,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             </div>
           </div>
           <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Senior Weeks</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Senior Non-Clinic Weeks</span>
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredSeniorWeeks} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.seniorAvailable}</span></span>
               <span className={`text-xs font-bold ${flexibilityStats.seniorFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -657,7 +678,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
             </div>
           </div>
           <div className="bg-slate-100 border border-slate-200 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Program</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Program Non-Clinic Weeks</span>
             <div className="flex justify-between items-end mt-1">
               <span className="text-sm font-black text-slate-800">{flexibilityStats.totalRequired} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.totalAvailable}</span></span>
               <span className={`text-xs font-bold ${flexibilityStats.totalFlexibility >= 0 ? 'text-blue' : 'text-rose-600'}`}>
