@@ -1357,7 +1357,7 @@ const AppContent: React.FC = () => {
   }, [activeScheduleId]);
 
   // ── SSE Sync Lifecycle ──
-  // Derive candidateId from the active tab's backendId
+  // Derive candidateId from the active published tab
   const activeSched = schedules.find(s => s.id === activeScheduleId);
   const activeSyncId = (activeSched && isPublished(activeSched)) ? activeSched.candidateId : null;
 
@@ -1378,31 +1378,33 @@ const AppContent: React.FC = () => {
         case 'assignment-change': {
           // Apply remote cell edit to local state
           setSchedules(prev => prev.map(s => {
-            if (s.backendId !== event.scheduleId) return s;
-            // Find which year this schedule covers
-            const yearKeys = Object.keys(s.data).map(Number);
-            for (const year of yearKeys) {
-              const grid = s.data[year];
-              if (!grid) continue;
-              const resId = event.residentId.toString();
-              if (grid[resId]) {
-                const weekIdx = event.week - 1; // Backend is 1-based
-                const updatedRow = [...grid[resId]];
-                updatedRow[weekIdx] = {
-                  assignment: event.rotation,
-                  locked: event.locked,
-                };
-                return {
-                  ...s,
-                  data: {
-                    ...s.data,
-                    [year]: {
-                      ...grid,
-                      [resId]: updatedRow,
-                    },
+            if (!isPublished(s)) return s;
+            // Find which year this scheduleId belongs to
+            const matchedYear = Object.entries(s.scheduleIds).find(
+              ([, sid]) => sid === event.scheduleId
+            )?.[0];
+            if (!matchedYear) return s;
+            const year = parseInt(matchedYear, 10);
+            const grid = s.data[year];
+            if (!grid) return s;
+            const resId = event.residentId.toString();
+            if (grid[resId]) {
+              const weekIdx = event.week - 1; // Backend is 1-based
+              const updatedRow = [...grid[resId]];
+              updatedRow[weekIdx] = {
+                assignment: event.rotation,
+                locked: event.locked,
+              };
+              return {
+                ...s,
+                data: {
+                  ...s.data,
+                  [year]: {
+                    ...grid,
+                    [resId]: updatedRow,
                   },
-                };
-              }
+                },
+              };
             }
             return s;
           }));
@@ -1415,14 +1417,19 @@ const AppContent: React.FC = () => {
         }
         case 'schedule-updated': {
           // Apply remote rename
-          setSchedules(prev => prev.map(s =>
-            s.backendId === event.scheduleId ? { ...s, name: event.title } : s
-          ));
+          setSchedules(prev => prev.map(s => {
+            if (!isPublished(s)) return s;
+            const hasSchedule = Object.values(s.scheduleIds).includes(event.scheduleId);
+            return hasSchedule ? { ...s, name: event.title } : s;
+          }));
           break;
         }
         case 'schedule-deleted': {
-          // Remove schedule deleted by remote client
-          setSchedules(prev => prev.filter(s => s.backendId !== event.scheduleId));
+          // Remove candidate if any of its schedules was deleted by remote client
+          setSchedules(prev => prev.filter(s => {
+            if (!isPublished(s)) return true;
+            return !Object.values(s.scheduleIds).includes(event.scheduleId);
+          }));
           break;
         }
       }
@@ -2112,9 +2119,9 @@ const AppContent: React.FC = () => {
         const dataCopy = { ...s.data, [activeYear]: yearCopy };
 
         // Fire background sync for this cell edit
-        if (s.backendId && type) {
+        if (isPublished(s) && s.scheduleIds[activeYear] && type) {
           syncService.upsertCell(
-            s.backendId,
+            s.scheduleIds[activeYear],
             parseInt(selectedCell.resId, 10),
             selectedCell.week + 1, // Backend uses 1-based weeks
             type,
@@ -2183,9 +2190,9 @@ const AppContent: React.FC = () => {
           updatedRow[w] = newAssign ? { ...newAssign, locked: true } : { assignment: null, locked: false };
           yearCopy[rid] = updatedRow;
 
-          if (s.backendId && newAssign?.assignment) {
+          if (isPublished(s) && s.scheduleIds[activeYear] && newAssign?.assignment) {
             syncService.upsertCell(
-              s.backendId,
+              s.scheduleIds[activeYear],
               parseInt(rid, 10),
               w + 1,
               newAssign.assignment,
@@ -2225,9 +2232,9 @@ const AppContent: React.FC = () => {
           const newVal = reversedVals[index];
           currentRow[w] = newVal ? { ...newVal, locked: true } : { assignment: null, locked: false };
           
-          if (s.backendId && newVal?.assignment) {
+          if (isPublished(s) && s.scheduleIds[activeYear] && newVal?.assignment) {
             syncService.upsertCell(
-              s.backendId,
+              s.scheduleIds[activeYear],
               parseInt(rid, 10),
               w + 1,
               newVal.assignment,
@@ -2336,9 +2343,9 @@ const AppContent: React.FC = () => {
         weeks[weekIdxInYear] = val;
         updatedData[targetYear][cell.residentId] = weeks;
 
-        if (s.backendId && val.assignment) {
+        if (isPublished(s) && s.scheduleIds[targetYear] && val.assignment) {
           syncService.upsertCell(
-            s.backendId,
+            s.scheduleIds[targetYear],
             parseInt(cell.residentId, 10),
             weekIdxInYear + 1,
             val.assignment,
@@ -2369,9 +2376,9 @@ const AppContent: React.FC = () => {
         weeks[weekIdxInYear] = val;
         updatedData[targetYear][cell.residentId] = weeks;
 
-        if (s.backendId && val.assignment) {
+        if (isPublished(s) && s.scheduleIds[targetYear] && val.assignment) {
           syncService.upsertCell(
-            s.backendId,
+            s.scheduleIds[targetYear],
             parseInt(cell.residentId, 10),
             weekIdxInYear + 1,
             val.assignment,
@@ -2480,9 +2487,9 @@ const AppContent: React.FC = () => {
           weeks[weekIdxInYear] = { assignment: newRotation as any, locked: !!newRotation };
           updatedData[targetYear][rid] = weeks;
 
-          if (s.backendId && newRotation) {
+          if (isPublished(s) && s.scheduleIds[targetYear] && newRotation) {
             syncService.upsertCell(
-              s.backendId,
+              s.scheduleIds[targetYear],
               parseInt(rid, 10),
               weekIdxInYear + 1,
               newRotation,
@@ -2550,9 +2557,9 @@ const AppContent: React.FC = () => {
           weeks[weekIdxInYear] = { ...cell, locked: true };
           updatedData[targetYear][rid] = weeks;
 
-          if (s.backendId && cell.assignment) {
+          if (isPublished(s) && s.scheduleIds[targetYear] && cell.assignment) {
             syncService.upsertCell(
-              s.backendId,
+              s.scheduleIds[targetYear],
               parseInt(rid, 10),
               weekIdxInYear + 1,
               cell.assignment,
@@ -2618,9 +2625,9 @@ const AppContent: React.FC = () => {
           weeks[weekIdxInYear] = { ...cell, locked: false };
           updatedData[targetYear][rid] = weeks;
 
-          if (s.backendId && cell.assignment) {
+          if (isPublished(s) && s.scheduleIds[targetYear] && cell.assignment) {
             syncService.upsertCell(
-              s.backendId,
+              s.scheduleIds[targetYear],
               parseInt(rid, 10),
               weekIdxInYear + 1,
               cell.assignment,
@@ -3072,9 +3079,9 @@ const AppContent: React.FC = () => {
   const handleDeleteAllSchedules = () => {
     if (confirm("Delete all schedule versions?")) {
       // Delete from backend in background
-      const schedulesToDelete = schedules.filter(s => s.backendId);
-      schedulesToDelete.forEach(s => {
-        syncService.deleteSchedule(s.backendId!);
+      const publishedToDelete = schedules.filter(isPublished);
+      publishedToDelete.forEach(s => {
+        syncService.deleteCandidate(s.candidateId);
       });
       setSchedules([]);
       setActiveScheduleId("all");
