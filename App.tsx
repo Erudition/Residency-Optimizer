@@ -901,6 +901,7 @@ const AppContent: React.FC = () => {
       return { ...s, data: updatedData };
     }));
     toast.success("Clinic weeks placed and locked");
+    setActiveTab('schedule');
   };
 
   const handleSetViewMode = (mode: 'singleYear' | 'unified') => {
@@ -3182,23 +3183,23 @@ const AppContent: React.FC = () => {
       {(activeScheduleId !== 'all' && activeScheduleId !== 'settings' && activeScheduleId !== 'draft') || isHistoricalYear || schedules.some(s => s.isGenerating) ? (
         <div className="px-6 bg-white border-b border-light-5 flex gap-1 z-20 shadow-sm shrink-0 overflow-x-auto">
           <NavButton id="schedule" label={viewMode === 'unified' ? "Schedule 3yr" : "Schedule"} icon={LayoutGrid} />
-          {viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
-          <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={currentCoverageViolationsCount} />
-          <NavButton id="totals" label={viewMode === 'unified' ? "Totals 3yr" : "Totals"} icon={Users} />
-          <NavButton 
+          {hasPlacedClinicWeeks && viewMode !== 'unified' && <NavButton id="workload" label="Workload" icon={BarChart3} />}
+          {hasPlacedClinicWeeks && <NavButton id="coverage" label={viewMode === 'unified' ? "Coverage 3yr" : "Coverage"} icon={Table} badgeCount={currentCoverageViolationsCount} />}
+          {hasPlacedClinicWeeks && <NavButton id="totals" label={viewMode === 'unified' ? "Totals 3yr" : "Totals"} icon={Users} />}
+          {hasPlacedClinicWeeks && <NavButton 
             id="requirements" 
             label={viewMode === 'unified' ? "Requirements 3yr" : "Requirements"} 
             icon={ClipboardList} 
             badgeCount={currentRequirementsViolationsCount} 
-          />
+          />}
           {viewMode !== 'unified' && (
             <>
               <NavButton id="cycles" label="Cycles" icon={Users} />
-              <NavButton id="coworking" label="Coworking" icon={Network} />
-              <NavButton id="fairness" label="Fairness" icon={Scale} />
+              {hasPlacedClinicWeeks && <NavButton id="coworking" label="Coworking" icon={Network} />}
+              {hasPlacedClinicWeeks && <NavButton id="fairness" label="Fairness" icon={Scale} />}
             </>
           )}
-          <NavButton id="export" label={viewMode === 'unified' ? "Export 3yr" : "Export"} icon={FileSpreadsheet} />
+          {hasPlacedClinicWeeks && <NavButton id="export" label={viewMode === 'unified' ? "Export 3yr" : "Export"} icon={FileSpreadsheet} />}
         </div>
       ) : null}
 
