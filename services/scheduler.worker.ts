@@ -48,7 +48,11 @@ onmessage = async (e: MessageEvent) => {
   const { type, totalYears, residents, historicalSchedules, constraints, params, algorithmIds, customCycleConfig } = e.data;
   const programData = deserializeProgramData(e.data.programData);
   if (customCycleConfig) {
-    programData.cycleConfig = customCycleConfig;
+    programData.cycleConfig = {
+      ...programData.cycleConfig,
+      ...customCycleConfig,
+      X: customCycleConfig.X ?? (customCycleConfig.Z - customCycleConfig.Y),
+    };
   }
 
   if (type === 'generate') {

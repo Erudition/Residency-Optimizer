@@ -2722,7 +2722,7 @@ const AppContent: React.FC = () => {
     setSchedules(prev => prev.map(s => {
       if (s.id !== activeScheduleId) return s;
 
-      const newCycleConfig = { ...newConfig };
+      const newCycleConfig = { ...newConfig, X: newConfig.Z - newConfig.Y };
       const updatedCycles = { ...(s.cohortAssignments || {}) };
       const yearMapping = { ...(updatedCycles[activeYear] || activeYearCohorts) };
 
@@ -3429,6 +3429,7 @@ const AppContent: React.FC = () => {
                             cohortCount: creationCycleConfig.cohortCount,
                             Y: creationCycleConfig.Y,
                             Z: creationCycleConfig.Z,
+                            X: creationCycleConfig.Z - creationCycleConfig.Y,
                             clinicAssignments: creationCycleConfig.clinicAssignments
                           },
                           data: updatedData,
@@ -3472,6 +3473,7 @@ const AppContent: React.FC = () => {
                           cohortCount: creationCycleConfig.cohortCount,
                           Y: creationCycleConfig.Y,
                           Z: creationCycleConfig.Z,
+                          X: creationCycleConfig.Z - creationCycleConfig.Y,
                           clinicAssignments: creationCycleConfig.clinicAssignments
                         }
                       };

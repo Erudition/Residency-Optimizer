@@ -248,6 +248,7 @@ interface CandidateBase {
     cohortCount: number;
     Y: number;
     Z: number;
+    X?: number;
     clinicAssignments?: Record<string, string>;
   };
   hasUnsavedClinicChanges?: boolean;
