@@ -663,27 +663,27 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Intern Flex Weeks</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Intern Weeks</span>
             <div className="flex justify-between items-end mt-1">
-              <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredInternWeeks} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.internAvailable}</span></span>
+              <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredInternWeeks} <span className="text-[10px] font-medium text-slate-400">required out of {flexibilityStats.internAvailable} flex</span></span>
               <span className={`text-xs font-bold ${flexibilityStats.internFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                 {flexibilityStats.internFlexibility >= 0 ? '+' : ''}{flexibilityStats.internFlexibility} flex
               </span>
             </div>
           </div>
           <div className="bg-white border border-light-5 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Senior Flex Weeks</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Senior Weeks</span>
             <div className="flex justify-between items-end mt-1">
-              <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredSeniorWeeks} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.seniorAvailable}</span></span>
+              <span className="text-sm font-black text-slate-700">{flexibilityStats.requiredSeniorWeeks} <span className="text-[10px] font-medium text-slate-400">required out of {flexibilityStats.seniorAvailable} flex</span></span>
               <span className={`text-xs font-bold ${flexibilityStats.seniorFlexibility >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                 {flexibilityStats.seniorFlexibility >= 0 ? '+' : ''}{flexibilityStats.seniorFlexibility} flex
               </span>
             </div>
           </div>
           <div className="bg-slate-100 border border-slate-200 rounded flex flex-col p-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Program Flex Weeks</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Program Weeks</span>
             <div className="flex justify-between items-end mt-1">
-              <span className="text-sm font-black text-slate-800">{flexibilityStats.totalRequired} <span className="text-[10px] font-medium text-slate-400">/ {flexibilityStats.totalAvailable}</span></span>
+              <span className="text-sm font-black text-slate-800">{flexibilityStats.totalRequired} <span className="text-[10px] font-medium text-slate-400">required out of {flexibilityStats.totalAvailable} flex</span></span>
               <span className={`text-xs font-bold ${flexibilityStats.totalFlexibility >= 0 ? 'text-blue' : 'text-rose-600'}`}>
                 {flexibilityStats.totalFlexibility >= 0 ? '+' : ''}{flexibilityStats.totalFlexibility} flex
               </span>
