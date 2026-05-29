@@ -892,20 +892,7 @@ const AppContent: React.FC = () => {
     setEditingScheduleId(null);
   }, [activeYear, activeScheduleId, activeTab]);
 
-  const fillPercentage = useMemo(() => {
-    if (!activeScheduleId || activeScheduleId === 'all') return 0;
-    const gridToCheck = viewMode === 'unified' ? activeSchedule?.unifiedData : activeSchedule?.data[activeYear];
-    if (!gridToCheck) return 0;
-    let filled = 0;
-    let total = 0;
-    Object.values(gridToCheck).forEach(row => {
-      (row as any[]).forEach(cell => {
-        total++;
-        if (cell?.assignment) filled++;
-      });
-    });
-    return total > 0 ? filled / total : 0;
-  }, [activeSchedule, activeYear, viewMode, activeScheduleId]);
+
 
   const handlePlaceClinicWeeks = (fromCycleConfig = false, targetId?: string) => {
     const idToUse = targetId || activeScheduleId;
@@ -1098,6 +1085,24 @@ const AppContent: React.FC = () => {
     }
     return activeResidents;
   }, [viewMode, activeSchedule, residents, activeResidents, historicalCohortsByYear, activeYear]);
+
+  const fillPercentage = useMemo(() => {
+    if (!activeScheduleId || activeScheduleId === 'all') return 0;
+    const gridToCheck = viewMode === 'unified' ? activeSchedule?.unifiedData : activeSchedule?.data[activeYear];
+    if (!gridToCheck) return 0;
+    let filled = 0;
+    let total = 0;
+    displayResidents.forEach(r => {
+      const row = gridToCheck[r.id];
+      if (Array.isArray(row)) {
+        row.forEach(cell => {
+          total++;
+          if (cell?.assignment) filled++;
+        });
+      }
+    });
+    return total > 0 ? filled / total : 0;
+  }, [activeSchedule, activeYear, viewMode, activeScheduleId, displayResidents]);
 
   const { stats, violations, fairness } = useMemo(() => {
     if ((!activeSchedule || activeSchedule.isGenerating || activeScheduleId === 'all') && !isHistoricalYear) {
