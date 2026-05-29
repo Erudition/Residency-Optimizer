@@ -20,7 +20,7 @@ import type { ProgramData } from '../api/client';
 import { TOTAL_WEEKS, CANDIDATE_START_YEAR } from '../../constants';
 import { isClinicRotation, getClinicCodenames } from '../programDataUtils';
 import { RequirementsEngine } from '../requirementsEngine';
-import { buildLevelRequirements } from './reqBuilder';
+import { buildEnrichedLevelRequirements } from './reqBuilder';
 import { getCohortAtWeek, getStandardCohortMap } from './utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -56,7 +56,11 @@ interface EducationalNeed {
   tagTitle: string;
   /** Concrete codename(s) that fulfill this tag */
   codenames: string[];
-  minWeeks: number;
+  /** Per-year ideal (soft goal): what the optimizer aims for */
+  idealWeeks: number;
+  /** Per-year hard minimum: failing this is a genuine violation.
+   *  Pro-rated from the graduation minimum. 0 if no graduation min defined. */
+  hardMinWeeks: number;
   yearIndex: number;
   pgy: number;
 }
@@ -242,7 +246,7 @@ function buildEducationalNeeds(
       const pgy = year - r.startYear + 1;
       if (pgy < 1 || pgy > 3) continue;
 
-      const reqs = buildLevelRequirements(programData, pgy as 1 | 2 | 3);
+      const reqs = buildEnrichedLevelRequirements(programData, pgy as 1 | 2 | 3);
       for (const req of reqs) {
         // Credit historical assignments
         let prior = 0;
@@ -255,8 +259,9 @@ function buildEducationalNeeds(
             }
           }
         }
-        const remaining = Math.max(0, req.minWeeks - prior);
-        if (remaining <= 0) continue;
+        const remainingIdeal = Math.max(0, req.idealWeeks - prior);
+        const remainingHard = Math.max(0, req.hardMinWeeks - prior);
+        if (remainingIdeal <= 0) continue;
 
         // Find all codenames that fulfill this requirement
         const codenames: string[] = [];
@@ -272,7 +277,8 @@ function buildEducationalNeeds(
           residentId: r.id,
           tagTitle: req.type,
           codenames,
-          minWeeks: remaining,
+          idealWeeks: remainingIdeal,
+          hardMinWeeks: remainingHard,
           yearIndex: yi,
           pgy,
         });
@@ -582,7 +588,7 @@ function findBestStaffingCandidate(
       if (!need.codenames.includes(rot)) continue;
       const progress = state.eduProgress.get(v.residentId)
         ?.get(v.yearIndex)?.get(need.tagTitle) || 0;
-      const deficit = need.minWeeks - progress;
+      const deficit = need.idealWeeks - progress;
       if (deficit > 0) {
         score += 10000 + deficit; // Strongly prefer, and prefer higher deficit
       }
@@ -649,7 +655,7 @@ function selectVariable(state: CSPState, eduNeeds: EducationalNeed[]): Variable 
       for (const need of resNeeds) {
         const progress = state.eduProgress.get(residentId)
           ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
-        const deficit = need.minWeeks - progress;
+        const deficit = need.idealWeeks - progress;
         if (deficit <= 0) continue;
         if (need.codenames.some(c => v.domain.includes(c))) {
           if (deficit > maxDeficit) maxDeficit = deficit;
@@ -706,7 +712,7 @@ function orderValues(
   for (const need of resNeeds) {
     const progress = state.eduProgress.get(v.residentId)
       ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
-    const deficit = need.minWeeks - progress;
+    const deficit = need.idealWeeks - progress;
     if (deficit > 0) totalResidentDeficit += deficit;
   }
 
@@ -764,7 +770,7 @@ function getDeficitForCodename(
     if (!RequirementsEngine.fulfills(codename, need.tagTitle, programData)) continue;
     const progress = state.eduProgress.get(v.residentId)
       ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
-    const deficit = need.minWeeks - progress;
+    const deficit = need.idealWeeks - progress;
     if (deficit > maxDeficit) maxDeficit = deficit;
   }
   return maxDeficit;
@@ -788,7 +794,7 @@ function getSurplusForCodename(
     if (!RequirementsEngine.fulfills(codename, need.tagTitle, programData)) continue;
     const progress = state.eduProgress.get(v.residentId)
       ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
-    const surplus = progress - need.minWeeks;
+    const surplus = progress - need.idealWeeks;
     if (surplus >= 0) {
       // Already met for this year — penalize by how much we'd overshoot
       maxSurplus = Math.max(maxSurplus, surplus + v.duration);
@@ -952,7 +958,7 @@ function educationalImprovementPass(
       for (const need of resNeeds) {
         const progress = state.eduProgress.get(v.residentId)
           ?.get(need.yearIndex)?.get(need.tagTitle) || 0;
-        const deficit = need.minWeeks - progress;
+        const deficit = need.idealWeeks - progress;
         if (deficit <= 0) continue;
 
         // Find a rotation that fulfills this need and fits in this slot
