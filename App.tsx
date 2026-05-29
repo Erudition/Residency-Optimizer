@@ -41,7 +41,7 @@ import {
 import { getStandardCohortMap } from './services/generators/utils';
 import { loadProgramData, ProgramData, serializeProgramData, promoteScheduleToCanonical, getCanonicalScheduleId } from './services/api/client';
 import { getScheduleSyncService, SyncError, type SyncStatus, type ScheduleSyncEvent } from './services/api/sync';
-import { extractTokenFromURL, isAuthenticated, verifyToken } from './services/api/auth';
+import { extractTokenFromURL, isAuthenticated, verifyToken, setToken } from './services/api/auth';
 import { ProgramDataProvider, useProgramData } from './contexts/ProgramDataContext';
 import { getAssignmentColor } from './utils/colorUtils';
 import { detectStaleResidentIds, remapScheduleResidentIds, compareResidentLists } from './utils/remapResidentIds';
@@ -104,7 +104,8 @@ import {
   ArrowLeftRight,
   AlertTriangle,
   Lock,
-  Unlock
+  Unlock,
+  User
 } from 'lucide-react';
 
 
@@ -678,6 +679,18 @@ const AppContent: React.FC = () => {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(
     isAuthenticated() ? 'connected' : 'local-only'
   );
+
+  const [currentUser, setCurrentUser] = useState<{ id: number; email: string; name?: string } | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      verifyToken().then(user => {
+        if (user) setCurrentUser(user);
+      });
+    } else {
+      setCurrentUser(null);
+    }
+  }, [syncStatus]);
 
   // ── Load Published Candidates on Mount ──
   // Fetches existing backend candidates when authenticated so published
@@ -3338,6 +3351,48 @@ const AppContent: React.FC = () => {
         </div>
         {/* Right: Settings Icons */}
         <div className="flex items-center gap-1">
+          {currentUser ? (
+            <div className="relative group ml-1 mr-2">
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-muted hover:text-primary transition-all cursor-default"
+              >
+                <User size={14} />
+                <span className="max-w-[120px] truncate">{currentUser.name || currentUser.email}</span>
+              </Button>
+              <div className="absolute right-0 top-full w-48 bg-white border border-light-4 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                <div className="p-3 border-b border-light-4 text-xs text-muted truncate bg-light-1" title={currentUser.email}>
+                  {currentUser.email}
+                </div>
+                <div className="p-1">
+                  <button
+                    onClick={() => {
+                      setToken(null);
+                      setCurrentUser(null);
+                      setSyncStatus('local-only');
+                      window.location.reload();
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  >
+                    Log Out
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="ml-1 mr-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  window.location.href = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/admin` : 'http://localhost:3000/admin';
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-blue hover:bg-blue/10 transition-all"
+              >
+                <Lock size={14} />
+                Log In
+              </Button>
+            </div>
+          )}
           <Button
             variant="ghost"
             onClick={() => {
