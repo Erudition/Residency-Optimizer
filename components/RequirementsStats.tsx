@@ -82,6 +82,8 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
     pgy2Ideal: number | null;
     pgy3Ideal: number | null;
     totalBurden: number;
+    internBurden: number;
+    seniorBurden: number;
     isCumulative: boolean;
   } | null>(null);
 
@@ -245,18 +247,36 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
   };
 
   const handleRowEnter = (e: React.MouseEvent, req: any) => {
-    // Calculate total burden from precomputed cellCalculations
-    const totalBurden = sortedResidents.reduce((sum, res) => {
-      return sum + (cellCalculations[res.id]?.[req.id]?.minWeeks || 0);
-    }, 0);
+    let internBurden = 0;
+    let seniorBurden = 0;
+    let totalBurden = 0;
 
-    // Calculate position based on the td element rather than the innermost span
+    sortedResidents.forEach(res => {
+      const minWk = cellCalculations[res.id]?.[req.id]?.minWeeks || 0;
+      totalBurden += minWk;
+      
+      if (isUnified) {
+        const lastActiveYear = Math.min(res.startYear + 2, activeYear! + 2);
+        for (let y = activeYear!; y <= lastActiveYear; y++) {
+          const lvl = y - res.startYear + 1;
+          if (lvl === 1) internBurden += (req.pgy1Ideal || 0);
+          else if (lvl === 2) seniorBurden += (req.pgy2Ideal || 0);
+          else if (lvl === 3) seniorBurden += (req.pgy3Ideal || 0);
+        }
+      } else {
+        const level = activeYear! - res.startYear + 1;
+        if (level === 1) internBurden += minWk;
+        else seniorBurden += minWk;
+      }
+    });
+
+    // Calculate position based on the td element
     const tdElement = (e.currentTarget as HTMLElement);
     const rect = tdElement.getBoundingClientRect();
 
     setRowTooltip({
-      x: rect.left + window.scrollX + rect.width / 2,
-      y: rect.top + window.scrollY,
+      x: rect.right + window.scrollX + 10,
+      y: rect.top + window.scrollY + rect.height / 2,
       reqTitle: req.tag.title,
       source: req.source,
       minimum: req.minimum || null,
@@ -264,7 +284,9 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       pgy2Ideal: req.pgy2Ideal || null,
       pgy3Ideal: req.pgy3Ideal || null,
       isCumulative: req.isCumulative,
-      totalBurden
+      totalBurden,
+      internBurden,
+      seniorBurden
     });
   };
 
@@ -514,7 +536,7 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
       {/* Row Header Hover Floating Tooltip */}
       {rowTooltip && (
         <div
-          className="fixed z-[200] bg-slate-900 text-white text-xs rounded-xl py-3 px-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-10px] min-w-[220px] border border-slate-750"
+          className="fixed z-[200] bg-slate-900 text-white text-xs rounded-xl py-3 px-4 shadow-xl pointer-events-none transform -translate-y-1/2 min-w-[220px] border border-slate-750"
           style={{ left: rowTooltip.x, top: rowTooltip.y }}
         >
           <div className="font-black text-sm border-b border-slate-800 pb-1.5 mb-2 flex items-center justify-between gap-4">
@@ -557,19 +579,31 @@ export const RequirementsStats: React.FC<Props> = React.memo(({ residents, sched
               </div>
             )}
 
-            <div className="mt-2.5 pt-2 border-t border-slate-800">
+            <div className="mt-2.5 pt-2 border-t border-slate-800 space-y-1.5">
+              {rowTooltip.internBurden > 0 && (
+                <div className="flex justify-between items-center gap-4 text-[11px]">
+                  <span className="text-slate-300">Intern Weeks Required:</span>
+                  <span className="font-bold text-slate-200">{rowTooltip.internBurden} {isUnified ? '/ 3 yr' : '/ yr'}</span>
+                </div>
+              )}
+              {rowTooltip.seniorBurden > 0 && (
+                <div className="flex justify-between items-center gap-4 text-[11px]">
+                  <span className="text-slate-300">Senior Weeks Required:</span>
+                  <span className="font-bold text-slate-200">{rowTooltip.seniorBurden} {isUnified ? '/ 3 yr' : '/ yr'}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center gap-4 text-[11px]">
-                <span className="text-blue-300 font-bold">Total Program Burden:</span>
-                <span className="font-black text-blue-200">{rowTooltip.totalBurden} res-weeks</span>
+                <span className="text-blue-300 font-bold">Resident Weeks Required:</span>
+                <span className="font-black text-blue-200">{rowTooltip.totalBurden} {isUnified ? '/ 3 yr' : '/ yr'}</span>
               </div>
-              <div className="text-[9px] text-slate-500 mt-0.5">
+              <div className="text-[9px] text-slate-500 mt-0.5 border-t border-slate-800/50 pt-1">
                 (Based on {sortedResidents.length} displayed residents)
               </div>
             </div>
           </div>
           
-          {/* Tooltip caret */}
-          <div className="absolute left-1/2 -bottom-1 w-2.5 h-2.5 bg-slate-900 border-r border-b border-slate-800/20 transform -translate-x-1/2 rotate-45" />
+          {/* Tooltip caret pointing left */}
+          <div className="absolute top-1/2 -left-1.5 w-3 h-3 bg-slate-900 border-l border-b border-slate-750 transform -translate-y-1/2 rotate-45" />
         </div>
       )}
     </div>
